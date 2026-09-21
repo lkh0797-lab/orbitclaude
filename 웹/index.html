@@ -89,6 +89,15 @@ main{flex:1;overflow:auto;padding:18px 22px;min-width:0}
 h4.head{margin:0 0 4px;font-size:15px;letter-spacing:-.01em}
 p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 
+/* ---------- 보고서 종류 ---------- */
+.note{border:1px solid var(--line);border-left:3px solid var(--warn);background:var(--warn-bg);
+  color:var(--ink);border-radius:8px;padding:9px 12px;margin:0 0 14px;font-size:12.5px}
+.note b{font-weight:600}
+.lane{margin:0 0 22px}
+.lane>h5{margin:0 0 8px;font-size:13px;font-weight:600;display:flex;gap:8px;align-items:baseline}
+.lane>h5 span{font:11px/1 var(--mono);color:var(--faint);font-weight:400}
+.lane .cards{margin-bottom:4px}
+
 /* ---------- 연혁 ---------- */
 .tl{border-left:2px solid var(--line);margin-left:6px;padding-left:0}
 .yr{position:relative;padding:2px 0 14px 18px}
@@ -284,7 +293,48 @@ const fmt = n => n.toLocaleString('ko-KR');
 const kb = n => n>=1048576 ? (n/1048576).toFixed(1)+'MB' : Math.round(n/1024)+'KB';
 
 const S = {companies:[], co:null, section:null, tab:'orbit', lastRead:null,
-  briefRcept:null, diffA:null, diffB:null};
+  briefRcept:null, diffA:null, diffB:null, kind:''};
+
+// ---------------------------------------------------------- 보고서 종류
+// 분기·반기·사업보고서는 서식과 분량이 서로 달라, 섞어 보면 전부 바뀐 것처럼 읽힌다.
+// S.kind 가 비어 있으면 전체, 값이 있으면 그 종류만 모든 탭에 적용된다.
+const KIND_ORDER=['분기보고서','반기보고서','사업보고서'];
+function kindsOf(c){
+  const n={};
+  c.reports.forEach(r=>{ n[r.label]=(n[r.label]||0)+1; });
+  const known=KIND_ORDER.filter(k=>n[k]);
+  const extra=Object.keys(n).filter(k=>!KIND_ORDER.includes(k)).sort();
+  return known.concat(extra).map(k=>({label:k, count:n[k]}));
+}
+function reps(){
+  const c=S.co; if(!c) return [];
+  return S.kind ? c.reports.filter(r=>r.label===S.kind) : c.reports;
+}
+function sectionsOf(){
+  const n={};
+  reps().forEach(r=>r.sections.forEach(x=>{ n[x.norm]=(n[x.norm]||0)+1; }));
+  const order=(S.co.sections||[]).map(x=>x.norm);
+  return Object.keys(n)
+    .sort((a,b)=>{ const ia=order.indexOf(a), ib=order.indexOf(b);
+      return (ia<0?9e9:ia)-(ib<0?9e9:ib); })
+    .map(k=>({norm:k, count:n[k]}));
+}
+function setKind(k){
+  S.kind=k;
+  S.briefRcept=null; S.diffA=S.diffB=null; S.lastRead=null;
+  const secs=sectionsOf();
+  if(!secs.some(x=>x.norm===S.section)) S.section=(secs[0]||{}).norm||null;
+  renderSide();
+  show(S.tab);
+}
+function kindNote(p){
+  if(S.kind) return;
+  const d=el('div','note');
+  d.innerHTML='<b>지금은 세 종류를 섞어 보고 있습니다.</b> 분기·반기·사업보고서는 서식과 분량이 ' +
+    '달라 섞으면 변화가 실제보다 커 보입니다. 왼쪽 <b>보고서 종류</b>에서 하나를 고르면 ' +
+    '같은 종류끼리만 견줍니다.';
+  p.appendChild(d);
+}
 
 // ---------------------------------------------------------- 회사 검색
 async function loadCompanies(){
@@ -333,8 +383,10 @@ async function pick(code){
   const r = await fetch('/api/company?code='+code);
   if(!r.ok){ return; }
   S.co = await r.json();
-  S.section = (S.co.sections[0]||{}).norm || null;
-  S.briefRcept = null; S.diffA = S.diffB = null;
+  // 회사를 바꿔도 보고 있던 종류는 유지한다. 새 회사에 그 종류가 없을 때만 전체로 되돌린다.
+  if(S.kind && !S.co.reports.some(x=>x.label===S.kind)) S.kind='';
+  S.section = (sectionsOf()[0]||{}).norm || null;
+  S.briefRcept = null; S.diffA = S.diffB = null; S.lastRead = null;
   $('#welcome') && $('#welcome').remove();
   $('#tabs').hidden=false;
   renderSide();
@@ -353,10 +405,25 @@ function renderSide(){
   box.appendChild(st);
   a.appendChild(box);
 
+  const kbox=el('div','sect');
+  kbox.appendChild(el('h3',null,'보고서 종류'));
+  const klist=el('div','slist');
+  const addKind=(label,text,count)=>{
+    const b=el('button', S.kind===label?'on':'');
+    b.appendChild(el('span',null,text));
+    b.appendChild(el('span','n', count));
+    b.onclick=()=>setKind(label);
+    klist.appendChild(b);
+  };
+  addKind('', '전체', c.reports.length);
+  kindsOf(c).forEach(k=>addKind(k.label, k.label, k.count));
+  kbox.appendChild(klist);
+  a.appendChild(kbox);
+
   const sec=el('div','sect');
   sec.appendChild(el('h3',null,'섹션'));
   const list=el('div','slist');
-  c.sections.forEach(s=>{
+  sectionsOf().forEach(s=>{
     const b=el('button', s.norm===S.section?'on':'');
     b.appendChild(el('span',null,s.norm));
     b.appendChild(el('span','n', s.count));
@@ -428,22 +495,25 @@ async function viewOrbit(p){
       pr.appendChild(el('span',null,'처음 한 번만 걸립니다. 결과는 저장됩니다.'));
       progBox.appendChild(pr);
     }
-    const rows=d.rows.filter(r=>r.score!==null);
+    const all=S.kind ? d.rows.filter(r=>r.label===S.kind) : d.rows;
+    const rows=all.filter(r=>r.score!==null);
     chartBox.innerHTML='';
     listBox.innerHTML='';
-    if(!rows.length){ chartBox.appendChild(el('div','loading','계산 중…')); }
+    if(!all.length){ chartBox.appendChild(el('div','empty','이 종류의 보고서가 없습니다.')); }
     else {
-      chartBox.appendChild(orbitChart(rows));
+      if(rows.length) chartBox.appendChild(orbitChart(rows));
+      else chartBox.appendChild(el('div','loading','아직 분석된 보고서가 없습니다. 아래 목록은 지금도 열 수 있습니다.'));
       const t=el('table','tbl');
       t.innerHTML='<tr><th>시점</th><th>보고서</th><th>비교 대상</th>'+
         '<th style="text-align:right">변화점수</th><th>가장 크게 바뀐 곳</th></tr>';
-      rows.slice().reverse().forEach(r=>{
+      // 점수가 아직 없는 건도 숨기지 않는다 — 숨기면 보고서 자체가 누락된 것처럼 보인다.
+      all.slice().reverse().forEach(r=>{
         const tr=el('tr'); tr.style.cursor='pointer';
         tr.onclick=()=>{ S.briefRcept=r.rcept; jump('brief'); };
         tr.appendChild(el('td',null,r.stamp));
         tr.appendChild(el('td',null,r.label+r.tag));
         tr.appendChild(el('td',null,r.kind||'—'));
-        tr.appendChild(el('td','num', r.score===null?'—':r.score));
+        tr.appendChild(el('td','num', r.score===null?'분석 전':r.score));
         tr.appendChild(el('td',null,r.top||'—'));
         t.appendChild(tr);
       });
@@ -575,25 +645,28 @@ function renderFin(box, f){
 // ---------------------------------------------------------- 변화 브리핑
 async function viewBrief(p){
   const c=S.co;
-  const rep = c.reports.find(r=>r.rcept===S.briefRcept) || c.reports[c.reports.length-1];
-  S.briefRcept=rep.rcept;
+  const L=reps();                       // 고른 종류의 보고서만
   p.innerHTML='';
-  p.appendChild(el('h4','head','변화 브리핑'));
+  p.appendChild(el('h4','head','변화 브리핑'+(S.kind?' — '+S.kind:'')));
+  if(!L.length){ p.appendChild(el('div','empty','이 종류의 보고서가 없습니다.')); return; }
+  const rep = L.find(r=>r.rcept===S.briefRcept) || L[L.length-1];
+  S.briefRcept=rep.rcept;
   const row=el('div','row');
   const sel=el('select');
-  c.reports.slice().reverse().forEach(r=>{
+  L.slice().reverse().forEach(r=>{
     const o=el('option',null,r.stamp+' '+r.label+r.tag); o.value=r.rcept;
     if(r.rcept===rep.rcept)o.selected=true; sel.appendChild(o);
   });
   sel.onchange=()=>{ S.briefRcept=sel.value; show('brief'); };
   row.appendChild(sel);
-  const idx=c.reports.indexOf(rep);
+  // 이전/다음은 같은 종류 안에서만 움직인다.
+  const idx=L.indexOf(rep);
   const prev=el('button','morebtn','← 이전 보고서');
   prev.disabled = idx<=0;
-  prev.onclick=()=>{ S.briefRcept=c.reports[idx-1].rcept; show('brief'); };
+  prev.onclick=()=>{ S.briefRcept=L[idx-1].rcept; show('brief'); };
   const next=el('button','morebtn','다음 보고서 →');
-  next.disabled = idx>=c.reports.length-1;
-  next.onclick=()=>{ S.briefRcept=c.reports[idx+1].rcept; show('brief'); };
+  next.disabled = idx>=L.length-1;
+  next.onclick=()=>{ S.briefRcept=L[idx+1].rcept; show('brief'); };
   row.appendChild(prev); row.appendChild(next);
   p.appendChild(row);
 
@@ -682,60 +755,80 @@ async function viewBrief(p){
     const act=el('div','blk');
     const full=el('button','morebtn','이 섹션 전체 diff 보기');
     full.onclick=()=>{ S.section=s.section; S.diffA=b.base.rcept; S.diffB=b.report.rcept;
-      S.diffLab=''; renderSide(); jump('diff'); };
+      renderSide(); jump('diff'); };
     act.appendChild(full);
     body.appendChild(act);
     card.appendChild(body);
     box.appendChild(card);
   });
 }
-function labelsParam(){ return ''; }
+// 서버의 labels 필터(서버.py _labels)로 넘길 쿼리 조각. 비어 있으면 전체.
+function labelsParam(){ return S.kind ? '&labels='+encodeURIComponent(S.kind) : ''; }
 
 // ---------------------------------------------------------- 연혁
 function viewTimeline(p){
   const c=S.co; p.innerHTML='';
-  p.appendChild(Object.assign(el('h4','head','보고서 연혁'),{}));
-  p.appendChild(el('p','sub', c.from+' 부터 '+c.to+' 까지 '+c.count+'건. 카드를 누르면 본문이 열립니다.'));
-  const byYear={};
-  c.reports.forEach(r=>{ const y=r.stamp.slice(0,4); (byYear[y]=byYear[y]||[]).push(r); });
-  const tl=el('div','tl');
-  Object.keys(byYear).sort().reverse().forEach(y=>{
-    const g=el('div','yr'+(byYear[y].some(r=>r.label==='사업보고서')?' big':''));
-    g.appendChild(el('div','y', y));
+  p.appendChild(el('h4','head','보고서 연혁'));
+  p.appendChild(el('p','sub', c.from+' 부터 '+c.to+' 까지 '+c.count+'건. '+
+    '종류마다 칸을 나눠 같은 종류끼리 이어 놓았습니다. 카드를 누르면 본문이 열립니다.'));
+
+  const openRead=(r)=>{
+    S.lastRead={rcept:r.rcept, file:(r.sections.find(x=>x.norm===S.section)||r.sections[0]).file};
+    jump('read');
+  };
+  const cardOf=(r)=>{
+    const card=el('div','card'+(r.tag?' amend':''));
+    card.appendChild(el('b', null, r.stamp));
+    card.appendChild(el('span', null, (r.tag?'정정 · ':'')+'섹션 '+r.sections.length+' · '+kb(r.bytes)));
+    card.onclick=()=>openRead(r);
+    return card;
+  };
+
+  // 고른 종류가 있으면 그 칸만, 없으면 종류별 칸을 전부 세로로 쌓는다.
+  const lanes = S.kind ? [{label:S.kind, count:reps().length}] : kindsOf(c);
+  lanes.forEach(k=>{
+    const rs=c.reports.filter(r=>r.label===k.label);
+    if(!rs.length) return;
+    const lane=el('div','lane');
+    const h=el('h5'); h.appendChild(el('b',null,k.label));
+    h.appendChild(el('span',null, rs.length+'건 · '+rs[0].stamp+' ~ '+rs[rs.length-1].stamp));
+    lane.appendChild(h);
     const cards=el('div','cards');
-    byYear[y].sort((a,b)=>a.stamp<b.stamp?-1:1).forEach(r=>{
-      const card=el('div','card'+(r.tag?' amend':''));
-      card.appendChild(el('b', null, r.label+r.tag));
-      card.appendChild(el('span', null, r.stamp+' · 섹션 '+r.sections.length+' · '+kb(r.bytes)));
-      card.onclick=()=>{ S.lastRead={rcept:r.rcept, file:(r.sections.find(s=>s.norm===S.section)||r.sections[0]).file};
-        [...$('#tabs').children].forEach(x=>x.classList.toggle('on', x.dataset.t==='read'));
-        show('read'); };
-      cards.appendChild(card);
-    });
-    g.appendChild(cards); tl.appendChild(g);
+    rs.slice().reverse().forEach(r=>cards.appendChild(cardOf(r)));
+    lane.appendChild(cards);
+    p.appendChild(lane);
   });
-  p.appendChild(tl);
+
+  if(!S.kind){
+    const d=el('div','note');
+    d.innerHTML='분기보고서는 <b>3월·9월에만</b> 나옵니다. 2분기 자리는 반기보고서가, '+
+      '4분기 자리는 사업보고서가 대신하기 때문입니다(자본시장법). 세 칸을 합치면 매년 4건이 '+
+      '빠짐없이 채워집니다 — 빠진 분기가 아닙니다.';
+    p.appendChild(d);
+  }
 }
 
 // ---------------------------------------------------------- 본문
 async function viewRead(p){
   const c=S.co;
-  const target = S.lastRead || (()=>{ const r=c.reports[c.reports.length-1];
+  const L=reps();
+  p.innerHTML='';
+  if(!L.length){ p.appendChild(el('div','empty','이 종류의 보고서가 없습니다.')); return; }
+  const target = S.lastRead || (()=>{ const r=L[L.length-1];
     return {rcept:r.rcept, file:(r.sections.find(s=>s.norm===S.section)||r.sections[0]).file};})();
-  const rep = c.reports.find(r=>r.rcept===target.rcept) || c.reports[c.reports.length-1];
+  const rep = L.find(r=>r.rcept===target.rcept) || L[L.length-1];
   const sec = rep.sections.find(s=>s.file===target.file)
            || rep.sections.find(s=>s.norm===S.section) || rep.sections[0];
   S.lastRead = {rcept:rep.rcept, file:sec.file};
 
-  p.innerHTML='';
   p.appendChild(el('h4','head', sec.title));
   const row=el('div','row');
   const selR=el('select');
-  c.reports.slice().reverse().forEach(r=>{
+  L.slice().reverse().forEach(r=>{
     const o=el('option',null, r.stamp+' '+r.label+r.tag); o.value=r.rcept;
     if(r.rcept===rep.rcept) o.selected=true; selR.appendChild(o);
   });
-  selR.onchange=()=>{ const r=c.reports.find(x=>x.rcept===selR.value);
+  selR.onchange=()=>{ const r=L.find(x=>x.rcept===selR.value);
     const s=r.sections.find(x=>x.norm===sec.norm)||r.sections[0];
     S.lastRead={rcept:r.rcept,file:s.file}; show('read'); };
   const selS=el('select');
@@ -758,24 +851,14 @@ async function viewRead(p){
 async function viewTraj(p){
   const c=S.co, sec=S.section;
   p.innerHTML='';
-  p.appendChild(el('h4','head', '섹션 궤적 — '+sec));
+  p.appendChild(el('h4','head', '섹션 궤적 — '+sec+(S.kind?' · '+S.kind:'')));
   p.appendChild(el('p','sub',
     '연속한 두 보고서의 같은 섹션이 얼마나 닮았는지. 막대가 짧은 해 = 회사가 말을 크게 바꾼 해. 거기가 읽을 곳입니다.'));
 
-  const row=el('div','row');
-  const selL=el('select');
-  [['사업보고서','사업보고서끼리 (연 단위)'],['','전체 보고서 (분기 포함)']].forEach(([v,t])=>{
-    const o=el('option',null,t); o.value=v;
-    if(v===(S.trajLab===undefined?'사업보고서':S.trajLab)) o.selected=true;
-    selL.appendChild(o);
-  });
-  selL.onchange=()=>{ S.trajLab=selL.value; show('traj'); };
-  row.appendChild(selL);
-  p.appendChild(row);
+  kindNote(p);
 
-  const lab = S.trajLab===undefined ? '사업보고서' : S.trajLab;
   const data = await (await fetch('/api/similarity?code='+c.code+'&section='+encodeURIComponent(sec)+
-    (lab?'&labels='+encodeURIComponent(lab):''))).json();
+    labelsParam())).json();
   if(!data.length){ p.appendChild(el('div','empty','비교할 구간이 없습니다.')); return; }
 
   const vals=data.map(d=>d.similarity);
@@ -813,14 +896,18 @@ async function viewTraj(p){
 // ---------------------------------------------------------- 변경점
 async function viewDiff(p){
   const c=S.co, sec=S.section;
-  const dlab = S.diffLab===undefined ? '사업보고서' : S.diffLab;
-  let withSec = c.reports.filter(r=>r.sections.some(s=>s.norm===sec)
-    && (!dlab || r.label===dlab));
-  if(withSec.length<2) withSec = c.reports.filter(r=>r.sections.some(s=>s.norm===sec));
+  // 종류 칸을 고른 뒤에는 말없이 전체로 되돌리지 않는다 — 되돌리면 종류가 다시 섞인다.
+  const withSec = reps().filter(r=>r.sections.some(s=>s.norm===sec));
   p.innerHTML='';
-  p.appendChild(el('h4','head','변경점 비교 — '+sec));
+  p.appendChild(el('h4','head','변경점 비교 — '+sec+(S.kind?' · '+S.kind:'')));
   p.appendChild(el('p','sub','두 시점을 골라 문단 단위로 비교합니다. 초록=새로 들어간 말, 빨강=빠진 말.'));
-  if(withSec.length<2){ p.appendChild(el('div','empty','이 섹션이 있는 보고서가 2건 미만입니다.')); return; }
+  if(withSec.length<2){
+    p.appendChild(el('div','empty', S.kind
+      ? S.kind+' 중 「'+sec+'」 섹션이 있는 보고서가 2건 미만입니다. 왼쪽에서 다른 종류나 섹션을 골라 보세요.'
+      : '이 섹션이 있는 보고서가 2건 미만입니다.'));
+    return;
+  }
+  kindNote(p);
 
   const a=S.diffA && withSec.find(r=>r.rcept===S.diffA) ? S.diffA : withSec[withSec.length-2].rcept;
   const b=S.diffB && withSec.find(r=>r.rcept===S.diffB) ? S.diffB : withSec[withSec.length-1].rcept;
@@ -830,11 +917,6 @@ async function viewDiff(p){
     withSec.forEach(r=>{ const o=el('option',null,r.stamp+' '+r.label+r.tag);
       o.value=r.rcept; if(r.rcept===cur)o.selected=true; s.appendChild(o); }); return s; };
   const sa=mk(a), sb=mk(b);
-  const selL=el('select');
-  [['사업보고서','사업보고서'],['','전체']].forEach(([v,t])=>{
-    const o=el('option',null,t); o.value=v; if(v===dlab)o.selected=true; selL.appendChild(o);});
-  selL.onchange=()=>{ S.diffLab=selL.value; S.diffA=S.diffB=null; show('diff'); };
-  row.appendChild(selL);
   row.appendChild(sa); row.appendChild(el('span',null,'→')); row.appendChild(sb);
   const go=el('button','go','비교'); go.onclick=()=>{S.diffA=sa.value;S.diffB=sb.value;show('diff');};
   row.appendChild(go);
@@ -868,8 +950,8 @@ async function viewDiff(p){
 function viewFind(p){
   const c=S.co;
   p.innerHTML='';
-  p.appendChild(el('h4','head','전문검색'));
-  p.appendChild(el('p','sub','이 회사의 '+c.count+'건 보고서 전문을 훑습니다. 어떤 말이 언제 처음 나왔는지가 핵심입니다.'));
+  p.appendChild(el('h4','head','전문검색'+(S.kind?' — '+S.kind:'')));
+  p.appendChild(el('p','sub','이 회사의 '+reps().length+'건 보고서 전문을 훑습니다. 어떤 말이 언제 처음 나왔는지가 핵심입니다.'));
   const row=el('div','row');
   const inp=el('input'); inp.type='text'; inp.placeholder='예: HBM, 가동률, 연구개발비, 소송';
   inp.value=S.findQ||'';
@@ -887,7 +969,7 @@ function viewFind(p){
     S.findQ=q; S.findSec=selS.value;
     out.innerHTML='<div class="loading">찾는 중…</div>';
     const hits=await (await fetch('/api/search?code='+c.code+'&q='+encodeURIComponent(q)+
-      (selS.value?'&section='+encodeURIComponent(selS.value):''))).json();
+      (selS.value?'&section='+encodeURIComponent(selS.value):'')+labelsParam())).json();
     out.innerHTML='';
     if(hits.error){ out.appendChild(el('div','err',hits.error)); return; }
     if(!hits.length){ out.appendChild(el('div','empty','"'+q+'" 없음. 이 회사는 이 말을 한 번도 쓴 적이 없습니다.')); return; }
@@ -928,27 +1010,24 @@ function viewFind(p){
 function viewTrend(p){
   const c=S.co;
   p.innerHTML='';
-  p.appendChild(el('h4','head','키워드 추이'));
+  p.appendChild(el('h4','head','키워드 추이'+(S.kind?' — '+S.kind:'')));
   p.appendChild(el('p','sub','보고서마다 그 말이 몇 번 나왔는지. 회사가 무엇에 말을 쓰기 시작했고 무엇을 접었는지가 드러납니다. 쉼표로 여러 개.'));
   const row=el('div','row');
   const inp=el('input'); inp.type='text'; inp.placeholder='예: HBM, DDR5, 낸드';
   inp.value=S.trendQ||'';
-  const selL=el('select');
-  selL.appendChild(Object.assign(el('option',null,'사업보고서만 (연 1회)'),{value:'사업보고서'}));
-  selL.appendChild(Object.assign(el('option',null,'전체 보고서'),{value:''}));
-  if(S.trendLab==='') selL.selectedIndex=1;
   const go=el('button','go','그리기');
-  row.appendChild(inp); row.appendChild(selL); row.appendChild(go);
+  row.appendChild(inp); row.appendChild(go);
   p.appendChild(row);
+  kindNote(p);
   const out=el('div'); p.appendChild(out);
 
   async function run(){
     const terms=inp.value.split(',').map(s=>s.trim()).filter(Boolean);
     if(!terms.length) return;
-    S.trendQ=inp.value; S.trendLab=selL.value;
+    S.trendQ=inp.value;
     out.innerHTML='<div class="loading">세는 중…</div>';
     const d=await (await fetch('/api/trend?code='+c.code+'&terms='+
-      encodeURIComponent(terms.join(','))+(selL.value?'&labels='+encodeURIComponent(selL.value):''))).json();
+      encodeURIComponent(terms.join(','))+labelsParam())).json();
     out.innerHTML='';
     if(d.error){ out.appendChild(el('div','err',d.error)); return; }
     if(!d.points.length){ out.appendChild(el('div','empty','해당 보고서가 없습니다.')); return; }
@@ -1059,11 +1138,11 @@ function multiline(d){
 // ---------------------------------------------------------- 분석 레시피
 const RECIPES=[
  {t:'말이 바뀐 해를 먼저 찾아라', s:'「사업의 내용」 연도별 유사도를 보고 급락 구간만 읽는다. 사업이 진짜 바뀐 해는 회사가 문장을 다시 쓴다. 15년을 다 읽을 필요 없이 3~4개 변곡점만 읽으면 된다.',
-  k:'섹션 궤적', go:()=>{S.section='사업의 내용';renderSide();jump('traj');}},
+  k:'섹션 궤적', go:()=>{S.kind='사업보고서';S.section='사업의 내용';renderSide();jump('traj');}},
  {t:'위험요소의 신규 등장', s:'「그 밖에 투자자 보호」를 연도 비교한다. 새로 추가된 위험은 경영진이 처음으로 인정한 문제다. 사라진 위험은 해소됐거나 숨긴 것이다.',
-  k:'변경점 비교', go:()=>{S.section='그 밖에 투자자 보호를 위하여 필요한 사항';renderSide();jump('diff');}},
+  k:'변경점 비교', go:()=>{S.kind='사업보고서';S.section='그 밖에 투자자 보호를 위하여 필요한 사항';renderSide();jump('diff');}},
  {t:'경영진 말 대 실적', s:'「이사의 경영진단 및 분석의견」을 N년과 N+2년으로 비교한다. 약속한 것을 했는지, 말을 바꿨는지가 그대로 남는다. 경영진 신뢰도 점수의 근거.',
-  k:'변경점 비교', go:()=>{S.section='이사의 경영진단 및 분석의견';renderSide();jump('diff');}},
+  k:'변경점 비교', go:()=>{S.kind='사업보고서';S.section='이사의 경영진단 및 분석의견';renderSide();jump('diff');}},
  {t:'생산능력 · 가동률 궤적', s:'설비가 실제로 늘었는지는 말이 아니라 표에 있다. 가동률이 먼저 차고 그 다음에 증설이 온다. 증설 발표 전에 가동률이 보인다.',
   k:'전문검색', go:()=>{S.findQ='가동률';S.findSec='사업의 내용';jump('find');}},
  {t:'고객 집중도 변화', s:'단일 고객 매출 비중 공시. 집중도가 오르면 협상력이 약해지고, 내려가면 저변이 넓어진 것이다. 15년 추세로 보면 사업의 질이 보인다.',
@@ -1079,9 +1158,9 @@ const RECIPES=[
  {t:'지배구조 · 최대주주 변동', s:'최대주주와 특수관계인 지분 변화. 승계·매각·경영권 분쟁의 전조는 여기 먼저 찍힌다.',
   k:'전문검색', go:()=>{S.findQ='최대주주';S.findSec='주주에 관한 사항';jump('find');}},
  {t:'감사인 교체와 의견', s:'감사인이 자주 바뀌거나 의견이 흔들리면 그 자체가 신호다. 재무 숫자보다 먼저 본다.',
-  k:'섹션 궤적', go:()=>{S.section='감사인의 감사의견 등';renderSide();jump('traj');}},
+  k:'섹션 궤적', go:()=>{S.kind='사업보고서';S.section='감사인의 감사의견 등';renderSide();jump('traj');}},
  {t:'종속회사 증감으로 본 M&A', s:'연결 대상이 늘고 주는 흐름이 인수·매각의 실제 기록이다. 보도자료보다 정확하다.',
-  k:'섹션 궤적', go:()=>{S.section='계열회사 등에 관한 사항';renderSide();jump('traj');}},
+  k:'섹션 궤적', go:()=>{S.kind='사업보고서';S.section='계열회사 등에 관한 사항';renderSide();jump('traj');}},
 ];
 function jump(t){
   [...$('#tabs').children].forEach(x=>x.classList.toggle('on', x.dataset.t===t));
