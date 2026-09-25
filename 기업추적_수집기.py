@@ -36,6 +36,10 @@ DART_EPOCH = "19990101"          # DART 전자공시 개시. 이보다 앞은 �
 # 여유를 두고 멈춘다. --max-calls 0 이면 무제한.
 DEFAULT_MAX_CALLS = 18000
 
+# 한국 종목코드는 6자리인데, 2025년 이후 신규 상장분은 영문이 섞인다
+# (예: 0126Z0 삼성에피스홀딩스). 숫자만 받으면 실존 상장사를 통째로 놓친다.
+CODE_RE = re.compile(r"^([0-9][0-9A-Z]{5})(?![0-9A-Z])")
+
 # DART 공통 응답코드 중 계속 진행해봐야 소용없는 것들
 FATAL_STATUS = {
     "010": "등록되지 않은 키",
@@ -395,7 +399,7 @@ def read_targets():
     with open(path, "r", encoding="utf-8-sig") as fh:
         for line in fh:
             line = line.split("#", 1)[0].strip()
-            m = re.match(r"^(\d{6})", line)
+            m = CODE_RE.match(line)
             if m:
                 out.append(m.group(1))
     return out
@@ -445,7 +449,7 @@ def parse_args(argv):
     opt["bgn_de"] = max(bgn, DART_EPOCH)
     opt["end_de"] = end.strftime("%Y%m%d")
 
-    codes = [a for a in args if re.fullmatch(r"\d{6}", a)]
+    codes = [a for a in args if CODE_RE.fullmatch(a)]
     unknown = [a for a in args if a.startswith("-")]
     return codes, opt, unknown
 

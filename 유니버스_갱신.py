@@ -5,11 +5,17 @@
 기본 소스: G:\\내 드라이브\\Claude\\수출입통계트래킹\\개별종목_시총1500억이상_TOP500_*.xlsx
 (가장 최신 날짜 파일을 자동으로 고른다)
 
+소스 두 가지:
+  naver (기본) — 네이버 시총 순위 API. 당일 시세 기준, 전 종목까지 받을 수 있다.
+  xlsx         — 시총 스크리닝 엑셀 스냅샷.
+
 사용법:
-    python 유니버스_갱신.py                 # 전체
-    python 유니버스_갱신.py --top 100       # 시총 상위 100만
-    python 유니버스_갱신.py --market KOSPI  # 시장 필터
-    python 유니버스_갱신.py --xlsx "경로.xlsx"
+    python 유니버스_갱신.py --top 800        # 시총 상위 800 (기본 소스: naver)
+    python 유니버스_갱신.py --market KOSPI   # 시장 필터
+    python 유니버스_갱신.py --source xlsx    # 엑셀 스냅샷에서
+    python 유니버스_갱신.py --source xlsx --xlsx "경로.xlsx"
+
+우선주와 스팩은 기본으로 뺀다 (--keep-preferred / --keep-spac 로 유지).
 
 종목.txt 는 시총 큰 순으로 쓴다. 수집 도중 한도가 걸려도
 중요한 종목부터 확보되도록.
@@ -18,6 +24,8 @@ import os
 import re
 import sys
 import glob
+import time
+import datetime as dt
 
 import openpyxl
 
@@ -31,11 +39,66 @@ DEFAULT_GLOB = 설정.get("UNIVERSE_XLSX",
                         os.path.join(BASE, "개별종목_시총*.xlsx"))
 
 
+NAVER_MV = "https://m.stock.naver.com/api/stocks/marketValue/%s"
+SPAC_RE = re.compile(r"스팩|기업인수목적")
+
+# 종목코드는 6자리. 2025년 이후 신규 상장분은 영문이 섞인다(0126Z0 삼성에피스홀딩스).
+CODE_RE = re.compile(r"^[0-9][0-9A-Z]{5}$")
+
+# 시총 순위 API 에는 ETF·ETN 이 함께 들어온다. DART 정기보고서가 없으니 뺀다.
+ETF_RE = re.compile(
+    r"^(KODEX|TIGER|RISE|SOL|ACE|PLUS|KOSEF|ARIRANG|HANARO|KBSTAR|KIWOOM|"
+    r"TIMEFOLIO|VITA|WOORI|FOCUS|마이티|히어로즈|파워|마이다스|에셋플러스|"
+    r"BNK|UNICORN|삼성|미래에셋)?\s*.*"
+    r"(레버리지|인버스|선물|채권혼합|액티브|머니마켓|TOP\d|커버드콜|"
+    r"ETN|합성 ?H|단일종목)")
+ETF_PREFIX = re.compile(
+    r"^(KODEX|TIGER|RISE|SOL|ACE|PLUS|KOSEF|ARIRANG|HANARO|KBSTAR|KIWOOM|"
+    r"TIMEFOLIO|VITA|UNICORN|히어로즈|마이다스|에셋플러스)\b")
+
+
+def is_fund(name):
+    return bool(ETF_PREFIX.match(name) or ETF_RE.match(name))
+
+
 def pick_source():
     hits = sorted(glob.glob(DEFAULT_GLOB))
     if not hits:
         return None
     return hits[-1]          # 파일명이 _YYYYMMDD 로 끝나 사전순 = 최신순
+
+
+def fetch_naver(markets=("KOSPI", "KOSDAQ"), need=800):
+    """네이버 시총 순위 API. 엑셀 스냅샷과 달리 당일 시세 기준이다."""
+    import requests
+    head = {"User-Agent": "Mozilla/5.0", "Referer": "https://m.stock.naver.com/"}
+    rows = []
+    for mk in markets:
+        page = 1
+        while True:
+            r = requests.get(NAVER_MV % mk, timeout=30, headers=head,
+                             params={"page": page, "pageSize": 100})
+            r.raise_for_status()
+            js = r.json()
+            got = js.get("stocks") or []
+            if not got:
+                break
+            for s in got:
+                code = (s.get("itemCode") or "").strip().upper()
+                name = (s.get("stockName") or "").strip()
+                cap = re.sub(r"[^\d]", "", str(s.get("marketValue") or ""))
+                if not CODE_RE.match(code) or not name:
+                    continue
+                if is_fund(name):
+                    continue
+                rows.append({"code": code, "name": name,
+                             "market": mk, "cap": float(cap or 0)})
+            # 두 시장을 합쳐 자르므로 각 시장에서 넉넉히 받아둔다
+            if len(got) < 100 or page * 100 >= need + 400:
+                break
+            page += 1
+            time.sleep(0.15)
+    return rows
 
 
 PREF_NAME_RE = re.compile(r"\d*우B?$")
@@ -62,8 +125,10 @@ def read_rows(path):
         def get(name):
             i = cols.get(name)
             return cells[i] if i is not None and i < len(cells) else ""
-        code = re.sub(r"\D", "", get("종목코드")).zfill(6)
-        if len(code) != 6 or code == "000000":
+        code = re.sub(r"[^0-9A-Za-z]", "", get("종목코드")).upper()
+        if len(code) == 5:
+            code = "0" + code
+        if not CODE_RE.match(code) or code == "000000":
             continue
         try:
             cap = float(re.sub(r"[^\d.]", "", get("시총(억원)") or "0") or 0)
@@ -88,17 +153,32 @@ def main():
 
     top = pop("--top", int)
     market = pop("--market")
+    source = pop("--source", str, "naver")
     keep_pref = "--keep-preferred" in args
     if keep_pref:
         args.remove("--keep-preferred")
-    xlsx = pop("--xlsx") or pick_source()
+    keep_spac = "--keep-spac" in args
+    if keep_spac:
+        args.remove("--keep-spac")
 
-    if not xlsx or not os.path.exists(xlsx):
-        print("소스 엑셀을 찾지 못했습니다. --xlsx 로 경로를 지정하세요.")
-        print("찾아본 곳: " + DEFAULT_GLOB)
-        return 1
+    if source == "naver":
+        markets = (market.upper(),) if market else ("KOSPI", "KOSDAQ")
+        rows = fetch_naver(markets, top or 800)
+        xlsx = "네이버 시총 순위 API (%s)" % dt.date.today().isoformat()
+    else:
+        xlsx = pop("--xlsx") or pick_source()
+        if not xlsx or not os.path.exists(xlsx):
+            print("소스 엑셀을 찾지 못했습니다. --xlsx 로 경로를 지정하세요.")
+            print("찾아본 곳: " + DEFAULT_GLOB)
+            return 1
+        rows = read_rows(xlsx)
 
-    rows = read_rows(xlsx)
+    dropped_spac = []
+    if not keep_spac:
+        keep = []
+        for r in rows:
+            (dropped_spac if SPAC_RE.search(r["name"]) else keep).append(r)
+        rows = keep
     if market:
         rows = [r for r in rows if r["market"].upper() == market.upper()]
 
@@ -142,6 +222,8 @@ def main():
                         format(int(r["cap"]), ",")))
 
     print("소스: %s" % xlsx)
+    if dropped_spac:
+        print("스팩 %d종목 제외" % len(dropped_spac))
     if dropped_pref:
         names = ", ".join(r["name"] for r in dropped_pref[:5])
         more = " 외 %d" % (len(dropped_pref) - 5) if len(dropped_pref) > 5 else ""

@@ -13,7 +13,9 @@ D.env
 # 실행 산출물
 실행로그*.txt
 서버로그*.txt
+*_auto.log
 종목.txt
+종목.직전.txt
 
 # 파이썬
 __pycache__/

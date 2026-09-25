@@ -177,6 +177,23 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .prog .bar{flex:1;max-width:240px}
 .orbitwrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   padding:14px 16px 10px;margin-bottom:18px}
+/* ---------- 시너지 발굴 ---------- */
+.synscatter{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px 8px;margin:10px 0 14px}
+.synsvg{width:100%;height:auto;display:block}
+.synax{font:10.5px var(--mono);fill:var(--faint)}
+.synlab{font-size:11.5px;fill:var(--dim)}
+.synname{font-size:11px;fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+.synpt{cursor:pointer}
+.synpt:hover{stroke:var(--ink);stroke-width:2}
+.synlegend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:var(--dim);margin-top:6px}
+.synlegend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.synparts{display:flex;align-items:flex-end;gap:3px;height:24px}
+.synparts i{display:block;width:9px;border-radius:2px 2px 0 0;background:var(--accent)}
+.synwhy{padding:6px 4px 10px;font-size:13px;line-height:1.7}
+.synwhy ul{margin:4px 0 10px 18px;padding:0}
+.synwhy .secitem a{margin-left:6px;font-size:12px}
+.synspark{display:flex;align-items:center;gap:8px;margin:0 0 8px;color:var(--dim)}
 .tagrow{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 16px}
 .tag{font-size:11.5px;padding:4px 9px;border-radius:999px;background:var(--line2);
   color:var(--dim);white-space:nowrap}
@@ -193,6 +210,77 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
   .tag.t3{background:#1d2632;color:#8fb0d8}
   .tag.t4{background:#272033;color:#b79fd6}
 }}
+/* ---------- 업종별 현황 ---------- */
+.secpanel{border:1px solid var(--line);border-radius:12px;background:var(--panel);
+  padding:12px 14px 12px;margin:6px 0 18px}
+.sechead{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  margin-bottom:6px;flex-wrap:wrap}
+.sechead b{font-size:14px}
+.seclist{display:flex;flex-direction:column}
+.secrow{border-bottom:1px solid var(--line2)}
+.secrow:last-child{border-bottom:none}
+.secrow.on{background:var(--accent-soft);border-radius:8px}
+.secline{display:grid;grid-template-columns:minmax(120px,1.4fr) 112px 44px 64px minmax(70px,1fr) 26px;
+  gap:12px;align-items:center;padding:9px 6px;cursor:pointer}
+.secline:hover{background:var(--line2);border-radius:8px}
+.sechdr{cursor:default;padding-top:4px;padding-bottom:6px;
+  border-bottom:1px solid var(--line);font-size:11px;color:var(--faint);font-weight:600}
+.sechdr:hover{background:none}
+.secname b{font-size:13.5px;font-weight:600}
+.secname span{font-size:11.5px;color:var(--faint)}
+.secspark{width:110px;height:26px;display:block}
+.secscore{font:700 15px/1 var(--mono);text-align:right}
+.secchg{font:12px/1 var(--mono);text-align:right}
+.secbar{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--line2)}
+.secbar i{display:block;height:100%}
+.secto{border:none;background:none;cursor:pointer;color:var(--faint);font-size:14px;padding:0}
+.secdet{padding:4px 10px 12px 14px}
+.secitem{font-size:12.5px;padding:4px 0;display:flex;gap:7px;align-items:baseline;flex-wrap:wrap}
+.secitem small{color:var(--faint)}
+@media (max-width:700px){
+  .secline{grid-template-columns:1fr 80px 36px 50px 22px}
+  .secline .secbar{display:none}
+  .secspark{width:80px}
+}
+
+/* ---------- 재무 매트릭스 ---------- */
+.mtxbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;background:var(--panel);padding:7px 13px;cursor:pointer;
+  font-size:12.5px;color:var(--dim);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button:hover{background:var(--line2)}
+.seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.mtxbar select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;
+  background:var(--panel)}
+
+.mtxwrap{overflow:auto;max-height:640px;border:1px solid var(--line);
+  border-radius:10px;background:var(--panel)}
+table.mtx{border-collapse:separate;border-spacing:0;font-size:12.5px;width:max-content;
+  min-width:100%}
+table.mtx th,table.mtx td{padding:7px 11px;white-space:nowrap;
+  border-bottom:1px solid var(--line2)}
+table.mtx thead th{position:sticky;top:0;z-index:3;background:var(--panel);
+  border-bottom:1px solid var(--line);text-align:right;font-weight:600;
+  font:600 12px/1.35 var(--mono);color:var(--ink)}
+table.mtx thead th small{display:block;font:400 10px/1.4 var(--sans);
+  color:var(--faint);margin-top:1px}
+table.mtx th.sticky{position:sticky;left:0;z-index:2;background:var(--panel);
+  text-align:left;font-weight:600;font-size:12.5px;max-width:230px;
+  white-space:normal;border-right:1px solid var(--line)}
+table.mtx thead th.sticky{z-index:4}
+table.mtx th.sticky small{display:block;font:400 10px/1.4 var(--sans);
+  color:var(--faint);margin-top:1px}
+table.mtx tbody tr:hover th.sticky,table.mtx tbody tr:hover td{background:var(--line2)}
+table.mtx td{text-align:right}
+table.mtx td .mv{font:600 12.5px/1.35 var(--mono)}
+table.mtx td .mv.drv{font-style:italic;text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
+table.mtx td .mv.drv::after{content:'*';color:var(--faint);margin-left:1px}
+table.mtx td .mg{font:11px/1.4 var(--mono);margin-top:1px}
+table.mtx td .mg.up{color:var(--add)}
+table.mtx td .mg.dn{color:var(--del)}
+table.mtx td .mg.flat{color:var(--faint)}
+
 /* ---------- 재무지표 ---------- */
 .finwrap{border:1px solid var(--line);border-radius:10px;background:var(--panel);
   padding:13px 15px 15px;margin-bottom:16px}
@@ -238,6 +326,19 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
   cursor:pointer;font-size:12px;color:var(--dim)}
 .morebtn:hover{border-color:var(--accent);color:var(--accent)}
 
+/* ---------- 가속도 ---------- */
+.dsec{margin:22px 0 10px}
+.dsec h5{margin:0 0 4px;font-size:14px;letter-spacing:-.01em}
+.dsec p{margin:0;font-size:12.5px;color:var(--dim);line-height:1.6;max-width:78ch}
+.chartwrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:14px 16px 10px;margin-bottom:6px}
+.clegend{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--dim)}
+.clegend span{display:flex;gap:6px;align-items:center}
+.clegend i{width:12px;height:3px;border-radius:2px;display:block}
+.tblwrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:4px 12px 8px}
+td.num.pos{color:var(--add)} td.num.neg{color:var(--del)}
+
 svg.chart{width:100%;height:auto;display:block}
 .empty{color:var(--faint);padding:40px 0;text-align:center;font-size:13px}
 .loading{color:var(--dim);padding:20px 0;font-size:13px}
@@ -257,6 +358,7 @@ table.tbl td.num{font:12px/1.5 var(--mono);text-align:right}
       <input id="q" type="text" placeholder="기업명 또는 종목코드 — 예: 삼성전자, 403870" autocomplete="off">
       <div class="ac" id="ac" hidden></div>
     </div>
+    <button class="ghost" id="screenbtn">전 종목 스크리닝</button>
     <button class="ghost" id="reindex">색인 갱신</button>
   </header>
 
@@ -266,6 +368,8 @@ table.tbl td.num{font:12px/1.5 var(--mono);text-align:right}
       <div class="tabs" id="tabs" hidden>
         <button data-t="orbit" class="on">궤도</button>
         <button data-t="brief">변화 브리핑</button>
+        <button data-t="earn">실적</button>
+        <button data-t="druck">가속도</button>
         <button data-t="tl">연혁</button>
         <button data-t="read">본문</button>
         <button data-t="traj">섹션 궤적</button>
@@ -273,6 +377,7 @@ table.tbl td.num{font:12px/1.5 var(--mono);text-align:right}
         <button data-t="find">전문검색</button>
         <button data-t="trend">키워드 추이</button>
         <button data-t="play">분석 레시피</button>
+        <button data-t="cat">호재기업</button>
       </div>
       <div id="panes">
         <div class="empty" id="welcome">
@@ -339,6 +444,26 @@ function kindNote(p){
 // ---------------------------------------------------------- 회사 검색
 async function loadCompanies(){
   S.companies = await (await fetch('/api/companies')).json();
+}
+
+// 색인은 서버가 뜬 뒤 뒤에서 만든다. 다 되기 전에는 검색할 게 없으니 알려준다.
+async function waitIndex(){
+  const w=$('#welcome');
+  for(let i=0;i<600;i++){
+    let st;
+    try { st = await (await fetch('/api/status')).json(); } catch(e){ st=null; }
+    if(st && st.ready){
+      await loadCompanies();
+      if(w) w.textContent='왼쪽 위 검색창에 기업명을 넣으면 최근 15년 보고서가 전부 열립니다. ('
+        + st.companies.toLocaleString('ko-KR') + '개사 / 보고서 '
+        + st.reports.toLocaleString('ko-KR') + '건)';
+      return;
+    }
+    if(w) w.innerHTML='색인 만드는 중… 수집한 보고서를 훑고 있습니다.<br>'+
+      '<span style="color:var(--faint);font-size:12px">'+
+      '수집이 동시에 돌고 있으면 몇 분 걸립니다. 다 되면 자동으로 열립니다.</span>';
+    await new Promise(r=>setTimeout(r,2000));
+  }
 }
 function acRender(list){
   const ac = $('#ac');
@@ -444,9 +569,10 @@ $('#tabs').addEventListener('click', e=>{
 function show(t){
   S.tab=t;
   const p=$('#panes'); p.innerHTML='<div class="loading">불러오는 중…</div>';
-  ({orbit:viewOrbit, brief:viewBrief, tl:viewTimeline, read:viewRead,
+  ({orbit:viewOrbit, brief:viewBrief, earn:viewEarn, druck:viewDruck,
+    tl:viewTimeline, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    play:viewPlay}[t])(p);
+    play:viewPlay, cat:viewCatalyst}[t])(p);
 }
 
 // ---------------------------------------------------------- 태그 색
@@ -575,6 +701,1468 @@ function orbitChart(rows){
   return svg;
 }
 
+// ---------------------------------------------------------- 호재기업
+async function viewCatalyst(p, force){
+  S.catDays = S.catDays || 3;
+  S.catCat = S.catCat || null;
+  S.catMode = S.catMode || 'filing';
+  p.innerHTML='';
+  p.appendChild(el('h4','head','호재기업'));
+
+  const modes=el('div','seg'); modes.style.marginBottom='12px';
+  [['filing','공시 호재'],['backlog','수주잔고 증가'],['synergy','시너지 발굴']].forEach(([k,label])=>{
+    const b=el('button', k===S.catMode?'on':'', label);
+    b.onclick=()=>{ S.catMode=k; viewCatalyst(p); };
+    modes.appendChild(b);
+  });
+  p.appendChild(modes);
+  if(S.catMode==='backlog'){ return viewBacklog(p, force); }
+  if(S.catMode==='synergy'){ return viewSynergy(p, force); }
+  p.appendChild(el('p','sub',
+    'DART 전체 공시를 훑어 보고서명으로 호재를 분류한다. 한국 공시는 이름이 규격화돼 있어 본문을 열지 않아도 무슨 일인지 대부분 판별된다. 종목 선택과 무관하게 전 상장사가 대상이다.'));
+
+  const bar=el('div','mtxbar');
+  const seg=el('div','seg');
+  [[1,'오늘'],[3,'3일'],[7,'1주'],[14,'2주'],[30,'1달']].forEach(([v,label])=>{
+    const b=el('button', v===S.catDays?'on':'', label);
+    b.onclick=()=>{ S.catDays=v; S.catCat=null; viewCatalyst(p); };
+    seg.appendChild(b);
+  });
+  bar.appendChild(seg);
+  // 강도 필터는 업종 점수와 공시 목록 둘 다에 걸린다
+  if(S.catMinW===undefined) S.catMinW=2;
+  const wseg=el('div','seg');
+  [[1,'전체'],[2,'●● 이상'],[3,'●●● 만']].forEach(([v,label])=>{
+    const b=el('button', v===S.catMinW?'on':'', label);
+    b.title = v===1 ? '내부자 매수·대량보유 보고서까지 포함 (매일 수백 건)' :
+              v===2 ? '수주·설비투자·자사주·M&A·임상 등' : '설비투자·대형수주·자사주소각·메자닌소각·거래재개';
+    b.onclick=()=>{ S.catMinW=v; viewCatalyst(p); };
+    wseg.appendChild(b);
+  });
+  bar.appendChild(wseg);
+  const sp=el('div'); sp.style.flex='1'; bar.appendChild(sp);
+  const rf=el('button','ghost','새로 받기');
+  rf.onclick=()=>viewCatalyst(p, true);
+  bar.appendChild(rf);
+  p.appendChild(bar);
+
+  S.catLevel = S.catLevel || 'sector';
+  const box=el('div'); p.appendChild(box);
+  box.innerHTML='<div class="loading">DART 공시 훑는 중…</div>';
+  const d=await (await fetch('/api/catalyst?days='+S.catDays+'&level='+S.catLevel+
+    '&minw='+S.catMinW+(force?'&force=1':''))).json();
+  box.innerHTML='';
+  if(d.error){ box.appendChild(el('div','err',d.error)); return; }
+
+  // ---- 업종별 현황
+  box.appendChild(sectorPanel(d, p));
+  if(S.catGroup){
+    const key = S.catLevel==='theme' ? (r=>r.themes.includes(S.catGroup))
+              : S.catLevel==='industry' ? (r=>r.industry===S.catGroup)
+              : (r=>r.sector===S.catGroup);
+    d.good = d.good.filter(key); d.check = d.check.filter(key); d.bad = d.bad.filter(key);
+    const cc={}; d.good.forEach(r=>{ cc[r.category]=(cc[r.category]||0)+1; });
+    d.categories = Object.entries(cc).sort((a,b)=>b[1]-a[1]);
+    const f=el('div','first');
+    f.innerHTML='<b>'+esc(S.catGroup)+'</b> 만 보는 중 · ';
+    const x=el('a',null,'해제'); x.href='#';
+    x.onclick=(ev)=>{ ev.preventDefault(); S.catGroup=null; viewCatalyst(p); };
+    f.appendChild(x);
+    box.appendChild(f);
+  }
+
+  // 범주 태그 개수도 강도 기준을 따른다. 안 그러면 내부자 매수 수백 건이 태그 맨 앞에 선다.
+  { const cc={}; d.good.filter(r=>(r.weight||1)>=S.catMinW)
+      .forEach(r=>{ cc[r.category]=(cc[r.category]||0)+1; });
+    d.categories=Object.entries(cc).sort((a,b)=>b[1]-a[1]); }
+
+  const when=new Date(d.at*1000);
+  const info=el('div','legend');
+  info.textContent='공시 '+d.scanned.toLocaleString('ko-KR')+'건 훑음 · 호재 '+
+    d.good.length+'건 · 확인필요 '+d.check.length+'건 · 악재 '+d.bad.length+'건 · '+
+    when.toLocaleTimeString('ko-KR')+' 기준';
+  box.appendChild(info);
+
+  // 범주 필터
+  const cats=el('div','tagrow');
+  const all=el('span', S.catCat===null?'tag t0':'tag');
+  all.style.cursor='pointer';
+  all.appendChild(el('b',null,'전체'));
+  all.appendChild(document.createTextNode(' '+d.good.length));
+  all.onclick=()=>{ S.catCat=null; viewCatalyst(p); };
+  cats.appendChild(all);
+  (d.categories||[]).forEach(([name,cnt])=>{
+    const s=el('span', S.catCat===name?'tag t0':'tag');
+    s.style.cursor='pointer';
+    s.appendChild(el('b',null,name));
+    s.appendChild(document.createTextNode(' '+cnt));
+    s.onclick=()=>{ S.catCat=(S.catCat===name?null:name); viewCatalyst(p); };
+    cats.appendChild(s);
+  });
+  box.appendChild(cats);
+
+  let good = S.catCat ? d.good.filter(r=>r.category===S.catCat) : d.good;
+  const hidden = good.filter(r=>(r.weight||1) < S.catMinW).length;
+  good = good.filter(r=>(r.weight||1) >= S.catMinW);
+  box.appendChild(secTitle('호재 ('+good.length+'건)',
+    '강도는 주가 영향 크기가 아니라 신호가 얼마나 분명한지다. ●●● 이 가장 분명하다.'+
+    (hidden? '  약한 신호 '+hidden+'건은 접어뒀다 — 내부자 매수·대량보유 보고서는 매일 수백 건씩 나온다.':'')));
+  box.appendChild(catList(good));
+
+  if(d.check.length){
+    box.appendChild(secTitle('확인 필요 ('+d.check.length+'건)',
+      '보고서명만으로는 방향을 알 수 없는 공시다. 호재로 단정하면 안 된다.'));
+    box.appendChild(catList(d.check, true));
+  }
+  if(d.bad.length){
+    box.appendChild(secTitle('악재 ('+d.bad.length+'건)',
+      '호재 목록에 섞이지 않게 따로 뺀 것들이다.'));
+    box.appendChild(catList(d.bad, true));
+  }
+}
+
+// 수주잔고 증가 — 정기보고서 본문의 수주상황 표에서 뽑은 잔고 시계열
+async function viewBacklog(p, force){
+  S.blAll = !!S.blAll;
+  p.appendChild(el('p','sub',
+    '수주잔고는 DART 재무제표에 없다. 정기보고서 「사업의 내용 → 수주상황」 표와 본문 문장에서 꺼낸다. '+
+    '표의 산술 관계(수주총액 − 기납품 = 잔고, 기초 + 신규 − 납품 = 기말)로 검산해서, 맞으면 제대로 읽은 것으로 본다.'));
+  const bar=el('div','mtxbar');
+  const seg=el('div','seg');
+  [[false,'꾸준히 증가만'],[true,'수주 공시 전체']].forEach(([v,label])=>{
+    const b=el('button', v===S.blAll?'on':'', label);
+    b.onclick=()=>{ S.blAll=v; viewCatalyst(p); };
+    seg.appendChild(b);
+  });
+  bar.appendChild(seg);
+  const sp=el('div'); sp.style.flex='1'; bar.appendChild(sp);
+  const rf=el('button','ghost','다시 읽기'); rf.onclick=()=>viewBacklog2(true);
+  bar.appendChild(rf);
+  p.appendChild(bar);
+  const box=el('div'); p.appendChild(box);
+
+  async function viewBacklog2(f){
+    const d=await (await fetch('/api/backlog?'+(S.blAll?'all=1':'')+(f?'&force=1':''))).json();
+    box.innerHTML='';
+    if(d.error){ box.appendChild(el('div','err',d.error)); return; }
+    if(d.running){
+      const pr=el('div','prog');
+      pr.appendChild(el('span',null,'보고서 본문 읽는 중 '+d.done+'/'+d.total+' (수주 표 없는 회사 '+d.skipped+'곳 건너뜀)'));
+      const b=el('div','bar'); const i=el('i'); i.style.width=Math.round(d.done/Math.max(d.total,1)*100)+'%';
+      b.appendChild(i); pr.appendChild(b);
+      pr.appendChild(el('span',null,'처음 한 번만 오래 걸린다. 보고서별로 저장된다.'));
+      box.appendChild(pr);
+      setTimeout(()=>{ if(S.tab==='cat'&&S.catMode==='backlog') viewBacklog2(false); }, 4000);
+    }
+    box.appendChild(el('div','legend',
+      '수주잔고를 읽은 회사 '+(d.total_found||0)+'곳 · 그중 꾸준히 증가 '+(d.steady||0)+'곳'));
+    const rows=d.rows||[];
+    if(!rows.length){ box.appendChild(el('div','empty', d.running?'읽는 중…':'해당 없음')); return; }
+    box.appendChild(backlogTable(rows));
+    box.appendChild(el('div','finnote',
+      '꾸준히 증가 판정: 최근 최대 8개 보고서에서 직전 대비 늘어난 횟수가 70% 이상, 중간에 15% 넘게 준 적 없음, '+
+      '1년 전보다 5% 넘게 증가, 한 번에 5배 넘게 튄 값 없음(추출 오류 의심). '+
+      '매출 배수 = 수주잔고 ÷ 작년 매출. 3배면 3년치 매출을 이미 확보했다는 뜻이다.'));
+  }
+  box.innerHTML='<div class="loading">수주잔고 모으는 중…</div>';
+  viewBacklog2(force);
+}
+
+// ---------------------------------------------------------- 시너지 발굴
+// 수주잔고(선행) → 매출 가속(전환) → 최근 수주 공시(확인) → 주가 반영도(가격)
+const STAGE = {
+  '잠복': {cls:'t0', col:'var(--accent)', desc:'수주는 쌓이는데 매출·주가는 아직 — 가장 이른 자리'},
+  '점화': {cls:'t2', col:'var(--warn)',   desc:'쌓인 수주가 매출 가속·이익률 개선으로 넘어오는 중'},
+  '반영': {cls:'t1', col:'var(--del)',    desc:'주가가 수주보다 앞서 갔다 — 늦게 따라붙는 자리'},
+  '둔화': {cls:'',   col:'var(--faint)',  desc:'잔고가 줄거나 들어오는 수주가 매출보다 적다'},
+  '관찰': {cls:'',   col:'var(--line)',   desc:'신호가 한쪽으로 모이지 않는다'},
+};
+const pctTxt=(v,d)=> v===null||v===undefined ? '—' : (v>=0?'+':'')+v.toFixed(d===undefined?0:d)+'%';
+
+async function viewSynergy(p, force){
+  S.synStage = S.synStage || '전체';
+  p.appendChild(el('p','sub',
+    '수주가 실적과 주가로 넘어가는 길목을 찾는다. 따로 보면 흔한 신호 넷을 한 줄에 세운다. '+
+    '① 선행 — 수주잔고가 1년 새 얼마나 늘었고, 매출로 빠져나가는 속도보다 빨리 쌓이는가(북투빌). '+
+    '② 전환 — 쌓인 수주가 매출 가속·이익률 개선으로 넘어오기 시작했나. '+
+    '③ 확인 — 마지막 정기보고서 뒤에 새로 공시된 수주 계약(잔고는 분기마다 최대 석 달 늦다). '+
+    '④ 가격 — 주가가 1년 동안 수주 증가만큼 올랐나. 덜 올랐으면 반영 갭이 크다.'));
+  const bar=el('div','mtxbar');
+  const seg=el('div','seg'); bar.appendChild(seg);
+  const sp=el('div'); sp.style.flex='1'; bar.appendChild(sp);
+  const rf=el('button','ghost','다시 계산'); rf.onclick=()=>load(true);
+  bar.appendChild(rf);
+  p.appendChild(bar);
+  const box=el('div'); p.appendChild(box);
+
+  async function load(f){
+    box.innerHTML='<div class="loading">수주·실적·주가·계약 공시 맞추는 중…</div>';
+    const d=await (await fetch('/api/synergy'+(f?'?force=1':''))).json();
+    render(d);
+  }
+  function render(d){
+    box.innerHTML='';
+    if(d.error){ box.appendChild(el('div','err',d.error)); return; }
+    if(d.running){
+      const pr=el('div','prog');
+      pr.appendChild(el('span',null,(d.phase||'계산 중')+(d.total?' '+d.done+'/'+d.total:'')));
+      const b=el('div','bar'); const i=el('i');
+      i.style.width=(d.total?Math.round(d.done/d.total*100):5)+'%';
+      b.appendChild(i); pr.appendChild(b);
+      pr.appendChild(el('span',null,'처음 한 번은 몇 분 걸린다. 주가·계약 원문은 저장해 두고 3시간마다 새로 맞춘다.'));
+      box.appendChild(pr);
+      setTimeout(()=>{ if(S.tab==='cat'&&S.catMode==='synergy') load(false); }, 4000);
+      if(!(d.rows||[]).length) return;
+    }
+    const rows=(d.rows||[]);
+    const ok=rows.filter(r=>r.reliable);
+    // 단계 거르개
+    seg.innerHTML='';
+    const counts=d.stages||{};
+    ['전체','잠복','점화','반영','둔화','관찰'].forEach(k=>{
+      const n = k==='전체' ? ok.length : (counts[k]||0);
+      const b=el('button', k===S.synStage?'on':'', k+' '+n);
+      if(STAGE[k]) b.title=STAGE[k].desc;
+      b.onclick=()=>{ S.synStage=k; render(d); };
+      seg.appendChild(b);
+    });
+    const shown = ok.filter(r=>S.synStage==='전체'||r.stage===S.synStage);
+
+    box.appendChild(el('div','legend',
+      '수주잔고를 읽은 '+rows.length+'곳 중 잔고 값을 믿을 수 있는 '+ok.length+'곳으로 순위를 매겼다 '+
+      '(검산·명시된 값이 절반 이상이고 튀는 값이 없는 곳). '+
+      '최근 수주 공시는 '+(d.window||40)+'일치를 훑었다.'));
+    box.appendChild(synScatter(ok));
+    box.appendChild(synTable(shown));
+    // 순위에서 뺀 회사 — 왜 뺐는지 같이 보여준다
+    const out=rows.filter(r=>!r.reliable);
+    if(out.length){
+      const tg=el('button','ghost','순위에서 뺀 '+out.length+'곳 보기 (잔고 값을 못 믿거나 사업 일부만 적은 곳)');
+      tg.style.marginTop='10px';
+      const ob=el('div'); ob.hidden=!S.synOut;
+      tg.onclick=()=>{ S.synOut=!S.synOut; ob.hidden=!S.synOut; };
+      const wrap=el('div','tblwrap'); const t=el('table','tbl');
+      t.innerHTML='<tr><th>종목</th><th>빠진 이유</th><th style="text-align:right">수주 1년</th>'+
+        '<th style="text-align:right">최신 잔고</th><th style="text-align:right">주가 1년</th></tr>';
+      out.forEach(r=>{
+        const tr=el('tr');
+        const nm=el('td'); const a=el('a',null,r.name); a.href='#';
+        a.onclick=(ev)=>{ ev.preventDefault(); $('#q').value=r.name;
+          pick(r.code).then(()=>{ $('#tabs').hidden=false; jump('orbit'); }); };
+        nm.appendChild(a); tr.appendChild(nm);
+        const w=el('td',null,r.why_not||''); w.style.cssText='font-size:12px;color:var(--dim)'; tr.appendChild(w);
+        tr.appendChild(el('td','num',pctTxt(r.backlog_yoy)));
+        tr.appendChild(el('td','num',money(r.backlog)));
+        tr.appendChild(el('td','num',pctTxt(r.price_1y)));
+        t.appendChild(tr);
+      });
+      wrap.appendChild(t); ob.appendChild(wrap);
+      box.appendChild(tg); box.appendChild(ob);
+    }
+    box.appendChild(el('div','finnote',
+      '점수 = 선행 35 · 전환 25 · 확인 15 · 가격 25 의 가중 백분위(믿을 수 있는 회사끼리 비교). 최근 악재 공시(사채 발행·소송 등) 하나당 10점 감점. '+
+      '북투빌 = 1 + (수주잔고 1년 증가분 ÷ 최근 4분기 매출). 1보다 크면 들어오는 수주가 매출로 나가는 것보다 많다. '+
+      '회사가 수주 표에 일부 사업부만 적는 경우가 있어 연매출 배수·북투빌은 근사치다. '+
+      '반영 갭 = 수주잔고 1년 증가율 − 주가 1년 수익률. 판단을 돕는 순위일 뿐 매수 신호가 아니다.'));
+  }
+  load(force);
+}
+
+// 수주 증가율(x) vs 주가 1년 수익률(y). 대각선 아래 = 수주만큼 주가가 안 올랐다.
+function synScatter(rows){
+  const W=900,H=360,L=56,R=16,T=18,B=40;
+  const pts=rows.filter(r=>r.backlog_yoy!==null&&r.price_1y!==null);
+  const wrap=el('div','synscatter');
+  if(!pts.length) return wrap;
+  const clip=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const xs=pts.map(r=>clip(r.backlog_yoy,-60,200)), ys=pts.map(r=>clip(r.price_1y,-60,200));
+  const x0=Math.min(-20,...xs), x1=Math.max(60,...xs), y0=Math.min(-20,...ys), y1=Math.max(60,...ys);
+  const lo=Math.min(x0,y0), hi=Math.max(x1,y1);
+  const X=v=>L+(clip(v,-60,200)-lo)/(hi-lo)*(W-L-R);
+  const Y=v=>T+(1-(clip(v,-60,200)-lo)/(hi-lo))*(H-T-B);
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'synsvg'});
+  // 대각선 아래(수주 > 주가)를 옅게 칠한다
+  svg.appendChild(svgEl('path',{d:'M'+X(lo)+' '+Y(lo)+' L'+X(hi)+' '+Y(hi)+' L'+X(hi)+' '+Y(lo)+' Z',
+    fill:'var(--accent-soft)',opacity:0.6}));
+  // 눈금
+  const step = (hi-lo)>150 ? 50 : 25;
+  for(let v=Math.ceil(lo/step)*step; v<=hi; v+=step){
+    svg.appendChild(svgEl('line',{x1:X(v),x2:X(v),y1:T,y2:H-B,stroke:'var(--line2)'}));
+    svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:'var(--line2)'}));
+    const tx=svgEl('text',{x:X(v),y:H-B+14,'text-anchor':'middle',class:'synax'}); tx.textContent=v+'%'; svg.appendChild(tx);
+    const ty=svgEl('text',{x:L-6,y:Y(v)+4,'text-anchor':'end',class:'synax'}); ty.textContent=v+'%'; svg.appendChild(ty);
+  }
+  svg.appendChild(svgEl('line',{x1:X(0),x2:X(0),y1:T,y2:H-B,stroke:'var(--line)'}));
+  svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:Y(0),y2:Y(0),stroke:'var(--line)'}));
+  svg.appendChild(svgEl('line',{x1:X(lo),y1:Y(lo),x2:X(hi),y2:Y(hi),stroke:'var(--dim)','stroke-dasharray':'4 4'}));
+  const lab1=svgEl('text',{x:X(hi)-8,y:Y(lo)-8,'text-anchor':'end',class:'synlab'});
+  lab1.textContent='수주 증가 > 주가 상승 (덜 반영)'; svg.appendChild(lab1);
+  const lab2=svgEl('text',{x:X(lo)+8,y:Y(hi)+14,class:'synlab'});
+  lab2.textContent='주가가 수주보다 앞섬'; svg.appendChild(lab2);
+  const ax1=svgEl('text',{x:(L+W-R)/2,y:H-6,'text-anchor':'middle',class:'synax'});
+  ax1.textContent='수주잔고 1년 증가율 →'; svg.appendChild(ax1);
+  const ax2=svgEl('text',{x:14,y:(T+H-B)/2,'text-anchor':'middle',class:'synax',
+    transform:'rotate(-90 14 '+((T+H-B)/2)+')'});
+  ax2.textContent='주가 1년 수익률 →'; svg.appendChild(ax2);
+  // 점 — 점수 높은 것을 위에 그린다
+  const top=new Set(pts.slice().sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,14).map(r=>r.code));
+  pts.slice().sort((a,b)=>(a.score||0)-(b.score||0)).forEach(r=>{
+    const st=STAGE[r.stage]||STAGE['관찰'];
+    const c=svgEl('circle',{cx:X(r.backlog_yoy),cy:Y(r.price_1y),r:top.has(r.code)?5.5:3.8,
+      fill:st.col,stroke:'var(--panel)','stroke-width':1,class:'synpt'});
+    const tt=svgEl('title'); tt.textContent=r.name+' · '+r.stage+' · 점수 '+(r.score??'—')+
+      '\n수주 '+pctTxt(r.backlog_yoy)+' / 주가 '+pctTxt(r.price_1y);
+    c.appendChild(tt);
+    c.onclick=()=>{ $('#q').value=r.name; pick(r.code).then(()=>{ $('#tabs').hidden=false; jump('orbit'); }); };
+    svg.appendChild(c);
+    if(top.has(r.code)){
+      const t=svgEl('text',{x:X(r.backlog_yoy)+7,y:Y(r.price_1y)+4,class:'synname'});
+      t.textContent=r.name; svg.appendChild(t);
+    }
+  });
+  wrap.appendChild(svg);
+  const lg=el('div','synlegend');
+  ['잠복','점화','반영','둔화'].forEach(k=>{
+    const s=el('span'); const dot=el('i'); dot.style.background=STAGE[k].col;
+    s.appendChild(dot); s.appendChild(document.createTextNode(k+' — '+STAGE[k].desc)); lg.appendChild(s);
+  });
+  wrap.appendChild(lg);
+  return wrap;
+}
+
+function synTable(rows){
+  if(!rows.length) return el('div','empty','이 단계에 해당하는 회사가 없습니다.');
+  const wrap=el('div','tblwrap');
+  const t=el('table','tbl');
+  t.innerHTML='<tr><th>#</th><th>종목</th><th>단계</th><th style="text-align:right">점수</th>'+
+    '<th>선행·전환·확인·가격</th><th style="text-align:right">수주 1년</th>'+
+    '<th style="text-align:right">북투빌</th><th style="text-align:right">연매출 배수</th>'+
+    '<th style="text-align:right">매출 가속</th><th style="text-align:right">마진 변화</th>'+
+    '<th style="text-align:right">새 수주 공시</th><th style="text-align:right">주가 1년</th>'+
+    '<th style="text-align:right">반영 갭</th><th style="text-align:right">PER</th><th></th></tr>';
+  rows.forEach((r,i)=>{
+    const tr=el('tr');
+    tr.appendChild(el('td','num',String(i+1)));
+    const nm=el('td');
+    const a=el('a',null,r.name); a.href='#';
+    a.onclick=(ev)=>{ ev.preventDefault(); $('#q').value=r.name;
+      pick(r.code).then(()=>{ $('#tabs').hidden=false; jump('orbit'); }); };
+    nm.appendChild(a); nm.appendChild(el('small',null,' '+(r.industry!=='분류없음'?r.industry:r.code)));
+    if(r.same_as&&r.same_as.length){
+      const tw=el('span','tag','= '+r.same_as.join(', ')); tw.style.marginLeft='6px';
+      tw.title='같은 수주잔고를 적은 회사(지주사·자회사). 같은 사업이 두 번 잡혔다.';
+      nm.appendChild(tw);
+    }
+    if(r.flags&&r.flags.length){
+      const fl=el('span','tag t1','주의 '+r.flags.length); fl.style.marginLeft='6px';
+      fl.title=r.flags.join('\n'); nm.appendChild(fl);
+    }
+    tr.appendChild(nm);
+    const st=STAGE[r.stage]||STAGE['관찰'];
+    const sc=el('td'); const sb=el('span','tag '+st.cls,r.stage); sb.title=r.stage_why; sc.appendChild(sb);
+    tr.appendChild(sc);
+    tr.appendChild(el('td','num',r.score===null?'—':r.score.toFixed(0)));
+    // 네 축 막대
+    const pc=el('td'); const pb=el('div','synparts');
+    ['선행','전환','확인','가격'].forEach(k=>{
+      const v=(r.parts||{})[k]; const cell=el('i');
+      cell.style.height=(v===null||v===undefined?2:Math.max(2,v/100*22))+'px';
+      cell.title=k+' '+(v===null||v===undefined?'—':v);
+      if(v===null||v===undefined) cell.style.background='var(--line)';
+      pb.appendChild(cell);
+    });
+    pc.appendChild(pb); tr.appendChild(pc);
+    const cls=v=>'num'+(v>0?' pos':(v<0?' neg':''));
+    const c1=el('td',cls(r.backlog_yoy),pctTxt(r.backlog_yoy)); tr.appendChild(c1);
+    tr.appendChild(el('td','num'+(r.btb>1?' pos':(r.btb!==null&&r.btb<1?' neg':'')),
+      r.btb===null?'—':r.btb.toFixed(2)));
+    tr.appendChild(el('td','num',r.cover===null?'—':r.cover.toFixed(1)+'년'));
+    tr.appendChild(el('td',cls(r.rev_accel),r.rev_accel===null?'—':(r.rev_accel>=0?'+':'')+r.rev_accel.toFixed(1)+'%p'));
+    tr.appendChild(el('td',cls(r.margin_delta),r.margin_delta===null?'—':(r.margin_delta>=0?'+':'')+r.margin_delta.toFixed(1)+'%p'));
+    const nc=r.new_contracts||[];
+    tr.appendChild(el('td','num', nc.length ? nc.length+'건'+(r.new_pct?' · '+r.new_pct.toFixed(0)+'%':'') : '—'));
+    tr.appendChild(el('td',cls(r.price_1y),pctTxt(r.price_1y)));
+    tr.appendChild(el('td',cls(r.gap),r.gap===null?'—':(r.gap>=0?'+':'')+r.gap.toFixed(0)+'%p'));
+    tr.appendChild(el('td','num',r.per===null||r.per===undefined?'—':(r.per>0?r.per.toFixed(1)+'배':'적자')));
+    const ex=el('td'); const b=el('button','secto','⌄'); ex.appendChild(b); tr.appendChild(ex);
+    t.appendChild(tr);
+
+    const det=el('tr'); det.hidden=true;
+    const dc=el('td'); dc.colSpan=15;
+    const why=el('div','synwhy');
+    why.appendChild(el('b',null,r.stage+' — '+r.stage_why));
+    const ul=el('ul');
+    (r.reasons||[]).forEach(s=>ul.appendChild(el('li',null,s)));
+    why.appendChild(ul);
+    if(r.spark&&r.spark.length){
+      const sp=el('div','synspark'); sp.appendChild(el('small',null,'수주잔고 추이 (최근 '+r.spark.length+'개 보고서, 마지막 '+(r.last_report||'')+') '));
+      sp.appendChild(sparkSvg(r.spark.map(v=>v/1e12), r.backlog_yoy)); why.appendChild(sp);
+    }
+    if(nc.length){
+      why.appendChild(el('b',null,'마지막 정기보고서 이후 수주 공시'));
+      nc.forEach(c=>{
+        const line=el('div','secitem');
+        const d=c.date||'';
+        line.appendChild(el('b',null,d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6)));
+        line.appendChild(el('span',null,' '+(c.title||c.report||'')+(c.party?' · '+c.party:'')));
+        const amt = c.amount ? ' · '+money(c.amount)+(c.pct?' (매출의 '+c.pct+'%)':'') : '';
+        const per = (c.end&&c.end!=='-') ? ' · ~'+c.end : '';
+        line.appendChild(el('small',null,amt+per+(c.subsidiary?' · 자회사 공시(합계 제외)':'')));
+        if(c.url){ const lk=el('a',null,' 원문'); lk.href=c.url; lk.target='_blank'; lk.rel='noopener'; line.appendChild(lk); }
+        why.appendChild(line);
+      });
+    }
+    dc.appendChild(why); det.appendChild(dc); t.appendChild(det);
+    b.onclick=()=>{ det.hidden=!det.hidden; b.textContent=det.hidden?'⌄':'⌃'; };
+  });
+  wrap.appendChild(t);
+  return wrap;
+}
+
+function backlogTable(rows){
+  const wrap=el('div','tblwrap');
+  const t=el('table','tbl');
+  t.innerHTML='<tr><th>종목</th><th>업종</th><th>추이</th>'+
+    '<th style="text-align:right">최신 잔고</th><th style="text-align:right">1년 전 대비</th>'+
+    '<th style="text-align:right">연율</th><th style="text-align:right">증가 횟수</th>'+
+    '<th style="text-align:right">최대 낙폭</th><th style="text-align:right">매출 배수</th>'+
+    '<th>신뢰도</th><th></th></tr>';
+  rows.forEach(r=>{
+    const tr0=r.trend;
+    const tr=el('tr');
+    const nm=el('td');
+    const a=el('a',null,r.name); a.href='#';
+    a.onclick=(ev)=>{ ev.preventDefault(); $('#q').value=r.name;
+      pick(r.code).then(()=>{ $('#tabs').hidden=false; jump('orbit'); }); };
+    nm.appendChild(a); nm.appendChild(el('small',null,' '+r.code));
+    if(r.same_as && r.same_as.length){
+      const tw=el('span','tag','= '+r.same_as.join(', '));
+      tw.style.marginLeft='6px';
+      tw.title='같은 수주잔고를 적은 회사다. 지주사가 자회사 잔고를 연결 기준으로 옮겨 적은 경우라 같은 사업이 두 번 잡힌 것이다.';
+      nm.appendChild(tw);
+    }
+    tr.appendChild(nm);
+    const sec=el('td',null, r.industry!=='분류없음'?r.industry:'—');
+    sec.style.cssText='font-size:12px;color:var(--dim)'; tr.appendChild(sec);
+    const sp=el('td'); sp.appendChild(sparkSvg(r.points.map(x=>x.value/1e12), tr0.yoy));
+    tr.appendChild(sp);
+    tr.appendChild(el('td','num', money(tr0.last)));
+    const y=el('td','num'+(tr0.yoy>0?' pos':(tr0.yoy<0?' neg':'')));
+    y.textContent = tr0.yoy===null||tr0.yoy===undefined ? '—' : (tr0.yoy>=0?'+':'')+tr0.yoy.toFixed(1)+'%';
+    if(tr0.jumps>0 && r.verified+(r.explicit||0) < Math.ceil(r.n_pts/2)){
+      // 한 번에 5배 넘게 튄 값이 있고 검산도 안 된 시계열 — 증가율이 추출 오류일 공산이 크다
+      y.className='num'; y.style.color='var(--faint)';
+      y.textContent='추출 의심';
+      y.title='한 번에 5배 넘게 튄 값이 있고 검산된 값이 절반이 안 된다. 계산상 '+
+        (tr0.yoy>=0?'+':'')+(tr0.yoy||0).toFixed(0)+'% 이지만 표를 잘못 읽었을 가능성이 크다. ⌄ 로 원문 근거를 볼 것.';
+    }
+    tr.appendChild(y);
+    tr.appendChild(el('td','num', tr0.cagr===null||tr0.cagr===undefined ? '—' : (tr0.cagr>=0?'+':'')+tr0.cagr.toFixed(0)+'%'));
+    tr.appendChild(el('td','num', tr0.ups+'/'+tr0.comps));
+    const w=el('td','num'+(tr0.worst_drop<0?' neg':'')); w.textContent=tr0.worst_drop.toFixed(1)+'%';
+    tr.appendChild(w);
+    tr.appendChild(el('td','num', r.cover ? r.cover.toFixed(1)+'배' : '—'));
+    const cf=el('td');
+    const ex2=r.explicit||0;
+    const sure = r.verified + ex2;
+    const good = sure >= Math.ceil(r.n_pts/2);
+    let txt;
+    if(r.verified && ex2) txt='검산 '+r.verified+' · 명시 '+ex2;
+    else if(ex2) txt='명시 '+ex2+'/'+r.n_pts;
+    else txt='검산 '+r.verified+'/'+r.n_pts;
+    const tg=el('span', good?'tag t0':'tag', txt);
+    tg.title = '검산: 표의 산술 관계(총액−납품=잔고)가 맞는 보고서 수\n'+
+               '명시: 회사가 문장으로 "수주잔고는 약 X억원"이라고 직접 밝힌 보고서 수\n'+
+               (good ? '절반 이상이 확인된 값이다.' : '확인 안 된 값이 많다. ⌄ 를 눌러 원문 근거를 직접 볼 것.');
+    cf.appendChild(tg); tr.appendChild(cf);
+    const ex=el('td'); const b=el('button','secto','⌄'); ex.appendChild(b); tr.appendChild(ex);
+    t.appendChild(tr);
+
+    const det=el('tr'); det.hidden=true;
+    const dc=el('td'); dc.colSpan=11;
+    r.points.slice().reverse().forEach(pt=>{
+      const line=el('div','secitem');
+      line.appendChild(el('b',null, pt.stamp+' '+pt.label));
+      line.appendChild(el('span',null,' '+money(pt.value)));
+      line.appendChild(el('small',null,'  '+(pt.method||'')+' · '+(pt.source||'').slice(0,140)+
+        (pt.check?'  ('+pt.check+')':'')));
+      dc.appendChild(line);
+    });
+    det.appendChild(dc); t.appendChild(det);
+    b.onclick=()=>{ det.hidden=!det.hidden; b.textContent=det.hidden?'⌄':'⌃'; };
+  });
+  wrap.appendChild(t);
+  return wrap;
+}
+
+// 업종별 현황 — 행마다 이름(종목수) · 스파크라인 · 점수 · 변화 · 호재/확인/악재 비율
+function sectorPanel(d, p){
+  const wrap=el('div','secpanel');
+  const head=el('div','sechead');
+  head.appendChild(el('b',null,'업종별 현황'));
+  const seg=el('div','seg');
+  [['sector','대분류'],['industry','업종'],['theme','테마']].forEach(([k,label])=>{
+    const b=el('button', k===S.catLevel?'on':'', label);
+    b.onclick=()=>{ S.catLevel=k; S.catGroup=null; S.secOpen=null; viewCatalyst(p); };
+    seg.appendChild(b);
+  });
+  head.appendChild(seg);
+  wrap.appendChild(head);
+
+  if(!d.sector_ready){
+    const pr=d.sector_progress||[0,0];
+    wrap.appendChild(el('div','loading',
+      '업종·테마 분류표 만드는 중'+(pr[1]?' ('+pr[0]+'/'+pr[1]+')':'')+
+      ' — 처음 한 번만 1~2분 걸립니다. 네이버 금융에서 업종 79개·테마 264개 소속 종목을 받습니다.'));
+    setTimeout(()=>{ if(S.tab==='cat') viewCatalyst(p); }, 6000);
+    return wrap;
+  }
+
+  const rows=(d.groups||[]).filter(g=>g.name!=='분류없음'&&g.name!=='테마없음');
+  if(!rows.length){ wrap.appendChild(el('div','empty','이 기간에 분류된 호재가 없습니다.')); return wrap; }
+
+  const limit = S.secAll ? rows.length : 15;
+  const list=el('div','seclist');
+
+  // 열 머리글 — 숫자만 있으면 무엇인지 알 수 없다
+  const hd=el('div','secline sechdr');
+  const unit = S.catDays===1 ? '오늘' : S.catDays+'일';
+  [['업종 (전체 종목수)',''],['흐름 · 날짜별',''],['점수','r'],
+   ['직전 '+unit+' 대비','r'],['호재 · 확인 · 악재',''],['','']].forEach(([t,a])=>{
+    const c=el('div',null,t); if(a==='r') c.style.textAlign='right'; hd.appendChild(c);
+  });
+  list.appendChild(hd);
+  rows.slice(0,limit).forEach(g=>{
+    const item=el('div','secrow'+(S.catGroup===g.name?' on':''));
+    const line=el('div','secline');
+
+    const nm=el('div','secname');
+    nm.appendChild(el('b',null,g.name));
+    nm.appendChild(el('span',null,' ('+(g.size||g.corps)+')'));
+    const sub=el('small',null, '호재 '+g.corps+'곳');
+    sub.style.cssText='display:block;font-size:11px;color:var(--faint);margin-top:1px';
+    nm.appendChild(sub);
+    line.appendChild(nm);
+
+    line.appendChild(sparkSvg(g.spark, g.change));
+
+    const sc=el('div','secscore');
+    const s=g.score;
+    if(g.single){
+      sc.textContent='1곳'; sc.style.color='var(--faint)'; sc.style.fontSize='11px';
+      sc.title='한 회사의 공시만으로 뜬 그룹이다. 업종 추세가 아니라 개별 이벤트라 순위에서 뺐다.';
+    } else {
+      sc.textContent = s===null||s===undefined ? '—' : s;
+      sc.style.color = s===null||s===undefined ? 'var(--faint)'
+        : (s>=70?'var(--add)':(s>=40?'var(--warn)':'var(--dim)'));
+      sc.title = '호재 낸 회사 '+g.corps+'곳의 강도합 '+g.w+' ÷ √'+(g.size||1)+
+        ' = 밀도 '+(g.density||0).toFixed(2)+'\n다른 업종들과 비교한 백분위가 '+s+
+        '\n(100 = 이 기간 호재가 가장 넓게 퍼진 업종)';
+    }
+    line.appendChild(sc);
+
+    const ch=el('div','secchg');
+    if(g.new){
+      ch.textContent='신규'; ch.style.color='var(--add)';
+      ch.title='직전 '+unit+'에는 호재 공시가 0건이었다. 0에서 늘어난 거라 %로 표시할 수 없다.';
+    }
+    else if(g.change===null||g.change===undefined){ ch.textContent='—'; ch.style.color='var(--faint)'; }
+    else {
+      const up=g.change>=0;
+      ch.textContent=(up?'+':'−')+Math.abs(g.change).toFixed(1)+'%';
+      ch.style.color=up?'var(--add)':'var(--del)';
+      ch.title='이번 '+unit+' 강도합 '+g.w+' vs 직전 '+unit+' '+g.prev_w;
+    }
+    line.appendChild(ch);
+
+    // 호재/확인/악재 비율 막대
+    const tot=Math.max(1,g.good+g.check+g.bad);
+    const bar=el('div','secbar');
+    [[g.good,'var(--add)'],[g.check,'var(--line)'],[g.bad,'var(--del)']].forEach(([v,c])=>{
+      const i=el('i'); i.style.width=(v/tot*100)+'%'; i.style.background=c; bar.appendChild(i);
+    });
+    bar.title='호재 '+g.good+' · 확인필요 '+g.check+' · 악재 '+g.bad;
+    line.appendChild(bar);
+
+    const tg=el('button','secto', S.secOpen===g.name?'⌃':'⌄');
+    line.appendChild(tg);
+    line.onclick=(ev)=>{
+      if(ev.target===tg){ S.secOpen = S.secOpen===g.name?null:g.name; viewCatalyst(p); return; }
+      S.catGroup = S.catGroup===g.name?null:g.name; viewCatalyst(p);
+    };
+    item.appendChild(line);
+
+    if(S.secOpen===g.name){
+      const det=el('div','secdet');
+      det.appendChild(el('div','legend',
+        '호재 '+g.good+'건 · 종목 '+g.corps+'곳 · 강도합 '+g.w+
+        (g.prev_w?' (직전 기간 '+g.prev_w+')':'')));
+      (g.top||[]).forEach(r=>{
+        const rr=el('div','secitem');
+        rr.appendChild(el('span','tag t0',r.category));
+        const a=el('a',null,r.corp); a.href=r.url; a.target='_blank'; a.rel='noopener';
+        rr.appendChild(a);
+        rr.appendChild(el('small',null,' '+r.date.slice(4,6)+'/'+r.date.slice(6)+' · '+r.report));
+        det.appendChild(rr);
+      });
+      item.appendChild(det);
+    }
+    list.appendChild(item);
+  });
+  wrap.appendChild(list);
+  if(rows.length>15){
+    const more=el('button','morebtn', S.secAll?'접기 ⌃':'전체 '+rows.length+'개 보기 ⌄');
+    more.onclick=()=>{ S.secAll=!S.secAll; viewCatalyst(p); };
+    const c=el('div'); c.style.textAlign='center'; c.style.marginTop='8px';
+    c.appendChild(more); wrap.appendChild(c);
+  }
+  wrap.appendChild(el('div','finnote',
+    '점수는 시세가 아니라 공시다 — 그 업종에서 호재 공시를 낸 회사가 얼마나 넓게 퍼져 있는지. '+
+    '회사마다 가장 강한 공시 하나만 세고(같은 회사가 여러 번 내도 한 번), 강도합 ÷ √업종 종목수를 업종끼리 백분위로 매긴다. '+
+    '한 회사만으로 뜬 그룹은 추세가 아니라 개별 이벤트라 순위에서 뺐다. '+
+    '변화는 같은 길이 직전 기간 대비. 행을 누르면 아래 목록이 그 업종으로 걸러지고, ⌄ 는 대표 공시를 펼친다.'));
+  return wrap;
+}
+
+function sparkSvg(vals, change){
+  const W=110,H=26;
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'secspark'});
+  if(!vals||!vals.length) return svg;
+  const max=Math.max(1,...vals);
+  const step=W/Math.max(vals.length-1,1);
+  let d='';
+  vals.forEach((v,i)=>{ const x=i*step, y=H-3-(v/max)*(H-6); d+=(i?'L':'M')+x+' '+y+' '; });
+  const col = change===null||change===undefined ? 'var(--faint)'
+    : (change>=0?'var(--add)':'var(--del)');
+  svg.appendChild(svgEl('path',{d:d,fill:'none',stroke:col,'stroke-width':1.5,
+    'stroke-linejoin':'round'}));
+  // 비교 기준선 — 기간 절반 지점
+  const mid=Math.floor(vals.length/2)*step;
+  svg.appendChild(svgEl('line',{x1:mid,x2:mid,y1:2,y2:H-2,stroke:'var(--line)',
+    'stroke-dasharray':'2 2'}));
+  const last=vals.length-1;
+  svg.appendChild(svgEl('circle',{cx:last*step,cy:H-3-(vals[last]/max)*(H-6),r:2.2,fill:col}));
+  return svg;
+}
+
+function catList(rows, plain){
+  if(!rows.length) return el('div','empty','해당 없음');
+  const wrap=el('div','tblwrap');
+  const t=el('table','tbl');
+  t.innerHTML='<tr><th>날짜</th><th>종목</th><th>업종</th><th>범주</th><th>강도</th>'+
+    '<th>보고서명</th><th></th></tr>';
+  rows.slice(0,400).forEach(r=>{
+    const tr=el('tr');
+    tr.appendChild(el('td',null, r.date ? r.date.slice(4,6)+'/'+r.date.slice(6,8) : '—'));
+    const nm=el('td');
+    if(r.collected){
+      const a=el('a',null,r.corp); a.href='#'; a.style.cursor='pointer';
+      a.onclick=(ev)=>{ ev.preventDefault(); $('#q').value=r.corp;
+        pick(r.code).then(()=>{ $('#tabs').hidden=false; jump('orbit'); }); };
+      nm.appendChild(a);
+    } else nm.appendChild(document.createTextNode(r.corp));
+    if(r.code) nm.appendChild(el('small',null,' '+r.code));
+    tr.appendChild(nm);
+    const sec=el('td');
+    sec.appendChild(el('span',null, r.industry && r.industry!=='분류없음' ? r.industry : '—'));
+    if(r.themes && r.themes.length) sec.title='테마: '+r.themes.join(', ');
+    sec.style.fontSize='12px'; sec.style.color='var(--dim)';
+    tr.appendChild(sec);
+    const cat=el('td');
+    const tg=el('span', plain?'tag':'tag t0', r.category); cat.appendChild(tg);
+    tr.appendChild(cat);
+    tr.appendChild(el('td',null, plain?'—':'●'.repeat(r.weight||1)));
+    const rep=el('td'); rep.textContent=r.report;
+    if(r.why) rep.title=r.why;
+    tr.appendChild(rep);
+    const lk=el('td');
+    const a=el('a',null,'원문'); a.href=r.url; a.target='_blank'; a.rel='noopener';
+    lk.appendChild(a); tr.appendChild(lk);
+    t.appendChild(tr);
+  });
+  wrap.appendChild(t);
+  if(rows.length>400) wrap.appendChild(el('div','finnote','상위 400건만 표시'));
+  return wrap;
+}
+
+// ---------------------------------------------------------- 실적
+async function viewEarn(p){
+  const c=S.co;
+  S.earnMode = S.earnMode || 'q';
+  p.innerHTML='';
+  p.appendChild(el('h4','head','실적 — '+c.name));
+  p.appendChild(el('p','sub',
+    '분기 실적(DART 원장)과 다음 분기 컨센서스(네이버 금융)를 한 줄에 세운다.'));
+
+  // DART 재무 원장이 연간 2015 / 분기 2016 부터라, 기본을 15년으로 두면
+  // 받을 수 있는 구간이 전부 들어온다.
+  S.earnYears = S.earnYears || 15;
+  const bar=el('div','mtxbar');
+  const seg=el('div','seg');
+  [['y','해단위'],['q','분기별']].forEach(([k,label])=>{
+    const b=el('button', k===S.earnMode?'on':'', label);
+    b.onclick=()=>{ S.earnMode=k; show('earn'); };
+    seg.appendChild(b);
+  });
+  const spacer=el('div'); spacer.style.flex='1';
+  bar.appendChild(spacer); bar.appendChild(seg);
+  const sel=el('select');
+  [3,5,8,10,15].forEach(n=>{
+    const o=el('option',null,n+'년'); o.value=n;
+    if(n===S.earnYears)o.selected=true; sel.appendChild(o);
+  });
+  sel.onchange=()=>{ S.earnYears=+sel.value; show('earn'); };
+  bar.appendChild(sel);
+  p.appendChild(bar);
+
+  const box=el('div'); p.appendChild(box);
+  box.innerHTML='<div class="loading">실적과 컨센서스 모으는 중… 기간이 길면 수십 초 걸립니다.</div>';
+  const d=await (await fetch('/api/earnings?code='+c.code+'&mode='+S.earnMode+
+    '&years='+S.earnYears)).json();
+  box.innerHTML='';
+  if(d.error){ box.appendChild(el('div','err',d.error)); return; }
+  const rows=(d.rows||[]).filter(r=>r.actual||r.estimate);
+  if(!rows.length){ box.appendChild(el('div','empty','실적 데이터가 없습니다.')); return; }
+
+  if(d.short) box.appendChild(el('div','finnote', d.short));
+
+  if(d.next){
+    const n=d.next, e=n.estimate||{};
+    const hd=el('div','first');
+    hd.innerHTML='<b>다음 '+(S.earnMode==='q'?'분기':'해')+' 컨센서스 — '+esc(n.label)+'</b><br>'+
+      '매출 <b>'+money(e['매출액'])+'</b> · 영업이익 <b>'+money(e['영업이익'])+'</b>'+
+      (e['EPS']!==null&&e['EPS']!==undefined ? ' · EPS <b>'+Math.round(e['EPS']).toLocaleString('ko-KR')+'원</b>':'');
+    box.appendChild(hd);
+  }
+
+  [['매출액','매출'],['영업이익','영업이익'],['EPS','EPS']].forEach(([k,label])=>{
+    box.appendChild(secTitle(label, k==='EPS'
+      ? '주당 금액. 파란 막대가 발표된 실적, 빗금이 컨센서스.'
+      : '파란 막대가 발표된 실적, 빗금이 컨센서스.'));
+    box.appendChild(earnChart(rows, k));
+  });
+
+  box.appendChild(secTitle('표', d.has_surprise
+    ? '서프라이즈는 이 도구가 발표 전에 기록해 둔 컨센서스와 비교한 값이다.'
+    : '서프라이즈 칸은 아직 비어 있다 — 아래 설명 참고.'));
+  box.appendChild(earnTable(rows, d));
+
+  if(!d.has_surprise){
+    box.appendChild(el('div','finnote',
+      '네이버 금융은 "지금 시점의 다음 분기 추정치"만 돌려준다. 과거에 시장이 무엇을 '+
+      '기대했는지는 어디서도 받아올 수 없어서, 이미 발표된 분기의 서프라이즈는 소급해 만들 수 없다. '+
+      '대신 이 화면을 열 때마다 그때의 컨센서스를 기록해 둔다. 그 분기 실적이 나오면 '+
+      '기록과 대조해 서프라이즈가 채워진다. 지금부터 쌓이는 값이다.'));
+  }
+}
+
+function earnChart(rows, key){
+  const vals=rows.map(r=>((r.actual||{})[key]) ?? ((r.estimate||{})[key]))
+    .filter(v=>v!==null&&v!==undefined);
+  if(!vals.length) return el('div','empty','값 없음');
+
+  const n=rows.length;
+  const W=880, L=10, R=10, T=34, B=52;
+  const step=(W-L-R)/n;
+  // 막대마다 숫자를 얹으려면 자리가 있어야 한다. 좁으면 접고 툴팁에 맡긴다.
+  const dense = step < 40;
+  const H = dense ? 210 : 250;
+  const bw = Math.min(step*0.62, 46);
+
+  let max=Math.max(...vals,0), min=Math.min(...vals,0);
+  const span=(max-min)||1;
+  max+=span*0.18; if(min<0) min-=span*0.12;
+  const Y=v=>H-B-((v-min)/(max-min))*(H-T-B);
+  const y0=Y(0);
+
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'chart'});
+  const defs=svgEl('defs');
+  const pat=svgEl('pattern',{id:'hx_'+key,width:5,height:5,
+    patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'});
+  pat.appendChild(svgEl('rect',{width:5,height:5,fill:'var(--panel)'}));
+  pat.appendChild(svgEl('line',{x1:0,y1:0,x2:0,y2:5,stroke:'var(--accent)',
+    'stroke-width':2,opacity:.45}));
+  defs.appendChild(pat); svg.appendChild(defs);
+
+  // 0 기준선만 둔다. 값은 막대 위에 직접 쓰므로 눈금선이 필요없다.
+  svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y0,y2:y0,
+    stroke:'var(--line)','stroke-width':1.2}));
+
+  const fmtV = v => key==='EPS'
+    ? (Math.abs(v)>=10000 ? (v/10000).toFixed(1)+'만' : Math.round(v).toLocaleString('ko-KR'))
+    : money(v);
+  const fullV = v => key==='EPS'
+    ? Math.round(v).toLocaleString('ko-KR')+'원' : money(v);
+
+  rows.forEach((r,i)=>{
+    const a=(r.actual||{})[key], e=(r.estimate||{})[key];
+    const v = (a!==null&&a!==undefined) ? a : e;
+    if(v===null||v===undefined) return;
+    const est = !(a!==null&&a!==undefined);
+    const back = (r.actual||{}).backfill;
+    const x=L+i*step+(step-bw)/2, y=Y(v);
+    const h=Math.max(2,Math.abs(y-y0));
+
+    const rect=svgEl('rect',{x:x,y:Math.min(y,y0),width:bw,height:h,rx:3,
+      fill: est ? ('url(#hx_'+key+')') : 'var(--accent)',
+      opacity: est ? 1 : (back ? 0.45 : 0.92),
+      stroke: est ? 'var(--accent)' : 'none',
+      'stroke-width': est ? 1.2 : 0,
+      'stroke-dasharray': est ? '3 2' : 'none'});
+    tip(rect, r.label+'\n'+(est?'컨센서스 ':(back?'역산 ':'실적 '))+fullV(v)+
+      (r.yoy!==undefined&&r.yoy!==null ? '\n전년 대비 '+(r.yoy>=0?'+':'')+r.yoy.toFixed(1)+'%':''));
+    svg.appendChild(rect);
+
+    if(!dense){
+      const t=svgEl('text',{x:x+bw/2,y:Math.min(y,y0)-8,'text-anchor':'middle',
+        'font-size':11,'font-weight':600,fill:'var(--ink)','font-family':'var(--mono)'});
+      t.textContent=fmtV(v); svg.appendChild(t);
+    }
+  });
+
+  // 연도 + 전년 대비 증감률. 수준과 변화를 한 줄에 같이 읽게 한다.
+  const everyN = dense ? Math.ceil(n/14) : 1;
+  rows.forEach((r,i)=>{
+    if(i%everyN) return;
+    const cx=L+i*step+step/2;
+    const t=svgEl('text',{x:cx,y:H-B+17,'text-anchor':'middle','font-size':10.5,
+      fill:'var(--dim)','font-family':'var(--mono)'});
+    t.textContent=r.label.replace(/^20/,"'");
+    svg.appendChild(t);
+    const gv=(r.yoy||{})[key];
+    if(gv!==null&&gv!==undefined && !dense){
+      const g=svgEl('text',{x:cx,y:H-B+31,'text-anchor':'middle','font-size':10,
+        fill: gv>=0?'var(--add)':'var(--del)','font-family':'var(--mono)'});
+      g.textContent=(gv>=0?'+':'')+gv.toFixed(0)+'%';
+      svg.appendChild(g);
+    }
+  });
+
+  const wrap=el('div','chartwrap'); wrap.appendChild(svg);
+  const lg=legend([['var(--accent)','발표된 실적'],['var(--accent)','컨센서스 (빗금·점선)']]);
+  if(rows.some(r=>(r.actual||{}).backfill))
+    lg.appendChild((()=>{ const s=el('span'); const i2=el('i');
+      i2.style.cssText='background:var(--accent);opacity:.45';
+      s.appendChild(i2); s.appendChild(el('span',null,'역산 (보고서 비교수치)')); return s; })());
+  wrap.appendChild(lg);
+  return wrap;
+}
+
+function earnTable(rows, d){
+  const wrap=el('div','tblwrap');
+  const t=el('table','mtx');
+  const thead=el('thead'); const hr=el('tr');
+  const th0=el('th','sticky'); th0.textContent='메트릭';
+  th0.appendChild(el('small',null,'통화: KRW')); hr.appendChild(th0);
+  rows.forEach(r=>{
+    const th=el('th');
+    th.appendChild(el('b',null,r.label.replace(/^(\d{4})Q/,"Q$2 '").replace(/^(\d{4})$/,'$1')));
+    th.appendChild(el('small',null, r.is_estimate?'예측':''));
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr); t.appendChild(thead);
+
+  const tb=el('tbody');
+  const money2=(v,k)=> v===null||v===undefined ? '—'
+    : (k==='EPS'? Math.round(v).toLocaleString('ko-KR') : money(v));
+  [['매출액','매출'],['영업이익','영업이익'],['EPS','EPS']].forEach(([k,label])=>{
+    [['actual','리포트 됨'],['estimate','평가'],['surprise','서프라이즈']].forEach(([src,srcLabel])=>{
+      const tr=el('tr');
+      const th=el('th','sticky');
+      th.textContent=label; th.appendChild(el('small',null,srcLabel));
+      tr.appendChild(th);
+      rows.forEach(r=>{
+        const td=el('td');
+        if(src==='surprise'){
+          const s=(r.surprise||{})[k];
+          const g=el('div','mg');
+          if(s===null||s===undefined){ g.textContent='—'; g.classList.add('flat'); }
+          else { g.textContent=(s>=0?'+':'')+s.toFixed(2)+'%';
+                 g.classList.add(s>=0?'up':'dn'); }
+          td.appendChild(g);
+        } else {
+          td.appendChild(el('div','mv', money2((r[src]||{})[k], k)));
+        }
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+  });
+  t.appendChild(tb); wrap.appendChild(t);
+  return wrap;
+}
+
+// ---------------------------------------------------------- 전 종목 스크리닝
+$('#screenbtn').onclick = ()=>{ S.screen=true; renderScreen(); };
+
+async function renderScreen(){
+  const p=$('#panes');
+  $('#welcome') && $('#welcome').remove();
+  $('#tabs').hidden=true;
+  p.innerHTML='';
+  p.appendChild(el('h4','head','전 종목 가속도 스크리닝'));
+  p.appendChild(el('p','sub',
+    '수집된 모든 종목의 최신 분기를 한 화면에 세운다. 개별 조회가 아니라 전환점을 통과한 회사를 찾는 용도다. 순위는 매출 가속(50%) · 마진 변화(30%) · 재고일수 감소(20%) 를 교차 백분위로 환산해 매긴다. PER 은 보여주되 순위에 넣지 않는다.'));
+  const back=el('button','morebtn','← 기업 화면으로');
+  back.onclick=()=>{ S.screen=false; if(S.co){ $('#tabs').hidden=false; show(S.tab);} else location.reload(); };
+  p.appendChild(back);
+  const progBox=el('div'); p.appendChild(progBox);
+  const body=el('div'); p.appendChild(body);
+  body.innerHTML='<div class="loading">분기 실적 모으는 중…</div>';
+
+  async function tick(){
+    const d=await (await fetch('/api/screen')).json();
+    progBox.innerHTML='';
+    if(d.running){
+      const pr=el('div','prog');
+      pr.appendChild(el('span',null,'분석 중 '+d.done+'/'+d.total+' 종목'));
+      const bar=el('div','bar'); const i=el('i');
+      i.style.width=Math.round((d.done/Math.max(d.total,1))*100)+'%';
+      bar.appendChild(i); pr.appendChild(bar);
+      pr.appendChild(el('span',null,'처음 한 번만 걸립니다. DART 재무 원장을 받아옵니다.'));
+      progBox.appendChild(pr);
+    }
+    let rows=(d.rows||[]).filter(r=>r['매출가속']!==null&&r['매출가속']!==undefined);
+    body.innerHTML='';
+
+    // 매출 하한 — 분기 매출이 작으면 증감률·이익률이 통계적으로 의미가 없다
+    const FLOORS=[[0,'전체'],[1e10,'100억+'],[5e10,'500억+'],[1e11,'1,000억+']];
+    if(S.screenFloor===undefined) S.screenFloor=1e10;
+    const fl=el('div','row');
+    fl.appendChild(el('span',null,'분기 매출 하한'));
+    const seg=el('div','seg');
+    FLOORS.forEach(([v,label])=>{
+      const b=el('button', v===S.screenFloor?'on':'', label);
+      b.onclick=()=>{ S.screenFloor=v; tick(); };
+      seg.appendChild(b);
+    });
+    fl.appendChild(seg);
+    const cut=rows.length;
+    rows=rows.filter(r=>(r['매출액']||0)>=S.screenFloor);
+    if(cut>rows.length)
+      fl.appendChild(el('span','legend','매출 미달 '+(cut-rows.length)+'종목 제외'));
+    body.appendChild(fl);
+
+    if(!rows.length){
+      body.appendChild(el('div','loading', d.running?'계산 중…':'해당 조건에 맞는 종목이 없습니다.'));
+    } else {
+      rows.sort((a,b)=>(b.score??-1)-(a.score??-1));
+      const grow=rows.filter(r=>r['전환']&&r['전환종류']==='성장');
+      const less=rows.filter(r=>r['전환']&&r['전환종류']==='역성장완화');
+      if(grow.length||less.length){
+        const f=el('div','first');
+        let h='';
+        if(grow.length) h+='<b>성장 전환 '+grow.length+'종목</b> — 매출이 늘면서 증감률까지 다시 빨라졌다: '+
+          grow.slice(0,8).map(r=>esc(r.name)).join(', ')+(grow.length>8?' 외':'');
+        if(less.length) h+=(h?'<br>':'')+'<b>역성장 완화 '+less.length+'종목</b> — 아직 매출은 줄고 있지만 감소폭이 꺾였다: '+
+          less.slice(0,8).map(r=>esc(r.name)).join(', ')+(less.length>8?' 외':'');
+        f.innerHTML=h;
+        body.appendChild(f);
+      }
+      body.appendChild(secTitle('가속 · 마진 사분면',
+        '가로축 매출 가속(%p), 세로축 영업이익률 변화(%p). 오른쪽 위가 성장이 빨라지면서 마진도 벌어지는 구간이고, 왼쪽 아래가 그 반대다. 점 크기는 분기 매출.'));
+      body.appendChild(quadChart(rows));
+      body.appendChild(secTitle('순위표','행을 누르면 그 종목 가속도 화면으로 간다.'));
+      body.appendChild(screenTable(rows));
+    }
+    if(d.running) setTimeout(tick, 2500);
+  }
+  tick();
+}
+
+function quadChart(rows){
+  const W=860,H=430,L=56,R=20,T=18,B=44;
+  const xs=rows.map(r=>r['매출가속']).filter(v=>v!==null&&v!==undefined);
+  const ys=rows.map(r=>r['마진변화']).filter(v=>v!==null&&v!==undefined);
+  if(!xs.length||!ys.length) return el('div','empty','사분면을 그릴 값이 모자랍니다.');
+  const cap=(arr)=>{ const s=arr.slice().sort((a,b)=>a-b);
+    const q=(f)=>s[Math.min(s.length-1,Math.max(0,Math.round((s.length-1)*f)))];
+    return [q(0.03),q(0.97)]; };
+  let [x0,x1]=cap(xs), [y0,y1]=cap(ys);
+  const xm=Math.max(Math.abs(x0),Math.abs(x1))*1.15||10;
+  const ym=Math.max(Math.abs(y0),Math.abs(y1))*1.15||5;
+  const X=v=>L+((Math.max(-xm,Math.min(xm,v))+xm)/(2*xm))*(W-L-R);
+  const Y=v=>H-B-((Math.max(-ym,Math.min(ym,v))+ym)/(2*ym))*(H-T-B);
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'chart'});
+
+  // 사분면 배경 — 오른쪽 위가 좋은 쪽
+  svg.appendChild(svgEl('rect',{x:X(0),y:T,width:W-R-X(0),height:Y(0)-T,
+    fill:'var(--add)',opacity:.055}));
+  svg.appendChild(svgEl('rect',{x:L,y:Y(0),width:X(0)-L,height:H-B-Y(0),
+    fill:'var(--del)',opacity:.055}));
+  svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:Y(0),y2:Y(0),
+    stroke:'var(--dim)','stroke-width':1.3}));
+  svg.appendChild(svgEl('line',{x1:X(0),x2:X(0),y1:T,y2:H-B,
+    stroke:'var(--dim)','stroke-width':1.3}));
+
+  [[-xm,'left'],[xm,'right']].forEach(([v,an])=>{
+    const t=svgEl('text',{x:X(v),y:H-B+16,'text-anchor':an==='left'?'start':'end',
+      'font-size':10,fill:'var(--faint)','font-family':'var(--mono)'});
+    t.textContent=(v>0?'+':'')+Math.round(v)+'%p'; svg.appendChild(t);
+  });
+  [[ym,'top'],[-ym,'bottom']].forEach(([v,pos])=>{
+    const t=svgEl('text',{x:L-8,y:Y(v)+(pos==='top'?10:-2),'text-anchor':'end',
+      'font-size':10,fill:'var(--faint)','font-family':'var(--mono)'});
+    t.textContent=(v>0?'+':'')+Math.round(v)+'%p'; svg.appendChild(t);
+  });
+  const ax=svgEl('text',{x:(L+W-R)/2,y:H-8,'text-anchor':'middle','font-size':11,
+    fill:'var(--faint)'}); ax.textContent='매출 가속 (%p) →'; svg.appendChild(ax);
+  const ay=svgEl('text',{x:14,y:(T+H-B)/2,'text-anchor':'middle','font-size':11,
+    fill:'var(--faint)',transform:'rotate(-90 14 '+((T+H-B)/2)+')'});
+  ay.textContent='영업이익률 변화 (%p) →'; svg.appendChild(ay);
+
+  const revs=rows.map(r=>r['매출액']||0);
+  const rmax=Math.max(...revs,1);
+  rows.forEach(r=>{
+    const x=r['매출가속'], y=r['이익률_비정상']?null:r['마진변화'];
+    if(x===null||x===undefined||y===null||y===undefined) return;
+    const rad=4+Math.sqrt((r['매출액']||0)/rmax)*11;
+    const good=(x>=0&&y>=0), bad=(x<0&&y<0);
+    const grow = r['전환'] && r['전환종류']==='성장';
+    const cc=svgEl('circle',{cx:X(x),cy:Y(y),r:rad,
+      fill: good?'var(--add)':(bad?'var(--del)':'var(--faint)'),
+      opacity: grow?0.9:(r['전환']?0.7:0.5),
+      stroke: grow?'var(--ink)':'none','stroke-width':grow?1.6:0});
+    cc.style.cursor='pointer';
+    cc.onclick=()=>{ S.screen=false; $('#q').value=r.name;
+      pick(r.code).then(()=>{ $('#tabs').hidden=false; jump('druck'); }); };
+    tip(cc, r.name+' ('+r.code+')\n'+r.quarter+
+      '\n매출 가속 '+(x>=0?'+':'')+x.toFixed(1)+'%p'+
+      '\n마진 변화 '+(y>=0?'+':'')+y.toFixed(2)+'%p'+
+      (r['재고일수변화']!==null&&r['재고일수변화']!==undefined
+        ?'\n재고일수 '+(r['재고일수변화']>=0?'+':'')+r['재고일수변화'].toFixed(0)+'일':'')+
+      (r['전환']?('\n★ '+(grow?'성장 전환':'역성장 완화')):''));
+    svg.appendChild(cc);
+  });
+  // 상위 8개만 이름표
+  rows.slice().sort((a,b)=>(b.score??-1)-(a.score??-1)).slice(0,8).forEach(r=>{
+    const x=r['매출가속'], y=r['마진변화'];
+    if(x===null||x===undefined||y===null||y===undefined) return;
+    const t=svgEl('text',{x:X(x),y:Y(y)-10,'text-anchor':'middle','font-size':10.5,
+      fill:'var(--ink)','font-weight':'600'});
+    t.textContent=r.name.slice(0,9); svg.appendChild(t);
+  });
+  const wrap=el('div','chartwrap'); wrap.appendChild(svg);
+  wrap.appendChild(legend([['var(--add)','가속 + 마진 개선'],
+    ['var(--del)','감속 + 마진 악화'],['var(--faint)','엇갈림'],
+    ['var(--ink)','테두리 = 성장 전환 (역성장 완화는 테두리 없음)']]));
+  return wrap;
+}
+
+function screenTable(rows){
+  const wrap=el('div','tblwrap');
+  const t=el('table','tbl');
+  t.innerHTML='<tr><th>#</th><th>종목</th><th>분기</th>'+
+    '<th style="text-align:right">점수</th><th style="text-align:right">매출 YoY</th>'+
+    '<th style="text-align:right">가속</th><th style="text-align:right">이익률</th>'+
+    '<th style="text-align:right">마진Δ</th><th style="text-align:right">재고일Δ</th>'+
+    '<th style="text-align:right">PER(TTM)</th></tr>';
+  const f=(v,d,suf)=> (v===null||v===undefined)?'—':
+    ((v>=0&&(suf==='%p'||suf==='일')?'+':'')+v.toFixed(d)+(suf||''));
+  rows.forEach((r,i)=>{
+    const tr=el('tr'); tr.style.cursor='pointer';
+    tr.onclick=()=>{ S.screen=false; $('#q').value=r.name;
+      pick(r.code).then(()=>{ $('#tabs').hidden=false; jump('druck'); }); };
+    tr.appendChild(el('td','num',String(i+1)));
+    const nm=el('td'); nm.appendChild(document.createTextNode(r.name));
+    if(r['전환']){
+      const grow=r['전환종류']==='성장';
+      const b=el('span', grow?'tag t0':'tag t2', grow?'성장 전환':'역성장 완화');
+      b.style.marginLeft='6px';
+      b.title = grow
+        ? '매출이 전년 대비 늘고 있고, 그 증감률이 감속에서 가속으로 돌아섰습니다.'
+        : '매출은 아직 전년 대비 줄고 있지만 감소폭이 작아졌습니다. 성장 전환이 아닙니다.';
+      nm.appendChild(b);
+    }
+    tr.appendChild(nm);
+    tr.appendChild(el('td',null,r.quarter));
+    tr.appendChild(el('td','num', r.score===null||r.score===undefined?'—':r.score.toFixed(0)));
+    tr.appendChild(el('td','num',f(r['매출YoY'],1,'%')));
+    const a=el('td','num'+(r['매출가속']>0?' pos':(r['매출가속']<0?' neg':'')));
+    a.textContent=f(r['매출가속'],1,'%p'); tr.appendChild(a);
+    if(r['이익률_비정상']){
+      const w=el('td','num'); w.textContent='산출불가';
+      w.title=(r['이익률_사유']||'이익률이 정상 범위를 벗어납니다.')+
+        ' 순위 계산에서도 마진 항목만 제외했습니다.';
+      w.style.color='var(--faint)'; tr.appendChild(w);
+      const w2=el('td','num'); w2.textContent='—'; w2.style.color='var(--faint)';
+      tr.appendChild(w2);
+    } else {
+      tr.appendChild(el('td','num',f(r['영업이익률'],2,'%')));
+      const m=el('td','num'+(r['마진변화']>0?' pos':(r['마진변화']<0?' neg':'')));
+      m.textContent=f(r['마진변화'],2,'%p'); tr.appendChild(m);
+    }
+    const iv=el('td','num'+(r['재고일수변화']<0?' pos':(r['재고일수변화']>0?' neg':'')));
+    iv.textContent=f(r['재고일수변화'],0,'일'); tr.appendChild(iv);
+    tr.appendChild(el('td','num',f(r['PER_TTM'],1,'배')));
+    t.appendChild(tr);
+  });
+  wrap.appendChild(t);
+  return wrap;
+}
+
+// ---------------------------------------------------------- 가속도 (드러켄밀러)
+async function viewDruck(p){
+  const c=S.co;
+  p.innerHTML='';
+  p.appendChild(el('h4','head','가속도 — '+c.name));
+  p.appendChild(el('p','sub',
+    '드러켄밀러는 밸류에이션으로 타이밍을 잡지 않는다. 그가 보는 건 18~24개월 뒤의 이익이고, 단서는 수준이 아니라 변화율의 변화다. 여기 있는 건 전부 2차 미분이거나 그 선행지표다.'));
+  const box=el('div'); p.appendChild(box);
+  box.innerHTML='<div class="loading">분기 단독 실적 쌓는 중… 처음 한 번은 수십 초 걸립니다.</div>';
+
+  const d=await (await fetch('/api/druck?code='+c.code)).json();
+  box.innerHTML='';
+  if(d.error){ box.appendChild(el('div','err',d.error)); return; }
+  const pts=(d.points||[]).filter(x=>x['매출액']);
+  if(pts.length<5){ box.appendChild(el('div','empty','분기 데이터가 모자랍니다.')); return; }
+
+  // ---- 1. 성장의 가속/감속
+  box.appendChild(secTitle('1. 성장이 빨라지는가, 느려지는가',
+    '막대는 전년 동기 대비 매출 증감률. 색은 그 증감률이 직전 분기보다 올랐는지(초록) 내렸는지(빨강). 주가는 성장률이 아니라 성장률의 방향 전환에 반응한다.'));
+  box.appendChild(accelChart(pts));
+
+  // ---- 2. 마진
+  box.appendChild(secTitle('2. 영업이익률과 그 변화',
+    '적자에서 흑자로 돌면 이익 증감률은 수천 %가 찍혀 쓸모가 없다. 변동이 큰 이익은 증감률 대신 마진의 절대 수준과 전분기 대비 변화(%p)로 본다.'));
+  box.appendChild(marginChart(pts));
+
+  // ---- 3. 선행지표
+  box.appendChild(secTitle('3. 꺾임 선행지표 — 재고일수 · 매출채권회수일수',
+    '재고일수가 오르는데 매출 성장이 둔화되면 다음 분기 실적은 이미 정해져 있다. 반대로 재고일수가 빠르게 줄면 가격결정력이 돌아온 것이다. 회계상 이익보다 몇 분기 앞선다.'));
+  box.appendChild(daysChart(pts));
+
+  // ---- 4. 표
+  box.appendChild(secTitle('4. 분기 원장', '표를 눌러 정렬하거나 그대로 읽어라.'));
+  box.appendChild(druckTable(pts));
+
+  // ---- 5. 본문에서 긁은 것
+  if((d.text||[]).length){
+    box.appendChild(secTitle('5. 본문에서 긁은 가동률 · 수주잔고',
+      '표 서식이 회사마다 달라 값과 함께 원문 줄을 같이 보여준다. 숫자만 믿지 말고 근거 줄을 확인해라.'));
+    box.appendChild(textMetrics(d.text));
+  }
+}
+
+function secTitle(t, s){
+  const w=el('div','dsec');
+  w.appendChild(el('h5',null,t));
+  w.appendChild(el('p',null,s));
+  return w;
+}
+
+const NSV='http://www.w3.org/2000/svg';
+function svgEl(n,attrs){
+  const e=document.createElementNS(NSV,n);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  return e;
+}
+function tip(e,txt){ const t=svgEl('title'); t.textContent=txt; e.appendChild(t); return e; }
+
+function axisFrame(svg,W,H,L,R,T,B,min,max,fmt){
+  const Y=v=>H-B-((v-min)/((max-min)||1))*(H-T-B);
+  [0,.25,.5,.75,1].forEach(f=>{
+    const v=min+(max-min)*f, y=Y(v);
+    svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y,y2:y,
+      stroke:(Math.abs(v)<1e-9?'var(--dim)':'var(--line)'),
+      'stroke-width':(Math.abs(v)<1e-9?1.4:1)}));
+    const t=svgEl('text',{x:L-6,y:y+3.5,'text-anchor':'end','font-size':10,
+      fill:'var(--faint)','font-family':'var(--mono)'});
+    t.textContent=fmt(v); svg.appendChild(t);
+  });
+  return Y;
+}
+function xLabels(svg,pts,W,H,L,R,B,step){
+  pts.forEach((p,i)=>{
+    if(pts.length>16 && i%Math.ceil(pts.length/12)) return;
+    const t=svgEl('text',{x:L+i*step+step/2,y:H-B+16,'text-anchor':'middle',
+      'font-size':9.5,fill:'var(--faint)','font-family':'var(--mono)'});
+    t.textContent=p.label.replace(/^20/,''); svg.appendChild(t);
+  });
+}
+
+function accelChart(pts){
+  const W=860,H=250,L=48,R=14,T=14,B=30;
+  const vals=pts.map(p=>p['매출YoY']).filter(v=>v!==null&&v!==undefined);
+  if(!vals.length) return el('div','empty','증감률 데이터 없음');
+  let max=Math.max(...vals,5), min=Math.min(...vals,-5);
+  const pad=(max-min)*0.12; max+=pad; min-=pad;
+  const step=(W-L-R)/pts.length, bw=step*0.66;
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'chart'});
+  const Y=axisFrame(svg,W,H,L,R,T,B,min,max,v=>Math.round(v)+'%');
+  pts.forEach((p,i)=>{
+    const v=p['매출YoY']; if(v===null||v===undefined) return;
+    const y0=Y(0), y=Y(v), x=L+i*step+(step-bw)/2;
+    const acc=p['매출가속'];
+    const col = acc===null||acc===undefined ? 'var(--faint)'
+      : (acc>=0 ? 'var(--add)' : 'var(--del)');
+    const r=svgEl('rect',{x:x,y:Math.min(y,y0),width:bw,
+      height:Math.max(1,Math.abs(y-y0)),rx:2,fill:col,opacity:.85});
+    tip(r, p.label+'\n매출 YoY '+v.toFixed(1)+'%'+
+      (acc!==null&&acc!==undefined?'\n가속 '+(acc>=0?'+':'')+acc.toFixed(1)+'%p':'')+
+      '\n매출 '+money(p['매출액']));
+    svg.appendChild(r);
+  });
+  xLabels(svg,pts,W,H,L,R,B,step);
+  const wrap=el('div','chartwrap'); wrap.appendChild(svg);
+  wrap.appendChild(legend([['var(--add)','가속 (증감률이 전분기보다 상승)'],
+                           ['var(--del)','감속 (증감률이 전분기보다 하락)']]));
+  return wrap;
+}
+
+function marginChart(pts){
+  const W=860,H=250,L=48,R=48,T=14,B=30;
+  const m=pts.map(p=>p['영업이익률']).filter(v=>v!==null&&v!==undefined);
+  if(!m.length) return el('div','empty','마진 데이터 없음');
+  let max=Math.max(...m,1), min=Math.min(...m,-1);
+  const pad=(max-min)*0.15; max+=pad; min-=pad;
+  const step=(W-L-R)/pts.length;
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'chart'});
+  const Y=axisFrame(svg,W,H,L,R,T,B,min,max,v=>v.toFixed(0)+'%');
+  // 변화(%p) 를 옅은 막대로 깔고 마진을 선으로 얹는다
+  const ch=pts.map(p=>p['이익률변화']).filter(v=>v!==null&&v!==undefined);
+  const cmax=Math.max(1,...ch.map(Math.abs));
+  pts.forEach((p,i)=>{
+    const v=p['이익률변화']; if(v===null||v===undefined) return;
+    const h=Math.abs(v)/cmax*(H-T-B)*0.34, y0=H-B;
+    const r=svgEl('rect',{x:L+i*step+step*0.2,y:v>=0?y0-h:y0,
+      width:step*0.6,height:Math.max(1,h),rx:2,
+      fill:v>=0?'var(--add)':'var(--del)',opacity:.22});
+    tip(r,p.label+'\n마진 변화 '+(v>=0?'+':'')+v.toFixed(2)+'%p');
+    svg.appendChild(r);
+  });
+  let path='';
+  pts.forEach((p,i)=>{
+    const v=p['영업이익률']; if(v===null||v===undefined) return;
+    const x=L+i*step+step/2, y=Y(v);
+    path+=(path?'L':'M')+x+' '+y+' ';
+    const cc=svgEl('circle',{cx:x,cy:y,r:2.6,fill:'var(--accent)'});
+    tip(cc,p.label+'\n영업이익률 '+v.toFixed(2)+'%\n영업이익 '+money(p['영업이익']));
+    svg.appendChild(cc);
+  });
+  svg.appendChild(svgEl('path',{d:path,fill:'none',stroke:'var(--accent)',
+    'stroke-width':2,'stroke-linejoin':'round'}));
+  xLabels(svg,pts,W,H,L,R,B,step);
+  const wrap=el('div','chartwrap'); wrap.appendChild(svg);
+  wrap.appendChild(legend([['var(--accent)','영업이익률 (좌축)'],
+                           ['var(--add)','마진 개선 (%p)'],
+                           ['var(--del)','마진 악화 (%p)']]));
+  return wrap;
+}
+
+function daysChart(pts){
+  const W=860,H=250,L=48,R=14,T=14,B=30;
+  const all=[].concat(pts.map(p=>p['재고일수']),pts.map(p=>p['매출채권일수']))
+    .filter(v=>v!==null&&v!==undefined);
+  if(!all.length) return el('div','empty','회전일수 데이터 없음');
+  let max=Math.max(...all)*1.1, min=0;
+  const step=(W-L-R)/pts.length;
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'chart'});
+  const Y=axisFrame(svg,W,H,L,R,T,B,min,max,v=>Math.round(v)+'일');
+  [['재고일수','var(--del)'],['매출채권일수','var(--accent)']].forEach(([k,col])=>{
+    let path='';
+    pts.forEach((p,i)=>{
+      const v=p[k]; if(v===null||v===undefined) return;
+      const x=L+i*step+step/2, y=Y(v);
+      path+=(path?'L':'M')+x+' '+y+' ';
+      const cc=svgEl('circle',{cx:x,cy:y,r:2.4,fill:col});
+      tip(cc,p.label+'\n'+k+' '+v.toFixed(0)+'일');
+      svg.appendChild(cc);
+    });
+    svg.appendChild(svgEl('path',{d:path,fill:'none',stroke:col,
+      'stroke-width':2,'stroke-linejoin':'round'}));
+  });
+  xLabels(svg,pts,W,H,L,R,B,step);
+  const wrap=el('div','chartwrap'); wrap.appendChild(svg);
+  wrap.appendChild(legend([['var(--del)','재고일수'],['var(--accent)','매출채권회수일수']]));
+  return wrap;
+}
+
+function legend(items){
+  const l=el('div','clegend');
+  items.forEach(([c,t])=>{
+    const s=el('span');
+    const sw=el('i'); sw.style.background=c; s.appendChild(sw);
+    s.appendChild(el('span',null,t)); l.appendChild(s);
+  });
+  return l;
+}
+
+function druckTable(pts){
+  const wrap=el('div','tblwrap');
+  const t=el('table','tbl');
+  t.innerHTML='<tr><th>분기</th><th style="text-align:right">매출</th>'+
+    '<th style="text-align:right">매출 YoY</th><th style="text-align:right">가속</th>'+
+    '<th style="text-align:right">영업이익</th><th style="text-align:right">이익률</th>'+
+    '<th style="text-align:right">마진Δ</th><th style="text-align:right">재고일</th>'+
+    '<th style="text-align:right">채권일</th><th style="text-align:right">PER(TTM)</th></tr>';
+  const f=(v,d,suf)=> (v===null||v===undefined)?'—':
+    ((v>=0&&suf==='%p'?'+':'')+v.toFixed(d)+(suf||''));
+  pts.slice().reverse().forEach(p=>{
+    const tr=el('tr');
+    tr.appendChild(el('td',null,p.label));
+    tr.appendChild(el('td','num',money(p['매출액'])));
+    tr.appendChild(el('td','num',f(p['매출YoY'],1,'%')));
+    const acc=el('td','num'+(p['매출가속']>0?' pos':(p['매출가속']<0?' neg':'')));
+    acc.textContent=f(p['매출가속'],1,'%p'); tr.appendChild(acc);
+    tr.appendChild(el('td','num',money(p['영업이익'])));
+    tr.appendChild(el('td','num',f(p['영업이익률'],2,'%')));
+    const mg=el('td','num'+(p['이익률변화']>0?' pos':(p['이익률변화']<0?' neg':'')));
+    mg.textContent=f(p['이익률변화'],2,'%p'); tr.appendChild(mg);
+    tr.appendChild(el('td','num',f(p['재고일수'],0)));
+    tr.appendChild(el('td','num',f(p['매출채권일수'],0)));
+    tr.appendChild(el('td','num',f(p['PER_TTM'],1,'배')));
+    t.appendChild(tr);
+  });
+  wrap.appendChild(t);
+  return wrap;
+}
+
+function textMetrics(rows){
+  const wrap=el('div');
+  rows.slice().reverse().slice(0,10).forEach(r=>{
+    const card=el('div','bcard');
+    const head=el('div','bhead');
+    const nm=el('div','nm');
+    nm.appendChild(document.createTextNode(r.stamp+' '+r.label));
+    nm.appendChild(el('small',null,Object.keys(r.found).join(' · ')));
+    head.appendChild(nm);
+    head.appendChild(el('div','bar'));
+    head.appendChild(el('div','sc',''));
+    head.onclick=()=>card.classList.toggle('open');
+    card.appendChild(head);
+    const body=el('div','bbody');
+    Object.entries(r.found).forEach(([k,hits])=>{
+      const blk=el('div','blk'); blk.appendChild(el('h5',null,k));
+      hits.forEach(h=>{
+        const d=el('div','pitem n');
+        const chips=el('div');
+        h.values.slice(0,6).forEach(v=>{
+          const ch=el('span','numchip');
+          ch.appendChild(el('span',null, k==='가동률' ? v.toFixed(1)+'%' : v.toLocaleString('ko-KR')));
+          chips.appendChild(ch);
+        });
+        d.appendChild(chips);
+        d.appendChild(document.createTextNode(h.line));
+        blk.appendChild(d);
+      });
+      body.appendChild(blk);
+    });
+    card.appendChild(body);
+    wrap.appendChild(card);
+  });
+  return wrap;
+}
+
+// ---------------------------------------------------------- 재무 매트릭스
+const STMTS=[['IS','손익계산서'],['BS','재무상태표'],['CF','현금흐름표']];
+function mtxVal(v, pershare){
+  if(v===null||v===undefined) return '—';
+  // 주당이익은 원 단위 그대로. 억으로 나누면 전부 '0억'이 된다.
+  if(pershare) return Math.round(v).toLocaleString('ko-KR')+'원';
+  const neg=v<0, a=Math.abs(v);
+  let s;
+  if(a>=1e12) s=(a/1e12).toFixed(2)+'조';
+  else if(a>=1e8) s=(a/1e8).toFixed(a/1e8>=100?0:1)+'억';
+  else if(a>=1e4) s=(a/1e4).toFixed(0)+'만';
+  else s=Math.round(a).toLocaleString('ko-KR');
+  return (neg?'-':'')+s;
+}
+function mtxGrowth(y){
+  // 기저가 작으면 증감률이 수천 %로 튄다. 정확한 자릿수는 의미가 없으니 자른다.
+  if(y===null||y===undefined) return null;
+  if(y > 999) return '>+999%';
+  if(y < -999) return '<-999%';
+  return (y>=0?'+':'')+y.toFixed(1)+'%';
+}
+
+async function renderMatrix(box){
+  const c=S.co;
+  S.mtxStmt = S.mtxStmt || 'IS';
+  S.mtxMode = S.mtxMode || 'q';
+  S.mtxYears = S.mtxYears || 4;
+  box.innerHTML='';
+
+  const bar=el('div','mtxbar');
+  const g1=el('div','seg');
+  STMTS.forEach(([k,label])=>{
+    const b=el('button', k===S.mtxStmt?'on':'', label);
+    b.onclick=()=>{ S.mtxStmt=k; renderMatrix(box); };
+    g1.appendChild(b);
+  });
+  bar.appendChild(g1);
+  const spacer=el('div'); spacer.style.flex='1'; bar.appendChild(spacer);
+  const g2=el('div','seg');
+  [['y','연간'],['q','분기별']].forEach(([k,label])=>{
+    const b=el('button', k===S.mtxMode?'on':'', label);
+    b.onclick=()=>{ S.mtxMode=k; renderMatrix(box); };
+    g2.appendChild(b);
+  });
+  bar.appendChild(g2);
+  const sel=el('select');
+  [3,4,6,8,10,15].forEach(n=>{
+    const o=el('option',null,n+'년'); o.value=n;
+    if(n===S.mtxYears)o.selected=true; sel.appendChild(o);
+  });
+  sel.onchange=()=>{ S.mtxYears=+sel.value; renderMatrix(box); };
+  bar.appendChild(sel);
+  box.appendChild(bar);
+
+  const holder=el('div'); box.appendChild(holder);
+  holder.innerHTML='<div class="loading">재무제표 받는 중… 처음 한 번은 수십 초 걸립니다.</div>';
+  const d=await (await fetch('/api/matrix?code='+c.code+'&stmt='+S.mtxStmt+
+    '&mode='+S.mtxMode+'&years='+S.mtxYears)).json();
+  holder.innerHTML='';
+  if(d.error){ holder.appendChild(el('div','err',d.error)); return; }
+  if(!d.rows||!d.rows.length){
+    holder.appendChild(el('div','empty','해당 기간 재무제표가 없습니다.')); return;
+  }
+
+  const wrap=el('div','mtxwrap');
+  const t=el('table','mtx');
+  const thead=el('thead'); const hr=el('tr');
+  const th0=el('th','sticky'); th0.textContent=d.stmt_name;
+  const u=el('small',null,'단위: 원'); th0.appendChild(u);
+  hr.appendChild(th0);
+  d.periods.forEach(p=>{
+    const th=el('th');
+    th.appendChild(el('b',null,p.q?('Q'+p.q+" '"+String(p.year).slice(2)):String(p.year)));
+    th.appendChild(el('small',null, p.q?(p.year+'년 '+(p.q*3)+'월'):(p.year+'년')));
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr); t.appendChild(thead);
+
+  const tb=el('tbody');
+  d.rows.forEach(r=>{
+    const tr=el('tr');
+    const th=el('th','sticky'); th.textContent=r.name;
+    th.appendChild(el('small',null,'전년 동기 대비'));
+    tr.appendChild(th);
+    r.values.forEach(x=>{
+      const td=el('td');
+      const mv=el('div','mv', mtxVal(x.v, r.pershare));
+      if(x.d){ mv.classList.add('drv'); td.title='원장에 이 줄이 없어 산출한 값: '+x.d; }
+      td.appendChild(mv);
+      const g=el('div','mg');
+      const txt=mtxGrowth(x.yoy);
+      if(txt===null){ g.textContent='—'; g.classList.add('flat'); }
+      else { g.textContent=txt; g.classList.add(x.yoy>=0?'up':'dn'); }
+      td.appendChild(g);
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+  wrap.appendChild(t);
+  holder.appendChild(wrap);
+  holder.appendChild(el('div','finnote',
+    S.mtxMode==='q'
+      ? '분기 단독 수치다. 손익계산서는 3개월치(4분기는 연간에서 3분기 누적을 뺀 값), 현금흐름표는 누적에서 전분기 누적을 뺀 값, 재무상태표는 분기말 잔액이다. 증감률은 전년 동기 대비.'
+      : '사업보고서 기준 연간 수치. 증감률은 전년 대비. 적자 기저에서는 증감률을 내지 않는다.'));
+  if(d.rows.some(r=>r.values.some(x=>x.d)))
+    holder.appendChild(el('div','finnote','기울임* 칸은 회사가 원장에 그 줄을 빠뜨려 다른 줄로 산출한 값이다. 마우스를 올리면 산출 근거가 보인다.'));
+}
+
 // ---------------------------------------------------------- 재무지표
 const UNIT=[[1e12,'조'],[1e8,'억'],[1e4,'만']];
 function money(v){
@@ -636,6 +2224,10 @@ function renderFin(box, f){
     grid.appendChild(cell);
   });
   wrap.appendChild(grid);
+  const has=k=>(f.rows||[]).some(r=>r.key===k&&r.value!==null&&r.value!==undefined);
+  if(!has('매출액') && has('영업이익'))
+    wrap.appendChild(el('div','finnote',
+      '매출액 계정이 없는 업종(은행·보험·증권·금융지주 등)이라 매출액과 영업이익률은 표시하지 않습니다. 영업이익·순이익·ROE 로 보세요.'));
   if(!f.now.annual)
     wrap.appendChild(el('div','finnote',
       '분기·반기 EPS 는 누적치라 PER 은 사업보고서에서만 냅니다. 매출·이익도 해당 기간 누적입니다.'));
@@ -685,6 +2277,9 @@ async function viewBrief(p){
     esc(b.base.stamp+' '+b.base.label+b.base.tag)+'</b> 와 대조 ('+esc(b.kind)+')<br>'+
     '변화점수 <b>'+b.score+'</b> · 달라진 섹션 '+b.sections.length+'개';
   box.appendChild(hd);
+  const mtxBox=el('div'); box.appendChild(mtxBox);
+  renderMatrix(mtxBox);
+
   const finBox=el('div'); box.appendChild(finBox);
   finBox.innerHTML='<div class="loading">재무지표 불러오는 중…</div>';
   fetch('/api/financials?code='+c.code+'&rcept='+rep.rcept)
@@ -1183,7 +2778,7 @@ function viewPlay(p){
 }
 
 // ---------------------------------------------------------- 시작
-loadCompanies().then(()=>{
+waitIndex().then(()=>{
   const c=S.companies;
   if(c.length===1){ $('#q').value=c[0].name; pick(c[0].code); }
 });
