@@ -130,6 +130,39 @@ def _adjusted(prices, ds):
     return adj
 
 
+def price_stats(prices, snap_date=None):
+    """주가 요약. 분할 보정한 종가로 1개월·3개월·1년 수익률, 52주 고점 대비,
+    그리고 snap_date 이후 변화 배수(시가총액 스냅샷을 오늘로 옮길 때 쓴다)."""
+    if not prices:
+        return {}
+    ds = sorted(prices)
+    adj = _adjusted(prices, ds)
+    last = dt.datetime.strptime(ds[-1], "%Y%m%d")
+
+    def idx_before(days=None, date=None):
+        ref = date or (last - dt.timedelta(days=days)).strftime("%Y%m%d")
+        k = None
+        for i, d in enumerate(ds):
+            if d <= ref:
+                k = i
+            else:
+                break
+        return k
+
+    out = {"now": prices[ds[-1]], "date": ds[-1]}
+    for key, days in (("p1m", 30), ("p3m", 91), ("p1y", 365)):
+        k = idx_before(days)
+        out[key] = (adj[-1] / adj[k] - 1) * 100 if k is not None and adj[k] else None
+    ref = (last - dt.timedelta(days=365)).strftime("%Y%m%d")
+    win = [adj[i] for i, d in enumerate(ds) if d > ref] or adj[-1:]
+    hi = max(win)
+    out["dd52"] = (adj[-1] / hi - 1) * 100 if hi else None
+    if snap_date:
+        k = idx_before(date=snap_date)
+        out["since_snap"] = adj[-1] / adj[k] if k is not None and adj[k] else None
+    return out
+
+
 def price_change(prices, days):
     """최근 종가 대비 days 일 전 종가의 변화율(%). prices = {'YYYYMMDD': 종가}"""
     if not prices:
@@ -235,6 +268,50 @@ def stage(r):
     if y < 10:
         return "관찰", "잔고 증가가 10% 미만이라 선행 신호가 약하다"
     return "관찰", "수주는 늘었지만 매출 전환·주가 괴리 어느 쪽도 뚜렷하지 않다"
+
+
+def questions(r, peers):
+    """생각을 넓히는 질문. 숫자가 말해주지 않는 것을 다음에 확인하게 한다.
+    peers 는 같은 업종에서 잔고를 믿을 수 있는 다른 회사들."""
+    q = []
+    y, btb, cov = r["backlog_yoy"], r["btb"], r["cover"]
+    px, dd, mgn, acc = r["price_1y"], r.get("dd52"), r["margin_delta"], r["rev_accel"]
+    if cov and cov >= 3 and px is not None and px < 0:
+        q.append("연매출 %.1f년치 잔고가 있는데 주가는 1년 %+.0f%%. 시장은 무엇을 의심하나 — "
+                 "수주 취소, 저가 수주에 따른 마진, 인도 지연, 운전자본·자금 조달?" % (cov, px))
+    if btb and btb >= 2 and (acc is None or acc <= 0):
+        q.append("수주가 매출보다 %.1f배 빨리 쌓인다. 매출은 언제부터 붙나 — 공정률·인도 일정, "
+                 "그리고 생산능력(CAPA) 증설 공시가 뒤따르는지" % btb)
+    if y is not None and y >= 30 and mgn is not None and mgn < 0:
+        q.append("잔고는 %+.0f%% 늘었는데 영업이익률은 %+.1f%%p. 물량을 싸게 받은 것인가, "
+                 "원가가 오른 것인가 — 수주 단가와 원재료 가격 추이" % (y, mgn))
+    if dd is not None and dd <= -30 and y is not None and y >= 20:
+        q.append("주가는 52주 고점 대비 %.0f%%인데 잔고는 %+.0f%%. 빠진 이유가 업황인가 "
+                 "이 회사만의 문제인가 — 최근 악재 공시와 같은 업종 주가를 같이 볼 것" % (dd, y))
+    if (not r["per"] or r["per"] <= 0) and y is not None and y >= 20:
+        q.append("적자인데 잔고는 쌓인다. 잔고 × 목표 이익률로 흑자 전환 시점을 역산해 보자")
+    for c in r.get("parties_listed", [])[:2]:
+        q.append("거래상대 %s 은(는) 왜 발주를 늘리나? 그 회사의 설비투자·수주 사이클을 따라가면 "
+                 "다음 수혜처가 보인다" % c["name"])
+    for c in r.get("customer_of", [])[:1]:
+        q.append("%s 이(가) 이 회사에 %s 규모를 발주했다. 발주가 느는 쪽은 투자를 늘리는 쪽이다 — "
+                 "이 회사 자체의 수요 전망은?" % (c["supplier"], c["amount_txt"]))
+    if r["same_as"]:
+        q.append("같은 잔고를 %s 도 적는다. 지주사와 자회사 중 어느 쪽이 더 싸게 사는 길인가 — "
+                 "지분율과 지주 할인율" % ", ".join(r["same_as"]))
+    if peers:
+        up = [p for p in peers if (p["backlog_yoy"] or 0) >= 15]
+        if len(up) >= 2:
+            names = ", ".join(p["name"] for p in up[:3])
+            q.append("같은 업종 %s 도 잔고가 늘고 있다. 업종 전체의 사이클인가, 이 회사만의 이야기인가 — "
+                     "업종 안에서 반영 갭이 가장 큰 곳은?" % names)
+        elif r["backlog_yoy"] and r["backlog_yoy"] >= 20 and not up:
+            q.append("같은 업종에서 잔고가 느는 곳이 이 회사뿐이다. 점유율을 빼앗는 것인가, "
+                     "특정 고객 한 곳에 기대는 것인가")
+    if r["stage"] == "반영":
+        q.append("주가가 먼저 갔다. 다음 분기 잔고 증가율이 꺾이면 무엇이 남나 — 컨센서스가 이미 "
+                 "무엇을 가정하는지")
+    return q[:5]
 
 
 def reasons(r):
