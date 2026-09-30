@@ -4,10 +4,29 @@
 
 따로 놓고 보면 흔한 신호 넷을 한 줄에 세운다.
 
-  선행   수주잔고가 1년 새 얼마나 늘었나, 매출로 빠져나가는 속도보다 빨리 쌓이나(북투빌)
-  전환   쌓인 수주가 매출 가속·이익률 개선으로 넘어오기 시작했나
+  선행   매출로 빠져나가는 속도보다 빨리 쌓이나(북투빌), 잔고가 연매출의 몇 배인지가 1년 새 늘었나(배수 변화)
+  전환   4분기 합 영업이익률이 아직 낮아 늘어날 여지가 있나
   확인   마지막 정기보고서 이후 새로 공시된 수주 계약(단일판매·공급계약)이 있나
   가격   주가가 1년 동안 수주 증가만큼 올랐나 — 덜 올랐으면 '반영 갭'
+
+부분 안의 항목은 과거 검증(도구/시너지_백테스트.py, 2013~2025 매달 6,823건·122곳)으로 골랐다.
+  - 매출 가속은 12개월 초과수익과 관계가 없었다(IC 0.00). 전환 부분에서 뺐다.
+  - 영업이익률은 낮을수록 뒤 수익률이 좋았다. 한 분기 값(−6%p)보다 4분기 합(−8%p, 앞 −7 / 뒤 −10)이 더 강하고 고르다.
+    전환 부분은 4분기 합 이익률 하나만 쓴다(IC 0.095, t 2.4). 직전 분기 대비 변화는 큰 적자 분기 뒤 본전만 돼도
+    '개선'으로 잡혀(가온칩스 −19% → +1.5%) 뺐다. 적자는 0%로 묶어, 적자가 깊을수록 점수가 오르지 않게 한다.
+  - 4분기 합 적자인 회사는 뒤 수익률이 오히려 좋았다(둔화 뺀 중앙 +13% vs 흑자 +7%, 앞뒤 기간·조선 뺀 표본 모두 같은 방향).
+    다만 지금 상장된 회사만 있어 망해서 사라진 적자 회사가 빠졌고, 1년 뒤 −30%↓ 비율도 12% vs 9%로 높다.
+    그래서 감점하지 않되 화면에 '4분기 적자 — 턴어라운드 베팅'으로 따로 표시하고 흑자만 보는 거름을 둔다.
+  - 북투빌이 잔고 증가율보다 강했다(+14%p vs +11%p).
+  - 기간은 1년이 가장 좋았다. 잔고 변화 IC 3개월 .036 · 6개월 .056 · 1년 .069 · 2년 .029 · 3년 .041,
+    북투빌 1분기 .030 · 2분기 .072 · 1년 .075 · 2년 .023. 짧으면 분기 잡음, 길면 이미 반영된 옛 이야기다.
+  - 형태로는 '잔고/연매출 배수의 1년 변화'가 가장 고르다(IC .074, 앞 .080 / 뒤 .067). 다른 잔고 지표는 2019년 전엔 약했다.
+    잔고 증가율은 둔화 판정(잔고 감소)에 이미 쓰이고, 둔화를 뺀 나머지 안에서는 힘이 없었다.
+    그래서 선행 = 북투빌 .5 + 배수 변화 .5 (점수 IC .095 → .100, 날짜마다 상위 20% 12개월 초과수익 중앙: 둔화 뺀 +12% → +15%).
+  - PER 은 관계가 없었다. 가격 부분은 반영 갭만 쓴다.
+  - 확인(수주 공시)과 악재 감점은 과거 공시 목록이 없어 검증하지 못했다. 그대로 둔다.
+  - 점수 예측력의 대부분은 '둔화'(잔고 감소·북투빌 0.9 미만)를 가르는 데서 나온다. 둔화를 뺀 나머지 안에서는
+    상위⅓−하위⅓ +4.6%p(90% 구간 −1.6 ~ +10.8)로 작고 불확실하다.
 
 수주잔고는 분기 보고서에만 나와 최대 석 달 늦다. 그 사이 새 계약은 거래소
 공시(단일판매·공급계약체결)로 먼저 나온다. 이 공시 원문에는 계약금액과
@@ -198,18 +217,68 @@ def _pct_rank(vals):
 WEIGHTS = {"선행": 0.35, "전환": 0.25, "확인": 0.15, "가격": 0.25}
 
 
+# ---------------------------------------------------------------- 추천필터
+# 화면 오른쪽 '추천필터'. 한 번 누르면 아래 거름값이 '직접 설정 필터'에 채워진다.
+# 키 이름은 화면(웹/index.html SYN_DEF)과 같다. 도구/시너지_백테스트.py 가 같은 정의로 과거 성과를 잰다.
+# 기준값은 결과를 보고 맞춘 것이 아니라 먼저 정했다 — 과거 검증에서 예측력이 있던 신호만 쓴다.
+_NOT_SLOW = ["잠복", "점화", "반영", "관찰"]
+SYN_REC = [      # 순서: 과거 성과가 좋고 위험이 낮은 것부터, 공격적인 것은 뒤로
+    {"id": "room", "name": "이익률 여지",
+     "desc": "4분기 합 영업이익·순이익 모두 흑자지만 영업이익률 6% 이하 — 쌓인 수주가 매출로 넘어오면 이익률이 오를 자리",
+     "f": {"stages": _NOT_SLOW, "btbMin": 1.1, "m4Min": 0, "m4Max": 6, "noLoss": True}},
+    {"id": "outpace", "name": "잔고가 매출을 앞지름",
+     "desc": "새 수주가 매출보다 1.3배 빨리 쌓이고, 잔고가 연매출의 몇 배인지가 1년 새 0.3년 넘게 늘었다",
+     "f": {"stages": _NOT_SLOW, "btbMin": 1.3, "coverChgMin": 0.3}},
+    {"id": "gap", "name": "덜 오른 수주",
+     "desc": "잔고 증가가 주가 상승을 50%p 넘게 앞선다 — 수주는 쌓였는데 주가는 아직",
+     "f": {"stages": _NOT_SLOW, "btbMin": 1.1, "gapMin": 50}},
+    {"id": "safe", "name": "흑자·무사고",
+     "desc": "4분기 흑자, 최근 악재 공시 없음, 잔고 소진 아님 — 턴어라운드 베팅을 뺀 보수적 목록",
+     "f": {"stages": _NOT_SLOW, "btbMin": 1.0, "noLoss": True, "noFlags": True}},
+    {"id": "turn", "name": "턴어라운드 베팅",
+     "desc": "4분기 적자인데 수주가 빠르게 쌓인다 — 과거 수익률은 높았지만 크게 잃은 경우도 많다",
+     "f": {"stages": _NOT_SLOW, "btbMin": 1.2, "onlyLoss": True}},
+    {"id": "noslow", "name": "둔화 빼기",
+     "desc": "잔고가 줄거나 소진 중인 곳만 뺀다 — 과거에 유일하게 확실히 뒤처진 무리. 가장 넓은 출발점",
+     "f": {"stages": _NOT_SLOW}},
+]
+
+
+def rec_pass(r, f):
+    """추천필터 거름 — 화면 synPass 의 같은 키만 옮겼다(백테스트용). 악재 공시(noFlags)는 과거 자료가 없어 보지 않는다."""
+    def num(v):
+        return None if v in (None, "") else float(v)
+
+    def ge(v, m):
+        return num(m) is None or (v is not None and v >= num(m))
+
+    def le(v, m):
+        return num(m) is None or (v is not None and v <= num(m))
+    m4 = r.get("margin4")
+    return ((not f.get("stages") or r.get("stage") in f["stages"])
+            and ge(r.get("btb"), f.get("btbMin")) and ge(r.get("backlog_yoy"), f.get("yoyMin"))
+            and ge(r.get("cover_chg"), f.get("coverChgMin")) and ge(r.get("gap"), f.get("gapMin"))
+            and ge(m4, f.get("m4Min")) and le(m4, f.get("m4Max"))
+            and not (f.get("noLoss") and r.get("loss4")) and not (f.get("onlyLoss") and not r.get("loss4")))
+
+
+def _margin(r):
+    """4분기 합 영업이익률. 지주사처럼 발산한 값은 뺀다."""
+    m = r.get("margin4")
+    return m if (m is not None and abs(m) <= 100) else None
+
+
 def score(rows):
     """rows 는 build_row 결과. 신뢰할 수 있는 행끼리 백분위를 매긴다."""
     ok = [r for r in rows if r["reliable"]]
     R = {
-        "yoy": _pct_rank([r["backlog_yoy"] for r in ok]),
         "btb": _pct_rank([r["btb"] for r in ok]),
-        "acc": _pct_rank([r["rev_accel"] for r in ok]),
-        "mgn": _pct_rank([r["margin_delta"] for r in ok]),
+        "cov": _pct_rank([r.get("cover_chg") for r in ok]),
+        # 이익률은 낮을수록 좋다 — 늘어날 여지(수주 산업의 영업 레버리지). 지주사처럼 발산한 값은 뺀다.
+        # 적자는 0%로 묶는다. 과거에 적자(+6%)는 0~3%(+5%)와 비슷했지 더 좋지 않았다 — 적자 폭이 클수록 점수가 오르면 안 된다.
+        "low": _pct_rank([-max(_margin(r), 0) if _margin(r) is not None else None for r in ok]),
         "new": _pct_rank([r["new_pct"] for r in ok]),
         "gap": _pct_rank([r["gap"] for r in ok]),
-        # PER 은 낮을수록 좋다. 적자(음수)는 순위에서 뺀다.
-        "per": _pct_rank([-r["per"] if r["per"] and r["per"] > 0 else None for r in ok]),
     }
 
     def blend(parts):
@@ -225,14 +294,14 @@ def score(rows):
         if not r["reliable"]:
             r["score"], r["parts"] = None, {}
             continue
+        m = _margin(r)
         parts = {
-            "선행": blend([(R["yoy"](r["backlog_yoy"]), 0.6), (R["btb"](r["btb"]), 0.4)]),
-            "전환": blend([(R["acc"](r["rev_accel"]), 0.6), (R["mgn"](r["margin_delta"]), 0.4)]),
+            "선행": blend([(R["btb"](r["btb"]), 0.5), (R["cov"](r.get("cover_chg")), 0.5)]),
+            "전환": R["low"](-max(m, 0)) if m is not None else None,
             # 최근 계약 공시가 없으면 0점이 아니라 '해당 없음'으로 두면 없는 회사가
             # 오히려 유리해진다. 없으면 0 으로 센다.
             "확인": R["new"](r["new_pct"]) if r["new_pct"] else 0.0,
-            "가격": blend([(R["gap"](r["gap"]), 0.6),
-                         (R["per"](-r["per"]) if r["per"] and r["per"] > 0 else None, 0.4)]),
+            "가격": R["gap"](r["gap"]),
         }
         s = blend([(parts[k], WEIGHTS[k]) for k in WEIGHTS])
         if s is not None and r["flags"]:

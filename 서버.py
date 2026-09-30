@@ -1790,6 +1790,11 @@ def screen_row(c):
     DRK.attach_prices(pts, c["code"], dates)
 
     cur, prev = pts[-1], pts[-2]
+    # 4분기 합 순이익 — 연속된 네 분기일 때만
+    w4 = pts[-4:]
+    ni_ttm = (sum(x["당기순이익"] for x in w4)
+              if len(w4) == 4 and all(x.get("당기순이익") is not None for x in w4)
+              and all(b["year"] * 4 + b["q"] - a["year"] * 4 - a["q"] == 1 for a, b in zip(w4, w4[1:])) else None)
     inv_delta = None
     if cur.get("재고일수") is not None and prev.get("재고일수") is not None:
         inv_delta = cur["재고일수"] - prev["재고일수"]
@@ -1823,7 +1828,8 @@ def screen_row(c):
         "영업이익률": cur.get("영업이익률"), "마진변화": cur.get("이익률변화"),
         "이익률_비정상": bad,
         "재고일수": cur.get("재고일수"), "재고일수변화": inv_delta,
-        "PER_TTM": cur.get("PER_TTM"),
+        "PER_TTM": cur.get("PER_TTM"), "순이익_TTM": ni_ttm,
+        "매출_TTM_1년전": pts[-5].get("매출_TTM") if len(pts) >= 5 else None,
         "매출_TTM": cur.get("매출_TTM"), "영업이익_TTM": cur.get("영업이익_TTM"),
         "전환": turned,
     }
@@ -2061,8 +2067,15 @@ def _syn_row(b, good_by, bad_by, twins):
         "backlog": last, "backlog_yoy": yoy,
         "btb": (1 + (last - b1) / rev) if (b1 is not None and rev) else None,
         "cover": cover, "why_not": why_not,
+        # 잔고/연매출 배수의 1년 변화 — 잔고가 매출보다 빨리 불어나나. 잔고 지표 중 앞뒤 기간 모두 고르게 맞았다
+        "cover_chg": (cover - b1 / sr["매출_TTM_1년전"]) if (cover is not None and b1 is not None and sr.get("매출_TTM_1년전")) else None,
         "rev_ttm": rev, "rev_yoy": sr.get("매출YoY"), "rev_accel": sr.get("매출가속"),
         "margin": sr.get("영업이익률"),
+        # 4분기 합 — 한 분기 반짝 흑자·기저효과에 흔들리지 않는다(가온칩스 2026Q2: 분기 +1.5%, 4분기 합 영업손실 −91억)
+        "op_ttm": sr.get("영업이익_TTM"), "ni_ttm": sr.get("순이익_TTM"),
+        "margin4": (sr["영업이익_TTM"] / rev * 100) if (rev and sr.get("영업이익_TTM") is not None) else None,
+        "loss4": bool((sr.get("영업이익_TTM") is not None and sr["영업이익_TTM"] <= 0)
+                      or (sr.get("순이익_TTM") is not None and sr["순이익_TTM"] <= 0)),
         "margin_delta": None if sr.get("이익률_비정상") else sr.get("마진변화"),
         "per": sr.get("PER_TTM"), "quarter": sr.get("quarter"),
         "price": pnow, "price_1y": p1y, "price_3m": p3m, "price_1m": ps.get("p1m"),
@@ -2181,8 +2194,32 @@ def synergy_view(force=False):
         if r["reliable"]:
             stages[r["stage"]] = stages.get(r["stage"], 0) + 1
     out.update(rows=rows, stages=stages,
-               reliable=sum(1 for r in rows if r["reliable"]))
+               reliable=sum(1 for r in rows if r["reliable"]),
+               rec=getattr(SYN, "SYN_REC", []))       # 추천필터 — 정의는 시너지.py 한 곳
+    bt = _syn_bt()
+    if bt:          # 화면의 '과거 검증' 상자 — 도구/시너지_백테스트.py 결과
+        out["bt"] = {k: bt.get(k) for k in ("dates", "stages", "no_slow", "n", "firms", "median", "at", "rec")}
+        out["bt"]["factors"] = {k: v for k, v in (bt.get("terciles") or {}).items()}
     return out
+
+
+_SYN_BT = {"mt": None, "d": None}
+
+
+def _syn_bt():
+    p = os.path.join(CACHE_DIR, "시너지", "bt_report.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return None
+    if _SYN_BT["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                _SYN_BT["d"] = json.load(fh)
+            _SYN_BT["mt"] = mt
+        except Exception:
+            return None
+    return _SYN_BT["d"]
 
 
 def financials(c, rep):
