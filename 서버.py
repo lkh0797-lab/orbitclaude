@@ -2233,6 +2233,7 @@ def export_view():
             for ch in (x.get("channels") or [])[:3]:
                 sh |= set(users.get((ch["sgg"], ch["hs"]), [])) - {x["name"]}
             x["shared_with"] = sorted(sh)[:4]
+        d["n_all"] = len(INDEX.get("companies", []))       # 화면 맨 위 단계 숫자(수집 전체 → 거점 → 통로 → 믿을 만함)
         _EXP.update(mt=mt, d=d)
     return _EXP["d"]
 

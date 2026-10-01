@@ -1300,6 +1300,9 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .synsideft{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line2)}
 .expHead h4{margin:4px 0 4px;font:700 18px var(--f-disp)}.expHead .sub{max-width:1100px}
 .expNote{font-size:12px;color:var(--warn);margin:8px 0}
+.expFunnel{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 2px}
+.expFunnel>div{display:flex;flex-direction:column;padding:6px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--panel)}
+.expFunnel b{font-size:16px}.expFunnel span{font-size:11px;color:var(--dim)}.expFunnel i{color:var(--faint);font-style:normal}
 .expDuo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
 @media (max-width:1000px){.expDuo{grid-template-columns:1fr}}
 .expPick{border:1px solid var(--line2);border-radius:8px;padding:10px 12px;background:var(--panel)}
@@ -2219,8 +2222,13 @@ async function viewExport(p){
   const F=S.expF, all=(d.items||[]).filter(x=>x.status==='ok'&&x.signals);
   if(d.partial) body.appendChild(el('div','expNote',d.stopped?d.stopped+' (지금까지 '+all.length+'곳)':'계산 중 — 지금까지 '+all.length+'곳. 끝나면 다시 열면 된다.'));
   const okG=x=>F.grade==='전체'||(F.grade==='AB'?x.grade!=='C':x.grade===F.grade);
-  // 맨 위 두 상자 — 이익에 우호적 · 변곡 경보 (신뢰도 A·B만)
+  // 단계 숫자 — '전체'가 무엇의 전체인지 헷갈리지 않게
   const ab=all.filter(x=>x.grade!=='C');
+  const fun=el('div','expFunnel');
+  [['수집된 회사',d.n_all],['거점·주력 제품이 잡힘',(d.items||[]).length],['그 주소에서 수출이 찍힘',all.length],['매출과 같이 움직여 믿을 만함(A·B)',ab.length]]
+    .forEach(([k,v],i)=>{ if(v==null) return; if(i) fun.appendChild(el('i',null,'→')); const b=el('div'); b.appendChild(el('b',null,String(v))); b.appendChild(el('span',null,k)); fun.appendChild(b); });
+  fun.title='C 등급 = 수출이 매출의 5% 미만이거나 150% 초과(같은 주소 남의 수출 섞임), 매출과 따로 움직임(상관 0.3 미만), 비교할 분기 부족';
+  body.appendChild(fun);
   const duo=el('div','expDuo');
   const pickBox=(title,sub,rows,cls)=>{ const b=el('div','expPick '+cls); const h=el('div','h'); h.appendChild(el('b',null,title+' '+rows.length+'곳')); h.appendChild(el('span',null,sub)); b.appendChild(h);
     if(!rows.length) b.appendChild(el('div','empty','해당 없음'));
@@ -2236,9 +2244,10 @@ async function viewExport(p){
   // 거름
   const bar=el('div','expBar');
   const cnt={}; all.filter(okG).forEach(x=>cnt[x.signals.state]=(cnt[x.signals.state]||0)+1);
+  const scope=F.grade==='AB'?'A·B':F.grade==='A'?'A':'A·B·C';
   ['전체'].concat(EXP_ORDER).forEach(k=>{ const n=k==='전체'?all.filter(okG).length:(cnt[k]||0); if(k!=='전체'&&!n) return;
-    const b=el('button','synstg btn'+(F.st===k?' on':''),k+' '+n); b.title=k==='전체'?'':EXP_ST[k].d; b.onclick=()=>{ F.st=k; viewExport(p); }; bar.appendChild(b); });
-  const gs=el('select'); [['AB','신뢰도 A·B'],['A','A만'],['전체','C까지']].forEach(([v,t])=>{ const o=el('option',null,t); o.value=v; if(F.grade===v) o.selected=true; gs.appendChild(o); });
+    const b=el('button','synstg btn'+(F.st===k?' on':''),k==='전체'?'전체('+scope+') '+n:k+' '+n); b.title=k==='전체'?'':EXP_ST[k].d; b.onclick=()=>{ F.st=k; viewExport(p); }; bar.appendChild(b); });
+  const gs=el('select'); gs.title='C까지 고르면 수출 통로가 찍힌 '+all.length+'곳이 모두 나온다'; [['AB','신뢰도 A·B'],['A','A만'],['전체','C까지 ('+all.length+'곳)']].forEach(([v,t])=>{ const o=el('option',null,t); o.value=v; if(F.grade===v) o.selected=true; gs.appendChild(o); });
   gs.onchange=()=>{ F.grade=gs.value; viewExport(p); }; bar.appendChild(gs);
   const qi=el('input'); qi.placeholder='종목·품목·지역'; qi.value=F.q; qi.oninput=()=>{ F.q=qi.value.trim(); clearTimeout(S.expT); S.expT=setTimeout(()=>viewExport(p),300); }; bar.appendChild(qi);
   body.appendChild(bar);
