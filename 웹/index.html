@@ -686,6 +686,29 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 /* 메모 */
 .invMemo{margin-top:26px}
 .invMemoG{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:10px}
+.invOne{margin:14px 0 6px}
+.invOneG{grid-template-columns:repeat(4,minmax(0,1fr))}
+.invOneG .invM{grid-column:auto}
+@media (max-width:1150px){.invOneG{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.invOneG{grid-template-columns:minmax(0,1fr)}}
+.invM li .n{font:600 10px var(--f-num);color:var(--p-faint);margin-right:5px}
+.invM li.small{color:var(--p-faint)}
+.invSz{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font:500 10.5px var(--f-num);border:1px solid rgba(255,255,255,.14);color:var(--p-faint);white-space:nowrap}
+.invSz.big{border-color:rgba(229,83,75,.55);color:#f0a39c}
+.invSz.mid{border-color:rgba(241,217,160,.45);color:#f1d9a0}
+.invSz.small{opacity:.75}
+.invSigList li p.rel{font-size:11.5px;color:var(--p-faint);margin-top:3px}
+.invSigList li.routine{opacity:.6}
+.invLensBox{margin-top:22px}
+.invLensT{width:100%;border-collapse:collapse;margin-top:8px;font-size:12.8px}
+.invLensT th{text-align:left;font:500 10.5px var(--f-num);letter-spacing:.06em;color:var(--p-faint);padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
+.invLensT td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.06);color:var(--p-ink);vertical-align:top;line-height:1.5}
+.invLensT td.k{font-weight:700;color:var(--p-hi);white-space:nowrap}
+.invLensT td.q{color:var(--p-faint);width:26%}
+.invRd{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;white-space:nowrap;border:1px solid rgba(255,255,255,.15)}
+.invRd.up{color:#f1d9a0;border-color:rgba(241,217,160,.5)}
+.invRd.dn{color:#f0a39c;border-color:rgba(229,83,75,.55)}
+.invRd.nu,.invRd.na{color:var(--p-faint)}
 .invM{grid-column:span 2;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}
 .invM.thesis{grid-column:span 3;background:linear-gradient(135deg,rgba(214,180,106,.1),rgba(255,255,255,.02));border-color:rgba(214,180,106,.3)}
 .invM.variant{grid-column:span 3}
@@ -1275,6 +1298,40 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .synstages{display:flex;flex-wrap:wrap;gap:5px}
 .synstages .tag{cursor:pointer;border:0;font:inherit;font-size:11.5px}
 .synsideft{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line2)}
+.expHead h4{margin:4px 0 4px;font:700 18px var(--f-disp)}.expHead .sub{max-width:1100px}
+.expNote{font-size:12px;color:var(--warn);margin:8px 0}
+.expDuo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+@media (max-width:1000px){.expDuo{grid-template-columns:1fr}}
+.expPick{border:1px solid var(--line2);border-radius:8px;padding:10px 12px;background:var(--panel)}
+.expPick.up{border-left:3px solid var(--add)}.expPick.dn{border-left:3px solid var(--del)}
+.expPick .h{display:flex;gap:10px;align-items:baseline;margin-bottom:6px}.expPick .h b{font-size:14px}.expPick .h span{font-size:11.5px;color:var(--dim)}
+.expPick .r{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:12.5px;padding:3px 0;border-top:1px dashed var(--line2)}
+.expPick .r a{font-weight:600}.expPick .r .v{color:var(--dim);font-variant-numeric:tabular-nums}
+.expPick .good,.expGood{font-size:10.5px;color:var(--add);border:1px solid var(--add);border-radius:999px;padding:0 6px;margin-left:4px}
+.expBar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.expBar select,.expBar input{font:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.expTbl td small{color:var(--faint);font-size:11px}
+.expTbl td.num.pos{color:var(--add)}.expTbl td.num.neg{color:var(--del)}.expTbl td.num.strong{font-weight:700}
+.expTbl td.ch{font-size:12px;white-space:nowrap}.expShare{font-size:10.5px;color:var(--warn);white-space:normal}
+.expTbl td:first-child{min-width:150px}.expTbl td.cty{font-size:11.5px;color:var(--dim);white-space:nowrap}
+.expTbl th,.expTbl td.num{white-space:nowrap}
+.expRow{cursor:pointer}.expRow.open{background:var(--line2)}
+.expG{display:inline-block;width:18px;text-align:center;border-radius:4px;font-weight:700;font-size:11.5px}
+.expG.A{background:var(--add);color:#fff}.expG.B{background:var(--warn);color:#fff}.expG.C{background:var(--line);color:var(--dim)}
+.expSt{font-size:11.5px;padding:1px 7px;border-radius:999px;white-space:nowrap;border:1px solid var(--line)}
+.expSt.up2,.st.up2{background:var(--add);color:#fff;border-color:var(--add)}.expSt.up,.st.up{color:var(--add);border-color:var(--add)}
+.expSt.warn,.st.warn{color:var(--warn);border-color:var(--warn)}.expSt.dn2,.st.dn2{background:var(--del);color:#fff;border-color:var(--del)}
+.expSt.dn,.st.dn{color:var(--del);border-color:var(--del)}.expSt.nu,.st.nu{color:var(--dim)}
+.expPick .st{font-size:11px;padding:0 6px;border-radius:999px;border:1px solid var(--line)}
+.expSpark{width:120px;height:26px}.expSpark rect{fill:var(--line)}.expSpark rect.last{fill:var(--accent)}
+.expDetBox{padding:10px 6px 14px}
+.expChartW em,.expDetG em{display:block;font:600 11.5px var(--sans);font-style:normal;color:var(--accent);margin-bottom:4px}
+.expChart{width:100%;max-width:820px;height:auto}.expChart rect{fill:var(--line)}.expChart rect.last{fill:var(--accent)}
+.expChart circle.ly{fill:var(--warn)}.expChart line.g{stroke:var(--line2)}.expChart text.ax{font-size:10px;fill:var(--faint)}
+.expDetG{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:10px}
+@media (max-width:1200px){.expDetG{grid-template-columns:1fr 1fr}}
+.expDetG .ln{font-size:12px;line-height:1.55;color:var(--ink)}
+.tbl.mini{font-size:12px}
 .synrec{padding:10px 0 12px;border-bottom:1px solid var(--line2);margin-bottom:6px;display:flex;flex-direction:column;gap:6px}
 .synrechd{display:flex;flex-direction:column;gap:2px;margin-bottom:2px}
 .synrechd b{font-size:13px}.synrechd span{font-size:11px;color:var(--dim)}
@@ -1930,6 +1987,7 @@ details.linMore>summary::-webkit-details-marker{display:none}
         <button data-t="trend">키워드 추이</button>
         <button data-t="play">분석 레시피</button>
         <button data-t="cat">호재기업</button>
+        <button data-t="exp">수출 추적</button>
       </div>
       <div id="panes">
         <div class="empty" id="welcome">
@@ -2124,7 +2182,151 @@ function show(t){
   ({orbit:viewOrbit, land:viewLand, brief:viewBrief, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    play:viewPlay, cat:viewCatalyst}[t])(p);
+    play:viewPlay, cat:viewCatalyst, exp:viewExport}[t])(p);
+}
+
+// ---------------------------------------------------------- 수출 추적 (관세청 시군구별 품목별 수출 → 공시보다 먼저 읽는 매출)
+// 계산은 수출추적.py 전체 실행(관세청 API)이 하고, 화면은 /api/export 결과를 읽기만 한다.
+const EXP_ST={
+  '고성장 유지':{c:'up2',d:'최근 3개월과 그 직전 3개월 모두 전년 같은 달보다 +20%↑'},
+  '가속':{c:'up',d:'최근 3개월 증가율이 직전보다 15%p↑ 빨라졌고 +10%↑'},
+  '꺾임':{c:'warn',d:'증가율이 직전보다 25%p↑ 떨어졌다 — 아직 플러스여도 성장이 꺾였다'},
+  '급감 변곡':{c:'dn2',d:'증가율이 25%p↑ 떨어져 +5% 아래로 — 매출 둔화가 공시보다 먼저 보이는 자리'},
+  '감소 전환':{c:'dn',d:'최근 3개월 −10%↓'},
+  '감소 지속':{c:'dn',d:'최근 3개월과 직전 3개월 모두 −10%↓'},
+  '보합':{c:'nu',d:'뚜렷한 방향 없음'},
+};
+const EXP_ORDER=['급감 변곡','꺾임','가속','고성장 유지','감소 전환','감소 지속','보합'];
+const expP=(v,d)=>v==null||!isFinite(v)?'—':(v>=0?'+':'')+v.toFixed(d||0)+'%';
+const expM=v=>v==null?'—':v>=1e6?(v/1e6).toFixed(2)+'억$':Math.round(v/1e3).toLocaleString('ko-KR')+'백만$';   // 천 달러 → 보기 좋은 단위
+const expGood=x=>{ const s=x.signals||{}, u=(x.national||[])[0]; return s.y3!=null&&s.y3>=10&&u&&u.unit_yoy!=null&&u.unit_yoy>=5; };
+
+async function viewExport(p){
+  p.innerHTML='';
+  const box=el('div','expBox'); p.appendChild(box);
+  const hd=el('div','expHead');
+  hd.appendChild(el('h4',null,'수출 추적 — 관세청 통관으로 공시보다 먼저 읽는 매출'));
+  hd.appendChild(el('p','sub','최근 사업보고서에서 본사와 공장 주소, 주력 제품(HS 6단위)을 뽑고, 관세청 시군구별 품목별 수출 가운데 그 주소에서 실제로 수출이 찍히는 '+
+    '(시군구 × 품목)을 이 회사의 수출 통로로 잡는다. 과거 분기 매출 증가율과 통관 수출 증가율이 같이 움직인 회사만 믿는다(신뢰도 A·B). '+
+    '통관 자료는 매달 15일께 전월까지 나와, 분기 보고서보다 한두 달 먼저 매출의 방향을 보여 준다.'));
+  box.appendChild(hd);
+  const body=el('div'); box.appendChild(body);
+  body.appendChild(el('div','loading','불러오는 중…'));
+  let d; try{ d=await (await fetch('/api/export')).json(); }catch(e){ d={error:'불러오지 못했다'}; }
+  body.innerHTML='';
+  if(d.error){ body.appendChild(el('div','empty',d.error)); return; }
+  S.expF=S.expF||{st:'전체', grade:'AB', q:''};
+  const F=S.expF, all=(d.items||[]).filter(x=>x.status==='ok'&&x.signals);
+  if(d.partial) body.appendChild(el('div','expNote',d.stopped?d.stopped+' (지금까지 '+all.length+'곳)':'계산 중 — 지금까지 '+all.length+'곳. 끝나면 다시 열면 된다.'));
+  const okG=x=>F.grade==='전체'||(F.grade==='AB'?x.grade!=='C':x.grade===F.grade);
+  // 맨 위 두 상자 — 이익에 우호적 · 변곡 경보 (신뢰도 A·B만)
+  const ab=all.filter(x=>x.grade!=='C');
+  const duo=el('div','expDuo');
+  const pickBox=(title,sub,rows,cls)=>{ const b=el('div','expPick '+cls); const h=el('div','h'); h.appendChild(el('b',null,title+' '+rows.length+'곳')); h.appendChild(el('span',null,sub)); b.appendChild(h);
+    if(!rows.length) b.appendChild(el('div','empty','해당 없음'));
+    rows.slice(0,8).forEach(x=>{ const s=x.signals, r=el('div','r'); const a=el('a',null,x.name); a.href='#'; a.onclick=e=>{e.preventDefault(); expOpen(x.code);}; r.appendChild(a);
+      r.appendChild(el('span','st '+EXP_ST[s.state].c,s.state));
+      r.appendChild(el('span','v','3개월 '+expP(s.y3)+' · 직전 '+expP(s.y3p)+(x.partial&&x.partial.yoy!=null?' · 공시 뒤 '+expP(x.partial.yoy):'')));
+      if(expGood(x)) r.appendChild(el('span','good','단가 '+expP(x.national[0].unit_yoy)));
+      b.appendChild(r); });
+    duo.appendChild(b); };
+  pickBox('이익에 우호적','고성장 유지·가속 — 단가까지 오르면 표시', ab.filter(x=>['고성장 유지','가속'].includes(x.signals.state)).sort((a,b)=>(expGood(b)-expGood(a))||(b.signals.y3-a.signals.y3)),'up');
+  pickBox('변곡 경보','급감 변곡·꺾임 — 매출 둔화가 공시보다 먼저', ab.filter(x=>['급감 변곡','꺾임'].includes(x.signals.state)).sort((a,b)=>a.signals.acc-b.signals.acc),'dn');
+  body.appendChild(duo);
+  // 거름
+  const bar=el('div','expBar');
+  const cnt={}; all.filter(okG).forEach(x=>cnt[x.signals.state]=(cnt[x.signals.state]||0)+1);
+  ['전체'].concat(EXP_ORDER).forEach(k=>{ const n=k==='전체'?all.filter(okG).length:(cnt[k]||0); if(k!=='전체'&&!n) return;
+    const b=el('button','synstg btn'+(F.st===k?' on':''),k+' '+n); b.title=k==='전체'?'':EXP_ST[k].d; b.onclick=()=>{ F.st=k; viewExport(p); }; bar.appendChild(b); });
+  const gs=el('select'); [['AB','신뢰도 A·B'],['A','A만'],['전체','C까지']].forEach(([v,t])=>{ const o=el('option',null,t); o.value=v; if(F.grade===v) o.selected=true; gs.appendChild(o); });
+  gs.onchange=()=>{ F.grade=gs.value; viewExport(p); }; bar.appendChild(gs);
+  const qi=el('input'); qi.placeholder='종목·품목·지역'; qi.value=F.q; qi.oninput=()=>{ F.q=qi.value.trim(); clearTimeout(S.expT); S.expT=setTimeout(()=>viewExport(p),300); }; bar.appendChild(qi);
+  body.appendChild(bar);
+  const rows=all.filter(x=>okG(x)&&(F.st==='전체'||x.signals.state===F.st)&&(!F.q||(x.name+' '+x.code+' '+(x.industry||'')+' '+(x.channels||[]).map(c=>c.sgg+' '+c.item).join(' ')).includes(F.q)))
+    .sort((a,b)=>EXP_ORDER.indexOf(a.signals.state)-EXP_ORDER.indexOf(b.signals.state)||(b.signals.y3||0)-(a.signals.y3||0));
+  body.appendChild(expTable(rows));
+  body.appendChild(el('div','finnote','통로 = 관세청 시군구별 품목별 수출 중 이 회사 본사·공장 주소(수출자 등록 주소 기준)에서 찍힌 (시군구 × HS 6단위). 같은 주소에 같은 품목을 수출하는 다른 회사가 있으면 섞인다 — 그래서 신뢰도를 본다. '+
+    '신뢰도 = 과거 분기(최대 12개) 매출 증가율과 통관 수출 증가율의 상관(A ≥ 0.6 · 8분기↑, B ≥ 0.3). 수출/매출 = 통관 수출(연평균 환율 근사) ÷ 연결 매출. '+
+    '매출 기여 추정 = 최근 3개월 수출 증가율 × 수출/매출 — 내수와 해외 법인 매출은 들어 있지 않다. 단가 = 그 품목 전국 수출의 달러/kg, 최근 6개월 vs 전년 같은 6개월. '+
+    '계산 '+(d.at||'')+' · 다시: python 수출추적.py 전체'));
+}
+function expOpen(code){ const r=document.querySelector('tr.expRow[data-code="'+code+'"]'); if(r){ r.click(); r.scrollIntoView({block:'center'}); } }
+function expSpark(series){
+  const ks=Object.keys(series||{}).sort().slice(-24), vs=ks.map(k=>series[k]); const W=120,H=26;
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'expSpark'}); if(!vs.length) return svg;
+  const mx=Math.max(1,...vs), bw=W/vs.length;
+  vs.forEach((v,i)=>{ const h=Math.max(1,v/mx*(H-2)); svg.appendChild(svgEl('rect',{x:i*bw+0.5,y:H-h,width:Math.max(1,bw-1),height:h,class:i>=vs.length-3?'last':''})); });
+  return svg;
+}
+function expTable(rows){
+  const w=el('div','tblwrap'); const t=el('table','tbl expTbl');
+  t.innerHTML='<tr><th>종목</th><th>신뢰도</th><th>주 통로</th><th class="r">최근 3개월</th><th class="r">직전 3개월</th><th class="r">가속</th><th class="r">12개월</th><th class="r">공시 뒤</th>'+
+    '<th class="r">수출/매출</th><th class="r">매출 기여</th><th class="r">단가</th><th>주 수출국</th><th>상태</th><th>24개월</th><th></th></tr>';
+  if(!rows.length){ const tr=el('tr'); const td=el('td','empty','해당 없음'); td.colSpan=15; tr.appendChild(td); t.appendChild(tr); }
+  rows.forEach(x=>{
+    const s=x.signals, v=x.validation||{}, c0=(x.channels||[])[0], n0=(x.national||[])[0];
+    const tr=el('tr','expRow'); tr.dataset.code=x.code;
+    const nm=el('td'); const a=el('a',null,x.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(x.code).then(()=>jump('orbit')); }; nm.appendChild(a);
+    nm.appendChild(el('small',null,' '+x.code+(x.industry?' · '+x.industry:''))); tr.appendChild(nm);
+    const g=el('td'); g.appendChild(el('span','expG '+x.grade,x.grade)); g.appendChild(el('small',null,' '+(v.corr!=null?'상관 '+v.corr.toFixed(2)+' · '+v.n+'분기':'표본 부족'))); tr.appendChild(g);
+    const chTd=el('td','ch',c0?c0.sgg.split(' ').slice(-1)[0]+' · '+c0.item+' '+Math.round(c0.share)+'%'+((x.channels||[]).length>1?' 외 '+(x.channels.length-1):''):'—');
+    if((x.shared_with||[]).length){ const sw=el('div','expShare','통로 공유: '+x.shared_with.join(', ')); sw.title='같은 (시군구 × 품목) 통로를 쓰는 다른 회사 — 지주·자회사이거나 같은 동네 경쟁사. 수출이 섞여 있을 수 있다.'; chTd.appendChild(sw); }
+    tr.appendChild(chTd);
+    const num=(val,cls)=>el('td','num'+(cls?' '+cls:''),val);
+    const tone=v=>v==null?'':v>=10?'pos':v<=-10?'neg':'';
+    tr.appendChild(num(expP(s.y3),tone(s.y3)+' strong')); tr.appendChild(num(expP(s.y3p),tone(s.y3p)));
+    tr.appendChild(num(s.acc==null?'—':(s.acc>=0?'+':'')+s.acc.toFixed(0)+'%p',s.acc>=15?'pos':s.acc<=-25?'neg':''));
+    tr.appendChild(num(expP(s.y12),tone(s.y12)));
+    const pa=x.partial; tr.appendChild(num(pa&&pa.yoy!=null?expP(pa.yoy)+' ('+pa.months.map(m=>+m.slice(4)).join('·')+'월)':'—',pa?tone(pa.yoy):''));
+    tr.appendChild(num(v.coverage!=null?Math.round(v.coverage)+'%':'—'));
+    tr.appendChild(num(x.implied!=null?(x.implied>=0?'+':'')+x.implied.toFixed(0)+'%p':'—',tone(x.implied)));
+    tr.appendChild(num(n0&&n0.unit_yoy!=null?expP(n0.unit_yoy):'—',n0?tone(n0.unit_yoy):''));
+    tr.appendChild(el('td','cty',n0?n0.top.slice(0,2).map(([k,p])=>k+' '+Math.round(p)+'%').join(' · '):'—'));
+    const st=el('td'); st.appendChild(el('span','expSt '+EXP_ST[s.state].c,s.state)); if(expGood(x)) st.appendChild(el('span','expGood','단가↑')); st.title=EXP_ST[s.state].d; tr.appendChild(st);
+    const sp=el('td'); sp.appendChild(expSpark(x.series)); tr.appendChild(sp);
+    tr.appendChild(el('td','caret','▾'));
+    const det=el('tr','expDet'); det.hidden=true; const dd=el('td'); dd.colSpan=15; det.appendChild(dd);
+    tr.onclick=()=>{ det.hidden=!det.hidden; tr.classList.toggle('open',!det.hidden); if(!det.hidden&&!dd.firstChild) dd.appendChild(expDetail(x)); };
+    t.appendChild(tr); t.appendChild(det);
+  });
+  w.appendChild(t); return w;
+}
+function expDetail(x){
+  const box=el('div','expDetBox');
+  // 월별 수출 막대 — 최근 36개월, 마지막 3개월 진하게, 전년 같은 달은 옅은 점
+  const ks=Object.keys(x.series||{}).sort().slice(-36), vs=ks.map(k=>x.series[k]);
+  const W=720,H=180,L=56,B=26,T=10, mx=Math.max(1,...vs), bw=(W-L-10)/Math.max(1,vs.length);
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'expChart'});
+  [0,.5,1].forEach(f=>{ const y=T+(H-T-B)*(1-f); svg.appendChild(svgEl('line',{x1:L,x2:W-10,y1:y,y2:y,class:'g'})); const tx=svgEl('text',{x:L-6,y:y+4,'text-anchor':'end',class:'ax'}); tx.textContent=expM(mx*f); svg.appendChild(tx); });
+  vs.forEach((v,i)=>{ const h=v/mx*(H-T-B); svg.appendChild(svgEl('rect',{x:L+i*bw+1,y:H-B-h,width:Math.max(1,bw-2),height:Math.max(0,h),class:i>=vs.length-3?'last':''}));
+    const ly=x.series[String(+ks[i].slice(0,4)-1)+ks[i].slice(4)]; if(ly!=null){ svg.appendChild(svgEl('circle',{cx:L+i*bw+bw/2,cy:H-B-ly/mx*(H-T-B),r:2,class:'ly'})); }
+    if(ks[i].slice(4)==='01'){ const tx=svgEl('text',{x:L+i*bw+1,y:H-8,class:'ax'}); tx.textContent=ks[i].slice(0,4); svg.appendChild(tx); } });
+  const cw=el('div','expChartW'); cw.appendChild(el('em',null,'월별 통관 수출(막대, 마지막 3개월 진하게) · 점 = 전년 같은 달')); cw.appendChild(svg); box.appendChild(cw);
+  const grid=el('div','expDetG');
+  // 분기별 — 통관 vs 매출
+  const v=x.validation||{}; const q=el('div'); q.appendChild(el('em',null,'분기별 전년 대비 — 통관 수출 vs 연결 매출 (상관 '+(v.corr!=null?v.corr.toFixed(2):'—')+')'));
+  const qt=el('table','tbl mini'); qt.innerHTML='<tr><th>분기</th><th class="r">통관</th><th class="r">매출</th></tr>';
+  (v.pairs||[]).slice(-8).forEach(pr=>{ const tr=el('tr'); tr.appendChild(el('td',null,pr.q)); tr.appendChild(el('td','num',expP(pr.x))); tr.appendChild(el('td','num',expP(pr.r))); qt.appendChild(tr); });
+  q.appendChild(qt); grid.appendChild(q);
+  // 통로
+  const c=el('div'); c.appendChild(el('em',null,'수출 통로 — 최근 12개월 비중'));
+  (x.channels||[]).forEach(ch=>c.appendChild(el('div','ln',ch.sgg+' · '+ch.item+' (HS '+ch.hs+(ch.hsName?' '+ch.hsName:'')+') — '+expM(ch.t12)+' · '+Math.round(ch.share)+'%')));
+  grid.appendChild(c);
+  // 전국 품목 — 주 수출국 · 단가
+  const n=el('div'); n.appendChild(el('em',null,'전국 품목 — 주 수출국(최근 24개월) · 단가 추세'));
+  (x.national||[]).forEach(nn=>n.appendChild(el('div','ln','HS '+nn.hs+(nn.name?' '+nn.name:'')+': '+nn.top.map(([k,p])=>k+' '+Math.round(p)+'%').join(' · ')+' · 단가 '+expP(nn.unit_yoy))));
+  grid.appendChild(n);
+  // 보고서에서 뽑은 거점
+  const pr=x.profile||{}; const f=el('div'); f.appendChild(el('em',null,'보고서에서 뽑은 거점 ('+(pr.report||'')+')'));
+  f.appendChild(el('div','ln','본사: '+(pr.hq?pr.hq.sgg:'—')));
+  f.appendChild(el('div','ln','공장 후보: '+((pr.plants||[]).map(p=>p.sgg.split(' ').slice(-1)[0]).join(', ')||'—')));
+  f.appendChild(el('div','ln','주력 제품: '+((pr.products||[]).join(', ')||'—')+(pr.export_share!=null?' · 보고서 수출 비중 '+pr.export_share+'%':'')));
+  if((pr.countries||[]).length) f.appendChild(el('div','ln','보고서에 자주 나온 지역: '+pr.countries.join(', ')));
+  grid.appendChild(f);
+  box.appendChild(grid);
+  const act=el('div','vcAct'); const b1=el('button',null,'이 회사 가속도 보기'); b1.onclick=async()=>{ await pick(x.code); jump('druck'); }; act.appendChild(b1);
+  const b2=el('button',null,'변화 브리핑'); b2.onclick=async()=>{ await pick(x.code); jump('brief'); }; act.appendChild(b2); box.appendChild(act);
+  return box;
 }
 
 // ---------------------------------------------------------- 태그 색
@@ -5408,7 +5610,7 @@ async function viewInvest(p){
   const rep=L.find(r=>r.rcept===S.briefRcept)||L[L.length-1];
   S.briefRcept=rep.rcept;
   const plate=el('section','synplate orbplate invplate'); p.appendChild(plate);
-  plate.appendChild(el('div','orbWait','네 구루가 '+rep.stamp+' '+rep.label+rep.tag+'을 읽는 중… 처음 한 번은 몇 초 걸립니다.'));
+  plate.appendChild(el('div','orbWait',rep.stamp+' '+rep.label+rep.tag+'을 읽는 중… 처음 한 번은 몇 초 걸립니다.'));
   const ledger=el('div','orbledger invledger'); p.appendChild(ledger);
   let d;
   try{ d=await (await fetch('/api/invest?code='+c.code+'&rcept='+rep.rcept)).json(); }
@@ -5537,7 +5739,8 @@ const INV_LEAD={
   base:'14개 종목 · 2015–2026 보고서 513건',
 };
 function invLead(d){
-  const A=invArgs(d,1);                 // 원탁 엔진 1의 논거 무게로 잰다(보정할 때와 같은 자)
+  // 보정할 때와 같은 자로 잰다 — 크기를 달고 같은 사건을 묶기 전의 신호(lead_sigs), 엔진 1의 논거 무게
+  const A=invArgs(Object.assign({}, d, {signals:d.lead_sigs||d.signals}),1);
   const sum=t=>A.filter(a=>a.type===t).reduce((s,a)=>s+a.sign*a.w,0);
   const story=sum('story'), mom=sum('momentum');
   let prevc=null;
@@ -5569,7 +5772,7 @@ function invDecide(lead, M, fatal){
 function invLeadView(lead){
   const box=el('div','invLead');
   const hd=el('div','invCouncilH');
-  hd.appendChild(el('div','spIdeasH','선행 점수')).appendChild(el('em',null,'LEAD SCORE · 이미 값에 든 것과 아직 안 든 것 — 원탁 결론의 뼈대'));
+  hd.appendChild(el('div','spIdeasH','선행 점수')).appendChild(el('em',null,'공시 뒤 흐름 참고 — 이미 값에 든 것과 아직 안 든 것'));
   box.appendChild(hd);
   const row=el('div','invLeadRow');
   const big=el('div','invLeadBig');
@@ -5596,9 +5799,9 @@ function invLeadView(lead){
   part('주가 흐름','직전 보고서 뒤 이번 공시까지 '+(lead.prevc==null?'—':iPct(lead.prevc,0))+' — 시장이 먼저 한 말, 추세는 이어지는 편',lead.parts.tape,lead.parts.tape>=0?'up':'dn');
   part('재무 모멘텀 할인','성장·마진은 공시 때 이미 값에 있다 — 좋을수록 조금 뺀다',lead.parts.mom,'nu');
   box.appendChild(parts);
-  box.appendChild(el('p','invLeadNote','보정: '+INV_LEAD.base+'. 원탁 확신 자체는 공시 뒤 3개월과의 종목 안 순위상관이 +0.03으로 거의 무관했다 — 보고서가 나올 땐 숫자가 이미 값에 들어가 있어서다. '+
-    '그래서 결론은 이 점수의 분위로 정하고(5분위 = 분할 진입 · 4분위 = 시험 포지션 · 2–3분위 = 보류 · 1분위 = 집행 안 함), 원탁은 크게 반대하면 한 단계 낮추는 위험 필터로만 쓴다. '+
-    '종목을 반으로 나눠 검증한 절반에서도 5분위 3개월 중앙값 +8.8%·상승 76%, 1분위 −0.4%였다. 가운데 분위는 잡음이 크다.'));
+  box.appendChild(el('p','invLeadNote','보정: '+INV_LEAD.base+'. 성장·마진 같은 발표 숫자는 공시 때 이미 값에 들어가 있어, 공시 뒤 수익률과 꾸준히 같은 방향이던 것은 새 문장과 직전 주가 흐름뿐이었다. '+
+    '다만 보정에 쓴 14종목은 삼성전자·HD현대일렉트릭·한미반도체처럼 이미 크게 오른 이름들이라 결과가 부풀었을 수 있다 — 전 종목 검증 전까지는 매매 판단이 아니라 참고로만 읽는다. '+
+    '가운데 분위는 잡음이 크다.'));
   return box;
 }
 
@@ -5805,8 +6008,8 @@ async function invTrackRun(code, S, A, onStep){
     if(!d||d.first) continue;
     d.series=S; d.arc=A;
     const k=invPriceAt(S,+d.filed); if(k<0) continue;
-    const b=invDebate(d);
-    out.push({rcept:r.rcept, stamp:r.stamp, label:r.label, filed:d.filed, M:b.M, L:b.lead?b.lead.score:null, verdict:b.verdict, cls:b.cls,
+    const ld=invLead(d);
+    out.push({rcept:r.rcept, stamp:r.stamp, label:r.label, filed:d.filed, L:ld.score, q:ld.q,
               f1:invFwd(S,k,21), f3:invFwd(S,k,63), f6:invFwd(S,k,126)});
   }
   return out;
@@ -5814,7 +6017,7 @@ async function invTrackRun(code, S, A, onStep){
 function invTrackView(d, rep){
   const box=el('div','invTrack');
   const hd=el('div','invCouncilH');
-  hd.appendChild(el('div','spIdeasH','원탁 성적표')).appendChild(el('em',null,'TRACK RECORD · 이 종목의 지난 보고서마다 원탁을 다시 돌려 공시 뒤 주가와 맞대 본다'));
+  hd.appendChild(el('div','spIdeasH','성적표')).appendChild(el('em',null,'이 종목의 지난 보고서마다 선행 점수를 다시 매겨 공시 뒤 주가와 맞대 본다'));
   box.appendChild(hd);
   const body=el('div','invTrackBody'); box.appendChild(body);
   const code=d.code;
@@ -5826,17 +6029,15 @@ function invTrackView(d, rep){
       b.onclick=()=>{ S_inv.trackH=k; draw(rows); }; seg.appendChild(b); });
     body.appendChild(seg);
     const R=rows.filter(r=>r[H]!=null);
-    const XK=S_inv.trackX||'L';   // 가로축: 선행 점수(L) 또는 원탁 확신(M)
-    const rho=invSpear(R.map(r=>r.L),R.map(r=>r[H])), rhoM=invSpear(R.map(r=>r.M),R.map(r=>r[H]));
-    const xs=el('div','invRange'); [['L','가로: 선행 점수'],['M','가로: 원탁 확신']].forEach(([k,t])=>{ const b=el('button','spChip'+(XK===k?' on':''),t);
-      b.onclick=()=>{ S_inv.trackX=k; draw(rows); }; xs.appendChild(b); }); body.appendChild(xs);
-    const xv=r=>XK==='L'?r.L:r.M; const xlo=XK==='L'?Math.min(-1,...R.map(r=>r.L)):-1, xhi=XK==='L'?Math.max(3,...R.map(r=>r.L)):1;
+    const XK='L';
+    const rho=invSpear(R.map(r=>r.L),R.map(r=>r[H]));
+    const xv=r=>r.L; const xlo=Math.min(-1,...R.map(r=>r.L)), xhi=Math.max(3,...R.map(r=>r.L));
     const grid=el('div','invTrackGrid');
     // 산점도 — 가로 원탁 가중 확신, 세로 공시 뒤 수익률
     const W=520,Hh=300,L=46,Rr=16,T=16,B=36;
     const ys=R.map(r=>r[H]); const ylo=Math.min(-10,...ys), yhi=Math.max(10,...ys);
     const X=v=>L+(v-xlo)/(xhi-xlo)*(W-L-Rr), Y=v=>T+(yhi-v)/(yhi-ylo)*(Hh-T-B);
-    const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+Hh,class:'orbSvg invTrackSvg',role:'img','aria-label':'원탁 결론과 공시 뒤 수익률'});
+    const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+Hh,class:'orbSvg invTrackSvg',role:'img','aria-label':'선행 점수와 공시 뒤 수익률'});
     svg.appendChild(svgEl('line',{x1:L,x2:W-Rr,y1:Y(0),y2:Y(0),class:'drkGrid z'}));
     svg.appendChild(svgEl('line',{x1:X(0),x2:X(0),y1:T,y2:Hh-B,class:'drkGrid z'}));
     (XK==='L'?[-1,0,1,2,3]:[-1,-.5,0,.5,1]).filter(v=>v>=xlo&&v<=xhi).forEach(v=>{ const t=svgEl('text',{x:X(v),y:Hh-B+16,'text-anchor':'middle',class:'orbTick'}); t.textContent=(v>0?'+':'')+v; svg.appendChild(t); });
@@ -5844,16 +6045,16 @@ function invTrackView(d, rep){
     const nice=(()=>{ const s=(yhi-ylo)/4, p=Math.pow(10,Math.floor(Math.log10(s))), m=[1,2,2.5,5,10].find(k=>k*p>=s)*p; const o=[]; for(let v=Math.ceil(ylo/m)*m; v<=yhi; v+=m) o.push(v); return o; })();
     nice.forEach(v=>{ svg.appendChild(svgEl('line',{x1:L,x2:W-Rr,y1:Y(v),y2:Y(v),class:'drkGrid'}));
       const t=svgEl('text',{x:L-6,y:Y(v)+4,'text-anchor':'end',class:'orbTick'}); t.textContent=(v>0?'+':'')+v+'%'; svg.appendChild(t); });
-    const xl=svgEl('text',{x:W-Rr,y:Hh-4,'text-anchor':'end',class:'drkAxL'}); xl.textContent=XK==='L'?'선행 점수 → (세로선 = 분위 경계)':'원탁 가중 확신 → (반대 … 찬성)'; svg.appendChild(xl);
-    const colOf=c=>c==='go'?'#f1d9a0':c==='part'?'#c9a45c':c==='dn'?'#d95926':'#8a95a3';
+    const xl=svgEl('text',{x:W-Rr,y:Hh-4,'text-anchor':'end',class:'drkAxL'}); xl.textContent='선행 점수 → (세로선 = 분위 경계)'; svg.appendChild(xl);
+    const colOf=q=>q>=5?'#f1d9a0':q===4?'#c9a45c':q<=1?'#d95926':'#8a95a3';
     const tip=el('div','spTip invTrackTip'); tip.hidden=true;
     R.forEach(r=>{
       const cur=r.rcept===rep.rcept;
       if(xv(r)==null) return;
-      const c=svgEl('circle',{cx:X(xv(r)),cy:Y(r[H]),r:cur?7:4.5,class:'invTrackDot'+(cur?' cur':'')}); c.setAttribute('fill',colOf(r.cls));
+      const c=svgEl('circle',{cx:X(xv(r)),cy:Y(r[H]),r:cur?7:4.5,class:'invTrackDot'+(cur?' cur':'')}); c.setAttribute('fill',colOf(r.q));
       c.addEventListener('pointerenter',()=>{ tip.innerHTML='';
         const v=el('div','invTipV'); v.appendChild(el('b',null,iPct(r[H],1))); v.appendChild(el('span',null,'공시 '+invDate(r.filed))); tip.appendChild(v);
-        tip.appendChild(el('p','invTipPx',r.stamp+' '+r.label+' · '+r.verdict+' · 확신 '+invSgn(r.M)));
+        tip.appendChild(el('p','invTipPx',r.stamp+' '+r.label+' · 선행 점수 '+invSgn(r.L)+' · '+r.q+'분위'));
         tip.hidden=false; const bx=grid.getBoundingClientRect(), sv=svg.getBoundingClientRect(), sc=sv.width/W;
         tip.style.left=Math.min(bx.width-230,(sv.left-bx.left)+X(xv(r))*sc+12)+'px'; tip.style.top=((sv.top-bx.top)+Y(r[H])*sc-20)+'px'; });
       c.addEventListener('pointerleave',()=>{ tip.hidden=true; });
@@ -5864,33 +6065,31 @@ function invTrackView(d, rep){
     // 오른쪽 — 상관과 결론별 성적
     const right=el('div','invTrackStats');
     const rv=el('div','rho'+(rho==null?'':rho>=.2?' up':rho<=-.1?' dn':''));
-    rv.appendChild(el('span',null,'선행 점수와 공시 뒤 수익률의 순위 상관 · 원탁 확신은 '+(rhoM==null?'—':(rhoM>=0?'+':'')+rhoM.toFixed(2))));
+    rv.appendChild(el('span',null,'선행 점수와 공시 뒤 수익률의 순위 상관'));
     rv.appendChild(el('b',null,rho==null?'—':(rho>=0?'+':'')+rho.toFixed(2)));
     // 해석은 결론을 정하는 선행 점수 기준. 전체 보정치(종목 안 +0.13)와 견준다.
     rv.appendChild(el('small',null, rho==null?'표본 부족'
-      : rho>=.3?'이 종목에선 선행 점수가 주가를 꽤 앞섰다 — 결론을 믿을 만하다'
-      : rho>=.1?'전체 평균(+0.13) 수준으로 맞았다 — 참고해 쓸 만하다'
-      : rho>-.1?'이 종목에선 선행 점수도 거의 안 맞았다 — 결론은 참고만, 가격 추세가 더 크게 움직인 종목'
-      : '이 종목에선 거꾸로 갔다 — 결론을 뒤집어 읽거나 쓰지 말 것'));
+      : rho>=.3?'이 종목에선 선행 점수가 공시 뒤 주가와 꽤 같은 방향이었다'
+      : rho>=.1?'보정 평균(+0.13) 수준으로 맞았다'
+      : rho>-.1?'이 종목에선 거의 안 맞았다 — 가격 추세가 더 크게 움직인 종목'
+      : '이 종목에선 거꾸로 갔다 — 쓰지 말 것'));
     right.appendChild(rv);
     const tb=el('table','invTrackTbl');
-    tb.innerHTML='<tr><th>결론</th><th>건수</th><th>중앙값</th><th>오른 비율</th></tr>';
-    const groups=[['집행','go'],['분할 진입','go2'],['시험 포지션','part'],['보류','hold'],['집행 안 함','dn']];
-    const pick=(r,k)=> k==='go'?r.verdict==='집행':k==='go2'?/분할/.test(r.verdict):k==='part'?/시험/.test(r.verdict):k==='hold'?/보류/.test(r.verdict):/않음/.test(r.verdict);
-    groups.forEach(([t,k])=>{ const g=R.filter(r=>pick(r,k)).map(r=>r[H]); if(!g.length) return;
+    tb.innerHTML='<tr><th>선행 점수</th><th>건수</th><th>중앙값</th><th>오른 비율</th></tr>';
+    [5,4,3,2,1].forEach(q=>{ const g=R.filter(r=>r.q===q).map(r=>r[H]); if(!g.length) return; const t=q+'분위';
       const tr=el('tr'); tr.appendChild(el('td',null,t)); tr.appendChild(el('td','n',String(g.length)));
       const m=invMed(g); const td=el('td','n '+(m>0?'up':'dn'),iPct(m,1)); tr.appendChild(td);
       tr.appendChild(el('td','n',Math.round(g.filter(x=>x>0).length/g.length*100)+'%')); tb.appendChild(tr); });
     const all=R.map(r=>r[H]); const tr=el('tr','all'); tr.appendChild(el('td',null,'모든 보고서')); tr.appendChild(el('td','n',String(all.length)));
     tr.appendChild(el('td','n',iPct(invMed(all),1))); tr.appendChild(el('td','n',Math.round(all.filter(x=>x>0).length/Math.max(1,all.length)*100)+'%')); tb.appendChild(tr);
     right.appendChild(tb);
-    right.appendChild(el('p','note','2015년 이후 보고서 '+R.length+'건. 각 보고서의 원탁은 그 보고서에 담긴 정보만으로 다시 돌렸다(앞날 자료 없음). 수익률은 최초 공시일 종가 기준.'));
+    right.appendChild(el('p','note','2015년 이후 보고서 '+R.length+'건. 각 보고서의 점수는 그 보고서에 담긴 정보와 그 전 주가만으로 다시 매겼다(앞날 자료 없음). 수익률은 최초 공시일 종가 기준.'));
     grid.appendChild(right);
     body.appendChild(grid);
   };
   if(INV_TRACK[code]){ setTimeout(()=>draw(INV_TRACK[code]),0); }
   else {
-    const btn=el('button','spFull','▶ 지난 보고서로 원탁 성적 매기기');
+    const btn=el('button','spFull','▶ 지난 보고서로 성적 매기기');
     const prog=el('span','invTrackProg');
     body.appendChild(btn); body.appendChild(prog);
     btn.onclick=async()=>{ btn.disabled=true;
@@ -5990,8 +6189,9 @@ function invPlate(plate, d, c, L, rep){
   // ── 머리: 전시 번호 · 보고서 고르기 · 발표 모드
   const top=el('div','spTop');
   const eb=el('div','spEyebrow');
-  eb.innerHTML='<b>EXHIBIT 05</b><span></span><em>The council reads '+esc(rep.stamp)+(d.filed?' · filed '+esc(invDate(d.filed)):'')+'</em>';
-  eb.querySelector('span').textContent='투자 브리핑 · '+c.name;
+  eb.innerHTML='<b>EXHIBIT 05</b><span></span><em></em>';
+  eb.querySelector('span').textContent='변화 브리핑 · '+c.name;
+  eb.querySelector('em').textContent=rep.stamp+' '+rep.label+rep.tag+(d.filed?' · '+invDate(d.filed)+' 공시':'');
   top.appendChild(eb);
   const tools=el('div','spTools');
   const idx=L.indexOf(rep);
@@ -6011,11 +6211,13 @@ function invPlate(plate, d, c, L, rep){
 
   const sigs=d.signals||[];
   const fin={}; (d.fin||[]).forEach(r=>fin[r.key]=r);
-  const deb=invDebate(d), council=deb.agents;
-  const pos=sigs.filter(s=>s.dir>.15), neg=sigs.filter(s=>s.dir<-.15);
+  const lead=invLead(d);
+  const pos=sigs.filter(s=>s.dir>.15&&!s.routine), neg=sigs.filter(s=>s.dir<-.15);
   const P=pos.reduce((a,s)=>a+s.dir*s.mag,0), N=-neg.reduce((a,s)=>a+s.dir*s.mag,0);
-  const topNew=sigs.filter(s=>s.src==='new'&&s.dir>.15).sort((a,b)=>b.mag*b.dir-a.mag*a.dir)[0];
-  const topRisk=neg.slice().sort((a,b)=>a.dir*a.mag-b.dir*b.mag)[0];
+  const topNew=sigs.filter(s=>s.src==='new'&&s.dir>.15&&!s.routine).sort((a,b)=>b.mag*b.dir-a.mag*a.dir)[0];
+  const evNeg=neg.filter(s=>s.src!=='fin');
+  const bigNeg=evNeg.filter(s=>s.size!=='작음');
+  const topRisk=(bigNeg.length?bigNeg:evNeg).slice().sort((a,b)=>a.dir*a.mag-b.dir*b.mag)[0];
 
   // ── 헤드라인 — 숫자 한 마디 + 새 문장 한 마디
   const lev=sigs.find(s=>s.key==='레버리지'), turn=sigs.find(s=>s.label==='흑자 전환'||s.label==='적자 전환');
@@ -6026,10 +6228,11 @@ function invPlate(plate, d, c, L, rep){
     : '숫자보다 문장이 더 많이 바뀌었다';
   const hl=el('div','spHead');
   hl.appendChild(el('h3',null,c.name+', '+finPhrase));
-  if(topNew) hl.appendChild(el('p',null,'새로 들어온 가장 무거운 문장 — “'+topNew.text+'”'));
-  if(topRisk) hl.appendChild(el('p','invRiskLine','가장 무거운 위험 — “'+topRisk.text+'”'));
-  hl.appendChild(el('p','spEn','Council verdict: '+deb.en+' — '+deb.votes.찬성+' for · '+deb.votes.기권+' abstain · '+deb.votes.반대+' against · '+pos.length+' opportunity vs '+neg.length+' risk signals.'));
+  if(topNew) hl.appendChild(el('p',null,'새로 들어온 가장 무거운 문장('+invSizeTxt(topNew)+') — “'+topNew.text+'”'));
+  if(topRisk) hl.appendChild(el('p','invRiskLine',bigNeg.length?'가장 큰 위험('+invSizeTxt(topRisk)+') — “'+topRisk.text+'”'
+    :'크기가 큰 새 위험은 없다 — 가장 큰 것도 '+invSizeTxt(topRisk).replace(/^작음 · /,'')+' (“'+(topRisk.text.length>60?topRisk.text.slice(0,60)+'…':topRisk.text)+'”)'));
   plate.appendChild(hl);
+  plate.appendChild(invOnePager(d, sigs, fin, lead, pos, neg));
 
   // ── 맥락 띠
   const ctx=el('div','invCtx');
@@ -6042,8 +6245,8 @@ function invPlate(plate, d, c, L, rep){
   if(d.filed) chip('최초 공시 · 그날 주가', invDate(d.filed)+(kF>=0?' · '+Math.round(d.series.r[kF]).toLocaleString('ko-KR')+'원':'')+(d.filed_doc&&d.filed_doc!==d.filed?' (정정 '+invDate(d.filed_doc)+')':''));
   if(kF>=0&&kF<d.series.d.length-1) chip('공시 후 지금까지', iPct((d.series.p[d.series.p.length-1]/d.series.p[kF]-1)*100,0), (d.series.p[d.series.p.length-1]>=d.series.p[kF])?'up':'dn');
   if(fin['PBR']&&fin['PBR'].value) chip('PBR', fin['PBR'].value.toFixed(1)+'배');
-  chip('신호', '기회 '+pos.length+' · 위험 '+neg.length, P>=N*1.3?'up':N>=P*1.3?'dn':'');
-  chip('원탁 결론', deb.verdict, deb.cls==='go'||deb.cls==='part'?'up':deb.cls==='dn'?'dn':'');
+  if(d.ttm&&d.ttm.per_pct!=null) chip('PER 자기 역사', (d.ttm.per?d.ttm.per.toFixed(0)+'배 · ':'')+(d.ttm.per_pct>=50?'상위 '+Math.max(1,Math.round(100-d.ttm.per_pct)):'하위 '+Math.round(d.ttm.per_pct))+'%', d.ttm.per_pct>=80?'dn':d.ttm.per_pct<=25?'up':'');
+  chip('신호', '기회 '+pos.length+' · 위험 '+neg.length+(sigs.some(s=>s.n_rel)?' (같은 사건 묶음)':''), P>=N*1.3?'up':N>=P*1.3?'dn':'');
   plate.appendChild(ctx);
   const arc=invArc(d, rep);
   if(arc) plate.appendChild(arc);
@@ -6056,11 +6259,16 @@ function invPlate(plate, d, c, L, rep){
   lst.appendChild(el('div','spIdeasH','신호')).appendChild(el('em',null,'SIGNALS · 무게 순'));
   const ol=el('ol');
   sigs.slice(0,12).forEach(s=>{
-    const li=el('li',invTone(s.dir)); li.dataset.id=s.id;
+    const li=el('li',invTone(s.dir)+(s.routine?' routine':'')); li.dataset.id=s.id;
     const n=el('span','n',String(s.id)); n.style.setProperty('--c',invCol(s.dir)); li.appendChild(n);
     const m=el('div','m');
-    const t=el('div','t'); t.appendChild(el('b',null,s.label)); t.appendChild(el('small',null,INV_SRC[s.src]+' · '+s.sec)); m.appendChild(t);
+    const t=el('div','t'); t.appendChild(el('b',null,s.label));
+    if(s.size) t.appendChild(el('span','invSz '+({'중요':'big','보통':'mid','작음':'small'}[s.size]||'na'),invSizeTxt(s)));
+    if(s.n_rel) t.appendChild(el('span','invSz na','같은 사건 '+(s.n_rel+1)+'개 문장'));
+    if(s.routine) t.appendChild(el('span','invSz na','정기 배당'));
+    t.appendChild(el('small',null,INV_SRC[s.src]+' · '+s.sec)); m.appendChild(t);
     if(s.src!=='fin') m.appendChild(el('p',null,s.text));
+    (s.related||[]).slice(0,2).forEach(x=>m.appendChild(el('p','rel','＋ '+x)));
     li.appendChild(m);
     li.onmouseenter=()=>terr.focusId&&terr.focusId(s.id); li.onmouseleave=()=>terr.blur&&terr.blur();
     ol.appendChild(li);
@@ -6069,47 +6277,137 @@ function invPlate(plate, d, c, L, rep){
   duo.appendChild(lst);
   plate.appendChild(duo);
 
-  // ── 구루 원탁
-  const ch=el('div','invCouncilH');
-  ch.appendChild(el('div','spIdeasH','구루 원탁')).appendChild(el('em',null,'THE COUNCIL · 같은 보고서, 네 개의 눈 · 토론 뒤 입장'));
-  const vote=el('div','invVote');
-  [['찬성','up'],['기권','nu'],['반대','dn']].forEach(([k,cls])=>{ const v=el('span','v '+cls); v.appendChild(el('b',null,String(deb.votes[k]))); v.appendChild(document.createTextNode(k)); vote.appendChild(v); });
-  ch.appendChild(vote);
-  plate.appendChild(ch);
-  const grid=el('div','invGurus');
-  council.forEach((g,i)=>{
-    const card=el('div','invGuru '+(g.vote==='찬성'?'up':g.vote==='반대'?'dn':'nu')); card.style.setProperty('--i',i);
-    const h=el('div','h');
-    h.appendChild(el('span','mono',g.m));
-    const nm=el('div','nm'); nm.appendChild(el('b',null,g.k)); nm.appendChild(el('small',null,g.en+' · '+g.school)); h.appendChild(nm);
-    h.appendChild(el('span','stance',g.vote));
-    card.appendChild(h);
-    const cv=el('div','cv'); cv.appendChild(el('span',null,'확신'));
-    cv.appendChild(el('b',null,invSgn(g.c0)+' → '+invSgn(g.c)));
-    const bar=el('div','cvb'); const f=el('i'); f.style.left=((Math.min(g.c0,g.c)+1)/2*100)+'%'; f.style.width=(Math.abs(g.c-g.c0)/2*100)+'%';
-    f.className=g.c>=g.c0?'up':'dn'; bar.appendChild(f); const k0=el('u'); k0.style.left=((g.c+1)/2*100)+'%'; bar.appendChild(k0); cv.appendChild(bar);
-    card.appendChild(cv);
-    card.appendChild(el('p','rd',deb.rounds[0].lines.find(x=>x.who===g.k).text));
-    card.appendChild(el('p','q','그가 묻는 것 — '+g.q));
-    grid.appendChild(card);
-  });
-  plate.appendChild(grid);
+  // ── 관점 체크리스트 — 같은 근거를 다섯 관점으로 나눠 본다. 결론을 내지 않는다
+  plate.appendChild(invLens(d));
 
-  // ── 선행 점수 — 결론의 뼈대
-  if(deb.lead) plate.appendChild(invLeadView(deb.lead));
-
-  // ── 원탁 토론 — 결론 · 확신의 이동 · 발언록
-  plate.appendChild(invDebateView(deb, terr, kF>=0 ? '기준가 — '+invDate(d.filed)+' 공시일 종가 '+Math.round(d.series.r[kF]).toLocaleString('ko-KR')+'원' : ''));
-  if(d.series) plate.appendChild(invTrackView(d, rep));
-
-  // ── 투자 메모
-  plate.appendChild(invMemo(d, sigs, fin, council));
+  // 선행 점수·성적표는 뺐다 — 보정 14종목 밖 60곳(보고서 2,562건) 표본 외 검증에서 공시 뒤 수익률을 가르지 못했다(2026-10-01).
+  // invLeadView · invTrackView 코드는 다시 잴 때 쓰도록 남긴다(도구/선행점수_검증.mjs).
 
   const ft=el('div','spFoot');
-  ft.innerHTML='<span></span><b>ORBIT · 기업궤도추적</b>';
-  ft.querySelector('span').textContent='테스트 화면. 신호는 규칙으로 뽑았다 — 새 문장·사라진 문장은 직전 같은 종류 보고서와 견줘 표현만 고친 문단·회계 상용구·정관 조문을 뺐고, '+
-    '방향은 범주와 낱말(증가·수주·소송·지연…)로 매겼다. 구루 토론은 그들의 틀을 흉내 낸 규칙 시뮬레이션이지 그들의 말이 아니며, 매매 권유가 아니다.';
+  ft.innerHTML='<span></span><b>기업궤도추적</b>';
+  ft.querySelector('span').textContent='신호는 규칙으로 뽑았다 — 새 문장·사라진 문장은 직전 같은 종류 보고서와 견줘 표현만 고친 문단·회계 상용구·정관 조문을 뺐고, '+
+    '방향은 범주와 낱말(증가·수주·소송·지연…)로, 크기는 직전 사업보고서의 연 매출·영업이익과 공시일 시가총액 대비로 매겼다. 매매 권유가 아니다.';
   plate.appendChild(ft);
+}
+
+// 크기 한 마디 — '연 영업이익의 0.7%' 처럼 회사 대비로
+function invSizeTxt(s){
+  if(!s) return '';
+  if(s.src==='fin') return s.key==='PBR'?'값':'발표 숫자';
+  if(s.size==='실적 문장') return '실적 문장';
+  if(!s.amt) return '금액 미상';
+  const w=s.amt>=1e12?(s.amt/1e12).toFixed(1)+'조':Math.round(s.amt/1e8).toLocaleString('ko-KR')+'억';
+  const p=s.p_op!=null&&s.p_op>0?'연 영업이익의 '+(s.p_op<1?s.p_op.toFixed(1):Math.round(s.p_op))+'%'
+        : s.p_rev!=null?'연 매출의 '+(s.p_rev<1?s.p_rev.toFixed(2):s.p_rev.toFixed(1))+'%'
+        : s.p_cap!=null?'시총의 '+s.p_cap.toFixed(2)+'%':'';
+  return (s.size&&s.size!=='금액 미상'?s.size+' · ':'')+w+(p?' = '+p:'');
+}
+
+// 결론 먼저 한 장 — 무엇이 바뀌었나 · 이미 가격에 들었나 · 크기로 본 위험 · 생각을 바꿀 조건
+function invOnePager(d, sigs, fin, lead, pos, neg){
+  const box=el('div','invMemo invOne');
+  const grid=el('div','invMemoG invOneG'); box.appendChild(grid);
+  const card=(k,sub)=>{ const c=el('div','invM'); const h=el('div','h'); h.appendChild(el('b',null,k)); if(sub) h.appendChild(el('small',null,sub)); c.appendChild(h); const ul=el('ul'); c.appendChild(ul); grid.appendChild(c); return ul; };
+  const li=(ul,txt,s,cls)=>{ const x=el('li',(s?invTone(s.dir):'')+(cls?' '+cls:'')); if(s) x.appendChild(el('span','n','#'+s.id)); x.appendChild(document.createTextNode(txt)); ul.appendChild(x); };
+  const fp=k=>fin[k]&&fin[k].pct!=null?fin[k].pct:null;
+  const cut=(t,n)=>t.length>n?t.slice(0,n)+'…':t;
+
+  // ① 무엇이 바뀌었나
+  const u1=card('무엇이 바뀌었나','크기 순');
+  const rv=fp('매출액'), op=fp('영업이익');
+  if(rv!=null||op!=null) li(u1,'숫자 — 매출 '+iPct(rv,0)+' · 영업이익 '+iPct(op,0)+' (직전 같은 종류 보고서 대비)'+(d.ttm&&d.ttm.reg?' · 최근 4분기 '+d.ttm.reg+' '+iPct(d.ttm.g,0):''));
+  const rank=s=>({'중요':3,'보통':2,'금액 미상':1.5,'작음':.5}[s.size]||1)*s.mag*(.4+Math.abs(s.dir));
+  const story=sigs.filter(s=>s.src!=='fin'&&!s.routine&&Math.abs(s.dir)>.1).sort((a,b)=>rank(b)-rank(a)).slice(0,3);
+  story.forEach(s=>li(u1,(s.src==='gone'?'빠진 문장 · ':'')+s.label+' ('+invSizeTxt(s)+(s.n_rel?' · 관련 문장 '+(s.n_rel+1)+'개':'')+') — '+cut(s.text,70),s));
+  if(!story.length) li(u1,'새로 들어온 문장 중 크기를 매길 만한 사건이 없다 — 숫자만 갱신된 보고서에 가깝다.');
+
+  // ② 이미 가격에 들었나
+  const u2=card('이미 가격에 들었나','주가 · 값');
+  if(lead.prevc!=null) li(u2,'공시 전: 직전 보고서 공시 뒤 이번 공시까지 주가 '+iPct(lead.prevc,0)+(Math.abs(lead.prevc)>=15?(lead.prevc>0?' — 좋은 소식은 상당 부분 먼저 반영됐다':' — 시장이 먼저 등을 돌렸다'):' — 크게 움직이지 않았다'));
+  const S=d.series, kF=S&&d.filed?invPriceAt(S,+d.filed):-1;
+  if(kF>=0&&kF<S.d.length-1) li(u2,'공시 뒤: 지금까지 '+iPct((S.p[S.p.length-1]/S.p[kF]-1)*100,0));
+  const pb=fp('PBR'), bp=fp('BPS'), ep=fp('EPS');
+  const px=pb!=null&&bp!=null?((1+pb/100)*(1+bp/100)-1)*100:null;
+  if(px!=null&&ep!=null) li(u2,'1년 새 주가 '+iPct(px,0)+' vs 주당이익 '+iPct(ep,0)+(ep-px>=25?' — 이익이 앞섰다':px-ep>=25?' — 주가가 앞섰다':' — 보조를 맞췄다'));
+  const pctTxt=q=>(q>=50?'상위 '+Math.max(1,Math.round(100-q)):'하위 '+Math.round(q))+'%';
+  if(d.ttm&&d.ttm.per_pct!=null&&d.ttm.per>0) li(u2,'값: PER(4분기) '+d.ttm.per.toFixed(0)+'배 — 이 회사가 받아 온 PER 중 '+pctTxt(d.ttm.per_pct));
+  else if(d.val&&d.val.pct!=null) li(u2,'값: PER '+(d.val.per?d.val.per.toFixed(0)+'배':'')+' — 이 회사 15년 PER 중 '+pctTxt(d.val.pct)+' (풍경 탭 계산, 지금 기준)');
+  else if(fin['PBR']&&fin['PBR'].value) li(u2,'값: PBR '+fin['PBR'].value.toFixed(1)+'배 (PER 자기 역사 자료가 아직 없다)');
+  // 시장 기대 — 올해 컨센서스 대비 진도와 선행 PER
+  const E=d.expect;
+  if(E&&!E.none){
+    const jo=v=>v==null?'—':v>=1e12?(v/1e12).toFixed(2)+'조':Math.round(v/1e8).toLocaleString('ko-KR')+'억';
+    li(u2,'시장 기대: '+E.year+'년 컨센서스 매출 '+jo(E.rev_e)+(E.g_rev!=null?'('+iPct(E.g_rev,0)+')':'')+' · 영업이익 '+jo(E.op_e)+(E.g_op!=null?'('+iPct(E.g_op,0)+')':''));
+    if(E.share_op!=null){
+      const par=E.par_hist!=null?E.par_hist:E.par;
+      li(u2,'진도: '+E.q+'분기까지 영업이익 '+jo(E.ytd_op)+' = 컨센서스의 '+Math.round(E.share_op)+'% — '+(E.par_hist!=null?'지난 '+E.par_n+'년 같은 시점 평균 '+Math.round(E.par_hist)+'%':'고르게 벌면 '+Math.round(E.par)+'%')+
+        (E.need_rest!=null&&E.ytd_avg>0?' · 남은 분기가 지금까지 분기 평균보다 '+iPct((E.need_rest/E.ytd_avg-1)*100,0)+' 벌어야 컨센서스':''),
+        null, E.share_op<par-8?'dn':E.share_op>par+8?'up':'');
+    }
+    if(E.fwd_per) li(u2,'선행 PER: '+E.fwd_per.toFixed(0)+'배 (올해 예상 EPS '+Math.round(E.eps_e).toLocaleString('ko-KR')+'원, '+invDate(E.price_date)+' 종가)');
+  } else if(E&&E.none) li(u2,'시장 기대: '+E.why,null,'small');
+  if(!u2.children.length) li(u2,'주가 자료가 모자란다.');
+
+  // ③ 크기로 본 위험
+  const u3=card('크기로 본 위험','작은 것은 묶어서');
+  const nonSmall=neg.filter(s=>(s.src==='fin'&&s.key!=='PBR')||(s.src!=='fin'&&s.size!=='작음')), small=neg.filter(s=>s.src!=='fin'&&s.size==='작음');
+  nonSmall.slice(0,3).forEach(s=>li(u3,(s.src==='gone'?'빠진 문장 · ':'')+s.label+' ('+invSizeTxt(s)+(s.n_rel?' · 관련 문장 '+(s.n_rel+1)+'개':'')+')'+(s.src!=='fin'?' — '+cut(s.text,60):' — '+s.text),s));
+  if(small.length){ const mx=small.slice().sort((a,b)=>(b.amt||0)-(a.amt||0))[0];
+    li(u3,'작은 위험 '+small.reduce((a,s)=>a+1+(s.n_rel||0),0)+'건 — 가장 큰 것도 '+invSizeTxt(mx).replace(/^작음 · /,'')+' ('+mx.label+')','','small'); }
+  if(d.ttm&&d.ttm.per_pct!=null&&d.ttm.per_pct>=80) li(u3,'값이 자기 역사 상위 '+Math.max(1,Math.round(100-d.ttm.per_pct))+'% — 한 분기 실적 미스에도 크게 흔들릴 수 있다');
+  const debt=fin['부채비율']&&fin['부채비율'].value; if(debt!=null&&debt>200) li(u3,'부채비율 '+Math.round(debt)+'% — 금리·경기에 약하다');
+  if(!u3.children.length) li(u3,'이 보고서에서 새로 드러난 위험은 없다.');
+
+  // ④ 생각을 바꿀 조건
+  const u4=card('생각을 바꿀 조건','다음 보고서에서');
+  const seenM=new Set();
+  const GOODK=['수주','증설','신사업','R&D','고객','M&A'];
+  pos.forEach(s=>{ const k=s.label.split(' · ')[0]; if(GOODK.includes(k)&&INV_MON[k]&&!seenM.has(k)&&seenM.size<2){ seenM.add(k); li(u4,'더 믿게 될 때 — '+INV_MON[k],s); } });
+  if(d.ttm&&d.ttm.a!=null) li(u4,d.ttm.a>0?'더 믿게 될 때 — 최근 4분기 매출 가속이 다음 분기에도 이어진다(지금 '+(d.ttm.a>=0?'+':'')+d.ttm.a.toFixed(1)+'%p/분기)':'더 믿게 될 때 — 매출 감속이 멈추고 가속으로 돈다');
+  // 접게 될 조건은 뜻이 분명한 것만 — 소송·제재, 자금조달·희석, 특수관계 거래(방향 낱말만으로 음수가 된 문장은 뺀다)
+  const DIL=/유상증자|전환사채|신주인수권|교환사채|감자|물적\s*분할/;
+  nonSmall.filter(s=>s.src==='new'&&(s.gov||/^(리스크|자금조달)/.test(s.label)||DIL.test(s.text))).slice(0,2).forEach(s=>li(u4,'접게 될 때 — '+(s.gov?'특수관계 거래가 늘거나 거래 가격·조건이 회사에 불리하게 드러난다 ('+s.label.split(' · ').pop()+')'
+    : DIL.test(s.text)?s.label+' — 주식 수가 늘거나(희석) 조건이 기존 주주에게 불리해진다':s.label+' — 충당부채·판결·제재 범위가 커진다'),s));
+  if(sigs.some(s=>s.key==='레버리지'||s.key==='영업이익률')) li(u4,'접게 될 때 — 매출이 늘어도 영업이익률이 뒷걸음친다');
+  if(!u4.children.length) li(u4,'다음 보고서의 매출·영업이익률 방향.');
+  return box;
+}
+
+// 관점 체크리스트 — 같은 근거를 다섯 관점으로 모아 본다(사람 이름·가상 대사 없음, 결론 없음)
+const INV_LENS=[
+  ['momentum','변화율','이익·매출이 빨라지는가'],
+  ['story','이야기','숫자에 아직 안 들어간 새 문장이 있는가'],
+  ['quality','사업의 질','번 돈을 잘 굴리는가(ROE·이익률·부채)'],
+  ['valuation','값','지금 값이 이 회사가 늘 받던 값보다 비싼가'],
+  ['risk','뒤집어 보기','무엇이 이 이야기를 망가뜨리나(크기 반영)'],
+  ['tape','주가 흐름','시장은 이미 어느 쪽으로 움직였나'],
+];
+function invLens(d){
+  const box=el('div','invLensBox');
+  const hd=el('div','invCouncilH'); hd.appendChild(el('div','spIdeasH','관점 체크리스트')).appendChild(el('em',null,'같은 근거를 관점별로 모았다 — 결론을 내지 않는다'));
+  box.appendChild(hd);
+  const A=invArgs(d,2);
+  const t=el('table','invLensT');
+  t.innerHTML='<tr><th>관점</th><th>묻는 것</th><th>읽힘</th><th>가장 무거운 근거</th></tr>';
+  INV_LENS.forEach(([k,nm,q])=>{
+    const as=A.filter(a=>a.type===k).sort((a,b)=>b.w-a.w);
+    const sum=as.reduce((x,a)=>x+a.sign*a.w,0);
+    const sigOf=a=>a.id!=null?(d.signals||[]).find(s=>s.id===a.id):null;
+    // 위험이 모두 회사 크기에 비해 작은 사건이면 '비우호'가 아니라 '작은 것뿐'
+    const allSmall=k==='risk'&&as.length&&as.every(a=>{ const s=sigOf(a); return s&&s.size==='작음'; });
+    const rd=!as.length?['자료 없음','na']:allSmall?['작은 것뿐','nu']:sum>.15?['우호','up']:sum<-.15?['비우호','dn']:['중립','nu'];
+    const tr=el('tr');
+    tr.appendChild(el('td','k',nm)); tr.appendChild(el('td','q',q));
+    const r=el('td'); r.appendChild(el('span','invRd '+rd[1],rd[0])); tr.appendChild(r);
+    const s0=as.length?sigOf(as[0]):null;
+    tr.appendChild(el('td','e',as.length?as[0].text+(s0&&s0.size&&s0.src!=='fin'?' ('+invSizeTxt(s0)+')':'')+(as.length>1?' 외 '+(as.length-1)+'개':''):'—'));
+    t.appendChild(tr);
+  });
+  box.appendChild(t);
+  box.appendChild(el('p','invLeadNote','관점별로 근거를 모았을 뿐 투표·결론을 내지 않는다. 옛 화면의 가상 토론(유명 투자자 이름으로 쓴 규칙 시뮬레이션)은 그 합계가 공시 뒤 3개월 수익률과 거의 무관했고(순위상관 +0.03), '+
+    '실존 인물의 말처럼 읽혀 없앴다. 이 근거로 만든 "선행 점수"(새 문장 + 공시 전 주가 흐름 − 재무 모멘텀)도 보정에 쓴 14종목 밖 60곳·보고서 2,562건에서 '+
+    '공시 뒤 수익률을 가르지 못했다(점수 최상위 5분위 − 최하위 1분위, 시장 대비 3개월 −1.9%p · 12개월 +0.1%p, 순위상관 −0.03) — 그래서 점수·분위·성적표를 보여 주지 않는다.'));
+  return box;
 }
 
 // 보고서 캔들 — 주가를 보고서 단위로 쪼갠다. 캔들 하나 = 그 보고서 공시일부터 다음 보고서 공시 전날까지.
@@ -6413,7 +6711,7 @@ function invTerrain(sigs, plate){
     h.querySelector('i').style.background=invCol(s.dir); h.querySelector('small').textContent=INV_SRC[s.src]+' · '+s.sec;
     tip.appendChild(h);
     tip.appendChild(el('p','invTipT',s.text));
-    tip.appendChild(el('p',null,'방향 '+(s.dir>0?'+':'')+s.dir.toFixed(2)+' · 지평 '+(s.hz<1/3?'지금':s.hz<2/3?'1–2년':'구조')+' · 먼저 볼 사람: '+s.gurus.join(', ')));
+    tip.appendChild(el('p',null,'방향 '+(s.dir>0?'+':'')+s.dir.toFixed(2)+' · 지평 '+(s.hz<1/3?'지금':s.hz<2/3?'1–2년':'구조')+(s.size?' · 크기 '+invSizeTxt(s):'')));
     tip.hidden=false;
     const sv=svg.getBoundingClientRect(), bx=box.getBoundingClientRect(), sc=sv.width/W;
     let lx=(sv.left-bx.left)+o.n.x*sc+16; if(lx+tip.offsetWidth>bx.width-4) lx=(sv.left-bx.left)+o.n.x*sc-tip.offsetWidth-16;
@@ -6512,9 +6810,9 @@ function invLedger(box, d){
     const m=el('div','invDir');
     const bar=el('div','invDirBar'); const f=el('i'); f.style.width=Math.abs(s.dir)*50+'%'; if(s.dir>=0) f.style.left='50%'; else f.style.right='50%';
     f.className=invTone(s.dir); bar.appendChild(f); m.appendChild(bar);
-    m.appendChild(el('small',null,(s.dir>0?'+':'')+s.dir.toFixed(2)+' · '+(s.hz<1/3?'지금':s.hz<2/3?'1–2년':'구조')+' · '+s.gurus.join('·')));
+    m.appendChild(el('small',null,(s.dir>0?'+':'')+s.dir.toFixed(2)+' · '+(s.hz<1/3?'지금':s.hz<2/3?'1–2년':'구조')+(s.size?' · '+invSizeTxt(s):'')));
     row.appendChild(m);
-    row.appendChild(el('div','orbWhat invTxt',s.text));
+    row.appendChild(el('div','orbWhat invTxt',s.text+((s.related||[]).length?' ＋ 같은 사건 '+s.related.length+'개 문장':'')));
     if(s.src!=='fin' && d.base){
       row.onclick=()=>{ S.section=s.section; S.diffA=d.base.rcept; S.diffB=d.report.rcept; S.diffMode='text'; renderSide(); jump('diff'); };
     } else row.style.cursor='default';

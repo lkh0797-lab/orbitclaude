@@ -2203,6 +2203,40 @@ def synergy_view(force=False):
     return out
 
 
+_EXP = {"mt": None, "d": None}
+
+
+def export_view():
+    """수출 추적 — 수출추적.py 전체 실행이 남긴 결과를 그대로 낸다(관세청 호출은 서버가 하지 않는다)."""
+    p = os.path.join(CACHE_DIR, "수출추적", "result.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return {"error": "아직 결과가 없다 — python 수출추적.py 전체 (관세청 API, 1시간 안팎)"}
+    if _EXP["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+        except Exception:
+            return {"error": "결과 파일을 읽지 못했다(쓰는 중일 수 있다) — 잠시 뒤 다시"}
+        smap = (sector_map() or {}).get("stocks", {})
+        users = {}
+        for x in d.get("items", []):
+            x["industry"] = (smap.get(x["code"].upper(), {}) or {}).get("industry") or ""
+            for ch in x.get("channels") or []:
+                users.setdefault((ch["sgg"], ch["hs"]), []).append(x["name"])
+            cov = (x.get("validation") or {}).get("coverage")
+            if cov is not None and (cov < 5 or cov > 150):       # 수출추적._grade 와 같은 문턱 — 중간 결과에도 적용
+                x["grade"] = "C"
+        for x in d.get("items", []):     # 같은 (시군구 × 품목)을 쓰는 다른 회사 — 지주·자회사, 같은 동네 경쟁사
+            sh = set()
+            for ch in (x.get("channels") or [])[:3]:
+                sh |= set(users.get((ch["sgg"], ch["hs"]), [])) - {x["name"]}
+            x["shared_with"] = sorted(sh)[:4]
+        _EXP.update(mt=mt, d=d)
+    return _EXP["d"]
+
+
 _SYN_BT = {"mt": None, "d": None}
 
 
@@ -2819,6 +2853,196 @@ def _inv_ttm(code, stamp):
     return {"label": lab, "g": gi, "a": acc, "reg": reg, "price": pts[idx].get("주가"), "per": per, "per_pct": per_pct}
 
 
+# ---- 중요도 · 같은 사건 묶기 · 지배구조 — 월가가 먼저 묻는 '그래서 얼마나 큰가' (2026-10-01)
+# 과징금 67억이 시총 24조 회사의 '가장 무거운 위험'으로 올라가고, 같은 담합 건이 신호 세 개로 세어지던 것을 고친다.
+INV_WON = re.compile(r"(?<![제\d.,])(\d[\d,]*(?:\.\d+)?)\s*조\s*(?:(\d[\d,]*(?:\.\d+)?)\s*억\s*)?원|(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*억\s*원|"
+                     r"(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*백만\s*원|(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*천만\s*원|(?<![\d.,])(\d[\d,]{8,})\s*원")
+INV_RELATED = re.compile(r"특수관계(?:인|자)|최대주주\s*(?:등)?\s*(?:과|와|에게|로부터|의\s*계열)|계열회사\s*(?:와|로부터|에게|간)|"
+                         r"(?:자산|영업)\s*(?:양수|양도)|내부\s*거래|부당\s*지원|일감\s*몰아")
+INV_ROUTINE = re.compile(r"(?:분기|중간|결산|현금|정기)\s*배당[^.]{0,40}(?:결의|지급)|배당금[^.]{0,20}지급\s*예정")
+# 기준(감사 중요성 관행을 따름): 중요 = 연 영업이익 10%↑ 또는 매출 2%↑ 또는 시총 1%↑, 작음 = 모두 영업이익 2%·매출 0.5%·시총 0.2% 미만
+INV_MAT = {"big": (10.0, 2.0, 1.0), "small": (2.0, 0.5, 0.2)}
+
+
+# 실적 보고 문장('매출 552억원 달성') — 금액이 사건 크기가 아니라 실적 자체다. 크기를 매기지 않는다
+INV_PERF = re.compile(r"(매출|영업이익|순이익|영업수익|이익)[^.]{0,50}(달성|기록|시현|실현)|(매출액|영업이익)(은|이)\s*[\d,.]+\s*(조|억|백만)")
+INV_EVENT = re.compile(r"수주|계약|소송|과징금|투자|출자|인수|취득|차입|증자|사채|배당|손상|충당")
+INV_OURS = re.compile(r"(그\s*중|중)\s*(당사|회사)|당사가?\s*(부담|출자|투자)")
+
+
+def _inv_won(s):
+    """문장 속 원화 금액 중 가장 큰 것(원). 1억 미만(주당 배당금 등)은 사건 크기로 보지 않는다.
+    '총 750억원 규모, 그 중 당사 출자 50억원'처럼 회사 몫이 따로 적혀 있으면 그 뒤의 금액을 쓴다."""
+    ours = INV_OURS.search(s or "")
+    if ours:
+        tail = _inv_won((s or "")[ours.end():]) if INV_WON.search((s or "")[ours.end():]) else None
+        if tail:
+            return tail
+    best = None
+    for m in INV_WON.finditer(s or ""):
+        f = lambda x: float(x.replace(",", "")) if x else 0.0
+        if m.group(1):
+            v = f(m.group(1)) * 1e12 + f(m.group(2)) * 1e8
+        elif m.group(3):
+            v = f(m.group(3)) * 1e8
+        elif m.group(4):
+            v = f(m.group(4)) * 1e6
+        elif m.group(5):
+            v = f(m.group(5)) * 1e7
+        else:
+            v = f(m.group(6))
+        if v >= 1e8 and (best is None or v > best):
+            best = v
+    return best
+
+
+def _inv_scale(c, rep, filed):
+    """이 보고서가 나온 때의 회사 크기 — 직전 사업보고서의 연 매출·영업이익, 공시일 시가총액."""
+    out = {}
+    corp = corp_code_of(c["code"])
+    y = int(rep["stamp"][:4]) - (0 if rep["label"] == "사업보고서" else 1)
+    try:
+        F = [d for d in INF.fundamentals(FIN, corp, [y - 2, y - 1, y]) if d.get("rev")] if (INF and corp) else []
+    except Exception:
+        F = []
+    F = [d for d in F if d["year"] <= y]
+    if F:
+        out.update(year=F[-1]["year"], rev=F[-1].get("rev"), op=F[-1].get("op"))
+    try:
+        univ, snap = _universe_info()
+        u = univ.get(c["code"])
+        pr = FIN.fetch_prices(c["code"]) if FIN else {}
+        if u and snap and pr and filed:
+            ds = sorted(pr)
+            adj = SYN._adjusted(pr, ds) if SYN is not None else [pr[d] for d in ds]
+            import bisect
+            i0, i1 = bisect.bisect_right(ds, snap) - 1, bisect.bisect_right(ds, filed) - 1
+            if i0 >= 0 and i1 >= 0 and adj[i0]:
+                out["cap"] = u["cap"] * adj[i1] / adj[i0]
+    except Exception:
+        pass
+    return out
+
+
+def _inv_refine(sigs, scale):
+    """신호마다 크기(회사 대비)를 달고, 같은 사건은 한 줄로 묶고, 특수관계 거래는 지배구조 질문으로 돌린다."""
+    rev, op, cap = scale.get("rev"), scale.get("op"), scale.get("cap")
+    out = []
+    for s in sigs:
+        s = dict(s)
+        if s["src"] != "fin":
+            txt = s.get("text") or ""
+            perf = bool(INV_PERF.search(txt)) and not INV_EVENT.search(txt)
+            amt = None if perf else _inv_won(txt)
+            s["amt"] = amt
+            if perf:
+                s["size"] = "실적 문장"
+            elif amt:
+                p_op = amt / abs(op) * 100 if op else None
+                p_rev = amt / rev * 100 if rev else None
+                p_cap = amt / cap * 100 if cap else None
+                s.update(p_op=p_op, p_rev=p_rev, p_cap=p_cap)
+                vals = [(p_op, 0), (p_rev, 1), (p_cap, 2)]
+                big = any(v is not None and v >= INV_MAT["big"][i] for v, i in vals)
+                small = all(v is None or v < INV_MAT["small"][i] for v, i in vals) and any(v is not None for v, _ in vals)
+                s["size"] = "중요" if big else "작음" if small else "보통"
+            else:
+                s["size"] = "금액 미상"
+            if INV_RELATED.search(s.get("text", "")):
+                s.update(gov=True, dir=round(min(s["dir"], 0) - 0.2, 2), label="특수관계 거래 · " + s["label"].split(" · ")[-1],
+                         tags=["특수관계 거래"])
+            if INV_ROUTINE.search(s.get("text", "")):
+                s["routine"] = True
+            f = {"중요": 1.25, "보통": 0.85, "작음": 0.35, "금액 미상": 0.8, "실적 문장": 0.8}[s["size"]] * (0.3 if s.get("routine") else 1)
+            s["mag"] = round(max(0.08, min(1.0, s["mag"] * f)), 2)
+        out.append(s)
+    # 같은 사건 — 이름표의 고유 토막(170kV, 200MWh, 회사 이름 등)이 같은 새·사라진 문장은 한 줄로
+    groups, merged = {}, []
+    for s in out:
+        tok = s["label"].split(" · ")[-1] if s["src"] in ("new", "gone") else None
+        key = (tok, s["dir"] < -0.15) if tok and len(tok) >= 2 and not s.get("routine") else None
+        if key and key in groups:
+            g = groups[key]
+            g.setdefault("related", []).append(s["text"])
+            if (s.get("amt") or 0) > (g.get("amt") or 0):
+                g.update({k: s.get(k) for k in ("amt", "p_op", "p_rev", "p_cap", "size")})
+            continue
+        if key:
+            groups[key] = s
+        merged.append(s)
+    for s in merged:
+        s["n_rel"] = len(s.get("related", []))
+    return merged
+
+
+def _inv_expect(c, rep):
+    """시장 기대 대비 — 이 보고서 해의 연간 컨센서스(네이버 재무 요약)와 올해 누적 실적의 진도, 선행 PER.
+    컨센서스 기록은 쌓기 시작한 뒤의 것만 있어, 그 해 컨센서스가 없으면 None(옛 보고서)."""
+    if FIN is None or DRK is None:
+        return None
+    try:
+        ann = FIN.fetch_consensus(c["code"], "annual") or {}
+    except Exception:
+        return None
+    y, mth = rep["stamp"].split("-")
+    key = y + "12"
+    col = next((x for x in ann.get("cols", []) if x.get("key") == key), None)
+    rows = ann.get("rows") or {}
+    if not col or not col.get("consensus") or not rows.get("영업이익", {}).get(key):
+        return {"none": True, "why": "이 보고서 해(%s년)의 컨센서스가 없다 — 컨센서스 기록은 쌓기 시작한 뒤의 해만 있다" % y}
+    rq = Q_OF_MONTH.get(mth)
+    out = {"year": int(y), "q": rq, "rev_e": rows.get("매출액", {}).get(key), "op_e": rows.get("영업이익", {}).get(key),
+           "ni_e": rows.get("당기순이익", {}).get(key), "eps_e": rows.get("EPS", {}).get(key)}
+    try:
+        corp = corp_code_of(c["code"])
+        pts = [p for p in DRK.series(corp, c["code"], [int(y)]) if p["year"] == int(y) and p["q"] <= (rq or 0)]
+        if rq and len(pts) == rq and all(p.get("영업이익") is not None and p.get("매출액") for p in pts):
+            out["ytd_rev"] = sum(p["매출액"] for p in pts)
+            out["ytd_op"] = sum(p["영업이익"] for p in pts)
+            out["share_rev"] = out["ytd_rev"] / out["rev_e"] * 100 if out.get("rev_e") else None
+            out["share_op"] = out["ytd_op"] / out["op_e"] * 100 if out.get("op_e") else None
+            out["par"] = rq / 4 * 100          # 계절성이 없다면 채웠어야 할 몫
+            if rq < 4 and out.get("op_e"):
+                out["need_rest"] = (out["op_e"] - out["ytd_op"]) / (4 - rq)      # 남은 분기 평균으로 벌어야 할 영업이익
+                out["ytd_avg"] = out["ytd_op"] / rq
+            # 이 회사가 지난 3년 같은 시점까지 연간 영업이익의 몇 %를 냈나(계절성)
+            shares = []
+            for yy in range(int(y) - 3, int(y)):
+                qs = [p for p in DRK.series(corp, c["code"], [yy]) if p["year"] == yy]
+                if len(qs) == 4 and all(p.get("영업이익") is not None for p in qs):
+                    tot = sum(p["영업이익"] for p in qs)
+                    part = sum(p["영업이익"] for p in qs if p["q"] <= rq)
+                    if tot > 0 and part >= 0:
+                        shares.append(part / tot * 100)
+            if len(shares) >= 2:
+                out["par_hist"] = sum(shares) / len(shares)
+                out["par_n"] = len(shares)
+    except Exception:
+        pass
+    try:
+        pr = FIN.fetch_prices(c["code"]) or {}
+        if pr and out.get("eps_e") and out["eps_e"] > 0:
+            last = max(pr)
+            out.update(fwd_per=pr[last] / out["eps_e"], price_date=last)
+    except Exception:
+        pass
+    # 지난해 실적 대비 올해 기대 성장
+    prev = str(int(y) - 1) + "12"
+    for k, nm in (("매출액", "g_rev"), ("영업이익", "g_op")):
+        a, e = rows.get(k, {}).get(prev), rows.get(k, {}).get(key)
+        if a and e and a > 0:
+            out[nm] = (e / a - 1) * 100
+    try:
+        hist = json.load(open(os.path.join(FIN.CONSENSUS_DIR, "%s_annual_기록.json" % c["code"]), encoding="utf-8"))
+        h = [x for x in hist.get("_이력", []) if x.get("분기") == key and x.get("영업이익")]
+        if len(h) >= 2:
+            out["rev_since"] = h[0]["기록일"]
+            out["op_rev_pct"] = (h[-1]["영업이익"] / h[0]["영업이익"] - 1) * 100
+    except Exception:
+        pass
+    return out
+
+
 def invest_view(c, rep, lite=False):
     """lite=True 면 주가·궤도·국면을 빼고 신호·재무만 — 여러 보고서를 한꺼번에 돌리는 성적표용."""
     b = build_brief(c, rep)
@@ -2886,12 +3110,6 @@ def invest_view(c, rep, lite=False):
                 json.dump(cached, fh, ensure_ascii=False)
         except OSError:
             pass
-    sigs = sorted(cached["signals"], key=lambda s: -(s["mag"] * (0.4 + abs(s["dir"]))))[:24]
-    for i, s in enumerate(sigs, 1):
-        s["id"] = i
-    out.update({"signals": sigs, "came": cached["came"], "gone": cached["gone"], "fin": cached["fin"],
-                "price": cached.get("price"), "price_date": cached.get("price_date"),
-                "ttm": _inv_ttm(c["code"], rep["stamp"])})
     orig = rep
     if rep["tag"]:
         same = [r for r in c["reports"] if r["stamp"] == rep["stamp"] and r["label"] == rep["label"] and not r["tag"]]
@@ -2899,8 +3117,36 @@ def invest_view(c, rep, lite=False):
             orig = min(same, key=lambda r: r["rcept"])
     out["filed"] = orig["rcept"][:8]
     out["filed_doc"] = rep["rcept"][:8]
+    wt = lambda s: -(s["mag"] * (0.4 + abs(s["dir"])))
+    # 선행 점수는 보정할 때와 같은 신호로 잰다(lead_sigs). 화면에 보이는 신호는 크기를 달고 같은 사건을 묶은 것
+    lead = sorted(cached["signals"], key=wt)[:24]
+    for i, s in enumerate(lead, 1):
+        s["id"] = i
+    scale = _inv_scale(c, rep, out["filed"])
+    sigs = sorted(_inv_refine(cached["signals"], scale), key=wt)[:24]
+    for i, s in enumerate(sigs, 1):
+        s["id"] = i
+    out.update({"signals": sigs, "lead_sigs": lead, "scale": scale, "came": cached["came"], "gone": cached["gone"],
+                "fin": cached["fin"], "price": cached.get("price"), "price_date": cached.get("price_date"),
+                "ttm": _inv_ttm(c["code"], rep["stamp"])})
     if lite:
         return out
+    try:
+        out["expect"] = _inv_expect(c, rep)
+    except Exception:
+        out["expect"] = None
+    # 값 — 가속도 캐시가 없어 PER 자기 역사가 없으면 풍경 탭의 계산(분할 보정)을 빌린다. 가장 최근 보고서에만 맞는 '지금' 값
+    latest = [r for r in c["reports"] if not r["tag"]]
+    if not (out.get("ttm") or {}).get("per_pct") and latest and latest[-1]["stamp"] == rep["stamp"]:
+        try:
+            lp = _land_path(c["code"])
+            if os.path.exists(lp):
+                with open(lp, "r", encoding="utf-8") as fh:
+                    dc = (json.load(fh).get("decide") or {})
+                if dc.get("pct") is not None:
+                    out["val"] = {"per": dc.get("per"), "pct": dc.get("pct"), "src": "풍경"}
+        except Exception:
+            pass
     # 이 보고서가 평소보다 얼마나 많이 새로 썼나(궤도 탭과 같은 값)
     try:
         o = orbit(c["code"])
@@ -5955,6 +6201,8 @@ class Handler(BaseHTTPRequestHandler):
                 if INF is None:
                     return self._send(500, {"error": "변곡점 모듈 없음"})
                 return self._send(200, inflect(q.get("code", ""), q.get("force") == "1"))
+            if path == "/api/export":
+                return self._send(200, export_view())
             if path == "/api/synergy":
                 if SYN is None or FIN is None or BACK is None:
                     return self._send(500, {"error": "시너지 모듈 없음"})
