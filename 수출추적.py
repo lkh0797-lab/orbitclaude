@@ -418,8 +418,21 @@ def unit_trend(nat):
 
 
 # ---------------------------------------------------------------- 전체 실행
-PROBE = ("202501", "202512")          # 1단계 — 이 해에 후보 주소에서 수출이 찍히는 (시도 × HS)만 남긴다
-HIST = [("202301", "202312"), ("202401", "202412"), ("202601", None)]   # 2단계 — 남은 조합만 앞뒤 기간
+def _spans():
+    """1단계(거르기) 한 해와 2단계(앞뒤) 기간 — 해가 바뀌면 같이 넘어간다.
+    지난달이 2026년 8월이면 1단계 2025년, 2단계 2023 · 2024 · 2026.1~8월."""
+    end = _months_back(1)
+    y = int(end[:4])
+    probe = ("%d01" % (y - 1), "%d12" % (y - 1))
+    hist = [("%d01" % (y - 3), "%d12" % (y - 3)), ("%d01" % (y - 2), "%d12" % (y - 2)), ("%d01" % y, end)]
+    return probe, hist
+
+
+def _long_spans():
+    """차트 팝업용 앞 기간 — 최근 5년 증가율(전년 대비)을 그리려면 6년 전 7월부터 필요. 2026년이면 2020 · 2021 · 2022.
+    검증 · 신호 · 통로 순위에는 안 쓴다(그쪽은 _spans 기간 그대로)."""
+    y = int(_months_back(1)[:4])
+    return [("%d01" % yy, "%d12" % yy) for yy in (y - 6, y - 5, y - 4)]
 
 
 class 한도초과(RuntimeError):
@@ -450,29 +463,31 @@ def _channels_fast(prof, min_kusd=300):
             if h not in seen:
                 seen.add(h)
                 hs_all.append((h, p["name"]))
+    probe, hist = _spans()
     keep = []
     for sd, sggs in cand.items():
         for h, nm in hs_all:
-            rows = _rows(sd, h, *PROBE)
+            rows = _rows(sd, h, *probe)
             for sg in sggs:
                 tot = sum(x.get("expUsdAmt") or 0 for x in rows if x.get("sggNm") == sg)
                 if tot >= min_kusd:
                     keep.append((sd, sg, h, nm, rows))
-    end = _months_back(1)
+    start = hist[0][0]
     out = []
     for sd, sg, h, nm, rows in keep:
         allrows = list(rows)
-        for a, b in HIST:
-            allrows += _rows(sd, h, a, b or end)
+        for a, b in hist + _long_spans():
+            allrows += _rows(sd, h, a, b)
         mon = {}
         for x in allrows:
             if x.get("sggNm") == sg:
                 ym = (x.get("priodTitle") or "").replace(".", "")
                 if ym.isdigit():
                     mon[ym] = mon.get(ym, 0) + (x.get("expUsdAmt") or 0)
+        cur = {k: v for k, v in mon.items() if k >= start}
         out.append({"sido": sd, "sgg": sg, "hs": h, "item": nm,
                     "hsName": next((x.get("korePrlstNm") for x in rows if x.get("hsSgn") == h and x.get("korePrlstNm")), ""),
-                    "months": dict(sorted(mon.items())), "total": sum(mon.values())})
+                    "months": dict(sorted(cur.items())), "months_long": dict(sorted(mon.items())), "total": sum(cur.values())})
     out.sort(key=lambda c: -c["total"])
     return out
 
@@ -508,10 +523,12 @@ def build_one(S, c, prof=None):
     ch = _channels_fast(prof)
     if not ch:
         return {"code": c["code"], "name": c["name"], "profile": prof, "channels": [], "status": "통로 없음"}
-    mon = {}
+    mon, mon_long = {}, {}
     for x in ch:
         for k, v in x["months"].items():
             mon[k] = mon.get(k, 0) + v
+        for k, v in x.get("months_long", x["months"]).items():
+            mon_long[k] = mon_long.get(k, 0) + v
     v = validate(S, c, mon)
     sg = signals(mon)
     # 전국 품목 — 이 회사 통로 가운데 금액이 큰 HS 둘의 주 수출국과 단가
@@ -535,14 +552,14 @@ def build_one(S, c, prof=None):
     return {"code": c["code"], "name": c["name"], "status": "ok",
             "profile": {k: prof.get(k) for k in ("report", "hq", "plants", "export_share", "countries")}
                        | {"products": [p["name"] for p in prof.get("products", []) if p["hits"] >= 2][:4]},
-            "channels": chs, "series": dict(sorted(mon.items())), "validation": v, "grade": _grade(v),
+            "channels": chs, "series": dict(sorted(mon.items())), "series_long": dict(sorted(mon_long.items())), "validation": v, "grade": _grade(v),
             "signals": sg, "partial": _partial(mon, v.get("last_rev_q")), "national": nat, "implied": implied}
 
 
-def build_all(S, codes=None, progress=print):
+def build_all(S, codes=None, progress=print, out_name="result.json", on_step=None):
     """전 종목(또는 codes) — 결과는 .cache/수출추적/result.json. 관세청 응답은 관세청.py 캐시를 함께 쓴다."""
     os.makedirs(CACHE, exist_ok=True)
-    out_path = os.path.join(CACHE, "result.json")
+    out_path = os.path.join(CACHE, out_name)
     prev = {}
     if os.path.exists(out_path):
         try:
@@ -554,6 +571,8 @@ def build_all(S, codes=None, progress=print):
     items = []
     stopped = None
     for i, c in enumerate(comps, 1):
+        if on_step:
+            on_step(i, len(comps), sum(1 for x in items if x.get("channels")))
         try:
             p = profile(S, c)
             if p:
@@ -576,25 +595,114 @@ def build_all(S, codes=None, progress=print):
             json.dump({"at": dt.datetime.now().isoformat(timespec="minutes"), "v": VER, "items": items, "partial": True},
                       open(out_path, "w", encoding="utf-8"), ensure_ascii=False)
     done = {"at": dt.datetime.now().isoformat(timespec="minutes"), "v": VER, "items": items}
+    done["month"] = data_month(done)
     if stopped:
         done.update(partial=True, stopped=stopped)
     json.dump(done, open(out_path, "w", encoding="utf-8"), ensure_ascii=False)
     return items
 
 
+# ---------------------------------------------------------------- 매달 자동 갱신
+# 관세청은 매달 15일께 지난달 치를 낸다. 서버(서버.py _exp_tick)가 몇 시간마다 '지난달 치가 나왔나'를
+# 큰 통로 몇 개로 떠보고, 나왔으면 이 파일을 '갱신'으로 따로 띄운다. 새 결과는 result.new.json 에 쓰고
+# 끝까지 가야 result.json 과 바꾼다 — 도는 동안 화면은 지난 결과 그대로.
+PROG_PATH = os.path.join(CACHE, "progress.json")
+
+
+def data_month(d):
+    """결과가 담은 마지막 통관 달('YYYYMM')."""
+    if d.get("month"):
+        return d["month"]
+    ks = [(x.get("signals") or {}).get("last") for x in d.get("items", [])]
+    ks = [k for k in ks if k]
+    return max(ks) if ks else None
+
+
+def probe_targets(d, n=3):
+    """믿을 만한 회사의 가장 큰 통로(시도 × HS) 몇 개 — 어느 달이든 수출이 0일 일이 없는 곳."""
+    best = {}
+    for x in d.get("items", []):
+        if x.get("grade") not in ("A", "B"):
+            continue
+        for ch in (x.get("channels") or [])[:1]:
+            k = (ch["sido"], ch["hs"])
+            best[k] = max(best.get(k, 0), ch.get("t12") or 0)
+    out = [k for k, _ in sorted(best.items(), key=lambda kv: -kv[1])[:n]]
+    return out or [("44", "854232"), ("41", "854232")]       # 결과가 없으면 충남·경기 메모리 반도체
+
+
+def available(ym, probes):
+    """ym 달 시군구 통계가 나왔나 — 떠보는 통로 가운데 하나라도 그 달 금액이 찍히면 나온 것(응답 30분 캐시)."""
+    for sd, h in probes:
+        try:
+            rows = K._get("시군구품목별", {"strtYymm": ym, "endYymm": ym, "HsSgn": h, "sidoCd": sd}, 1800)
+        except K.관세청오류:
+            continue
+        if any((x.get("priodTitle") or "").replace(".", "") == ym and (x.get("expUsdAmt") or 0) > 0 for x in rows):
+            return True
+    return False
+
+
+def _prog(**kw):
+    kw["at"] = dt.datetime.now().isoformat(timespec="seconds")
+    tmp = PROG_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(kw, fh, ensure_ascii=False)
+    os.replace(tmp, PROG_PATH)
+
+
+def update(S, month=None):
+    """서버가 띄우는 매달 갱신 — 전 종목을 다시 돌려 result.new.json 에 쓰고, 끝까지 가면 result.json 과 바꾼다.
+    진행은 progress.json(10초마다) — 서버가 이걸 읽어 화면에 'n/792'를 띄우고, 15분 넘게 안 바뀌면 죽은 것으로 본다."""
+    import time
+    month = month or _months_back(1)
+    t0 = dt.datetime.now().isoformat(timespec="seconds")
+    K.FRESH_AFTER = time.time()
+    last = [0.0]
+
+    def step(i, n, k):
+        if time.time() - last[0] >= 10 or i == n:
+            last[0] = time.time()
+            _prog(state="running", month=month, i=i, n=n, ch=k, started=t0, pid=os.getpid())
+
+    step(0, 0, 0)
+    try:
+        build_all(S, out_name="result.new.json", on_step=step)
+        new = os.path.join(CACHE, "result.new.json")
+        with open(new, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+        if d.get("stopped"):
+            _prog(state="quota", want=month, msg=d["stopped"], started=t0)
+            return
+        cur = os.path.join(CACHE, "result.json")
+        if os.path.exists(cur):
+            os.replace(cur, os.path.join(CACHE, "result_prev.json"))
+        os.replace(new, cur)
+        _prog(state="done", month=data_month(d), want=month, n=len(d["items"]),
+              ch=sum(1 for x in d["items"] if x.get("channels")), started=t0)
+    except Exception as e:
+        _prog(state="error", want=month, msg="%s: %s" % (type(e).__name__, e), started=t0)
+        raise
+
+
 if __name__ == "__main__":
     import sys
     import importlib.util
-    sys.stdout.reconfigure(encoding="utf-8")
+    if sys.stdout:
+        sys.stdout.reconfigure(encoding="utf-8")
     spec = importlib.util.spec_from_file_location("srv", os.path.join(BASE, "서버.py"))
     S = importlib.util.module_from_spec(spec)
     argv, sys.argv = sys.argv, ["x"]
     spec.loader.exec_module(S)
     sys.argv = argv
     S.INDEX.update(json.load(open(S.INDEX_PATH, encoding="utf-8")))
+    if len(sys.argv) > 1 and sys.argv[1] == "갱신":
+        update(S, sys.argv[2] if len(sys.argv) > 2 else None)
+        print("갱신 끝 — %s" % json.load(open(PROG_PATH, encoding="utf-8")).get("state"))
+        sys.exit(0)
     codes = set(sys.argv[2].split(",")) if len(sys.argv) > 2 else None
     if len(sys.argv) > 1 and sys.argv[1] == "전체":
         items = build_all(S, codes)
         print("끝 — 통로 있는 회사 %d" % sum(1 for x in items if x.get("channels")))
     else:
-        print("python 수출추적.py 전체 [코드,코드]")
+        print("python 수출추적.py 전체 [코드,코드]   |   python 수출추적.py 갱신 [YYYYMM]")

@@ -300,6 +300,16 @@ def collect(stock_code, corp_map, opt, pos=1, of=1):
     print("   %s   접수 %s%s" % (kinds, span, extra), flush=True)
 
     company_dir = os.path.join(OUT_DIR, safe(corp_name) + "_" + stock_code)
+    if not os.path.isdir(company_dir):
+        # 회사 이름이 바뀌었으면(케이카 → KG모빌리티플랫폼) 옛 폴더를 새 이름으로 옮긴다 — 15년치를 다시 받지 않게
+        olds = [d for d in os.listdir(OUT_DIR)
+                if d.endswith("_" + stock_code) and os.path.isdir(os.path.join(OUT_DIR, d))]
+        if len(olds) == 1:
+            try:
+                os.rename(os.path.join(OUT_DIR, olds[0]), company_dir)
+                print("   폴더 이름 바꿈: %s → %s" % (olds[0], os.path.basename(company_dir)), flush=True)
+            except OSError as e:
+                print("   옛 폴더(%s) 이름을 못 바꿈 — 새 폴더로 받는다: %s" % (olds[0], e), flush=True)
     os.makedirs(company_dir, exist_ok=True)
 
     saved = 0

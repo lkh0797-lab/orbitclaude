@@ -35,6 +35,7 @@ EP = {
     "시군구품목별": "/sigunguperprlstperacrs/getSigunguPerPrlstPerAcrs",
 }
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache", "관세청")
+FRESH_AFTER = 0.0     # 이 시각 전에 받은 최근 달(캐시 7일 이하) 응답은 버린다 — 매달 갱신이 '새 달 나오기 전 응답'을 안 쓰게
 NUM_KEYS = {"expDlr", "impDlr", "expWgt", "impWgt", "balPayments", "expCnt", "impCnt",
             "expUsdAmt", "impUsdAmt", "cmtrBlncAmt"}
 
@@ -63,9 +64,13 @@ def _months(a, b):
 
 
 def _ttl(end):
-    """끝난 달이면 7일, 이번 달·지난달이면 12시간(15일경 다시 쓴다)."""
-    today = dt.date.today()
-    last_closed = (today.replace(day=1) - dt.timedelta(days=1)).strftime("%Y%m")
+    """지난달보다 석 달 넘게 지난 달은 180일(이미 확정 — 매달 자동 갱신 때 다시 안 부른다),
+    끝난 달이면 7일, 이번 달·지난달이면 12시간(15일경 다시 쓴다)."""
+    lc = dt.date.today().replace(day=1) - dt.timedelta(days=1)
+    last_closed = lc.strftime("%Y%m")
+    i = lc.year * 12 + lc.month - 1 - 3
+    if end <= "%04d%02d" % (i // 12, i % 12 + 1):
+        return 180 * 86400
     return 7 * 86400 if end < last_closed else 12 * 3600
 
 
@@ -102,7 +107,8 @@ def _get(name, params, ttl):
     os.makedirs(CACHE, exist_ok=True)
     tag = hashlib.md5(json.dumps([name, sorted(params.items())], ensure_ascii=False).encode("utf-8")).hexdigest()[:16]
     path = os.path.join(CACHE, "%s_%s.json" % (name, tag))
-    if os.path.exists(path) and time.time() - os.path.getmtime(path) < ttl:
+    if (os.path.exists(path) and time.time() - os.path.getmtime(path) < ttl
+            and not (ttl <= 7 * 86400 and os.path.getmtime(path) < FRESH_AFTER)):
         with open(path, "r", encoding="utf-8") as fh:
             return json.load(fh)
     q = dict(params, serviceKey=_key())

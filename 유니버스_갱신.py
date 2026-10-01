@@ -54,7 +54,7 @@ ETF_RE = re.compile(
     r"ETN|합성 ?H|단일종목)")
 ETF_PREFIX = re.compile(
     r"^(KODEX|TIGER|RISE|SOL|ACE|PLUS|KOSEF|ARIRANG|HANARO|KBSTAR|KIWOOM|"
-    r"TIMEFOLIO|VITA|UNICORN|히어로즈|마이다스|에셋플러스)\b")
+    r"TIMEFOLIO|VITA|UNICORN|히어로즈|마이다스|에셋플러스|1Q|KoAct|TRUSTON|WON|TIME)\b")   # '1Q 미국S&P500' 등이 새던 것
 
 
 def is_fund(name):
