@@ -2642,7 +2642,7 @@ function expAutoTxt(a){
   else{
     s.push('반영: '+expYm(a.have)+' · '+expYm(a.want)+'는 '+expPub(a.want)+' 공개');
     if(a.check==='아직'&&a.checked_at) s.push(expWhen(a.checked_at)+' 확인 — 아직 안 나옴');
-    if(a.on) s.push(a.retry_after&&a.retry_after*1000>Date.now()?expWhen(a.retry_after)+' 다시 시도':'6시간마다 확인, 나오면 자동 반영');
+    if(a.on) s.push(a.retry_after&&a.retry_after*1000>Date.now()?expWhen(a.retry_after)+' 다시 시도':'매일 00:10(밤 공시 수집 때) 확인, 나오면 자동 반영');
   }
   const L=a.last;
   if(L&&L.state==='done'&&L.at) s.push('지난 갱신 '+(+L.at.slice(5,7))+'월 '+(+L.at.slice(8,10))+'일 '+L.at.slice(11,16)+' ('+expYm(L.month)+')');
@@ -2656,14 +2656,14 @@ function expAutoBar(p){
     w.innerHTML='';
     if(!a||a.error){ w.appendChild(el('span','expAutoTxt','자동 갱신 상태를 읽지 못했다')); return; }
     const sw=el('button','expAutoSw'+(a.on?' on':''),(a.on?'● ':'○ ')+'매월 자동 갱신 '+(a.on?'켜짐':'꺼짐'));
-    sw.title='켜 두면 뷰어가 20분마다 깨어나, 관세청이 지난달 치를 냈는지(매달 15일께) 6시간에 한 번 묻는다. '+
+    sw.title='켜 두면 뷰어가 매일 00:10(밤 공시 수집과 같은 때)과 뷰어가 켜질 때, 관세청이 지난달 치를 냈는지(매달 15일께) 묻는다. '+
       '나왔으면 전 종목을 다시 계산해 결과를 바꿔 끼운다(30분~1시간, 관세청 1~2천 건 — 하루 한도 1만 건). 뷰어가 켜져 있어야 돈다. 누르면 켜고 끈다.';
     sw.onclick=async()=>{ sw.disabled=true; draw(await (await fetch('/api/export/auto?on='+(a.on?0:1))).json()); };
     w.appendChild(sw);
     w.appendChild(el('span','expAutoTxt',expAutoTxt(a)));
     if(!a.running&&!(a.have&&a.want&&a.have>=a.want)){
       const ck=el('button','expAutoCk','지금 확인');
-      ck.title='6시간을 기다리지 않고 지금 관세청에 묻는다 — 나왔으면 바로 갱신을 시작한다';
+      ck.title='밤까지 기다리지 않고 지금 관세청에 묻는다 — 나왔으면 바로 갱신을 시작한다';
       ck.onclick=async()=>{ ck.disabled=true; ck.textContent='관세청에 묻는 중…'; draw(await (await fetch('/api/export/auto?check=1')).json()); };
       w.appendChild(ck);
     }

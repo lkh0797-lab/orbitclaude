@@ -2295,7 +2295,7 @@ def export_view():
 
 
 # ---------------------------------------------------------------- 수출 추적 매달 자동 갱신
-# 관세청은 매달 15일께 지난달 치를 낸다. 켜 두면 20분마다 깨어나, 결과에 지난달 치가 없으면 6시간에 한 번
+# 관세청은 매달 15일께 지난달 치를 낸다. 켜 두면 매일 00:10(밤 공시 수집과 같은 때) 깨어나, 결과에 지난달 치가 없으면
 # 큰 통로 몇 개로 '나왔나'를 떠보고(관세청 1~3건), 나왔으면 수출추적.py 갱신을 따로 띄운다.
 # 상태는 .cache/수출추적/auto.json, 진행은 progress.json(수출추적.update 가 쓴다).
 try:
@@ -2318,7 +2318,8 @@ EXP_DIR = os.path.join(CACHE_DIR, "수출추적")
 EXP_AUTO_PATH = os.path.join(EXP_DIR, "auto.json")
 EXP_AUTO_LOCK = threading.Lock()
 EXP_PROC = {"p": None}
-EXP_CHECK_EVERY = 6 * 3600
+EXP_CHECK_EVERY = 20 * 3600     # 하루 한 번(아래 EXP_DAILY_AT) 깨어날 때마다 묻도록 — 20시간이 지났으면 묻는다
+EXP_DAILY_AT = (0, 10)          # 밤 공시 수집(작업 스케줄러 GiupChujeok_Collect 00:10)과 같은 때
 
 
 def _exp_auto_load():
@@ -2415,13 +2416,18 @@ def _exp_tick(force=False):
 
 
 def _exp_auto_loop():
+    """뷰어가 켜질 때 한 번(PC 가 꺼져 있어 놓친 날을 채운다), 그 뒤로는 매일 00:10(밤 공시 수집과 같은 때) 한 번."""
     time.sleep(90)          # 색인이 먼저
     while True:
         try:
             _exp_tick()
         except Exception as e:
             print("수출 추적 자동 갱신: %s" % e, flush=True)
-        time.sleep(20 * 60)
+        n = dt.datetime.now()
+        nxt = n.replace(hour=EXP_DAILY_AT[0], minute=EXP_DAILY_AT[1], second=0, microsecond=0)
+        if nxt <= n:
+            nxt += dt.timedelta(days=1)
+        time.sleep(max(60, (nxt - n).total_seconds()))
 
 
 def exp_auto_view():
