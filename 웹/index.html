@@ -2557,6 +2557,8 @@ const EXP_ST={
   '보합':{c:'nu',d:'뚜렷한 방향 없음'},
   '덩어리 수출':{c:'nu',d:'수출이 몇 달에 몰려 나간다(0인 달이 잦거나 한 달이 12개월의 40%↑) — 분기 비교가 선적 시점에 휘둘려 매출을 못 읽는다(과거 검증: 상관 0 근처)'},
 };
+// 모르는 상태가 와도(서버만 새로 바뀐 경우 등) 화면이 멈추지 않게
+const expSt=st=>EXP_ST[st]||{c:'nu',d:''};
 const EXP_ORDER=['급감 변곡','꺾임','가속','고성장 유지','감소 전환','감소 지속','보합','덩어리 수출'];
 // 분기 맞춤 — '3분기(7·8월)'처럼 그 분기와 나온 달
 const expQ=a=>!a?'':a.cur_q.slice(5)+'분기('+a.months.map(m=>+m.slice(4)).join('·')+'월'+(a.reported?' · 공시됨':'')+')';
@@ -2603,7 +2605,7 @@ async function viewExport(p){
     const grid=el('div','expCards'); b.appendChild(grid);
     const put=xs=>xs.forEach(x=>{ const s=x.signals, c=el('div','expCard');
       const t=el('div','t'); const a=el('a',null,x.name); a.href='#'; a.onclick=e=>{e.preventDefault(); expOpen(x.code);}; t.appendChild(a);
-      t.appendChild(el('span','st '+EXP_ST[s.state].c,s.state));
+      t.appendChild(el('span','st '+expSt(s.state).c,s.state));
       if(expGood(x)) t.appendChild(el('span','good','단가 '+expP(x.national[0].unit_yoy)));
       c.appendChild(t);
       const tw=expTrend(x.series,cls); tw.classList.add('dbl'); tw.addEventListener('dblclick',e=>{ e.preventDefault(); expPop(x,cls); }); c.appendChild(tw);
@@ -2622,7 +2624,7 @@ async function viewExport(p){
   const cnt={}; all.filter(okG).forEach(x=>cnt[x.signals.state]=(cnt[x.signals.state]||0)+1);
   const scope=F.grade==='AB'?'A·B':F.grade==='A'?'A':'A·B·C';
   ['전체'].concat(EXP_ORDER).forEach(k=>{ const n=k==='전체'?all.filter(okG).length:(cnt[k]||0); if(k!=='전체'&&!n) return;
-    const b=el('button','synstg btn'+(F.st===k?' on':''),k==='전체'?'전체('+scope+') '+n:k+' '+n); b.title=k==='전체'?'':EXP_ST[k].d; b.onclick=()=>{ F.st=k; viewExport(p); }; bar.appendChild(b); });
+    const b=el('button','synstg btn'+(F.st===k?' on':''),k==='전체'?'전체('+scope+') '+n:k+' '+n); b.title=k==='전체'?'':expSt(k).d; b.onclick=()=>{ F.st=k; viewExport(p); }; bar.appendChild(b); });
   const gs=el('select'); gs.title='C까지 고르면 수출 통로가 찍힌 '+all.length+'곳이 모두 나온다'; [['AB','신뢰도 A·B'],['A','A만'],['전체','C까지 ('+all.length+'곳)']].forEach(([v,t])=>{ const o=el('option',null,t); o.value=v; if(F.grade===v) o.selected=true; gs.appendChild(o); });
   gs.onchange=()=>{ F.grade=gs.value; viewExport(p); }; bar.appendChild(gs);
   const qi=el('input'); qi.placeholder='종목·품목·지역'; qi.value=F.q; qi.oninput=()=>{ F.q=qi.value.trim(); clearTimeout(S.expT); S.expT=setTimeout(()=>viewExport(p),300); }; bar.appendChild(qi);
@@ -2772,7 +2774,7 @@ function expPop(x,cls){
   const close=()=>{ bg.remove(); document.removeEventListener('keydown',esc); };
   bg.addEventListener('click',e=>{ if(e.target===bg) close(); }); document.addEventListener('keydown',esc);
   const hd=el('div','h'); hd.appendChild(el('b',null,x.name)); const s=x.signals||{};
-  if(s.state) hd.appendChild(el('span','st '+EXP_ST[s.state].c,s.state));
+  if(s.state) hd.appendChild(el('span','st '+expSt(s.state).c,s.state));
   const ks=Object.keys(ser).sort();
   hd.appendChild(el('span','sub','최근 5년 · '+(ks.length?expShift(ks[ks.length-1],59).slice(0,4)+'년 '+expMm(expShift(ks[ks.length-1],59))+' ~ '+ks[ks.length-1].slice(0,4)+'년 '+expMm(ks[ks.length-1]):'')));
   const cb=el('button','x','✕'); cb.title='닫기 (Esc)'; cb.onclick=close; hd.appendChild(cb);
@@ -2842,7 +2844,7 @@ function expTable(rows){
     tr.appendChild(num(x.implied!=null?(x.implied>=0?'+':'')+x.implied.toFixed(0)+'%p':'—',tone(x.implied)));
     tr.appendChild(num(n0&&n0.unit_yoy!=null?expP(n0.unit_yoy):'—',n0?tone(n0.unit_yoy):''));
     tr.appendChild(el('td','cty',n0?n0.top.slice(0,2).map(([k,p])=>k+' '+Math.round(p)+'%').join(' · '):'—'));
-    const st=el('td'); st.appendChild(el('span','expSt '+EXP_ST[s.state].c,s.state)); if(expGood(x)) st.appendChild(el('span','expGood','단가↑')); st.title=EXP_ST[s.state].d; tr.appendChild(st);
+    const st=el('td'); st.appendChild(el('span','expSt '+expSt(s.state).c,s.state)); if(expGood(x)) st.appendChild(el('span','expGood','단가↑')); st.title=expSt(s.state).d; tr.appendChild(st);
     tr.appendChild(el('td','caret','▾'));
     const det=el('tr','expDet'); det.hidden=true; const dd=el('td'); dd.colSpan=15; det.appendChild(dd);
     tr.onclick=()=>{ det.hidden=!det.hidden; tr.classList.toggle('open',!det.hidden); if(!det.hidden&&!dd.firstChild) dd.appendChild(expDetail(x)); };
