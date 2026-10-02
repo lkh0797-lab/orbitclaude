@@ -4405,7 +4405,7 @@ def lens_value(code):
     c = company_by_code(code)
     corp = corp_code_of(code) if c and FIN is not None else None
     out = {"code": code, "lens_ev": {g: [e for e in (_lens_ev(n) for n in names) if e] for g, names in LENS_RULES.items()},
-           "base_trap": (_lens_bt() or {}).get("base_trap")}
+           "base_trap": (_lens_bt() or {}).get("base_trap"), "guru_hit": _guru_hit_for(code)}
     if not corp:
         return out
     try:
@@ -4459,6 +4459,23 @@ def lens_value(code):
         calls.append({"tone": "nu", "text": "PEG %.1f — 성장 대비 싸다(2020년 뒤에만 통했다)" % peg, "ev": _lens_ev("린치 · PEG < 1")})
     out["calls"] = calls
     return out
+
+
+# 구루 적중률 — 카드 배지를 분기 보고서마다 다시 매겨 그대로 샀다면 누가 맞혔나(도구/구루적중률_백테스트.py → .cache/inflect/guru_hit.json)
+_GHT = {"mt": None, "d": None}
+
+
+def _guru_hit_for(code):
+    p = os.path.join(CACHE_DIR, "inflect", "guru_hit.json")
+    try:
+        mt = os.path.getmtime(p)
+        if _GHT["mt"] != mt:
+            with open(p, "r", encoding="utf-8") as fh:
+                _GHT.update(d=json.load(fh), mt=mt)
+    except Exception:
+        return None
+    d = _GHT["d"] or {}
+    return {k: d.get(k) for k in ("n", "firms", "from", "to", "gurus", "kinds")} | {"mine": (d.get("by_code") or {}).get(code)}
 
 
 def _inv_prices(code):
