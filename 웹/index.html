@@ -3632,7 +3632,7 @@ async function viewDip(box, force){
     box.innerHTML='';
     const hd=el('div','dipHead');
     hd.appendChild(el('b',null,'억울한 낙폭'));
-    hd.appendChild(el('span',null,'수주잔고는 쌓이는데, 주가는 매크로·심리만으로 빠진 회사 — 돈을 벌고 있고 주주 몫을 해친 일도 없는 곳만'));
+    hd.appendChild(el('span',null,'수주잔고·선수금은 매출보다 빨리 쌓이는데 주가만 빠진 회사 — 돈을 벌고, 주주 몫을 해친 일이 없고, 업종에 빨간불도 없는 곳만'));
     box.appendChild(hd);
     const cond=el('details','dipCond'); cond.open=!S.dipCondClosed;
     cond.addEventListener('toggle',()=>{ S.dipCondClosed=!cond.open; });
