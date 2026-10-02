@@ -480,7 +480,14 @@ def aligned(mon, last_rev_q, pairs=None):
         state = "감소 전환"
     else:
         state = "보합"
-    return {"cur_q": cur_q, "months": months, "reported": reported, "prev_q": prev_q, "cur": cur, "prev": prv,
+    rev = {p["q"]: p.get("r") for p in (pairs or []) if p.get("q")}
+    qs = []
+    for k in range(7, -1, -1):
+        q = _qnext(cur_q, -k)
+        ms = months if k == 0 else _qm(q)
+        qs.append({"q": q, "x": yoy(ms), "r": rev.get(q), "part": k == 0 and len(months) < 3, "n": len(ms),
+                   "now": k == 0 and not reported})
+    return {"qs": qs, "cur_q": cur_q, "months": months, "reported": reported, "prev_q": prev_q, "cur": cur, "prev": prv,
             "acc": acc, "lumpy": lp, "est": est, "err": err, "state": state, "last": last}
 
 

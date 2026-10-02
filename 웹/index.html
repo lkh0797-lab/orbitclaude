@@ -1429,6 +1429,18 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .expSt.warn,.st.warn{color:var(--warn);border-color:var(--warn)}.expSt.dn2,.st.dn2{background:var(--del);color:#fff;border-color:var(--del)}
 .expSt.dn,.st.dn{color:var(--del);border-color:var(--del)}.expSt.nu,.st.nu{color:var(--dim)}
 .expPick .st{font-size:11px;padding:0 6px;border-radius:999px;border:1px solid var(--line)}
+.expQtrTd{min-width:206px}
+.expQtr .expTrendW{width:196px}
+.expQtrC{display:block;width:196px;height:58px}
+.expQtrC .qb.pos{fill:var(--add);opacity:.55}.expQtrC .qb.neg{fill:var(--del);opacity:.55}
+.expQtrC .qb.now{opacity:1;stroke:var(--ink);stroke-width:1.2}
+.expQtrC .qr{fill:var(--panel);stroke:var(--ink);stroke-width:1.3}
+.expQtrC .ax{font-size:8px;fill:var(--faint)}
+.expQtr .qline{font-size:11px;line-height:1.3;margin-top:1px;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--dim)}
+.expQtr .qline b{font-weight:600;color:var(--ink)}.expQtr .qline i{font-style:normal;font-weight:700}
+.expQtr .qline .qw{display:inline-block;font-weight:700;border-radius:4px;padding:0 5px;margin-right:2px;color:#fff;background:var(--faint)}
+.expQtr .qline.up .qw{background:var(--add)}.expQtr .qline.dn .qw{background:var(--del)}
+.expQtrTd .expTip,.expQtrTd .expTip.flip{left:100%!important;top:50%;transform:translate(8px,-50%)}
 .expMiniTd{min-width:170px}.expMini{display:block;width:170px;height:44px}
 .expMini .mb{fill:var(--faint);opacity:.28}.expMini .mb.last{opacity:.5}
 .expTrend.expMini.up .mb.last,.expTrend.expMini.dn .mb.last{opacity:.45}
@@ -2813,12 +2825,47 @@ function expMini(series,cls){
 // 상태 → 선 색(늘면 초록, 꺾이거나 줄면 빨강, 보합은 먹색)
 const expCls=st=>{ const c=(EXP_ST[st]||{}).c||''; return c.startsWith('up')?'up':(c.startsWith('dn')||c==='warn')?'dn':''; };
 function expTable(rows){
+// 분기 궤적 — 최근 8개 분기 통관 전년 대비(막대, 이번 분기는 테두리) + 공시 매출 전년 대비(점), 아래 한 줄로 방향
+function expQtr(x){
+  const al=x.aligned, w=el('div','expQtr');
+  if(!al||!al.qs){ w.appendChild(el('span','faint','—')); return w; }
+  const qs=al.qs, W=196,H=58,L=2,R=2,T=4,B=10, n=qs.length;
+  // 눈금 — ±30% 는 늘 보이게, 위는 +120%, 아래는 −80% 에서 자른다(몇백 % 한 분기가 나머지를 납작하게 만들지 않게; 숫자는 마우스)
+  const vals=qs.flatMap(q=>[q.x,q.r]).filter(v=>v!=null);
+  const hi=Math.min(120,Math.max(30,...vals)), lo=Math.max(-80,Math.min(-30,...vals));
+  const y=v=>T+(hi-Math.max(lo,Math.min(hi,v)))/(hi-lo)*(H-T-B), bw=(W-L-R)/n, cx=i=>L+i*bw+bw/2;
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'expTrend expQtrC'});
+  svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y(0),y2:y(0),class:'zero'}));
+  qs.forEach((q,i)=>{
+    if(q.x!=null){ const v=Math.max(lo,Math.min(hi,q.x)); svg.appendChild(svgEl('rect',{x:L+i*bw+2,y:Math.min(y(v),y(0)),width:Math.max(2,bw-4),height:Math.max(1,Math.abs(y(v)-y(0))),rx:1.5,
+      class:'qb '+(q.x>=0?'pos':'neg')+(q.now?' now':'')})); }
+    if(q.r!=null) svg.appendChild(svgEl('circle',{cx:cx(i),cy:y(q.r),r:2.4,class:'qr'}));
+    if(i===0||q.q.endsWith('Q1')){ const t=svgEl('text',{x:cx(i),y:H-1,'text-anchor':'middle',class:'ax'}); t.textContent=q.q.slice(2,4)+'.'+q.q.slice(5); svg.appendChild(t); }
+  });
+  const wrap=expHover(svg,W,H,qs.map((q,i)=>cx(i)),bw,
+    i=>{ const q=qs[i]; return [q.q.slice(0,4)+'년 '+q.q.slice(5)+'분기'+(q.now?' · 아직 공시 전('+q.n+'개월)':''),'통관 수출 전년 대비 '+expP(q.x),'공시 매출 전년 대비 '+(q.r==null?(q.now?'아직 공시 전':'—'):expP(q.r))]; },
+    i=>qs[i].x==null?null:y(Math.max(lo,Math.min(hi,qs[i].x))),[T,H-B]);
+  w.appendChild(wrap);
+  const p=qs[n-2], c=qs[n-1];
+  if(p&&c&&p.x!=null&&c.x!=null){
+    // 방향 한 단어 — 직전 분기 → 이번 분기(전년 대비 증가율의 변화)
+    const d=c.x-p.x;
+    const [word,dir]=c.x>=0&&p.x>=0?(d>=10?['가속','up']:d<=-10?['둔화','dn']:['유지','flat'])
+      :c.x<0&&p.x>=0?['감소 전환','dn']:c.x>=0&&p.x<0?['반등','up']
+      :(d>=10?['감소 완화','up']:d<=-10?['감소 심화','dn']:['감소 지속','dn']);
+    const ln=el('div','qline '+dir);
+    ln.innerHTML='<span class="qw">'+(dir==='up'?'↗ ':dir==='dn'?'↘ ':'→ ')+word+'</span> '+p.q.slice(5)+'분기 '+expP(p.x)+' → <b>'+c.q.slice(5)+'분기'+
+      (c.now?'('+al.months.map(m=>+m.slice(4)).join('·')+'월)':'')+' '+expP(c.x)+'</b>';
+    w.appendChild(ln);
+  }
+  return w;
+}
   const w=el('div','tblwrap'); const t=el('table','tbl expTbl');
   const B=S.expBasis||{};
   const A0=(rows.find(x=>x.aligned)||{}).aligned;
-  t.innerHTML='<tr><th>종목</th><th title="막대 = 월별 수출 금액(옅게, 마지막 3개월 진하게) · 선 = 3개월 합의 전년 같은 때 대비 증가율(점선 = 0%). 더블클릭하면 최근 5년">24개월 <small>막대 금액 · 선 증가율</small></th><th>신뢰도</th><th>주 통로</th><th class="r" title="아직 공시 안 된 첫 분기의 나온 달(2개월↑), 전년 같은 달 대비 — 다음 실적 매출을 먼저 읽는 칸">이번 분기'+(A0?'<br><small>'+expQ(A0)+'</small>':'')+'</th><th class="r" title="그 앞 분기 석 달, 전년 대비">직전 분기'+(A0?'<br><small>'+A0.prev_q.slice(5)+'분기</small>':'')+'</th><th class="r" title="이번 분기 − 직전 분기(%p) — 매출 가속·둔화를 공시보다 먼저(과거 순위상관 0.17)">가속</th><th class="r">12개월</th><th class="r" title="이 회사 과거 분기의 통관 증가율 ↔ 매출 증가율 직선으로 낸 이번 분기 매출 증가율 추정 ± 과거 오차(6분기↑, 덩어리 수출은 안 냄)">매출 추정</th>'+
+  t.innerHTML='<tr><th>종목</th><th title="막대 = 월별 수출 금액(옅게, 마지막 3개월 진하게) · 선 = 3개월 합의 전년 같은 때 대비 증가율(점선 = 0%). 더블클릭하면 최근 5년">24개월 <small>막대 금액 · 선 증가율</small></th><th>신뢰도</th><th>주 통로</th><th title="막대 = 분기 통관 수출의 전년 대비(초록 늘어남 · 빨강 줄어듦, 맨 끝 테두리 막대 = 아직 공시 안 된 이번 분기의 나온 달), 점 = 같은 분기 공시 매출의 전년 대비. 막대와 점이 같이 가면 통관이 매출을 잘 읽는 회사. 마우스를 올리면 그 분기 숫자">분기 궤적 <small>막대 통관 · 점 공시 매출 (전년 대비)</small></th><th class="r" title="이 회사 과거 분기의 통관 증가율 ↔ 매출 증가율 직선으로 낸 이번 분기 매출 증가율 추정 ± 과거 오차(6분기↑, 덩어리 수출은 안 냄)">매출 추정</th>'+
     '<th class="r">수출/매출</th><th class="r">매출 기여</th><th class="r">단가</th><th>주 수출국</th><th>상태</th><th></th></tr>';
-  if(!rows.length){ const tr=el('tr'); const td=el('td','empty','해당 없음'); td.colSpan=15; tr.appendChild(td); t.appendChild(tr); }
+  if(!rows.length){ const tr=el('tr'); const td=el('td','empty','해당 없음'); td.colSpan=12; tr.appendChild(td); t.appendChild(tr); }
   rows.forEach(x=>{
     const s=x.signals, v=x.validation||{}, c0=(x.channels||[])[0], n0=(x.national||[])[0];
     const tr=el('tr','expRow'); tr.dataset.code=x.code;
@@ -2836,9 +2883,7 @@ function expTable(rows){
     tr.appendChild(chTd);
     const num=(val,cls)=>el('td','num'+(cls?' '+cls:''),val);
     const tone=v=>v==null?'':v>=10?'pos':v<=-10?'neg':'';
-    tr.appendChild(num(expP(s.y3),tone(s.y3)+' strong')); tr.appendChild(num(expP(s.y3p),tone(s.y3p)));
-    tr.appendChild(num(s.acc==null?'—':(s.acc>=0?'+':'')+s.acc.toFixed(0)+'%p',s.acc>=15?'pos':s.acc<=-25?'neg':''));
-    tr.appendChild(num(expP(s.y12),tone(s.y12)));
+    const qt=el('td','expQtrTd'); qt.appendChild(expQtr(x)); qt.addEventListener('click',e=>e.stopPropagation()); tr.appendChild(qt);
     const al=x.aligned; tr.appendChild(num(al?expEst(al):'—',al&&al.est!=null?tone(al.est):''));
     tr.appendChild(num(v.coverage!=null?Math.round(v.coverage)+'%':'—'));
     tr.appendChild(num(x.implied!=null?(x.implied>=0?'+':'')+x.implied.toFixed(0)+'%p':'—',tone(x.implied)));
@@ -2846,7 +2891,7 @@ function expTable(rows){
     tr.appendChild(el('td','cty',n0?n0.top.slice(0,2).map(([k,p])=>k+' '+Math.round(p)+'%').join(' · '):'—'));
     const st=el('td'); st.appendChild(el('span','expSt '+expSt(s.state).c,s.state)); if(expGood(x)) st.appendChild(el('span','expGood','단가↑')); st.title=expSt(s.state).d; tr.appendChild(st);
     tr.appendChild(el('td','caret','▾'));
-    const det=el('tr','expDet'); det.hidden=true; const dd=el('td'); dd.colSpan=15; det.appendChild(dd);
+    const det=el('tr','expDet'); det.hidden=true; const dd=el('td'); dd.colSpan=12; det.appendChild(dd);
     tr.onclick=()=>{ det.hidden=!det.hidden; tr.classList.toggle('open',!det.hidden); if(!det.hidden&&!dd.firstChild) dd.appendChild(expDetail(x)); };
     t.appendChild(tr); t.appendChild(det);
   });
