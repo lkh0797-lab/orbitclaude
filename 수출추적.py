@@ -399,6 +399,91 @@ def signals(mon):
             "m3": sum(mon.get(k, 0) for k in win(last, 3))}
 
 
+# ---------------------------------------------------------------- 분기 맞춤(2026-10-02, 도구/수출추적_검증.py)
+# 통관 수출의 쓸모는 '분기보고서보다 먼저 그 분기 매출을 아는 것'. 그래서 창을 공시 분기에 맞춘다 — 예전 '최근 3개월'(6~8월)은
+# 이미 공시된 2분기와 아직 안 나온 3분기를 섞었다. 과거 검증(그 시점까지의 기록만으로 통관↔매출 상관 0.3↑ · 덩어리 아님):
+# 분기 통관 증가율 ↔ 그 분기 매출 증가율 순위상관 0.37(t 12), 가속 ↔ 매출 가속 0.17(t 6), 90일 주가 0.04(t 1 — 뚜렷하지 않음).
+# 덩어리 수출(0인 달이 잦거나 한 달이 12개월의 40%↑)은 상관 0 근처·마이너스 — 상태 판정에서 뺀다.
+def _qm(q):
+    y, n = int(q[:4]), int(q[5])
+    return ["%d%02d" % (y, (n - 1) * 3 + i) for i in (1, 2, 3)]
+
+
+def _qnext(q, k=1):
+    y, n = int(q[:4]), int(q[5]) + k
+    while n > 4:
+        y, n = y + 1, n - 4
+    while n <= 0:
+        y, n = y - 1, n + 4
+    return "%dQ%d" % (y, n)
+
+
+def lumpy(mon, last):
+    """덩어리 수출 — 최근 12개월 중 0인 달 3번↑ 또는 한 달이 12개월 합의 40%↑."""
+    ks = [_ym_shift(last, k) for k in range(12)]
+    vs = [mon.get(k) or 0 for k in ks]
+    tot = sum(vs)
+    return sum(1 for v in vs if v <= 0) >= 3 or (tot > 0 and max(vs) / tot >= 0.4)
+
+
+def _ym_shift(ym, k):
+    y, m = int(ym[:4]), int(ym[4:]) - k
+    while m <= 0:
+        y, m = y - 1, m + 12
+    return "%d%02d" % (y, m)
+
+
+def aligned(mon, last_rev_q, pairs=None):
+    """분기 맞춤 신호. 지금 = 아직 공시 안 된 첫 분기(통관 2개월↑ 나왔으면), 아니면 마지막 공시 분기. 직전 = 그 앞 분기.
+    pairs(과거 분기 통관 증가율 x ↔ 매출 증가율 r)로 직선을 맞춰 '지금' 분기 매출 증가율을 추정한다."""
+    ks = sorted(k for k, v in mon.items() if v is not None)
+    if not ks:
+        return None
+    last = ks[-1]
+    yoy = lambda ms: (lambda a, b: (a / b - 1) * 100 if b and b > 0 else None)(
+        sum(mon.get(m) or 0 for m in ms), sum(mon.get(_ym_shift(m, 12)) or 0 for m in ms))
+    nq = _qnext(last_rev_q) if last_rev_q else None
+    cm = [m for m in _qm(nq) if m <= last] if nq else []
+    if nq and len(cm) >= 2:
+        cur_q, months, reported = nq, cm, False
+    else:
+        cur_q = last_rev_q or "%sQ%d" % (last[:4], (int(last[4:]) - 1) // 3 + 1)
+        months, reported = [m for m in _qm(cur_q) if m <= last], bool(last_rev_q)
+    prev_q = _qnext(cur_q, -1)
+    cur, prv = yoy(months), yoy(_qm(prev_q))
+    acc = (cur - prv) if cur is not None and prv is not None else None
+    lp = lumpy(mon, last)
+    est = err = None
+    pts = [(max(-80.0, min(300.0, p["x"])), p["r"]) for p in (pairs or []) if p.get("x") is not None and p.get("r") is not None]
+    if cur is not None and len(pts) >= 6 and not lp:
+        n = len(pts)
+        mx, my = sum(x for x, _ in pts) / n, sum(y for _, y in pts) / n
+        vx = sum((x - mx) ** 2 for x, _ in pts)
+        if vx > 0:
+            b = sum((x - mx) * (y - my) for x, y in pts) / vx
+            a = my - b * mx
+            est = a + b * max(-80.0, min(300.0, cur))
+            err = (sum((y - (a + b * x)) ** 2 for x, y in pts) / max(1, n - 2)) ** 0.5
+    if lp:
+        state = "덩어리 수출"
+    elif cur is None or prv is None:
+        state = "보합"
+    elif acc is not None and acc <= -25:
+        state = "급감 변곡" if cur < 5 else "꺾임"
+    elif cur >= 20 and prv >= 20:
+        state = "고성장 유지"
+    elif acc is not None and acc >= 15 and cur >= 10:
+        state = "가속"
+    elif cur <= -10 and prv <= -10:
+        state = "감소 지속"
+    elif cur <= -10:
+        state = "감소 전환"
+    else:
+        state = "보합"
+    return {"cur_q": cur_q, "months": months, "reported": reported, "prev_q": prev_q, "cur": cur, "prev": prv,
+            "acc": acc, "lumpy": lp, "est": est, "err": err, "state": state, "last": last}
+
+
 def unit_trend(nat):
     """전국 단가(달러/kg) 최근 6개월 vs 전년 같은 6개월."""
     if not nat or not nat.get("unit"):

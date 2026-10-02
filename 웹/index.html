@@ -2555,8 +2555,12 @@ const EXP_ST={
   '감소 전환':{c:'dn',d:'최근 3개월 −10%↓'},
   '감소 지속':{c:'dn',d:'최근 3개월과 직전 3개월 모두 −10%↓'},
   '보합':{c:'nu',d:'뚜렷한 방향 없음'},
+  '덩어리 수출':{c:'nu',d:'수출이 몇 달에 몰려 나간다(0인 달이 잦거나 한 달이 12개월의 40%↑) — 분기 비교가 선적 시점에 휘둘려 매출을 못 읽는다(과거 검증: 상관 0 근처)'},
 };
-const EXP_ORDER=['급감 변곡','꺾임','가속','고성장 유지','감소 전환','감소 지속','보합'];
+const EXP_ORDER=['급감 변곡','꺾임','가속','고성장 유지','감소 전환','감소 지속','보합','덩어리 수출'];
+// 분기 맞춤 — '3분기(7·8월)'처럼 그 분기와 나온 달
+const expQ=a=>!a?'':a.cur_q.slice(5)+'분기('+a.months.map(m=>+m.slice(4)).join('·')+'월'+(a.reported?' · 공시됨':'')+')';
+const expEst=a=>a&&a.est!=null?(a.est>=0?'+':'')+a.est.toFixed(0)+'%'+(a.err!=null?' ±'+a.err.toFixed(0):''):'—';
 const expP=(v,d)=>v==null||!isFinite(v)?'—':(v>=0?'+':'')+v.toFixed(d||0)+'%';
 const expM=v=>v==null?'—':v>=1e5?(v>=1e7?Math.round(v/1e5).toLocaleString('ko-KR'):(v/1e5).toFixed(1))+'억$'      // 천 달러 단위 — 1e5 = 1억 달러
   :v<1e4?(v/1e3).toFixed(1)+'백만$':Math.round(v/1e3).toLocaleString('ko-KR')+'백만$';   // 천 달러 → 보기 좋은 단위
@@ -2603,7 +2607,9 @@ async function viewExport(p){
       if(expGood(x)) t.appendChild(el('span','good','단가 '+expP(x.national[0].unit_yoy)));
       c.appendChild(t);
       const tw=expTrend(x.series,cls); tw.classList.add('dbl'); tw.addEventListener('dblclick',e=>{ e.preventDefault(); expPop(x,cls); }); c.appendChild(tw);
-      c.appendChild(el('div','v',(+s.last.slice(4))+'월까지 3개월 '+expP(s.y3)+' · 그 전 3개월 '+expP(s.y3p)+(x.partial&&x.partial.yoy!=null?' · 공시 뒤 '+expP(x.partial.yoy):'')));
+      const al=x.aligned;
+      c.appendChild(el('div','v',al?expQ(al)+' '+expP(s.y3)+' · '+al.prev_q.slice(5)+'분기 '+expP(s.y3p)+(al.est!=null?' · 매출 추정 '+expEst(al):''):
+        (+s.last.slice(4))+'월까지 3개월 '+expP(s.y3)));
       grid.appendChild(c); });
     put(rows.slice(0,6));
     if(rows.length>6){ const mo=el('button','expMore','나머지 '+(rows.length-6)+'곳 더 보기'); mo.onclick=()=>{ mo.remove(); put(rows.slice(6)); }; b.appendChild(mo); }
@@ -2807,7 +2813,8 @@ const expCls=st=>{ const c=(EXP_ST[st]||{}).c||''; return c.startsWith('up')?'up
 function expTable(rows){
   const w=el('div','tblwrap'); const t=el('table','tbl expTbl');
   const B=S.expBasis||{};
-  t.innerHTML='<tr><th>종목</th><th title="막대 = 월별 수출 금액(옅게, 마지막 3개월 진하게) · 선 = 3개월 합의 전년 같은 때 대비 증가율(점선 = 0%). 더블클릭하면 최근 5년">24개월 <small>막대 금액 · 선 증가율</small></th><th>신뢰도</th><th>주 통로</th><th class="r">최근 3개월'+(B.r3?'<br><small>'+B.r3+'</small>':'')+'</th><th class="r">직전 3개월'+(B.p3?'<br><small>'+B.p3+'</small>':'')+'</th><th class="r">가속</th><th class="r">12개월</th><th class="r">공시 뒤</th>'+
+  const A0=(rows.find(x=>x.aligned)||{}).aligned;
+  t.innerHTML='<tr><th>종목</th><th title="막대 = 월별 수출 금액(옅게, 마지막 3개월 진하게) · 선 = 3개월 합의 전년 같은 때 대비 증가율(점선 = 0%). 더블클릭하면 최근 5년">24개월 <small>막대 금액 · 선 증가율</small></th><th>신뢰도</th><th>주 통로</th><th class="r" title="아직 공시 안 된 첫 분기의 나온 달(2개월↑), 전년 같은 달 대비 — 다음 실적 매출을 먼저 읽는 칸">이번 분기'+(A0?'<br><small>'+expQ(A0)+'</small>':'')+'</th><th class="r" title="그 앞 분기 석 달, 전년 대비">직전 분기'+(A0?'<br><small>'+A0.prev_q.slice(5)+'분기</small>':'')+'</th><th class="r" title="이번 분기 − 직전 분기(%p) — 매출 가속·둔화를 공시보다 먼저(과거 순위상관 0.17)">가속</th><th class="r">12개월</th><th class="r" title="이 회사 과거 분기의 통관 증가율 ↔ 매출 증가율 직선으로 낸 이번 분기 매출 증가율 추정 ± 과거 오차(6분기↑, 덩어리 수출은 안 냄)">매출 추정</th>'+
     '<th class="r">수출/매출</th><th class="r">매출 기여</th><th class="r">단가</th><th>주 수출국</th><th>상태</th><th></th></tr>';
   if(!rows.length){ const tr=el('tr'); const td=el('td','empty','해당 없음'); td.colSpan=15; tr.appendChild(td); t.appendChild(tr); }
   rows.forEach(x=>{
@@ -2830,7 +2837,7 @@ function expTable(rows){
     tr.appendChild(num(expP(s.y3),tone(s.y3)+' strong')); tr.appendChild(num(expP(s.y3p),tone(s.y3p)));
     tr.appendChild(num(s.acc==null?'—':(s.acc>=0?'+':'')+s.acc.toFixed(0)+'%p',s.acc>=15?'pos':s.acc<=-25?'neg':''));
     tr.appendChild(num(expP(s.y12),tone(s.y12)));
-    const pa=x.partial; tr.appendChild(num(pa&&pa.yoy!=null?expP(pa.yoy)+' ('+pa.months.map(m=>+m.slice(4)).join('·')+'월)':'—',pa?tone(pa.yoy):''));
+    const al=x.aligned; tr.appendChild(num(al?expEst(al):'—',al&&al.est!=null?tone(al.est):''));
     tr.appendChild(num(v.coverage!=null?Math.round(v.coverage)+'%':'—'));
     tr.appendChild(num(x.implied!=null?(x.implied>=0?'+':'')+x.implied.toFixed(0)+'%p':'—',tone(x.implied)));
     tr.appendChild(num(n0&&n0.unit_yoy!=null?expP(n0.unit_yoy):'—',n0?tone(n0.unit_yoy):''));

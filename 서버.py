@@ -2284,6 +2284,14 @@ def export_view():
             cov = (x.get("validation") or {}).get("coverage")
             if cov is not None and (cov < 5 or cov > 150):       # 수출추적._grade 와 같은 문턱 — 중간 결과에도 적용
                 x["grade"] = "C"
+            # 분기 맞춤(2026-10-02) — 상태 · '이번 분기' · '직전 분기' · 가속을 공시 분기에 맞춰 다시 낸다(예전 '최근 3개월'은 분기를 섞었다)
+            if EXPM is not None and x.get("signals") and (x.get("series_long") or x.get("series")):
+                v_ = x.get("validation") or {}
+                al = EXPM.aligned(x.get("series_long") or x["series"], v_.get("last_rev_q"), v_.get("pairs"))
+                if al:
+                    x["signals_old"] = dict(x["signals"])
+                    x["signals"].update(y3=al["cur"], y3p=al["prev"], acc=al["acc"], state=al["state"])
+                    x["aligned"] = al
         for x in d.get("items", []):     # 같은 (시군구 × 품목)을 쓰는 다른 회사 — 지주·자회사, 같은 동네 경쟁사
             sh = set()
             for ch in (x.get("channels") or [])[:3]:
