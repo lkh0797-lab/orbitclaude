@@ -3847,6 +3847,195 @@ def _ord_series(c, budget=0, net=True):
     return out
 
 
+BTB_QS = 12     # 북투빌 심화 — 최근 3년(12분기)
+
+
+def btb_view(code):
+    """북투빌 심화(2026-10-03) — 최근 3년 분기마다 신규수주(추정) = 잔고 증가 + 그 분기 매출, 북투빌 = 신규수주 ÷ 매출.
+    한 분기 값은 대형 수주 한 건에 튀므로 4분기 합 북투빌 · 연속 분기 · 가장 큰 분기를 뺀 값 · 잔고 ÷ 연매출(몇 년 치 일감)을 같이 보고,
+    잔고가 매출보다 더 줄어든 분기(취소 · 이연 · 환율 · 범위 조정)와 계약 해지 공시를 센다. 업종 간 비교는 하지 않고 같은 업종 안 위치만 적는다
+    (회사마다 수주 인식 기준이 달라서)."""
+    c = company_by_code(code)
+    corp = corp_code_of(code) if c and FIN is not None else None
+    if not c or not corp or BACK is None:
+        return {"error": "회사 또는 수주잔고 자료가 없다"}
+    try:
+        pts = BACK.company_series(c, read_section, max_reports=20)
+    except Exception:
+        pts = []
+    blog, meta = {}, {}
+    for pt in pts:
+        if pt["stamp"][5:] in Q_OF_MONTH:
+            lab = "%sQ%d" % (pt["stamp"][:4], Q_OF_MONTH[pt["stamp"][5:]])
+            blog[lab], meta[lab] = pt["value"], pt
+    if len(blog) < 2:
+        return {"error": "수주잔고를 읽은 보고서가 %d개뿐이다" % len(blog)}
+    mi = matrix_cached(c, corp, "IS", "q", IS_YEARS)
+    rev = {k: v for k, v in _mseries(mi, _mrow(mi, ("t:Revenue",), r"^(매출액|수익\(매출액\)|영업수익|매출)$")).items() if v}
+    qn = lambda k: int(k[:4]) * 4 + int(k[5])
+    last = max(blog, key=qn)
+    labs = [_qshift(last, k) for k in range(BTB_QS - 1, -1, -1)]
+
+    def rsum(a, k):   # a 분기를 끝으로 k 분기 매출 합(빠진 분기가 있으면 None)
+        vs = [rev.get(_qshift(a, i)) for i in range(k)]
+        return sum(vs) if all(v is not None for v in vs) else None
+    qend = lambda lab: "%s%s" % (lab[:4], {1: "0331", 2: "0630", 3: "0930", 4: "1231"}[int(lab[5])])
+    ords = _ord_series(c, net=False)
+    # 잔고를 읽은 방식 — 본문 문장('수주잔고는 약 18조원')과 표 합계는 범위가 다를 수 있다(현대로템: 문장 18.8조 · 표 11.3조).
+    # 방식이 바뀐 두 분기 사이의 잔고 증가는 수주가 아니라 기준 변화라 북투빌에서 뺀다
+    fam = lambda lab: None if lab not in meta else ("문장" if meta[lab].get("method") == "문장" else "표")
+    rows = []
+    for lab in labs:
+        b, r = blog.get(lab), rev.get(lab)
+        x = {"q": lab, "rev": r, "blog": b, "new": None, "bb": None, "span": None, "bb4": None, "cover": None,
+             "verified": bool(meta.get(lab, {}).get("verified")), "method": meta.get(lab, {}).get("method"),
+             "basis": fam(lab), "brk": False}
+        if b is not None:
+            # 직전에 잔고를 읽은 분기(반기 · 사업보고서만 적는 회사는 2~4분기 건너뛴다) — 그 사이 매출을 다 더해 구간 북투빌
+            k = next((k for k in range(1, 5) if blog.get(_qshift(lab, k)) is not None), None)
+            rs = rsum(lab, k) if k else None
+            if k and fam(_qshift(lab, k)) != fam(lab):
+                x["brk"] = True
+            elif k and rs:
+                x.update(span=k, new=b - blog[_qshift(lab, k)] + rs, bb=(b - blog[_qshift(lab, k)] + rs) / rs)
+            r4, b4 = rsum(lab, 4), blog.get(_qshift(lab, 4))
+            if r4:
+                x["cover"] = b / r4
+                if b4 is not None and fam(_qshift(lab, 4)) == fam(lab):
+                    x["bb4"] = (b - b4 + r4) / r4
+        lo, hi = qend(_qshift(lab, 1)), qend(lab)
+        inq = [o for o in ords if lo < o["date"] <= hi and not o["sub"]]
+        x["ord_n"] = sum(1 for o in inq if o["kind"] == "체결")
+        x["ord_amt"] = sum(o["amount"] or 0 for o in inq if o["kind"] == "체결") or None
+        x["ord_big"] = max((o["amount"] or 0 for o in inq if o["kind"] == "체결"), default=0) or None
+        x["cancel"] = [{"date": o["date"], "rcept": o["rcept"]} for o in inq if o["kind"] == "해지"]
+        rows.append(x)
+    # ---- 읽기 — 볼 때 주의할 점 네 가지에 맞춰
+    q1 = [x for x in rows if x["bb"] is not None and x["span"] == 1]
+    has4 = [x for x in rows if x["bb4"] is not None]
+    st4 = 0
+    for x in reversed(rows):
+        if x["bb4"] is None or x["bb4"] < 1:
+            break
+        st4 += 1
+    stq = 0
+    for x in reversed([x for x in rows if x["bb"] is not None]):
+        if x["bb"] < 1:
+            break
+        stq += 1
+    newq = [x for x in rows if x["new"] is not None]
+    pos_sum = sum(x["new"] for x in newq if x["new"] > 0)
+    big = max(newq, key=lambda x: x["new"]) if newq else None
+    last4 = [x for x in rows[-4:] if x["new"] is not None and x["span"] == 1 and x["rev"]]
+    ex_big = None
+    if len(last4) == 4:
+        m = max(last4, key=lambda x: x["new"])
+        rest = [x for x in last4 if x is not m]
+        ex_big = {"q": m["q"], "bb": sum(x["new"] for x in rest) / sum(x["rev"] for x in rest)}
+    neg = [x for x in newq if x["new"] < 0]
+    cancels = [c_ for x in rows for c_ in x["cancel"]]
+    srt = sorted(x["bb"] for x in newq)
+    med = srt[len(srt) // 2] if srt else None
+    cov = [x for x in rows if x["cover"] is not None]
+    # 같은 업종 안 위치 — 시너지(수주잔고 증가) 목록의 1년 북투빌 · 잔고 ÷ 연매출, 믿을 만한 회사만
+    with SYNERGY_LOCK:
+        srows = list(SYNERGY["rows"])
+    if not srows:
+        synergy_view()          # 뷰어를 막 켰으면 목록이 비어 있다 — 모으기 시작만 하고 이번엔 업종 비교를 비운다
+    me = next((r for r in srows if r["code"] == code), None)
+    ind = (me or {}).get("industry") or ((sector_map() or {}).get("stocks", {}).get(code.upper(), {}) or {}).get("industry")
+    peers = [r for r in srows if r.get("industry") == ind and not r.get("why_not") and r.get("btb") is not None]
+    peer = None
+    if ind and len(peers) >= 3:
+        pb = sorted(peers, key=lambda r: -r["btb"])
+        pc = sorted([r for r in peers if r.get("cover") is not None], key=lambda r: -r["cover"])
+        peer = {"industry": ind, "n": len(peers),
+                "rank_btb": next((i + 1 for i, r in enumerate(pb) if r["code"] == code), None),
+                "rank_cover": next((i + 1 for i, r in enumerate(pc) if r["code"] == code), None),
+                "med_btb": pb[len(pb) // 2]["btb"], "med_cover": pc[len(pc) // 2]["cover"] if pc else None,
+                "list": [{"code": r["code"], "name": r["name"], "btb": r["btb"], "cover": r.get("cover")} for r in pb[:8]]}
+    eok = lambda v: "{:,.0f}억".format(v / 1e8) if abs(v) < 1e12 else "{:.1f}조".format(v / 1e12)
+    ql = lambda q: "%s.%sQ" % (q[2:4], q[5])
+    notes = []
+    # 1. 추세
+    if has4:
+        notes.append({"k": "추세", "t": "4분기 합 북투빌 %.2f(%s) — %s. 분기 단독은 %d분기 중 %d번 1 이상, 중앙값 %s."
+                      % (has4[-1]["bb4"], ql(has4[-1]["q"]),
+                         ("최근 %d분기 연속 1 이상" % st4) if st4 else "지금은 1 아래" if rows[-1]["bb4"] is not None else
+                         "최근 분기는 잔고를 읽은 방식이 1년 전과 달라 못 잰다" if fam(_qshift(last, 4)) not in (None, fam(last)) else
+                         "최근 분기는 못 잰다(%s)" % ("1년 전 잔고가 없다" if blog.get(_qshift(last, 4)) is None else "매출이 빈 분기가 있다"),
+                         len(newq), sum(1 for x in newq if x["bb"] >= 1),
+                         "—" if med is None else "%.2f" % med),
+                      "ok": st4 >= 4})
+    # 2. 덩어리
+    if big and pos_sum > 0:
+        sh = big["new"] / pos_sum * 100
+        t = "가장 큰 분기 %s 신규수주 %s — 3년 합의 %.0f%%." % (ql(big["q"]), eok(big["new"]), sh)
+        if big.get("ord_big"):
+            t += " 그 분기 최대 단일 공시 %s." % eok(big["ord_big"])
+        if ex_big:
+            t += " 최근 4분기에서 가장 큰 분기(%s)를 빼면 북투빌 %.2f." % (ql(ex_big["q"]), ex_big["bb"])
+        notes.append({"k": "덩어리", "t": t, "ok": sh < 30 and (ex_big is None or ex_big["bb"] >= 1)})
+    # 3. 취소 · 이연
+    t = ("잔고가 매출보다 더 줄어든 분기 %d번(%s) — 계약 취소 · 이연 · 환율 · 범위 조정일 수 있다. " % (
+        len(neg), ", ".join("%s %s" % (ql(x["q"]), eok(x["new"])) for x in neg)) if neg else "잔고가 매출보다 더 줄어든 분기 없음. ")
+    t += ("수주 계약 해지 공시 %d건(%s)." % (len(cancels), ", ".join(c_["date"][:4] + "." + c_["date"][4:6] for c_ in cancels))
+          if cancels else "3년 안 수주 계약 해지 공시 없음.")
+    notes.append({"k": "취소·이연", "t": t, "ok": not neg and not cancels})
+    # 4. 일감(잔고 ÷ 연매출)
+    if cov:
+        a = cov[-1]["cover"]
+        b1 = next((x["cover"] for x in cov if x["q"] == _qshift(cov[-1]["q"], 4)), None)
+        b3 = cov[0]["cover"] if cov[0] is not cov[-1] else None
+        notes.append({"k": "일감", "t": "잔고 = 연매출의 %.1f년 치%s%s." % (
+            a, "" if b1 is None else " (1년 전 %.1f년" % b1 + (", %s %.1f년)" % (ql(cov[0]["q"]), b3) if b3 is not None else ")"),
+            "" if b1 is None else (" — 일감이 늘고 있다" if a > b1 * 1.05 else " — 일감이 줄고 있다" if a < b1 * 0.95 else " — 일감이 제자리")),
+            "ok": b1 is None or a >= b1 * 0.95})
+    # 5. 같은 업종 안
+    if peer:
+        notes.append({"k": "업종 안", "t": "%s 수주 회사 %d곳 중 1년 북투빌 %s위(중앙 %.2f) · 잔고 ÷ 연매출 %s위(중앙 %s). 업종이 다르면 수주 인식 기준이 달라 견주지 않는다."
+                      % (peer["industry"], peer["n"], peer["rank_btb"] or "—", peer["med_btb"], peer["rank_cover"] or "—",
+                         "—" if peer["med_cover"] is None else "%.1f년" % peer["med_cover"]),
+                      "ok": bool(peer["rank_btb"] and peer["rank_btb"] <= (peer["n"] + 1) // 2)})
+    elif not srows:
+        notes.append({"k": "업종 안", "t": "수주잔고 목록을 모으는 중 — 몇 분 뒤 다시 펼치면 같은 업종 안 위치가 나온다.", "ok": None})
+    elif ind:
+        notes.append({"k": "업종 안", "t": "%s에서 잔고를 믿을 만하게 읽은 회사가 %d곳뿐이라 견주지 않는다. 업종이 다르면 수주 인식 기준이 달라 견주지 않는다." % (ind, len(peers)), "ok": None})
+    brk = [x for x in rows if x["brk"]]
+    if brk:
+        notes.append({"k": "기준 바뀜", "t": "잔고를 읽은 방식이 바뀐 분기 %d번(%s — 본문 문장 ↔ 수주 표, 범위가 다를 수 있다). 그 사이 잔고 증가는 수주가 아니라 기준 변화라 북투빌에서 뺐다."
+                      % (len(brk), ", ".join("%s %s" % (ql(x["q"]), x["basis"]) for x in brk)), "ok": False})
+    # 목록 표의 '북투빌'(시너지 행 btb)은 '보고서 4개 전' 잔고와 비교한다 — 빠진 분기가 있으면 1년보다 긴 구간, 방식이 바뀌면 다른 기준끼리 비교가 된다
+    rb, lb = (me or {}).get("btb"), rows[-1]["bb4"]
+    if rb is not None and (lb is None or abs(rb - lb) >= 0.1):
+        why = []
+        ks = sorted(blog, key=qn)
+        p4 = ks[-5] if len(ks) >= 5 else None
+        if p4 and p4 != _qshift(last, 4):
+            why.append("보고서 4개 전이 %s — 잔고를 못 읽은 분기가 있어 %d분기 구간을 쟀다" % (ql(p4), qn(last) - qn(p4)))
+        if p4 and fam(p4) != fam(last):
+            why.append("잔고를 읽은 방식이 다른 두 시점(%s %s · %s %s)을 비교했다" % (ql(p4), fam(p4), ql(last), fam(last)))
+        mb_ = (me or {}).get("backlog")
+        if mb_ and not any(abs(v / mb_ - 1) < 0.01 for v in blog.values() if v):
+            why.append("목록이 쓰는 최신 잔고: %s(%s). 3년 치로 보면 검산이 안 된 데다 다른 분기와 크게 어긋나 여기선 뺐다 — 잔고를 잘못 읽었을 수 있다"
+                       % (eok(mb_), (me or {}).get("quarter") or ""))
+        r4l, rtl = rsum(last, 4), (me or {}).get("rev_ttm")
+        if not why and r4l is None:
+            why.append("여기선 최근 4분기 매출 중 빈 분기가 있어 못 잰다(분기 재무 미수집)")
+        if not why and r4l and rtl and abs(r4l / rtl - 1) > 0.1:
+            why.append("나누는 매출(최근 4분기 합)이 다르다 — 목록 %s · 여기 %s" % (eok(rtl), eok(r4l)))
+        notes.append({"k": "표 값", "t": "목록의 북투빌(%.2f) — '보고서 4개 전' 잔고와 비교한 값%s. 같은 분기 · 같은 방식으로 맞춘 4분기 합: %s."
+                      % (rb, (". " + " · ".join(why)) if why else "", "잴 수 없음" if lb is None else "%.2f" % lb), "ok": False})
+    n_ver = sum(1 for x in rows if x["blog"] is not None and x["verified"])
+    n_b = sum(1 for x in rows if x["blog"] is not None)
+    fx = any((x["method"] or "").startswith("표(외화)") for x in rows)
+    notes.append({"k": "자료", "t": "잔고 = 정기보고서 「사업의 내용」 수주상황(표 산술 검산 %d/%d 분기)%s. 신규수주는 공시값이 아니라 잔고 증가 + 매출로 거꾸로 구한 추정이다 — 환율 · 계약 변경도 섞인다."
+                  % (n_ver, n_b, " · 외화 표 있음" if fx else "") + " 매출은 연결 전체라 수주 사업이 일부인 회사(지주사 등)는 북투빌이 1 쪽으로 눌린다." + (" 잔고를 반기·연 단위로만 적는 분기는 그 사이 매출을 묶어 잰다." if any((x["span"] or 1) > 1 for x in rows) else ""),
+                  "ok": None})
+    return {"code": code, "name": c["name"], "rows": rows, "notes": notes, "peer": peer, "peer_pending": not srows,
+            "streak4": st4, "median": med}
+
+
 def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
     """분기별 파이프라인 숫자 {labs, rows, px, hist_per}. 탭(_qtr_pipe)과 검증 도구(도구/분기변화_백테스트.py)가 같이 쓴다.
     px(주가 {d, p, r}) · blog_pts(수주잔고 시계열)를 주면 그것을 쓴다(검증 도구는 캐시만 읽는다)."""
@@ -7609,6 +7798,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, lens_value(q.get("code", "")))
             if path == "/api/quarter":
                 return self._send(200, quarter_view(q.get("code", "")))
+            if path == "/api/btb":
+                return self._send(200, btb_view(q.get("code", "")))
             if path == "/api/export":
                 return self._send(200, export_view())
             if path == "/api/export/auto":

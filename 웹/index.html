@@ -1635,6 +1635,17 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .dipPart .k{color:var(--ink)}.dipPart .v{color:var(--dim);font-variant-numeric:tabular-nums}
 .dipPart .b{height:8px;background:var(--line2);border-radius:2px;overflow:hidden}.dipPart .b i{display:block;height:100%;background:var(--add)}
 .dipPart.neg .b i{background:var(--del)}
+.btbDeep{margin-top:12px;padding-top:8px;border-top:1px solid var(--line2);max-width:860px}
+.btbDeep>em{font:600 11px var(--sans);font-style:normal;color:var(--accent)}
+.btbDeep .sub{font-size:11px;color:var(--faint);margin:2px 0 6px}
+.btbChart{max-width:860px}.btbChart .g{stroke:var(--line2);stroke-width:1}.btbChart .one{stroke:var(--faint);stroke-width:1;stroke-dasharray:4 3}
+.btbChart .ax{font-size:10px;fill:var(--faint)}.btbChart .bUp{fill:var(--add);opacity:.55}.btbChart .bDn{fill:var(--line)}.btbChart .bNeg{fill:var(--del);opacity:.7}
+.btbChart .l4{fill:none;stroke:var(--accent);stroke-width:2}.btbChart .l4d{fill:var(--accent)}.btbChart .cov{fill:none;stroke:var(--warn);stroke-width:1.5;stroke-dasharray:2 2}
+.btbChart .lab{font-size:9.5px;fill:var(--dim)}.btbChart .ordm{fill:var(--warn)}
+.btbNotes{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px}
+.btbNotes li{display:grid;grid-template-columns:18px 64px 1fr;gap:6px;font-size:12px;line-height:1.55;color:var(--dim)}
+.btbNotes li i{font-style:normal;text-align:center}.btbNotes li.ok i{color:var(--add)}.btbNotes li.no i{color:var(--warn)}.btbNotes li b{color:var(--ink);font-weight:600}
+.btbTbl{font-size:11px;margin-top:8px}.btbTbl td,.btbTbl th{padding:2px 6px}.btbTbl td.neg{color:var(--del)}.btbTbl td.pos{color:var(--add)}
 .dipPart b{text-align:right;font-variant-numeric:tabular-nums}
 .dipE.x{color:var(--del)}.dipE.w{color:var(--warn)}.dipE.g{color:var(--add)}
 .dipDrop{margin:4px 0 10px}
@@ -3795,10 +3806,76 @@ function dipTable(rows,title,sub){
     S.dipOpen=S.dipOpen||new Set();
     const dt=el('tr','dipDet'); dt.hidden=!S.dipOpen.has(r.code); const dd=el('td'); dd.colSpan=10; dd.appendChild(dipDetail(r)); dt.appendChild(dd);
     tr.classList.toggle('open',!dt.hidden);
-    tr.onclick=()=>{ dt.hidden=!dt.hidden; tr.classList.toggle('open',!dt.hidden); S.dipOpen[dt.hidden?'delete':'add'](r.code); };
+    const bl=()=>{ const b=dt.querySelector('.btbDeep'); if(b&&b.load&&!dt.hidden) b.load(); }; bl();
+    tr.onclick=()=>{ dt.hidden=!dt.hidden; tr.classList.toggle('open',!dt.hidden); S.dipOpen[dt.hidden?'delete':'add'](r.code); bl(); };
     t.appendChild(tr); t.appendChild(dt);
   });
   w.appendChild(t);
+  return w;
+}
+
+// 북투빌 심화 — 최근 3년 분기별(서버 btb_view). 한 분기 값보다 4분기 합 · 연속 · 덩어리 · 취소 · 일감 · 업종 안 위치를 같이 읽는다
+function btbDeep(code){
+  const w=el('div','btbDeep'); w.appendChild(el('em',null,'북투빌 3년 — 분기별'));
+  w.appendChild(el('div','sub','북투빌 = 그 분기 신규수주 ÷ 매출. 신규수주 = 잔고 증가 + 매출(거꾸로 구한 추정). 1 이상이면 일감이 쌓이고, 1 아래면 쌓인 일감을 꺼내 쓰는 중이다.'));
+  const body=el('div',null,'불러오는 중…'); w.appendChild(body);
+  S.btbCache=S.btbCache||{};
+  const draw=d=>{
+    body.innerHTML='';
+    if(!d||d.error){ body.appendChild(el('div','sub',(d&&d.error)||'자료 없음')); return; }
+    const rows=d.rows, n=rows.length, W=820,H=210,L=40,R=44,T=14,B=34;
+    const bbs=rows.flatMap(x=>[x.bb,x.bb4]).filter(v=>v!=null);
+    const cap=v=>Math.max(-1,Math.min(4,v));
+    const mx=Math.max(2,...bbs.map(cap)), mn=Math.min(0,...bbs.map(cap));
+    const y=v=>T+(mx-cap(v))/(mx-mn)*(H-T-B), gw=(W-L-R)/n, bw=Math.min(30,gw*0.5);
+    const cvs=rows.map(x=>x.cover).filter(v=>v!=null), cmx=Math.max(1,...cvs)*1.15, yc=v=>T+(cmx-v)/cmx*(H-T-B);
+    const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'expTrend btbChart'});
+    [mn<0?mn:null,0,1,mx>=3?Math.floor(mx):2].filter((v,i,a)=>v!=null&&a.indexOf(v)===i).forEach(v=>{
+      svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:v===1?'one':'g'}));
+      const t=svgEl('text',{x:L-6,y:y(v)+3,'text-anchor':'end',class:'ax'}); t.textContent=v.toFixed(v%1?1:0); svg.appendChild(t); });
+    [0,cmx/1.15].forEach(v=>{ const t=svgEl('text',{x:W-R+6,y:yc(v)+3,class:'ax'}); t.textContent=v.toFixed(1)+'년'; svg.appendChild(t); });
+    const xs=rows.map((x,i)=>L+gw*i+gw/2);
+    rows.forEach((x,i)=>{ const cx=xs[i];
+      if(x.bb!=null){ const y0=y(0), y1=y(x.bb);
+        svg.appendChild(svgEl('rect',{x:cx-bw/2,y:Math.min(y0,y1),width:bw,height:Math.max(1,Math.abs(y1-y0)),rx:2,class:x.bb<0?'bNeg':x.bb>=1?'bUp':'bDn'}));
+        const t=svgEl('text',{x:cx,y:(x.bb>=0?Math.min(y0,y1)-3:Math.max(y0,y1)+10),'text-anchor':'middle',class:'lab'}); t.textContent=x.bb.toFixed(2)+(x.span>1?' ('+x.span+'분기)':''); svg.appendChild(t); }
+      if(x.brk){ const t=svgEl('text',{x:cx,y:y(0)-4,'text-anchor':'middle',class:'lab'}); t.textContent='기준 바뀜'; t.setAttribute('fill','var(--warn)'); svg.appendChild(t); }
+      if(x.ord_n){ const m=svgEl('path',{d:'M'+(cx-4)+' '+(H-B+12)+' L'+(cx+4)+' '+(H-B+12)+' L'+cx+' '+(H-B+5)+' Z',class:'ordm'}); svg.appendChild(m); }
+      if((x.cancel||[]).length){ const m=svgEl('text',{x:cx+8,y:H-B+13,class:'lab'}); m.textContent='해지'; m.setAttribute('fill','var(--del)'); svg.appendChild(m); }
+      const t=svgEl('text',{x:cx,y:H-6,'text-anchor':'middle',class:'ax'}); t.textContent=x.q.slice(2,4)+'.'+x.q.slice(5)+'Q'; svg.appendChild(t); });
+    const seg=(key,yf,cls)=>{ let dd='', pen=false;
+      rows.forEach((x,i)=>{ if(x[key]==null){ pen=false; return; } dd+=(pen?'L':'M')+xs[i].toFixed(1)+' '+yf(x[key]).toFixed(1)+' '; pen=true; });
+      if(dd) svg.appendChild(svgEl('path',{d:dd.trim(),class:cls})); };
+    seg('cover',yc,'cov'); seg('bb4',y,'l4');
+    rows.forEach((x,i)=>{ if(x.bb4!=null) svg.appendChild(svgEl('circle',{cx:xs[i],cy:y(x.bb4),r:2.6,class:'l4d'})); });
+    const won=v=>v==null?'—':qWon(v);
+    w.dataset.n=n;
+    body.appendChild(expHover(svg,W,H,xs,gw,i=>{ const x=rows[i];
+      return [x.q.slice(0,4)+'년 '+x.q.slice(5)+'분기'+(x.verified?' · 잔고 검산 일치':''),
+        '매출 '+won(x.rev)+' · 잔고 '+won(x.blog),
+        x.brk?'잔고를 읽은 방식이 직전과 다르다('+x.basis+') — 북투빌에서 뺐다':'신규수주(추정) '+won(x.new)+' = 잔고 증가 + 매출'+(x.span>1?' ('+x.span+'분기 묶음)':''),
+        '분기 북투빌 '+(x.bb==null?'—':x.bb.toFixed(2))+' · 4분기 합 '+(x.bb4==null?'—':x.bb4.toFixed(2)),
+        '일감 '+(x.cover==null?'—':x.cover.toFixed(1)+'년 치')+(x.ord_n?' · 수주 공시 '+x.ord_n+'건 '+won(x.ord_amt):'')+((x.cancel||[]).length?' · 해지 공시 '+x.cancel.length+'건':'')]; },()=>null,[T,H-B]));
+    body.appendChild(el('div','sub','막대 = 분기 북투빌(초록 1 이상 · 회색 1 아래 · 빨강 잔고가 매출보다 더 줄어듦) · 진한 선 = 4분기 합 북투빌 · 점선(오른쪽 축) = 잔고 ÷ 연매출(몇 년 치 일감) · ▲ = 그 분기 수주 공시(단일판매·공급계약)'));
+    const ul=el('ul','btbNotes');
+    (d.notes||[]).forEach(nt=>{ const li=el('li',nt.ok===true?'ok':nt.ok===false?'no':''); li.appendChild(el('i',null,nt.ok===true?'✓':nt.ok===false?'△':'·'));
+      li.appendChild(el('b',null,nt.k)); li.appendChild(el('span',null,nt.t)); ul.appendChild(li); });
+    body.appendChild(ul);
+    const det=el('details'); det.appendChild(el('summary','sub','분기별 숫자'));
+    const t=el('table','tbl btbTbl');
+    t.innerHTML='<tr><th>분기</th><th class="r">매출</th><th class="r">잔고</th><th class="r">신규수주(추정)</th><th class="r">분기 BB</th><th class="r">4분기 BB</th><th class="r">일감</th><th class="r">수주 공시</th></tr>';
+    rows.slice().reverse().forEach(x=>{ const tr=el('tr'); tr.appendChild(el('td',null,x.q.slice(0,4)+'.'+x.q.slice(5)+'Q'+(x.verified?'':' ·')));
+      [[won(x.rev)],[won(x.blog)+(x.basis?' '+x.basis:'')],[x.brk?'기준 바뀜':won(x.new),x.new!=null&&x.new<0?'neg':''],[x.bb==null?'—':x.bb.toFixed(2)+(x.span>1?'*':''),x.bb==null?'':x.bb>=1?'pos':x.bb<0?'neg':''],
+       [x.bb4==null?'—':x.bb4.toFixed(2),x.bb4==null?'':x.bb4>=1?'pos':''],[x.cover==null?'—':x.cover.toFixed(1)+'년'],
+       [(x.ord_n?x.ord_n+'건 '+won(x.ord_amt):'')+((x.cancel||[]).length?' 해지 '+x.cancel.length:'')||'—']].forEach(([v,c])=>tr.appendChild(el('td','num'+(c?' '+c:''),v)));
+      t.appendChild(tr); });
+    det.appendChild(t); det.appendChild(el('div','sub','· = 그 분기 잔고가 표 산술 검산을 못 거침 · * = 직전 잔고가 없어 여러 분기를 묶어 잼'));
+    body.appendChild(det);
+  };
+  // 행을 펼칠 때만 부른다(표를 그릴 때 모든 행의 상세를 미리 만든다)
+  w.load=()=>{ if(w._go) return; w._go=true;
+    if(S.btbCache[code]) return draw(S.btbCache[code]);
+    fetch('/api/btb?code='+encodeURIComponent(code)).then(r=>r.json()).then(d=>{ if(!d.error&&!d.peer_pending) S.btbCache[code]=d; draw(d); }).catch(()=>draw(null)); };
   return w;
 }
 
@@ -3829,6 +3906,7 @@ function dipDetail(r){
     if(r.score_note) sp.appendChild(el('small',null,r.score_note));
     box.appendChild(sp);
   }
+  box.appendChild(btbDeep(r.code));
   if((r.events||[]).length){
     const ev=el('div','dipEv'); ev.appendChild(el('em',null,'확인한 공시'));
     r.events.forEach(e=>{ const a=el('a','dipE '+(e.v==='x'?'x':e.v==='+'?'g':'w'),dipD(e.date)+' '+(e.v==='+'?'자기주식 소각':e.kind)+(e.why?' — '+e.why:'')); a.href=e.url; a.target='_blank'; a.rel='noopener'; ev.appendChild(a); });
