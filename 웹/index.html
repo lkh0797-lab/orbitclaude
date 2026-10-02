@@ -91,6 +91,7 @@ main{flex:1;overflow:auto;padding:18px 22px;min-width:0}
 .slist .n{font:11px/1.6 var(--mono);opacity:.65}
 
 /* ---------- 탭 ---------- */
+.tabs[hidden]{display:none}
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:18px;
   overflow-x:auto}
 .tabs button{padding:8px 14px;border:none;background:none;cursor:pointer;
@@ -2177,6 +2178,9 @@ async function waitIndex(){
     try { st = await (await fetch('/api/status')).json(); } catch(e){ st=null; }
     if(st && st.ready){
       await loadCompanies();
+      if(w && !st.companies){ w.innerHTML='이 PC에 수집된 보고서가 없습니다.<br>'+
+        '<span style="color:var(--faint);font-size:12px">공시 원문은 저장소에 들어 있지 않습니다. '+
+        '.env 에 DART_API_KEY 를 넣고 기업추적_실행.bat 으로 수집한 뒤 「색인 갱신」을 누르세요.</span>'; return; }
       if(w) w.textContent='왼쪽 위 검색창에 기업명을 넣으면 최근 15년 보고서가 전부 열립니다. ('
         + st.companies.toLocaleString('ko-KR') + '개사 / 보고서 '
         + st.reports.toLocaleString('ko-KR') + '건)';
@@ -2291,7 +2295,15 @@ $('#tabs').addEventListener('click', e=>{
 });
 function show(t){
   S.tab=t;
-  const p=$('#panes'); p.innerHTML='<div class="loading">불러오는 중…</div>';
+  const p=$('#panes');
+  // 회사를 고르기 전에는 탭 화면이 그릴 것이 없다 — 무한 '불러오는 중'에 걸리지 않게 안내만 한다.
+  if(!S.co && !['play','cat','exp'].includes(t)){
+    p.innerHTML=''; p.appendChild(el('div','empty', S.companies.length
+      ? '먼저 왼쪽 위 검색창에서 기업을 고르세요.'
+      : '이 PC에 수집된 보고서가 없습니다. 기업추적_실행.bat 으로 먼저 수집하세요.'));
+    return;
+  }
+  p.innerHTML='<div class="loading">불러오는 중…</div>';
   ({orbit:viewOrbit, land:viewLand, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
