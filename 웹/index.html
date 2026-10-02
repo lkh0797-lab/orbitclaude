@@ -991,6 +991,15 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .inftlpt:hover circle{stroke:var(--ink)}
 .inflegend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin-top:4px}
 .inflegend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.lensval{border:1px solid var(--line2);border-left:3px solid var(--accent);border-radius:8px;background:var(--panel);padding:12px 14px;margin:0 0 14px}
+.lensval .lvh b{font-size:14.5px;display:block}.lensval .lvh span{font-size:12px;color:var(--dim)}
+.lvcalls{list-style:none;margin:8px 0 6px;padding:0}.lvcalls li{font-size:13px;line-height:1.55;padding:5px 9px;border-radius:6px;margin:4px 0;background:var(--bg)}
+.lvcalls li.up{border-left:3px solid var(--add)}.lvcalls li.dn{border-left:3px solid var(--del)}.lvcalls li.nu{border-left:3px solid var(--line)}
+.lvcalls .ev{font-size:11.5px;color:var(--faint);margin-top:2px}
+.lvnote{font-size:11.5px;color:var(--dim);line-height:1.6;margin:6px 0 0}
+.lensbt{margin-top:10px;border-top:1px dashed var(--line2);padding-top:8px}.lensbt em{display:block;font-style:normal;font-size:11px;color:var(--faint);margin-bottom:4px}
+.lensbt .lbr{font-size:11.5px;line-height:1.5;padding:3px 0}.lensbt .lbr b{display:block;font-size:12px}
+.lensbt .lbr.pos b{color:var(--add)}.lensbt .lbr.neg b{color:var(--del)}.lensbt .lbr span{color:var(--dim)}
 .inflensbox{margin:4px 0 14px}
 .inflenses{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
 .inflens{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px 14px;
@@ -1571,6 +1580,7 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .dipTbl td.num.pos{color:var(--add)}.dipTbl td.num.neg{color:var(--del)}.dipTbl td.num.mac{color:var(--warn)}
 .dipTbl td.num.strong{font-weight:700}
 .dipTbl .dipWhy{font-size:11px;color:var(--warn);margin-top:2px}
+.dipTbl .dipFwd{font-size:11px;color:var(--dim);margin-top:2px}.dipTbl .dipNote{font-size:10.5px;color:var(--faint);margin-top:1px}
 .dipTbl .dipWarn{font-size:11px;color:var(--faint);margin-top:2px}
 .dipTbl td.why{font-size:12px;color:var(--dim);max-width:520px}
 .dipRow{cursor:pointer}.dipRow:hover{background:var(--line2)}
@@ -2824,7 +2834,6 @@ function expMini(series,cls){
 }
 // 상태 → 선 색(늘면 초록, 꺾이거나 줄면 빨강, 보합은 먹색)
 const expCls=st=>{ const c=(EXP_ST[st]||{}).c||''; return c.startsWith('up')?'up':(c.startsWith('dn')||c==='warn')?'dn':''; };
-function expTable(rows){
 // 분기 궤적 — 최근 8개 분기 통관 전년 대비(막대, 이번 분기는 테두리) + 공시 매출 전년 대비(점), 아래 한 줄로 방향
 function expQtr(x){
   const al=x.aligned, w=el('div','expQtr');
@@ -2860,6 +2869,7 @@ function expQtr(x){
   }
   return w;
 }
+function expTable(rows){
   const w=el('div','tblwrap'); const t=el('table','tbl expTbl');
   const B=S.expBasis||{};
   const A0=(rows.find(x=>x.aligned)||{}).aligned;
@@ -3604,16 +3614,15 @@ const DIP_GATES=[
   ['④ 하락','주가는 크게 빠졌다',[
     '52주 고점 대비 20% 넘게 하락'],
    '싸게 살 기회가 있어야 억울함도 값이 된다.'],
-  ['⑤ 억울함','빠진 이유가 회사 밖에 있다',[
-    '고점 무렵보다 지금 이익(4분기 합)이 5% 넘게 줄지 않았다 — 이익은 버텼다',
-    '(등급) 같은 기간 시장 −8%↓ 또는 업종 −10%↓ — 매크로·업황 심리. 시장·업종 = 수집한 전 종목의 그 기간 수익률 중앙값',
-    '(등급) 시장·업종 중 약한 쪽보다 25%p 넘게 더 빠지지 않았다 — 더 빠졌다면 회사만의 이유가 있을 수 있다',
-    '(참고) 값 매김(PER)이 15% 넘게 줄었다 — 과거 검증에서 앞으로 수익률과 일관된 관계가 없어 점수에서는 뺐다'],
-   '이익이 그대로인데 주가만 빠졌다면 시장이 값을 덜 쳐준 것이다. 그 할인이 회사 밖(금리·환율·업황 심리)에서 왔는지를 본다.'],
-  ['⑥ 싸다','자기 역사 대비 값',[
-    '(등급) 지금 PER이 이 회사 15년 PER 중 상위 20% 안이면 "억울"이 아니라 "관찰" — 거품이 빠지는 중일 수 있다',
-    '(참고) 자기 역사 위치 — 풍경 탭과 같은 계산(분할 보정). 과거 검증에서 일관된 관계가 없어 점수에서는 뺐다'],
-   '같은 회사라도 시장이 늘 쳐주던 값이 있다. 40% 빠져도 역사적 고평가면 억울한 게 아니라 제자리로 오는 중이다.'],
+  ['⑤ 이익','이익은 버텼다',[
+    '고점 무렵보다 지금 이익(4분기 합)이 5% 넘게 줄지 않았다',
+    '(참고) 같은 기간 시장 −8%↓ 또는 업종 −10%↓였나, 시장·업종보다 25%p 넘게 더 빠졌나 — 예전엔 등급이었으나 과거 검증에서 갈라내지 못해 참고로만 적는다'],
+   '이익이 그대로인데 주가만 빠졌다면 시장이 값을 덜 쳐준 것이다. 그 할인이 정당한지는 ⑥ 앞단이 가른다.'],
+  ['⑥ 앞단','앞으로의 매출이 버틴다 (등급)',[
+    '(억울) 잔고 또는 선수금(계약부채)이 매출보다 +15%p↑ 빨리 늘었다 — 분기 변화 파이프라인의 마지막 분기 값',
+    '(빨간불) 잔고·선수금이 매출보다 −15%p↓ 느리다 · 업종 제품 가격(수출물가) −10%↓ · 업종에 재고가 쌓이는데(재고 순환 −10%p↓) 회사 매출은 아직 +5%↑',
+    '(참고) PER 자기 역사 — 빠진 회사 안에서는 싸다·비싸다가 앞날을 가르지 못했다'],
+   '재점검(2026-10-02): 예전 등급(시장·업종 동반·혼자 더 안 빠짐·안 비쌈)은 후보 안에서 12개월 초과수익을 −8.6%p 깎았다. 앞단 강함·빨간불 없음은 후보 안 +13.2%p, 넓은 표본 +12.3%p [6.7, 18.5] — 다만 대부분 2020년 뒤 표본에서 나왔다(앞 기간은 차이 없음).'],
 ];
 const dipP=v=>v===null||v===undefined?'—':(v>=0?'+':'')+Math.round(v)+'%';
 const dipD=s=>s?s.slice(0,4)+'.'+s.slice(4,6)+'.'+s.slice(6,8):'—';
@@ -3660,8 +3669,8 @@ async function viewDip(box, force){
   if(d.bt) body.appendChild(dipEvidence(d.bt));
   const rows=d.rows||[];
   const A=rows.filter(r=>r.tier==='억울'), B=rows.filter(r=>r.tier!=='억울');
-  body.appendChild(dipTable(A,'억울한 낙폭','이익은 버텼고, 시장·업종과 함께 빠졌고, 자기 역사로 봐도 비싸지 않다'));
-  if(B.length) body.appendChild(dipTable(B,'관찰','관문은 넘었지만 하나가 걸린다 — 회사만 더 빠졌거나, 시장은 멀쩡했거나, 빠진 뒤에도 자기 역사로 비싸다'));
+  body.appendChild(dipTable(A,'억울한 낙폭','이익은 버텼고, 앞단(잔고·선수금)이 매출보다 빨리 늘고, 빨간불이 없다 — 빠진 값이 앞날과 어긋난 곳'));
+  if(B.length) body.appendChild(dipTable(B,'관찰','관문은 넘었지만 앞단이 매출보다 빠르지 않거나, 빨간불(앞단 약함·업종 가격 하락·업종 재고 쌓임)이 있다 — 빠질 만한 이유가 보이는 곳'));
   if(!rows.length && !d.running) body.appendChild(el('div','empty','지금은 여섯 관문을 모두 넘은 회사가 없다.'));
   const drop=d.drop||[];
   if(drop.length){
@@ -3707,7 +3716,7 @@ function dipEvidence(bt){
   ['점수 항목: 북투빌(높을수록), 같은 기간 업종 수익률(덜 빠졌을수록), 고점 대비 낙폭(깊을수록), 잔고÷연매출(클수록), 순차입÷자본(낮을수록). 앞뒤 기간에서 방향이 같았던 것만 남겼다.',
    '뺀 항목: 잔고 증가율(2020년 뒤로 방향이 뒤집힘), 값 매김 압축, 이익 증가, PER 자기 역사 — 어느 쪽으로도 일관된 차이가 없었다.',
    '업종 전체가 빠진 하락은 회복이 오히려 약했다(업종 모멘텀). 업종은 버티는데 이 회사만 과하게 빠진 쪽이 더 잘 돌아왔다.',
-   '억울·관찰 등급은 수익률로 구분되지 않았다. 등급은 "왜 빠졌나"를 설명하는 이름표로 읽고, 순서는 점수로 본다.',
+   '위 억울·관찰 숫자는 예전 등급(시장·업종 동반·혼자 더 안 빠짐·안 비쌈)이다 — 수익률로 구분되지 않았다(후보 안 −8.6%p). 2026-10-02부터 등급은 ⑥ 앞단(잔고·선수금 vs 매출 · 빨간불)으로 매긴다: 후보 안 +13.2%p, 넓은 표본 +12.3%p [6.7, 18.5], 대부분 2020년 뒤 표본(도구/억울_재점검.py).',
    '표본이 작다(60곳 안팎, 대부분 2020년 뒤 조선·전력·방산 사이클). 구간이 0에 걸쳐 있으면 우연일 수 있다는 뜻이다.'].forEach(x=>ul.appendChild(el('li',null,x)));
   det.appendChild(ul);
   det.appendChild(el('div','finnote','다시 재기: python 도구/억울_백테스트.py (약 10분). 결과 파일 .cache/dip/bt_report.json 을 이 화면과 점수가 바로 읽는다.'));
@@ -3725,7 +3734,10 @@ function dipTable(rows,title,sub){
     const tr=el('tr','dipRow');
     const td=el('td'); const a=el('a',null,r.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(r.code); }; td.appendChild(a);
     td.appendChild(el('small',null,' '+r.code+' · '+(r.industry||'')));
+    const fw=r.fwd; if(fw&&fw.strong!=null) td.appendChild(el('div','dipFwd','앞단('+fw.lab.slice(2,4)+'.'+fw.lab.slice(5)+'Q) 잔고 '+(fw.blog_gap==null?'—':(fw.blog_gap>=0?'+':'')+Math.round(fw.blog_gap)+'%p')+
+      ' · 선수금 '+(fw.liab_gap==null?'—':(fw.liab_gap>=0?'+':'')+Math.round(fw.liab_gap)+'%p')+' (매출 대비)'+(fw.cyc!=null?' · 업종 재고 순환 '+(fw.cyc>=0?'+':'')+Math.round(fw.cyc)+'%p':'')));
     (r.tier_why||[]).forEach(w=>td.appendChild(el('div','dipWhy',w)));
+    (r.tier_notes||[]).forEach(w=>td.appendChild(el('div','dipNote',w)));
     const wk=[...new Set((r.events||[]).filter(e=>e.v==='!').map(e=>e.kind))];
     if(wk.length) td.appendChild(el('div','dipWarn','주의 공시 · '+wk.join(' · ')));
     tr.appendChild(td);
@@ -8527,12 +8539,37 @@ function infClock(d, pc){
   return box;
 }
 
+// 값 판단 요약 — 렌즈를 큰 표본(공시 2.3만 건 · 946곳 · 2015~2025)으로 다시 잰 뒤 뚜렷했던 것만 판정에 쓴다(서버 lens_value)
+const lensEvTxt=e=>{ if(!e) return ''; const f=v=>v==null?'—':(v>=0?'+':'')+v.toFixed(1);
+  return '과거 '+(e.n||0).toLocaleString('ko-KR')+'건: 12개월 초과수익 '+f(e.diff)+'%p'+(e.ci&&e.ci[0]!=null?' ['+f(e.ci[0])+' ~ '+f(e.ci[1])+']':'')+
+    (e.trap!=null?' · 가치 함정(−30%↓) '+e.trap.toFixed(0)+'%':'')+' — '+(e.word||''); };
+function infValueCard(code){
+  const box=el('div','lensval'); box.appendChild(el('div','loading','값 판단 요약을 계산하는 중…'));
+  fetch('/api/lens_value?code='+code).then(r=>r.json()).then(d=>{
+    box.innerHTML='';
+    const h=el('div','lvh'); h.appendChild(el('b',null,'값 판단 요약')); h.appendChild(el('span',null,'다섯 렌즈를 2015~2025년 공시 2.3만 건으로 다시 재 보고, 실제로 갈랐던 것만 판정에 쓴다'));
+    box.appendChild(h);
+    const ul=el('ul','lvcalls');
+    (d.calls||[]).forEach(c=>{ const li=el('li',c.tone); li.appendChild(el('span',null,c.text)); if(c.ev) li.appendChild(el('div','ev',lensEvTxt(c.ev))); ul.appendChild(li); });
+    if(!(d.calls||[]).length) ul.appendChild(el('li','nu',d.error||'값을 낼 자료가 부족하다(주가 · 주식 수 · 매출 4분기)'));
+    box.appendChild(ul);
+    box.appendChild(el('p','lvnote','이 렌즈들은 내재가치(미래 현금흐름의 현재가치)를 계산하지 않는다. 보이는 것은 지금 값이 이 회사의 지난 10년 가운데 어디쯤인가와, '+
+      '같은 상황이 과거에 낸 성적(시장 대비 12개월 초과수익 · 1년에 −30% 넘게 빠진 비율)이다. 전체 평균 함정 비율 '+(d.base_trap!=null?d.base_trap.toFixed(0)+'%':'15%')+'. '+
+      'ROE · 이익의 질 · 멍거 경고는 이 표본에서 수익률을 가르지 못해(멍거 경고는 오히려 반대) 판정에서 뺐다 — 아래 카드에 위험 설명으로만 남는다.'));
+    S.lensEv=d.lens_ev||{};
+    document.querySelectorAll('.inflens').forEach(cd=>{ const g=cd.dataset.guru, ev=(S.lensEv||{})[g]; const slot=cd.querySelector('.lensbt'); if(!slot||!ev) return;
+      slot.innerHTML=''; slot.appendChild(el('em',null,'큰 표본 성적(공시일 기준, 시장 대비 12개월)'));
+      ev.forEach(e=>{ const r=el('div','lbr '+(e.word&&e.word.startsWith('뚜렷')?(e.diff>0?'pos':'neg'):'nu')); r.appendChild(el('b',null,e.rule.split(' · ').slice(1).join(' · ')||e.rule)); r.appendChild(el('span',null,lensEvTxt(e))); slot.appendChild(r); }); });
+  }).catch(()=>{ box.innerHTML=''; box.appendChild(el('div','empty','값 판단 요약을 불러오지 못했다')); });
+  return box;
+}
 function infLenses(d, pc){
   const box=el('div','inflensbox');
-  const hd=el('div','infsec'); hd.innerHTML='구루의 렌즈 <small>같은 보고서를 다섯 사람이 읽으면 — 카드마다 그 렌즈가 읽는 정보가 값에 드는 속도</small>'; box.appendChild(hd);
+  if(S.co) box.appendChild(infValueCard(S.co.code));
+  const hd=el('div','infsec'); hd.innerHTML='구루의 렌즈 <small>같은 보고서를 다섯 사람이 읽으면 — 카드마다 맨 아래 큰 표본 성적(그 렌즈의 판정이 과거에 실제로 맞았나)</small>'; box.appendChild(hd);
   const grid=el('div','inflenses');
   (d.lenses||[]).forEach(Lz=>{
-    const c=el('div','inflens');
+    const c=el('div','inflens'); c.dataset.guru=Lz.guru;
     const h=el('div','inflensh');
     const nm=el('div'); nm.appendChild(el('b',null,Lz.guru)); nm.appendChild(el('small',null,Lz.en));
     h.appendChild(nm);
@@ -8545,7 +8582,7 @@ function infLenses(d, pc){
       const top=el('div','t'); top.appendChild(el('b',null,sp.t)); top.appendChild(el('span',null,k.h)); ck.appendChild(top);
       ck.appendChild(el('p',null,k.how));
       const row=CLK_ROWS.find(r=>r.key===k.key); const res=row?clkRes(pc,k.key,row.m):null;
-      if(res){ const h=res.res['12개월']||{}; ck.appendChild(el('small',null,'우리 데이터 12개월 '+(h.rho==null?'—':(h.rho>=0?'+':'')+h.rho.toFixed(2))+(row.m==='cross'?' · 같은 해 회사끼리':' · 같은 회사 시간축'))); }
+      if(res){ const h=res.res['12개월']||{}; ck.appendChild(el('small',null,'예전 작은 표본(14종목) 12개월 '+(h.rho==null?'—':(h.rho>=0?'+':'')+h.rho.toFixed(2))+' — 아래 큰 표본 성적이 우선')); }
       c.appendChild(ck); }
     c.appendChild(el('p','infidea',Lz.idea));
     if(Lz.metrics){
@@ -8569,6 +8606,10 @@ function infLenses(d, pc){
     }
     c.appendChild(el('p','infverdict',Lz.verdict||''));
     const q=el('div','infq'); q.appendChild(el('span',null,'구루의 질문')); q.appendChild(document.createTextNode(Lz.q||'')); c.appendChild(q);
+    const bt=el('div','lensbt'); const ev=(S.lensEv||{})[Lz.guru];
+    if(ev){ bt.appendChild(el('em',null,'큰 표본 성적(공시일 기준, 시장 대비 12개월)'));
+      ev.forEach(e=>{ const r=el('div','lbr '+(e.word&&e.word.startsWith('뚜렷')?(e.diff>0?'pos':'neg'):'nu')); r.appendChild(el('b',null,e.rule.split(' · ').slice(1).join(' · ')||e.rule)); r.appendChild(el('span',null,lensEvTxt(e))); bt.appendChild(r); }); }
+    c.appendChild(bt);
     grid.appendChild(c);
   });
   box.appendChild(grid);

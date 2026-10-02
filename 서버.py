@@ -3941,6 +3941,11 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
                     ca[lab] = ca.get(lab, 0) + v
     wip = {lab: (inv.get(lab) or 0) + (ca.get(lab) or 0) for lab in labs if inv.get(lab) is not None or ca.get(lab) is not None}
     capex = _mseries(mc, _mrow(mc, (), None, ("t:PurchaseOfPropertyPlantAndEquipment",)))
+    # 구루 렌즈 검증용 — 영업현금흐름(멍거 '이익의 현금화'), 부채 · 자본총계(부채비율), 매출채권(회수 지연)
+    cfo = _mseries(mc, _mrow(mc, ("t:CashFlowsFromUsedInOperatingActivities",), r"^영업활동\s*(으로\s*인한\s*)?현금\s*흐름"))
+    debt = _mseries(mb, _mrow(mb, ("t:Liabilities",), r"^부채\s*총계$"))
+    eqt = _mseries(mb, _mrow(mb, ("t:Equity",), r"^자본\s*총계$"))
+    recv = _mseries(mb, _mrow(mb, ("t:TradeAndOtherCurrentReceivables",), r"^매출채권"))
     # 수주잔고(본문) — 시점 → 분기
     blog = {}
     if blog_pts is None and BACK is not None:
@@ -4017,6 +4022,11 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
         eav = (e0 + e1) / 2 if e0 and e1 and e0 > 0 and e1 > 0 else (e0 if e0 and e0 > 0 else None)
         rows[lab]["equity"] = e0
         rows[lab]["roe"] = (nt / eav * 100) if nt is not None and eav else None
+        # 주식 수(지금 기준) — 가까운 분기의 순이익 ÷ EPS. 시가총액 · PSR 을 낼 때 쓴다
+        if sh_now:
+            near = min(sh_now, key=lambda k: abs(qn(k) - qn(lab)))
+            rows[lab]["shares"] = sh_now[near] if abs(qn(near) - qn(lab)) <= 4 else None
+        rows[lab].update(cfo_ttm=ttm(cfo, lab), debt=debt.get(lab), eq_total=eqt.get(lab), recv=recv.get(lab), inv=inv.get(lab))
         if orders is not None and first_o and lab >= "%sQ%d" % (first_o[:4], (int(first_o[4:6]) - 1) // 3 + 1):
             o4 = sum(oq.get(_qshift(lab, k), 0) for k in range(4))
             o4l = sum(oq.get(_qshift(ly, k), 0) for k in range(4))
@@ -4348,6 +4358,107 @@ def _qtr_pipe(c, steps):
     have = {k: any(rows[l].get(k) is not None for l in show) for k in ("blog", "liab", "wip", "capex_ttm", "px", "ord_ttm", "roe", "mp_yoy", "cyc")}
     return {"labs": show, "rows": {l: rows[l] for l in show}, "lags": lags, "calls": calls, "have": have, "last": labs[-1], "now": now,
             "splits": pr.get("splits") or [], "macro": mac}
+
+
+# ---------------------------------------------------------------- 값 판단 요약 — 구루 렌즈를 큰 표본 검증으로 다시 읽는다 (2026-10-02)
+# 도구/구루렌즈_검증.py(공시 23,233건 · 946곳 · 2015~2025, 공시일 기준)에서 뚜렷했던 것만 판정에 쓰고, 나머지는 성적만 보인다.
+#   맞았다  PSR · PER 자기 역사 하위 30%(+2.0~2.4%p, 가치 함정 10% — 전체 15%) · 상위 30%(−2.5%p, 함정 18%) · PSR 3배↑(−4.3%p, 함정 23%)
+#           매출 가속 +5%p↑(+2.3%p, 앞뒤 기간 같은 방향)
+#   안 맞았다  ROE 15%↑ · 슈퍼 컴퍼니 · 글리치 · 고성장, 싸다 + 품질(ROE · 현금화) 조합
+#   거꾸로   멍거 경고(현금화 · 매출채권 · 재고 · 부채) — 걸린 회사가 오히려 +3~5%p, 함정 비율도 평균 → 피할 신호로 쓰지 않는다
+LENS_RULES = {   # 렌즈 → 성적을 보일 규칙(도구/구루렌즈_검증.py RULES 이름)
+    "켄 피셔": ["피셔 · PSR 자기 역사 하위 30%", "피셔 · PSR 자기 역사 상위 30%", "피셔 · PSR 3배↑(절대)", "피셔 · 슈퍼 컴퍼니"],
+    "스탠리 드러켄밀러": ["드러켄밀러 · 가속 +5%p↑", "드러켄밀러 · 매출 +20%↑", "드러켄밀러 · 설비투자 강도 10%↑"],
+    "워런 버핏": ["버핏 · ROE 15%↑", "버핏 · ROE 10년 평균 15%↑ · 최저 10%↑", "버핏 · 이익률 흔들림 낮음(0.2↓)"],
+    "피터 린치": ["린치 · PEG < 1", "린치 · 고성장(매출 5년 20%↑)"],
+    "찰리 멍거": ["멍거 · 경고 2개↑", "멍거 · 3년 안 증자", "멍거 · 3년 중 2년 적자"],
+}
+_LBT = {"mt": None, "d": None}
+
+
+def _lens_bt():
+    p = os.path.join(CACHE_DIR, "inflect", "lens_bt.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return None
+    if _LBT["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                _LBT.update(d=json.load(fh), mt=mt)
+        except Exception:
+            return None
+    return _LBT["d"]
+
+
+def _lens_ev(name):
+    d = _lens_bt() or {}
+    t = (d.get("rules") or {}).get(name) or (d.get("combo") or {}).get(name)
+    if not t or t.get("diff") is None:
+        return None
+    return {"rule": name, "n": t.get("n_on"), "diff": t["diff"], "ci": t.get("ci"), "early": t.get("early"), "late": t.get("late"),
+            "trap": t.get("trap"), "word": _ev_word(t["diff"], t.get("ci"), t.get("early"), t.get("late"))}
+
+
+def lens_value(code):
+    """지금 이 회사의 값 위치 · 가속 · 멍거 경고와, 그 판정의 과거 성적. 렌즈 카드마다 큰 표본 성적."""
+    c = company_by_code(code)
+    corp = corp_code_of(code) if c and FIN is not None else None
+    out = {"code": code, "lens_ev": {g: [e for e in (_lens_ev(n) for n in names) if e] for g, names in LENS_RULES.items()},
+           "base_trap": (_lens_bt() or {}).get("base_trap")}
+    if not corp:
+        return out
+    try:
+        mi = matrix_cached(c, corp, "IS", "q", IS_YEARS)
+        mb = matrix_cached(c, corp, "BS", "q", QTR_YEARS)
+        mc = matrix_cached(c, corp, "CF", "q", QTR_YEARS)
+        pr = _pipe_rows(c, mi, mb, mc, blog_pts=[])
+    except Exception as e:
+        out["error"] = "재무 조회 실패: %s" % e
+        return out
+    if not pr or not pr.get("px"):
+        return out
+    labs, R, px = pr["labs"], pr["rows"], pr["px"]
+    last, prev = R[labs[-1]], R[labs[-2]] if len(labs) > 1 else {}
+    p, sh, rt = px["p"][-1], last.get("shares"), last.get("rev_ttm")
+    psr = p * sh / rt if p and sh and rt and rt > 0 else None
+    qn_ = lambda k: int(k[:4]) * 4 + int(k[5])
+    ph = []
+    for l in labs[-41:-1]:
+        r = R[l]
+        if r.get("px") and r.get("shares") and r.get("rev_ttm") and r["rev_ttm"] > 0:
+            ph.append(r["px"] * r["shares"] / r["rev_ttm"])
+    pct = lambda v, h: (sum(1 for x in h + [v] if x <= v) / (len(h) + 1) * 100) if v and len(h) >= 8 else None
+    et = last.get("eps_ttm")
+    per = p / et if p and et and et > 0 else None
+    eh = [R[l]["per"] for l in labs[-41:-1] if (R[l].get("per") or 0) > 0]
+    g = last.get("ni_yoy")
+    peg = per / min(max(g, 1.0), 100.0) if per and g is not None and g > 0 else None
+    acc = (last["rev_yoy"] - prev["rev_yoy"]) if last.get("rev_yoy") is not None and prev.get("rev_yoy") is not None else None
+    psr_pct, per_pct = pct(psr, ph), pct(per, eh)
+    out.update(date=str(px["d"][-1]), psr=psr, psr_pct=psr_pct, per=per, per_pct=per_pct, peg=peg, acc=acc,
+               rev_yoy=last.get("rev_yoy"), quarter=labs[-1])
+    calls = []
+    cheap = (psr_pct is not None and psr_pct <= 30) or (per_pct is not None and per_pct <= 30)
+    dear = (psr_pct is not None and psr_pct >= 70)
+    pos = lambda v: "최고" if v >= 99.5 else "최저" if v <= 0.5 else ("하위 %.0f%%" % v if v < 50 else "상위 %.0f%%" % (100 - v))
+    where = "PSR %s(자기 역사 %s)" % ("%.2f배" % psr if psr else "—", pos(psr_pct) if psr_pct is not None else "견줄 기록 부족") + \
+            (" · PER %.0f배(%s)" % (per, pos(per_pct)) if per and per_pct is not None else "")
+    if dear:
+        calls.append({"tone": "dn", "text": "비싼 쪽 — " + where, "ev": _lens_ev("피셔 · PSR 자기 역사 상위 30%")})
+    elif cheap:
+        calls.append({"tone": "up", "text": "싼 쪽 — " + where, "ev": _lens_ev("싸다(자기 역사 PER 또는 PSR 하위 30%)")})
+    else:
+        calls.append({"tone": "nu", "text": "중간 — " + where + ". 자기 역사 가운데라 값만으로는 기울지 않는다", "ev": None})
+    if psr is not None and psr >= 3:
+        calls.append({"tone": "dn", "text": "PSR %.1f배 — 매출의 3배를 넘는 값" % psr, "ev": _lens_ev("피셔 · PSR 3배↑(절대)")})
+    if acc is not None and acc >= 5:
+        calls.append({"tone": "up", "text": "매출 가속 %+.0f%%p(최근 4분기 증가율 %+.0f%%)" % (acc, last["rev_yoy"]),
+                      "ev": _lens_ev("드러켄밀러 · 가속 +5%p↑")})
+    if peg is not None and peg < 1:
+        calls.append({"tone": "nu", "text": "PEG %.1f — 성장 대비 싸다(2020년 뒤에만 통했다)" % peg, "ev": _lens_ev("린치 · PEG < 1")})
+    out["calls"] = calls
+    return out
 
 
 def _inv_prices(code):
@@ -6548,7 +6659,7 @@ def _narr_verdict(o):
 #   ④ 하락   — 52주 고점 대비 20% 넘게 빠졌다
 #   ⑤ 억울함 — 그 사이 이익은 버텼다(값 매김만 줄었다), 그리고 시장·업종도 함께 빠졌다(매크로·심리)
 #   ⑥ 싸다   — 자기 역사 대비 PER 위치(풍경 탭과 같은 계산)
-DIP_V = 6
+DIP_V = 7          # 7: 등급을 앞단(잔고 · 선수금 vs 매출) · 빨간불로(2026-10-02, 도구/억울_재점검.py)
 DIP = {"running": False, "done": 0, "total": 0, "rows": [], "at": 0, "phase": "", "funnel": {}, "drop": []}
 DIP_LOCK = threading.Lock()
 DIP_DIR = os.path.join(CACHE_DIR, "dip")
@@ -7101,17 +7212,66 @@ def _run_dip():
 DIP_PRICEY = 80      # 자기 15년 PER 중 상위 20% 안이면 아직 비싸다 — 거품이 빠지는 중일 수 있다
 
 
+def _dip_forward(code):
+    """앞으로의 매출이 버티나 — 분기 변화 파이프라인의 마지막 분기 값(잔고 · 선수금 vs 매출, 업황). 없으면 None."""
+    c = company_by_code(code)
+    corp = corp_code_of(code) if c and FIN is not None else None
+    if not corp:
+        return None
+    try:
+        mi = matrix_cached(c, corp, "IS", "q", IS_YEARS)
+        mb = matrix_cached(c, corp, "BS", "q", QTR_YEARS)
+        mc = matrix_cached(c, corp, "CF", "q", QTR_YEARS)
+        macro = MACRO.for_company(corp, FIN.API_KEY) if MACRO is not None else None
+        pr = _pipe_rows(c, mi, mb, mc, macro=macro)
+    except Exception:
+        return None
+    if not pr:
+        return None
+    lab = pr["labs"][-1]
+    r = pr["rows"][lab]
+    ry = r.get("rev_yoy")
+    g = lambda k: (r[k] - ry) if r.get(k) is not None and ry is not None else None
+    bg, lg = g("blog_yoy"), g("liab_yoy")
+    red = []
+    if bg is not None and bg <= -15:
+        red.append("잔고가 매출보다 %.0f%%p 느리다" % -bg)
+    if lg is not None and lg <= -15:
+        red.append("선수금(계약부채)이 매출보다 %.0f%%p 느리다" % -lg)
+    if r.get("mp_yoy") is not None and r["mp_yoy"] <= -10:
+        red.append("업종 제품 가격(수출물가) %+.0f%%" % r["mp_yoy"])
+    if r.get("cyc") is not None and ry is not None and r["cyc"] <= -10 and ry > 5:
+        red.append("업종에 재고가 쌓이는데(재고 순환 %+.0f%%p) 회사 매출은 아직 %+.0f%%" % (r["cyc"], ry))
+    strong = None if bg is None and lg is None else ((bg or -1e9) >= 15 or (lg or -1e9) >= 15)
+    return {"lab": lab, "rev_yoy": ry, "blog_gap": bg, "liab_gap": lg, "cyc": r.get("cyc"), "mp_yoy": r.get("mp_yoy"),
+            "strong": strong, "red": red}
+
+
 def _dip_rank(row):
-    """등급과 점수. 억울 = 시장·업종이 함께 빠졌고, 회사만 유독 더 빠지지 않았고, 자기 역사로도 비싸지 않다."""
+    """등급과 점수. 억울 = 앞단(잔고 또는 선수금)이 매출보다 +15%p↑ 빠르고, 빨간불(앞단 약함 · 업종 가격 하락 · 업종 재고 쌓임)이 없다.
+    2026-10-02 재점검(도구/억울_재점검.py): 예전 등급(시장 · 업종 동반 · 혼자 더 안 빠짐 · 안 비쌈)은 후보 안에서 12개월 초과수익을
+    오히려 −8.6%p 깎았다. 새 등급은 후보 안 +13.2%p, 넓은 표본 +12.3%p [6.7, 18.5] — 다만 대부분 2020년 뒤(앞 기간은 차이 없음).
+    시장 · 업종 동반 · PER 자기 역사는 등급에서 빼고 참고로만 적는다."""
+    f = _dip_forward(row["code"])
+    row["fwd"] = f
     why = []
+    if f is None or f.get("strong") is None:
+        why.append("앞단(잔고 · 선수금 vs 매출)을 아직 못 읽었다 — 분기 재무를 받는 중이거나 없다")
+    else:
+        if not f["strong"]:
+            why.append("앞단이 매출보다 빠르지 않다(잔고 %s · 선수금 %s, 매출 대비)" % (
+                "—" if f["blog_gap"] is None else "%+.0f%%p" % f["blog_gap"], "—" if f["liab_gap"] is None else "%+.0f%%p" % f["liab_gap"]))
+        why += ["빨간불: " + x for x in f["red"]]
+    notes = []
     if not row.get("macro"):
-        why.append("시장·업종은 크게 안 빠졌다 — 회사 고유 원인일 수 있다")
+        notes.append("시장·업종은 크게 안 빠졌다(참고)")
     if row.get("worse"):
-        why.append("시장·업종보다 25%p 넘게 더 빠졌다")
+        notes.append("시장·업종보다 25%p 넘게 더 빠졌다(참고)")
     if row.get("pct") is not None and row["pct"] >= DIP_PRICEY:
-        why.append("빠진 뒤에도 PER이 자기 역사 상위 %d%%" % max(1, round(100 - row["pct"])))
+        notes.append("PER이 자기 역사 상위 %d%%(참고)" % max(1, round(100 - row["pct"])))
     row["tier"] = "관찰" if why else "억울"
     row["tier_why"] = why
+    row["tier_notes"] = notes
     _dip_score(row)
 
 
@@ -7367,6 +7527,8 @@ class Handler(BaseHTTPRequestHandler):
                 if INF is None:
                     return self._send(500, {"error": "변곡점 모듈 없음"})
                 return self._send(200, inflect(q.get("code", ""), q.get("force") == "1"))
+            if path == "/api/lens_value":
+                return self._send(200, lens_value(q.get("code", "")))
             if path == "/api/quarter":
                 return self._send(200, quarter_view(q.get("code", "")))
             if path == "/api/export":
