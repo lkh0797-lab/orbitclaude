@@ -6659,7 +6659,7 @@ def _narr_verdict(o):
 #   ④ 하락   — 52주 고점 대비 20% 넘게 빠졌다
 #   ⑤ 억울함 — 그 사이 이익은 버텼다(값 매김만 줄었다), 그리고 시장·업종도 함께 빠졌다(매크로·심리)
 #   ⑥ 싸다   — 자기 역사 대비 PER 위치(풍경 탭과 같은 계산)
-DIP_V = 7          # 7: 등급을 앞단(잔고 · 선수금 vs 매출) · 빨간불로(2026-10-02, 도구/억울_재점검.py)
+DIP_V = 8          # 7: 앞단 · 빨간불(2026-10-02) · 8: 새 점수(업종 가격 · 북투빌 · 낙폭 · 이익률) · 등급 = 빨간불 없음 + 점수 50↑(도구/억울_새점수.py)
 DIP = {"running": False, "done": 0, "total": 0, "rows": [], "at": 0, "phase": "", "funnel": {}, "drop": []}
 DIP_LOCK = threading.Lock()
 DIP_DIR = os.path.join(CACHE_DIR, "dip")
@@ -7209,6 +7209,7 @@ def _run_dip():
             DIP["running"] = False
 
 
+DIP_SCORE_MIN = 50   # 억울 등급 = 빨간불 없음 + 새 점수 50↑ — 과거 후보 안 +14.9%p [1.7, 27.4], 앞 +8.7 · 뒤 +20.5(도구/억울_새점수.py)
 DIP_PRICEY = 80      # 자기 15년 PER 중 상위 20% 안이면 아직 비싸다 — 거품이 빠지는 중일 수 있다
 
 
@@ -7254,14 +7255,16 @@ def _dip_rank(row):
     시장 · 업종 동반 · PER 자기 역사는 등급에서 빼고 참고로만 적는다."""
     f = _dip_forward(row["code"])
     row["fwd"] = f
+    _dip_score(row)
     why = []
-    if f is None or f.get("strong") is None:
-        why.append("앞단(잔고 · 선수금 vs 매출)을 아직 못 읽었다 — 분기 재무를 받는 중이거나 없다")
+    if f is None:
+        why.append("앞단 · 업황을 아직 못 읽었다 — 분기 재무를 받는 중이거나 없다")
     else:
-        if not f["strong"]:
-            why.append("앞단이 매출보다 빠르지 않다(잔고 %s · 선수금 %s, 매출 대비)" % (
-                "—" if f["blog_gap"] is None else "%+.0f%%p" % f["blog_gap"], "—" if f["liab_gap"] is None else "%+.0f%%p" % f["liab_gap"]))
         why += ["빨간불: " + x for x in f["red"]]
+    if row.get("score") is None:
+        why.append("점수를 낼 항목이 모자란다")
+    elif row["score"] < DIP_SCORE_MIN and _dip_v2():
+        why.append("새 점수 %.1f — %d 미만(업종 가격 · 북투빌 · 낙폭 · 이익률로 본 순서가 아래쪽)" % (row["score"], DIP_SCORE_MIN))
     notes = []
     if not row.get("macro"):
         notes.append("시장·업종은 크게 안 빠졌다(참고)")
@@ -7272,7 +7275,6 @@ def _dip_rank(row):
     row["tier"] = "관찰" if why else "억울"
     row["tier_why"] = why
     row["tier_notes"] = notes
-    _dip_score(row)
 
 
 _DIP_BT = {"mt": None, "d": None}
@@ -7298,6 +7300,9 @@ def _dip_bt():
 def _dip_score(row):
     """점수 = 과거 '억울한 낙폭 후보'(2013~2025 매달) 안에서 이 회사 값이 어디쯤인지(백분위)의 가중평균, 0~100.
     항목과 가중치는 백테스트가 정한다 — 앞뒤 기간에서 방향이 같고 회사 단위 부트스트랩 구간이 대체로 0을 비켜 간 것만."""
+    v2 = _dip_v2()
+    if v2 and v2.get("weights"):
+        return _dip_score_v2(row, v2)
     bt = _dip_bt()
     sc = (bt or {}).get("score") or {}
     if not sc.get("weights"):
@@ -7331,6 +7336,58 @@ def _dip_score(row):
                             ev.get("top") or 0, ev.get("bot") or 0, ev.get("firms"), oos.get("spread") or 0))
 
 
+_DIP_V2 = {"mt": None, "d": None}
+
+
+def _dip_v2():
+    """도구/억울_새점수.py 가 남긴 새 점수(항목 · 가중치 · 과거 후보 분포 · 검증). 없으면 None — 예전 점수로."""
+    p = os.path.join(DIP_DIR, "score_v2.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return None
+    if _DIP_V2["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                _DIP_V2.update(d=json.load(fh), mt=mt)
+        except Exception:
+            return None
+    return _DIP_V2["d"]
+
+
+def _dip_score_v2(row, v2):
+    """새 점수(2026-10-03) = 과거 억울한 낙폭 후보 안 백분위의 가중평균 — 업종 제품 가격 · 북투빌 · 낙폭(깊을수록) · 영업이익률(낮을수록) 1,
+    잔고 − 매출 간극 · 업종 재고 순환 0.5. 가중치는 맞추지 않고 정했다. 과거 후보 위⅓ − 아래⅓ 12개월 초과수익 +21.0%p [7.8, 34.5] ·
+    앞 기간 +18.8 · 뒤 +21.4(예전 점수 +11.0, 뒤 기간 +2.1). 요인을 같은 표본에서 골라 실제보다 좋아 보인다."""
+    import bisect
+    f = row.get("fwd") or {}
+    val = {"mp": f.get("mp_yoy"), "btb": row.get("btb"), "dd": row.get("dd"), "margin": row.get("margin"),
+           "bgap": f.get("blog_gap"), "cyc": f.get("cyc")}
+    fmt = {"mp": lambda v: "%+.0f%%" % v, "btb": lambda v: "%.2f" % v, "dd": lambda v: "%+.0f%%" % v,
+           "margin": lambda v: "%.1f%%" % v, "bgap": lambda v: "%+.0f%%p" % v, "cyc": lambda v: "%+.0f%%p" % v}
+    parts, tot, wsum = [], 0.0, 0.0
+    for w in v2["weights"]:
+        sv, v = v2["dist"].get(w["key"]) or [], val.get(w["key"])
+        if v is None or not sv:
+            continue
+        p = (bisect.bisect_left(sv, v) + bisect.bisect_right(sv, v)) / 2 / len(sv) * 100
+        good = p if w["dir"] > 0 else 100 - p
+        parts.append({"key": w["key"], "label": w["name"], "w": w["w"], "good": good,
+                      "val": "%s · 과거 후보 중 %s %d%%" % (fmt.get(w["key"], str)(v), "좋은 쪽 상위", max(1, round(100 - good)))})
+        tot += good * w["w"]
+        wsum += w["w"]
+    for x in parts:
+        x["pts"] = round((x["good"] - 50) * x["w"] / wsum, 1) if wsum else 0     # 50 에서 얼마나 밀고 당겼나 — 합 + 50 = 점수
+    row["score"] = round(tot / wsum, 1) if wsum >= 2 else None
+    row["score_parts"] = parts
+    ev = ((v2.get("eval") or {}).get("후보") or {}).get("새 점수") or {}
+    row["score_note"] = ("과거 억울한 낙폭 후보 %s건(%s곳, %s~%s 매달)과 비교한 백분위의 가중평균. 업종 제품 가격 · 북투빌 · 낙폭(깊을수록) · "
+                         "영업이익률(낮을수록) 1, 잔고 − 매출 간극 · 업종 재고 순환 0.5. 과거 위⅓ 12개월 초과수익 중앙값 %+.0f%%, 아래⅓ %+.0f%% "
+                         "(위 − 아래: ~2019 %+.0f%%p · 2020~ %+.0f%%p). 요인을 같은 표본에서 골라 실제보다 좋아 보인다 — 순서를 정하는 참고."
+                         % (v2.get("n_cand"), v2.get("firms"), (v2.get("dates") or ["", ""])[0][:6], (v2.get("dates") or ["", ""])[1][:6],
+                            ev.get("top") or 0, ev.get("bot") or 0, ev.get("early") or 0, ev.get("late") or 0))
+
+
 def _dip_publish(rows, drop, funnel):
     """계산하는 대로 화면에 보이게 — 정렬한 사본을 내건다."""
     rs = sorted(rows, key=lambda x: (x["tier"] == "억울", x["score"] if x.get("score") is not None else -1), reverse=True)
@@ -7358,6 +7415,10 @@ def dip_view(force=False):
     if bt.get("score"):       # 화면의 '과거 검증' 상자 — 분포 배열은 빼고 요약만
         out["bt"] = {"dates": bt.get("dates"), "n_dip": bt.get("n_dip"), "tiers": bt.get("tiers"), "groups": bt.get("groups"),
                      "score": {k: v for k, v in bt["score"].items() if k != "dist"}, "factors": bt.get("factors_g2"), "at": bt.get("at")}
+    v2 = _dip_v2()
+    if v2 and out.get("bt"):  # 새 점수 · 새 등급 검증(도구/억울_새점수.py)
+        out["bt"]["v2"] = {"eval": v2.get("eval"), "n_cand": v2.get("n_cand"), "firms": v2.get("firms"),
+                           "weights": v2.get("weights")}
     return out
 
 

@@ -3617,12 +3617,12 @@ const DIP_GATES=[
   ['⑤ 이익','이익은 버텼다',[
     '고점 무렵보다 지금 이익(4분기 합)이 5% 넘게 줄지 않았다',
     '(참고) 같은 기간 시장 −8%↓ 또는 업종 −10%↓였나, 시장·업종보다 25%p 넘게 더 빠졌나 — 예전엔 등급이었으나 과거 검증에서 갈라내지 못해 참고로만 적는다'],
-   '이익이 그대로인데 주가만 빠졌다면 시장이 값을 덜 쳐준 것이다. 그 할인이 정당한지는 ⑥ 앞단이 가른다.'],
-  ['⑥ 앞단','앞으로의 매출이 버틴다 (등급)',[
-    '(억울) 잔고 또는 선수금(계약부채)이 매출보다 +15%p↑ 빨리 늘었다 — 분기 변화 파이프라인의 마지막 분기 값',
+   '이익이 그대로인데 주가만 빠졌다면 시장이 값을 덜 쳐준 것이다. 그 할인이 정당한지는 ⑥ 앞날이 가른다.'],
+  ['⑥ 앞날','빠진 값이 앞날과 어긋났다 (등급)',[
+    '(억울) 빨간불이 없고, 새 점수가 50↑ — 점수 = 업종 제품 가격(수출물가)↑ · 북투빌↑ · 낙폭이 깊을수록 · 영업이익률이 낮을수록(각 1), 잔고−매출 간극 · 업종 재고 순환(각 0.5)',
     '(빨간불) 잔고·선수금이 매출보다 −15%p↓ 느리다 · 업종 제품 가격(수출물가) −10%↓ · 업종에 재고가 쌓이는데(재고 순환 −10%p↓) 회사 매출은 아직 +5%↑',
-    '(참고) PER 자기 역사 — 빠진 회사 안에서는 싸다·비싸다가 앞날을 가르지 못했다'],
-   '재점검(2026-10-02): 예전 등급(시장·업종 동반·혼자 더 안 빠짐·안 비쌈)은 후보 안에서 12개월 초과수익을 −8.6%p 깎았다. 앞단 강함·빨간불 없음은 후보 안 +13.2%p, 넓은 표본 +12.3%p [6.7, 18.5] — 다만 대부분 2020년 뒤 표본에서 나왔다(앞 기간은 차이 없음).'],
+    '(참고) 선수금만 빠른 회사는 표본이 작아 등급에 쓰지 않는다 · PER 자기 역사는 빠진 회사 안에서 앞날을 가르지 못했다'],
+   '재점검(2026-10-03): 예전 등급(시장·업종 동반·혼자 더 안 빠짐·안 비쌈)은 후보 안 12개월 초과수익 −8.6%p — 가르지 못했다. 새 등급(빨간불 없음 + 점수 50↑)은 후보 안 +14.9%p [1.7, 27.4], 앞 기간 +8.7 · 뒤 +20.5 · 넓은 표본 +11.1%p [5.4, 16.1]. 새 점수 위⅓ − 아래⅓ +21.0%p [7.8, 34.5](예전 점수 +11.0, 뚜렷하지 않음). 요인을 같은 표본에서 골라 실제보다 좋아 보인다.'],
 ];
 const dipP=v=>v===null||v===undefined?'—':(v>=0?'+':'')+Math.round(v)+'%';
 const dipD=s=>s?s.slice(0,4)+'.'+s.slice(4,6)+'.'+s.slice(6,8):'—';
@@ -3632,7 +3632,7 @@ async function viewDip(box, force){
     box.innerHTML='';
     const hd=el('div','dipHead');
     hd.appendChild(el('b',null,'억울한 낙폭'));
-    hd.appendChild(el('span',null,'수주잔고·선수금은 매출보다 빨리 쌓이는데 주가만 빠진 회사 — 돈을 벌고, 주주 몫을 해친 일이 없고, 업종에 빨간불도 없는 곳만'));
+    hd.appendChild(el('span',null,'수주잔고는 늘고 이익은 버티는데 주가만 빠진 회사 — 돈을 벌고, 주주 몫을 해친 일이 없고, 빨간불이 없고, 업종 가격·북투빌로 본 점수가 높은 곳만'));
     box.appendChild(hd);
     const cond=el('details','dipCond'); cond.open=!S.dipCondClosed;
     cond.addEventListener('toggle',()=>{ S.dipCondClosed=!cond.open; });
@@ -3669,8 +3669,8 @@ async function viewDip(box, force){
   if(d.bt) body.appendChild(dipEvidence(d.bt));
   const rows=d.rows||[];
   const A=rows.filter(r=>r.tier==='억울'), B=rows.filter(r=>r.tier!=='억울');
-  body.appendChild(dipTable(A,'억울한 낙폭','이익은 버텼고, 앞단(잔고·선수금)이 매출보다 빨리 늘고, 빨간불이 없다 — 빠진 값이 앞날과 어긋난 곳'));
-  if(B.length) body.appendChild(dipTable(B,'관찰','관문은 넘었지만 앞단이 매출보다 빠르지 않거나, 빨간불(앞단 약함·업종 가격 하락·업종 재고 쌓임)이 있다 — 빠질 만한 이유가 보이는 곳'));
+  body.appendChild(dipTable(A,'억울한 낙폭','이익은 버텼고, 빨간불이 없고, 새 점수 50↑(업종 가격·북투빌·낙폭·이익률) — 빠진 값이 앞날과 어긋난 곳'));
+  if(B.length) body.appendChild(dipTable(B,'관찰','관문은 넘었지만 빨간불(앞단 약함·업종 가격 하락·업종 재고 쌓임)이 있거나 새 점수가 50 아래 — 빠질 만한 이유가 보이는 곳'));
   if(!rows.length && !d.running) body.appendChild(el('div','empty','지금은 여섯 관문을 모두 넘은 회사가 없다.'));
   const drop=d.drop||[];
   if(drop.length){
@@ -3692,7 +3692,9 @@ function dipEvidence(bt){
   const det=el('details','dipEvd'); det.open=!!S.dipEvdOpen; det.addEventListener('toggle',()=>{ S.dipEvdOpen=det.open; });
   const f=v=>{ if(v==null) return '—'; const n=Math.round(v); return (n>0?'+':'')+n+'%'; };   // −0% 대신 0%
   const T=bt.tiers||{}, a=T['억울']||{}, o=T['관찰']||{}, sn=(bt.score||{}).new||{}, so=(bt.score||{}).old||{};
-  det.appendChild(el('summary',null,'과거 12년 검증 — 점수 상위⅓ 12개월 초과수익 '+f(sn.top)+' vs 하위⅓ '+f(sn.bot)+' · 등급 억울 '+f(a.median)+' vs 관찰 '+f(o.median)));
+  const E2=(bt.v2||{}).eval||{}, C2=E2['후보']||{}, W2=E2['넓은 표본']||{}, n2=C2['새 점수'], g2=C2['등급 후보 C: 빨간불 없음 · 새 점수 50↑'];
+  det.appendChild(el('summary',null,n2&&g2?'과거 12년 검증 — 새 점수 상위⅓ 12개월 초과수익 '+f(n2.top)+' vs 하위⅓ '+f(n2.bot)+' · 새 등급 억울 '+f(g2.on)+' vs 관찰 '+f(g2.off):
+    '과거 12년 검증 — 점수 상위⅓ 12개월 초과수익 '+f(sn.top)+' vs 하위⅓ '+f(sn.bot)+' · 등급 억울 '+f(a.median)+' vs 관찰 '+f(o.median)));
   const d0=(bt.dates||['',''])[0], d1=(bt.dates||['',''])[1];
   det.appendChild(el('p',null,d0.slice(0,4)+'.'+d0.slice(4,6)+'~'+d1.slice(0,4)+'.'+d1.slice(4,6)+' 매달 말, 그때 이미 공시된 보고서만으로 관문을 다시 세우고 그 뒤 12개월 수익률을 같은 기간 전 종목 중앙값과 비교했다. '+
     '주주가치 관문(공시 판정)은 빠졌고, 지금 상장된 회사만 있어 수익률 수준은 부풀어 있다 — 묶음끼리 비교만 믿는다.'));
@@ -3707,19 +3709,33 @@ function dipEvidence(bt){
   const t2=el('table','tbl dipTbl');
   t2.innerHTML='<tr><th>점수</th><th class="r">상위⅓</th><th class="r">하위⅓</th><th class="r">차이</th><th class="r">90% 구간(회사 단위 재표본)</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
   const sc=bt.score||{};
-  [['예전 점수(가중치를 감으로 정함)',sc.old],['지금 점수(백테스트로 고른 5항목)',sc.new],['지금 점수 — 앞 기간 분포로 뒤 기간을 잼',sc.oos]].forEach(([lab,x])=>{
+  const rows2=n2?[['지금 점수(업종 가격·북투빌·낙폭·이익률 + 잔고 간극·재고 순환)',n2],['지금 점수 — 앞 기간 분포로 잼',C2['새 점수(앞 기간 분포)']],['지금 점수 — 넓은 표본(−20%↓ 전부)',W2['새 점수']],
+      ['이전 점수(북투빌·업종 수익률·낙폭·잔고÷매출·순차입) — 같은 표본',C2['예전 점수']]]:
+    [['예전 점수(가중치를 감으로 정함)',sc.old],['지금 점수(백테스트로 고른 5항목)',sc.new],['지금 점수 — 앞 기간 분포로 뒤 기간을 잼',sc.oos]];
+  rows2.forEach(([lab,x])=>{
     if(!x) return; const tr=el('tr'); tr.appendChild(el('td',null,lab));
     [f(x.top),f(x.bot),f(x.spread),(x.ci&&x.ci[0]!=null)?f(x.ci[0])+' ~ '+f(x.ci[1]):'—',f(x.early),f(x.late)].forEach((v,i)=>tr.appendChild(el('td','num'+(i==2?' strong':''),v)));
     t2.appendChild(tr); });
   det.appendChild(t2);
+  if(g2){
+    const t3=el('table','tbl dipTbl');
+    t3.innerHTML='<tr><th>등급 규칙</th><th class="r">억울 표본</th><th class="r">회사</th><th class="r">억울</th><th class="r">관찰</th><th class="r">차이</th><th class="r">90% 구간</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
+    [['지금: 빨간불 없음 + 새 점수 50↑ (후보 안)',g2],['지금 — 넓은 표본',W2['등급 후보 C: 빨간불 없음 · 새 점수 50↑']],
+     ['10-02: 앞단 강함 + 빨간불 없음',C2['등급 후보 B: 앞단 강함 · 빨간불 없음']],['빨간불 없음만',C2['등급 후보 A: 빨간불 없음']],
+     ['처음: 시장·업종 동반·혼자 더 안 빠짐·안 비쌈',C2["예전 등급 '억울'"]]].forEach(([lab,x])=>{
+      if(!x||x.diff==null) return; const tr=el('tr'); tr.appendChild(el('td',null,lab));
+      [String(x.n_on),String(x.firms_on),f(x.on),f(x.off),f(x.diff),(x.ci&&x.ci[0]!=null)?f(x.ci[0])+' ~ '+f(x.ci[1]):'—',f(x.early),f(x.late)].forEach((v,i)=>tr.appendChild(el('td','num'+(i==4?' strong':''),v)));
+      t3.appendChild(tr); });
+    det.appendChild(t3);
+  }
   const ul=el('ul','dipEvdL');
-  ['점수 항목: 북투빌(높을수록), 같은 기간 업종 수익률(덜 빠졌을수록), 고점 대비 낙폭(깊을수록), 잔고÷연매출(클수록), 순차입÷자본(낮을수록). 앞뒤 기간에서 방향이 같았던 것만 남겼다.',
-   '뺀 항목: 잔고 증가율(2020년 뒤로 방향이 뒤집힘), 값 매김 압축, 이익 증가, PER 자기 역사 — 어느 쪽으로도 일관된 차이가 없었다.',
-   '업종 전체가 빠진 하락은 회복이 오히려 약했다(업종 모멘텀). 업종은 버티는데 이 회사만 과하게 빠진 쪽이 더 잘 돌아왔다.',
-   '위 억울·관찰 숫자는 예전 등급(시장·업종 동반·혼자 더 안 빠짐·안 비쌈)이다 — 수익률로 구분되지 않았다(후보 안 −8.6%p). 2026-10-02부터 등급은 ⑥ 앞단(잔고·선수금 vs 매출 · 빨간불)으로 매긴다: 후보 안 +13.2%p, 넓은 표본 +12.3%p [6.7, 18.5], 대부분 2020년 뒤 표본(도구/억울_재점검.py).',
+  ['지금 점수(2026-10-03): 업종 제품 가격(수출물가 전년 대비, 높을수록) · 북투빌(높을수록) · 고점 대비 낙폭(깊을수록) · 영업이익률(낮을수록) 각 1, 잔고 − 매출 간극 · 업종 재고 순환 각 0.5. 가중치는 맞추지 않고 단순하게 정했다.',
+   '왜 이 항목: 업종 제품 가격이 가장 확실했다(앞뒤 기간 같은 방향). 이익률이 높을 때의 낙폭은 꼭대기에 가까웠다(감점). 선수금은 늘 때보다 줄 때(빨간불)가 더 말해 줬다.',
+   '뺀 항목: 잔고 증가율(2020년 뒤로 방향이 뒤집힘), 값 매김 압축, 이익 증가, PER 자기 역사, 업종 동반 하락 — 어느 쪽으로도 일관된 차이가 없었다.',
+   '위 첫 표의 억울·관찰 묶음은 처음 등급이다(후보 안 −8.6%p — 가르지 못함). 지금 등급은 빨간불 없음 + 새 점수 50↑ — 앞뒤 기간 모두 양(+)인 유일한 규칙. 요인을 같은 표본에서 골랐으니 실제보다 좋아 보인다(도구/억울_새점수.py).',
    '표본이 작다(60곳 안팎, 대부분 2020년 뒤 조선·전력·방산 사이클). 구간이 0에 걸쳐 있으면 우연일 수 있다는 뜻이다.'].forEach(x=>ul.appendChild(el('li',null,x)));
   det.appendChild(ul);
-  det.appendChild(el('div','finnote','다시 재기: python 도구/억울_백테스트.py (약 10분). 결과 파일 .cache/dip/bt_report.json 을 이 화면과 점수가 바로 읽는다.'));
+  det.appendChild(el('div','finnote','다시 재기: python 도구/억울_백테스트.py (약 10분) 뒤 python 도구/억울_새점수.py. 결과 파일 .cache/dip/bt_report.json · score_v2.json 을 이 화면과 점수가 바로 읽는다.'));
   return det;
 }
 
@@ -3735,7 +3751,7 @@ function dipTable(rows,title,sub){
     const td=el('td'); const a=el('a',null,r.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(r.code); }; td.appendChild(a);
     td.appendChild(el('small',null,' '+r.code+' · '+(r.industry||'')));
     const fw=r.fwd; if(fw&&fw.strong!=null) td.appendChild(el('div','dipFwd','앞단('+fw.lab.slice(2,4)+'.'+fw.lab.slice(5)+'Q) 잔고 '+(fw.blog_gap==null?'—':(fw.blog_gap>=0?'+':'')+Math.round(fw.blog_gap)+'%p')+
-      ' · 선수금 '+(fw.liab_gap==null?'—':(fw.liab_gap>=0?'+':'')+Math.round(fw.liab_gap)+'%p')+' (매출 대비)'+(fw.cyc!=null?' · 업종 재고 순환 '+(fw.cyc>=0?'+':'')+Math.round(fw.cyc)+'%p':'')));
+      ' · 선수금 '+(fw.liab_gap==null?'—':(fw.liab_gap>=0?'+':'')+Math.round(fw.liab_gap)+'%p')+' (매출 대비)'+(fw.mp_yoy!=null?' · 업종 가격 '+(fw.mp_yoy>=0?'+':'')+Math.round(fw.mp_yoy)+'%':'')+(fw.cyc!=null?' · 업종 재고 순환 '+(fw.cyc>=0?'+':'')+Math.round(fw.cyc)+'%p':'')));
     (r.tier_why||[]).forEach(w=>td.appendChild(el('div','dipWhy',w)));
     (r.tier_notes||[]).forEach(w=>td.appendChild(el('div','dipNote',w)));
     const wk=[...new Set((r.events||[]).filter(e=>e.v==='!').map(e=>e.kind))];
@@ -3770,11 +3786,13 @@ function dipDetail(r){
       li.appendChild(el('i',null,x.ok?'✓':x.hard?'✗':'△')); const m=el('div'); m.appendChild(el('b',null,x.name)); m.appendChild(el('small',null,x.why)); li.appendChild(m); col.appendChild(li); });
     g.appendChild(col); });
   const c6=el('div'); c6.appendChild(el('em',null,DIP_GATES[5][0]+' · '+DIP_GATES[5][1]));
-  const ok6=r.pct==null?null:r.pct<80;
-  const li6=el('div','dipChk '+(ok6===null?'soft':ok6?'ok':'soft')); li6.appendChild(el('i',null,ok6?'✓':'△'));
-  const m6=el('div'); m6.appendChild(el('b',null,'자기 15년 PER 중 상위 20% 밖'));
-  m6.appendChild(el('small',null,r.pct==null?'PER 역사 자료 없음':'지금 PER '+(r.per_now!=null?r.per_now.toFixed(1)+'배 · ':'')+(r.pct>=50?'상위 '+Math.max(1,Math.round(100-r.pct)):'하위 '+Math.round(r.pct))+'%'));
-  li6.appendChild(m6); c6.appendChild(li6); g.appendChild(c6);
+  const chk6=(ok,name,why)=>{ const li=el('div','dipChk '+(ok===true?'ok':ok===false?'no':'soft')); li.appendChild(el('i',null,ok===true?'✓':ok===false?'✗':'△'));
+    const m=el('div'); m.appendChild(el('b',null,name)); m.appendChild(el('small',null,why)); li.appendChild(m); c6.appendChild(li); };
+  const fw=r.fwd, red=fw?fw.red||[]:null;
+  chk6(red==null?null:!red.length,'빨간불 없음',red==null?'앞단 · 업황을 아직 못 읽었다':red.length?red.join(' · '):'앞단 약함 · 업종 가격 하락 · 업종 재고 쌓임 — 모두 아님');
+  chk6(r.score==null?null:r.score>=50,'새 점수 50↑',r.score==null?'점수를 낼 항목이 모자란다':r.score.toFixed(0)+'점 — 아래 점수 풀이');
+  chk6(null,'(참고) 자기 15년 PER',r.pct==null?'PER 역사 자료 없음':'지금 PER '+(r.per_now!=null?r.per_now.toFixed(1)+'배 · ':'')+(r.pct>=50?'상위 '+Math.max(1,Math.round(100-r.pct)):'하위 '+Math.round(r.pct))+'% — 빠진 회사 안에서는 앞날을 가르지 못했다');
+  g.appendChild(c6);
   box.appendChild(g);
   if((r.score_parts||[]).length){
     const sp=el('div','dipParts'); sp.appendChild(el('em',null,'점수 풀이 — '+(r.score!=null?r.score.toFixed(0):'—')+'점'));
