@@ -2111,6 +2111,9 @@ def _syn_row(b, good_by, bad_by, twins):
         why_not = "잔고 보고서가 %d개뿐" % tr["n"]
     elif tr.get("jumps", 0):
         why_not = "한 번에 5배 넘게 튄 값이 있다 (추출 오류 의심)"
+    elif tr.get("last_switch"):
+        why_not = "최신 잔고를 읽은 방식이 바뀌며(%s) 한 분기에 %.1f배가 됐다 (추출 오류 의심)" % (
+            tr.get("last_method") or "?", last / tr["prev_value"] if tr.get("prev_value") else 0)
     elif sure < (b["n_pts"] + 1) // 2:
         why_not = "검산·명시된 값이 %d/%d 로 절반이 안 된다" % (sure, b["n_pts"])
     elif cover is not None and cover < 0.15:
@@ -3883,7 +3886,8 @@ def btb_view(code):
     ords = _ord_series(c, net=False)
     # 잔고를 읽은 방식 — 본문 문장('수주잔고는 약 18조원')과 표 합계는 범위가 다를 수 있다(현대로템: 문장 18.8조 · 표 11.3조).
     # 방식이 바뀐 두 분기 사이의 잔고 증가는 수주가 아니라 기준 변화라 북투빌에서 뺀다
-    fam = lambda lab: None if lab not in meta else ("문장" if meta[lab].get("method") == "문장" else "표")
+    # 표 안에서도 '합계' 줄과 '행 합산'은 범위가 다르다(전 종목: 표·합계 → 표·행합산으로 바뀐 22번 중 16번이 1.8배 넘게 튐) — 방식 이름 전체로 가른다
+    fam = lambda lab: None if lab not in meta else (meta[lab].get("method") or "")
     rows = []
     for lab in labs:
         b, r = blog.get(lab), rev.get(lab)
@@ -4003,7 +4007,7 @@ def btb_view(code):
         notes.append({"k": "업종 안", "t": "%s에서 잔고를 믿을 만하게 읽은 회사가 %d곳뿐이라 견주지 않는다. 업종이 다르면 수주 인식 기준이 달라 견주지 않는다." % (ind, len(peers)), "ok": None})
     brk = [x for x in rows if x["brk"]]
     if brk:
-        notes.append({"k": "기준 바뀜", "t": "잔고를 읽은 방식이 바뀐 분기 %d번(%s — 본문 문장 ↔ 수주 표, 범위가 다를 수 있다). 그 사이 잔고 증가는 수주가 아니라 기준 변화라 북투빌에서 뺐다."
+        notes.append({"k": "기준 바뀜", "t": "잔고를 읽은 방식이 바뀐 분기 %d번(%s — 본문 문장 · 표 합계 줄 · 표 행 합산은 범위가 다를 수 있다). 그 사이 잔고 증가는 수주가 아니라 기준 변화라 북투빌에서 뺐다."
                       % (len(brk), ", ".join("%s %s" % (ql(x["q"]), x["basis"]) for x in brk)), "ok": False})
     # 목록 표의 '북투빌'(시너지 행 btb)은 '보고서 4개 전' 잔고와 비교한다 — 빠진 분기가 있으면 1년보다 긴 구간, 방식이 바뀌면 다른 기준끼리 비교가 된다
     rb, lb = (me or {}).get("btb"), rows[-1]["bb4"]
@@ -4136,7 +4140,7 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
     eqt = _mseries(mb, _mrow(mb, ("t:Equity",), r"^자본\s*총계$"))
     recv = _mseries(mb, _mrow(mb, ("t:TradeAndOtherCurrentReceivables",), r"^매출채권"))
     # 수주잔고(본문) — 시점 → 분기
-    blog = {}
+    blog, bmeth = {}, {}
     if blog_pts is None and BACK is not None:
         try:
             blog_pts = BACK.company_series(c, read_section, max_reports=28)
@@ -4146,7 +4150,8 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
         try:
             for pt in blog_pts:
                 if pt["stamp"][5:] in Q_OF_MONTH:
-                    blog["%sQ%d" % (pt["stamp"][:4], Q_OF_MONTH[pt["stamp"][5:]])] = pt["value"]
+                    k_ = "%sQ%d" % (pt["stamp"][:4], Q_OF_MONTH[pt["stamp"][5:]])
+                    blog[k_], bmeth[k_] = pt["value"], pt.get("method") or ""
         except Exception:
             blog = {}
     # 주가 — 분기 말 종가(보정 p · 그날 실제 r)
@@ -4199,7 +4204,8 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
             "ni_ttm": nt, "ni_yoy": yoy(nt, ttm(ni, ly)) if nt is not None and nt > 0 else None,
             "eps_ttm": et, "per": (pr / et) if pr and et and et > 0 else None,
             "eps_ttm_ly": et_ly, "eps_yoy": yoy(ea, eb) if ea is not None and ea > 0 else None,
-            "blog": blog.get(lab), "blog_yoy": yoy(blog.get(lab), blog.get(ly)),
+            # 1년 전과 읽은 방식(문장 · 표·합계 · 표·행합산 …)이 다르면 범위가 달라 증가율을 비운다(수주.py trend 와 같은 규칙)
+            "blog": blog.get(lab), "blog_yoy": yoy(blog.get(lab), blog.get(ly)) if bmeth.get(lab) == bmeth.get(ly) else None,
             "cover": (blog.get(lab) / rt) if blog.get(lab) and rt else None,
             "liab": liab.get(lab), "liab_yoy": yoy(liab.get(lab), liab.get(ly)),
             "wip": wip.get(lab), "wip_yoy": yoy(wip.get(lab), wip.get(ly)),
@@ -7415,7 +7421,7 @@ def _run_dip():
             DIP["running"] = False
 
 
-DIP_SCORE_MIN = 50   # 억울 등급 = 빨간불 없음 + 새 점수 50↑ — 과거 후보 안 +14.9%p [1.7, 27.4], 앞 +8.7 · 뒤 +20.5(도구/억울_새점수.py)
+DIP_SCORE_MIN = 50   # 억울 등급 = 빨간불 없음 + 새 점수 50↑ — 과거 후보 안 +12.4%p [3.1, 21.7], 앞 +11.6 · 뒤 +15.6(도구/억울_새점수.py, 잔고 1년 비교 고친 뒤)
 DIP_PRICEY = 80      # 자기 15년 PER 중 상위 20% 안이면 아직 비싸다 — 거품이 빠지는 중일 수 있다
 
 
@@ -7563,8 +7569,8 @@ def _dip_v2():
 
 def _dip_score_v2(row, v2):
     """새 점수(2026-10-03) = 과거 억울한 낙폭 후보 안 백분위의 가중평균 — 업종 제품 가격 · 북투빌 · 낙폭(깊을수록) · 영업이익률(낮을수록) 1,
-    잔고 − 매출 간극 · 업종 재고 순환 0.5. 가중치는 맞추지 않고 정했다. 과거 후보 위⅓ − 아래⅓ 12개월 초과수익 +21.0%p [7.8, 34.5] ·
-    앞 기간 +18.8 · 뒤 +21.4(예전 점수 +11.0, 뒤 기간 +2.1). 요인을 같은 표본에서 골라 실제보다 좋아 보인다."""
+    잔고 − 매출 간극 · 업종 재고 순환 0.5. 가중치는 맞추지 않고 정했다. 과거 후보 위⅓ − 아래⅓ 12개월 초과수익 +20.8%p [14.4, 33.2] ·
+    앞 기간 +20.3 · 뒤 +29.4(예전 점수 +7.0, 뒤 기간 −7.2). 요인을 같은 표본에서 골라 실제보다 좋아 보인다."""
     import bisect
     f = row.get("fwd") or {}
     val = {"mp": f.get("mp_yoy"), "btb": row.get("btb"), "dd": row.get("dd"), "margin": row.get("margin"),

@@ -323,7 +323,7 @@ def trend(pts, window=8):
     최근 window 개 보고서만 본다. 판정은 네 가지를 같이 본다.
       증가 비율   직전 보고서 대비 늘어난 횟수 / 비교 횟수
       최대 낙폭   구간 안에서 직전 대비 가장 크게 줄어든 폭
-      전년 대비   최신값 vs 4개 보고서 전(=1년 전) 값
+      전년 대비   최신값 vs 같은 분기 1년 전 · 같은 방식으로 읽은 값(없으면 None)
       연율 성장   구간 처음과 끝의 연율 환산 증가율
     추출이 한 번 틀리면 값이 튀는데, 튀는 시계열은 '꾸준히' 조건을 못 넘는다.
     """
@@ -335,14 +335,25 @@ def trend(pts, window=8):
     comps = len(vals) - 1
     drops = [(b - a) / a for a, b in zip(vals, vals[1:]) if a > 0]
     worst = min(drops) if drops else 0
-    yoy = (vals[-1] / vals[-5] - 1) * 100 if len(vals) >= 5 and vals[-5] > 0 else None
+    # 전년 대비 = 같은 분기 1년 전 · 같은 방식으로 읽은 값(2026-10-03). 예전엔 '보고서 4개 전'이라 빠진 분기가 있으면
+    # 1년보다 긴 구간(한라IMS 2년)을, 방식이 바뀌면 다른 범위끼리(현대로템 표 11.3조 → 문장 18.8조, 표·합계 → 표·행합산 중앙 2.5배) 비교했다
+    st1 = "%d-%s" % (int(p[-1]["stamp"][:4]) - 1, p[-1]["stamp"][5:])
+    a1 = next((x for x in p if x["stamp"] == st1), None)
+    b1 = a1["value"] if a1 and (a1.get("method") or "") == (p[-1].get("method") or "") and a1["value"] > 0 else None
+    yoy = (vals[-1] / b1 - 1) * 100 if b1 else None
     years = max((len(vals) - 1) / 4.0, 0.25)
     cagr = ((vals[-1] / vals[0]) ** (1 / years) - 1) * 100 if vals[0] > 0 else None
     # 비정상 급변(추출 오류 의심): 한 번에 5배 이상 뛰거나 1/5 로 줄면 신뢰도 낮음
     jumps = sum(1 for a, b in zip(vals, vals[1:]) if a > 0 and (b / a > 5 or b / a < 0.2))
+    # 최신 값이 읽는 방식이 바뀌며 한 분기에 1.5배 넘게 뛰거나 2/3 밑으로 줄었다 — 소계 이중 합산 같은 추출 오류일 가능성이 크다
+    # (현대엘리베이터 2026.2분기 표·합계 2.24조 → 표·행합산 4.08조, 비츠로테크 692억 → 1,737억)
+    pa, pb = p[-2], p[-1]
+    last_switch = bool((pa.get("method") or "") != (pb.get("method") or "") and pa["value"] > 0
+                       and not (2 / 3 <= pb["value"] / pa["value"] <= 1.5))
     steady = (ups / comps >= 0.7 and worst > -0.15 and (yoy is None or yoy > 5)
-              and jumps == 0 and vals[-1] > vals[0])
+              and jumps == 0 and vals[-1] > vals[0] and not last_switch)
     return {"n": len(vals), "ups": ups, "comps": comps, "up_ratio": ups / comps,
             "worst_drop": worst * 100, "yoy": yoy, "cagr": cagr,
-            "first": vals[0], "last": vals[-1], "jumps": jumps,
+            "first": vals[0], "last": vals[-1], "b1": b1, "jumps": jumps, "last_switch": last_switch,
+            "last_method": pb.get("method"), "prev_value": pa["value"],
             "steady": steady, "from": p[0]["stamp"], "to": p[-1]["stamp"]}

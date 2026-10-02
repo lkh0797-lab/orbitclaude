@@ -108,8 +108,8 @@ def row_at(P, t):
     }
     win = Bt[-12:]
     sure = sum(1 for b in win if b.get("verified") or b.get("method") == "문장")
-    reliable = (tr["n"] >= 4 and not tr.get("jumps") and sure >= (len(win) + 1) // 2
-                and (cover is None or cover >= 0.15))
+    reliable = (tr["n"] >= 4 and not tr.get("jumps") and not tr.get("last_switch")   # 서버 why_not 과 같은 조건(2026-10-03)
+                and sure >= (len(win) + 1) // 2 and (cover is None or cover >= 0.15))
     if not reliable:
         return None
     ks, vs = W.PX[P["code"]]
