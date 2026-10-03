@@ -5417,7 +5417,7 @@ def lineage(c, rx, secs=None, labels=None, raw=True, strict=False):
 #   안목 — 이 회사의 15년이 가르치는 규칙(불황 성적, 자본 배분, 유보이익 1원 테스트, 사업 정의의 일관성)
 #   결단 — 그들의 조건이 과거 어느 때 맞았고 그 뒤 주가는 어땠나, 그리고 지금은(기다릴 가격)
 # 주당 값은 액면분할·무상증자를 연말 주식 수로 역산해 오늘 주식 수 기준으로 맞춘다(네이버 수정주가와 같은 기준).
-LAND_V = 7
+LAND_V = 9          # 8 · 9: 마지막 사업보고서 뒤 분기 · 반기가 있으면 최근 4분기 칸(2026-10-03, 9 = 배당은 마지막 결산 값)
 LAND_Q_END = {1: "0331", 2: "0630", 3: "0930", 4: "1231"}
 LAND_TYPES = {   # 린치의 여섯 유형 + 적자기
     "고성장": ("FAST GROWER", "매출이 해마다 15% 넘게 늘었다", "성장률이 유지되는 동안 들고 간다. PER이 성장률을 넘으면(PEG>1) 조심, 성장이 꺾이는 첫 분기에 판다."),
@@ -5507,7 +5507,8 @@ def _land_type(F, i):
         return "회생"
     j = max(0, i - 3)
     r0, r1 = F[j].get("rev"), d.get("rev")
-    n = i - j
+    # 최근 4분기 칸(26.2Q)은 마지막 연간보다 반년 뒤 — 실제 햇수로 연율화한다
+    n = (i - j) - ((4 - d["q"]) / 4 if d.get("ttm") else 0)
     g = ((r1 / r0) ** (1 / n) - 1) * 100 if (n >= 2 and r0 and r1 and r0 > 0 and r1 > 0) else None
     # 순환 — 6년 안에 영업이익이 앞선 정점보다 40% 넘게 꺾였거나 흑자 뒤 적자가 났다. 성장만 한 회사는 꺾인 적이 없다
     def swung(k):
@@ -5531,6 +5532,77 @@ def _land_type(F, i):
     if g is None:
         return None
     return "대형우량" if g >= 5 else "저성장"
+
+
+def _land_ttm(c, corp, F):
+    """마지막 사업보고서 뒤에 분기 · 반기 보고서가 나왔으면 최근 4분기 합으로 한 칸 더(2026-10-03).
+    손익 · 현금흐름은 분기 단독 4개의 합, 재무상태는 그 분기 말 값 — 연간 칸(변곡점.fundamentals)과 같은 줄 이름 규칙으로."""
+    try:
+        mi = matrix_cached(c, corp, "IS", "q", IS_YEARS)
+        mb = matrix_cached(c, corp, "BS", "q", QTR_YEARS)
+        mc = matrix_cached(c, corp, "CF", "q", QTR_YEARS)
+        pr = _pipe_rows(c, mi, mb, mc, blog_pts=[])
+    except Exception:
+        return None
+    if not pr or not F:
+        return None
+    lab = next((l for l in reversed(pr["labs"]) if pr["rows"][l].get("rev_ttm") is not None
+                and pr["rows"][l].get("ni_ttm") is not None), None)
+    if not lab or int(lab[:4]) <= F[-1]["year"]:
+        return None
+    x, xl = pr["rows"][lab], pr["rows"].get(_qshift(lab, 4)) or {}
+
+    def bs(key=None, rx=None):
+        for r in mb.get("rows", []):
+            if (key and r["key"] == key) or (rx and rx.match(r["name"])):
+                v = _mseries(mb, r).get(lab)
+                if v is not None:
+                    return v
+        return None
+    debt, seen = None, set()
+    for r in mb.get("rows", []):
+        v = _mseries(mb, r).get(lab)
+        if v is not None and INF.DEBT_NM.match(r["name"]) and (r["name"], v) not in seen:
+            seen.add((r["name"], v))
+            debt = (debt or 0) + abs(v)
+
+    have = {p["label"] for p in mc.get("periods", [])}
+    q4 = [_qshift(lab, k) for k in range(4)]
+
+    def cf4(tags, rx, skip):
+        """현금흐름 4분기 합. 배당 · 자사주처럼 하는 분기에만 값이 있는 줄은, 그 분기 표가 있으면 빈 칸을 0으로 본다."""
+        if not all(q_ in have for q_ in q4):
+            return None
+        tot = None
+        for r in mc.get("rows", []):
+            tail = r["key"][2:] if r["key"].startswith("t:") else ""
+            if (any(tail.startswith(t) for t in tags) or rx.match(r["name"])) and skip not in r["name"]:
+                s = _mseries(mc, r)
+                vs = [s.get(q_) for q_ in q4]
+                if any(v is not None for v in vs):
+                    tot = (tot or 0) + abs(sum(v or 0 for v in vs))
+        return tot
+    rev, op, ni, cfo = x.get("rev_ttm"), x.get("op_ttm"), x.get("ni_ttm"), x.get("cfo_ttm")
+    eq = x.get("eq_total") or x.get("equity")
+    eq_ly = xl.get("eq_total") or xl.get("equity")
+    capex = cf4(INF.CAPEX_TAG, INF.CAPEX_NM, "처분")
+    cash, inv, re_ = bs("t:CashAndCashEquivalents", INF.CASH_NM), bs("t:Inventories", INF.INV_NM), bs("t:RetainedEarnings", re.compile(r"^이익잉여금"))
+    eav = (eq + eq_ly) / 2 if (eq and eq_ly) else eq
+    ic = (eq + (debt or 0) - (cash or 0)) if eq else None
+    return {"year": int(lab[:4]), "ttm": "%s.%sQ" % (lab[:4], lab[5]), "q": int(lab[5]),
+            "end": "%s%s" % (lab[:4], LAND_Q_END[int(lab[5])]),
+            "rev": rev, "op": op, "ni": ni, "eq": eq, "liab": x.get("debt"), "re": re_, "cfo": cfo, "capex": capex,
+            # 배당은 분기 현금흐름표에서 지급 줄이 자주 빠진다(효성중공업 2026.1·2분기 빈 칸) — 1년에 한 번이니 마지막 결산 배당을 잇는다
+            "div": F[-1].get("div"), "div_year": F[-1]["year"] if F[-1].get("div") else None,
+            "buyback": cf4(INF.BUYBACK_TAG, INF.BUYBACK_NM, "처분"),
+            "debt": debt, "cash": cash, "rev_yoy": x.get("rev_yoy"),
+            "margin": op / rev * 100 if (rev and op is not None and rev > 0) else None,
+            "roe": ni / eav * 100 if (ni is not None and eav and eav > 0) else None,
+            "roic": op * 0.78 / ic * 100 if (op is not None and ic and ic > 0) else None,
+            "fcf": (cfo - (capex or 0)) if cfo is not None else None,
+            "capex_int": capex / rev * 100 if (capex is not None and rev and rev > 0) else None,
+            "de": debt / eq * 100 if (debt is not None and eq and eq > 0) else None,
+            "inv_days": inv / rev * 365 if (inv is not None and rev and rev > 0) else None}
 
 
 def landscape_build(c, prog=None):
@@ -5575,6 +5647,29 @@ def landscape_build(c, prog=None):
                    payout=d["div"] / d["ni"] * 100 if (d.get("div") and d.get("ni") and d["ni"] > 0) else None,
                    mcap=pe * sa if (pe and sa) else None,
                    type=_land_type(F, i))
+        rows.append(row)
+    ann = list(rows)            # 연간 칸만 — 15년 합계 · 해마다 비교하는 안목은 이것으로(최근 4분기 칸은 겹치는 기간이 있다)
+    if prog is not None:
+        prog["step"] = "최근 4분기"
+    tt = _land_ttm(c, corp, F)
+    if tt:
+        y, end = tt["year"], tt["end"]
+        sa = S_adj.get(y) or (S_adj[max(S_adj)] if S_adj else None)
+        pe = px_on(end)
+        st_ = (dt.datetime.strptime(end, "%Y%m%d") - dt.timedelta(days=365)).strftime("%Y%m%d")
+        win_px = [prices[k] for k in ds if st_ < k <= end]
+        eps = tt["ni"] / sa if (tt.get("ni") is not None and sa) else None
+        bps = tt["eq"] / sa if (tt.get("eq") and sa) else None
+        dps = tt["div"] / sa if (tt.get("div") and sa) else None
+        row = dict(tt)
+        row.update(eps=eps, bps=bps, dps=dps, shares=sa, px=pe,
+                   hi=max(win_px) if win_px else None, lo=min(win_px) if win_px else None,
+                   per=pe / eps if (pe and eps and eps > 0) else None,
+                   pbr=pe / bps if (pe and bps and bps > 0) else None,
+                   dy=dps / pe * 100 if (dps and pe) else None,
+                   payout=tt["div"] / tt["ni"] * 100 if (tt.get("div") and tt.get("ni") and tt["ni"] > 0) else None,
+                   mcap=pe * sa if (pe and sa) else None,
+                   type=_land_type(F + [tt], len(F)))
         rows.append(row)
 
     # ── 분기 — 최근 4분기 순이익으로 주당이익, 보고서 접수일 주가로 PER
@@ -5651,8 +5746,8 @@ def landscape_build(c, prog=None):
     # ── 결단 — 그 시점까지 알 수 있던 것만으로. 조건이 맞은 분기(접수일)에 샀다면
     if prog is not None:
         prog["step"] = "결단 시점"
-    ytype = {r["year"]: r["type"] for r in rows}
-    yrow = {r["year"]: r for r in rows}
+    ytype = {r["year"]: r["type"] for r in ann}
+    yrow = {r["year"]: r for r in ann}
     moments, last_at = [], {}
     base_fwd = [x for x in (fwd(q["filed"], 365) for q in qs if q.get("filed")) if x is not None]
     for k, q in enumerate(qs):
@@ -5755,10 +5850,13 @@ def landscape_build(c, prog=None):
             merged[-1]["y1"] = ch["y1"]
             continue
         merged.append(ch)
+    yall = {r["year"]: r for r in rows}       # 장(章)은 최근 4분기 칸까지 — 지금의 유형
     for ch in merged:
-        rr = [yrow[y] for y in range(ch["y0"], ch["y1"] + 1) if y in yrow]
+        rr = [yall[y] for y in range(ch["y0"], ch["y1"] + 1) if y in yall]
         r0, r1 = rr[0], rr[-1]
-        pre = yrow.get(ch["y0"] - 1)
+        if r1.get("ttm"):
+            ch["y1_label"] = r1["ttm"]
+        pre = yall.get(ch["y0"] - 1)
         n = ch["y1"] - ch["y0"] + (1 if pre else 0)
         a, b = (pre or r0).get("rev"), r1.get("rev")
         ch["rev_cagr"] = ((b / a) ** (1 / n) - 1) * 100 if (n and a and b and a > 0 and b > 0) else None
@@ -5808,16 +5906,16 @@ def landscape_build(c, prog=None):
                         "v": round(corr, 2)})
     # 2. 불황 성적표
     worst = None
-    for i in range(1, len(rows)):
-        a, b = rows[i - 1], rows[i]
+    for i in range(1, len(ann)):
+        a, b = ann[i - 1], ann[i]
         if a.get("op") and b.get("op") is not None and a["op"] > 0:
             ch = (b["op"] / a["op"] - 1) * 100
             if worst is None or ch < worst[0]:
                 worst = (ch, b)
     if worst and worst[0] < -20:
         ch, b = worst
-        prev_peak = max((r["op"] for r in rows if r["year"] < b["year"] and r.get("op")), default=None)
-        back = next((r["year"] for r in rows if r["year"] > b["year"] and prev_peak and (r.get("op") or 0) >= prev_peak), None)
+        prev_peak = max((r["op"] for r in ann if r["year"] < b["year"] and r.get("op")), default=None)
+        back = next((r["year"] for r in ann if r["year"] > b["year"] and prev_peak and (r.get("op") or 0) >= prev_peak), None)
         lessons.append({"k": "worst", "who": "버핏", "title": "가장 나빴던 해에 어떻게 버텼나",
                         "text": "%d년 영업이익 %+.0f%%, 매출 %s, 순이익 %s." % (
                             b["year"], ch, ("%+.0f%%" % b["rev_yoy"]) if b.get("rev_yoy") is not None else "—",
@@ -5826,18 +5924,18 @@ def landscape_build(c, prog=None):
                         (" 불황에도 돈을 번 회사는 버핏의 '경제적 해자' 후보다." if (b.get("ni") or 0) > 0 else " 불황에 적자가 나는 회사는 빚이 치명상이 된다(멍거)."),
                         "v": round(ch)})
     # 3. 자본 배분 — 15년 번 돈이 어디로 갔나
-    cfo = sum(r["cfo"] for r in rows if r.get("cfo"))
+    cfo = sum(r["cfo"] for r in ann if r.get("cfo"))
     if cfo > 0:
-        cap = sum(r["capex"] for r in rows if r.get("capex"))
-        dv = sum(r["div"] for r in rows if r.get("div"))
-        bb = sum(r["buyback"] for r in rows if r.get("buyback"))
-        s0 = next((r["shares"] for r in rows if r.get("shares")), None)
-        s1 = next((r["shares"] for r in reversed(rows) if r.get("shares")), None)
-        ny = rows[-1]["year"] - rows[0]["year"]
+        cap = sum(r["capex"] for r in ann if r.get("capex"))
+        dv = sum(r["div"] for r in ann if r.get("div"))
+        bb = sum(r["buyback"] for r in ann if r.get("buyback"))
+        s0 = next((r["shares"] for r in ann if r.get("shares")), None)
+        s1 = next((r["shares"] for r in reversed(ann) if r.get("shares")), None)
+        ny = ann[-1]["year"] - ann[0]["year"]
         sh_cagr = ((s1 / s0) ** (1 / ny) - 1) * 100 if (s0 and s1 and ny) else None
         lessons.append({"k": "alloc", "who": "버핏", "title": "번 돈이 어디로 갔나",
                         "text": "%d–%d년 영업으로 번 현금 %s 가운데 설비·무형 투자 %.0f%%, 배당 %.0f%%, 자사주 %.0f%%." % (
-                            rows[0]["year"], rows[-1]["year"], _won_txt(cfo), cap / cfo * 100, dv / cfo * 100, bb / cfo * 100) +
+                            ann[0]["year"], ann[-1]["year"], _won_txt(cfo), cap / cfo * 100, dv / cfo * 100, bb / cfo * 100) +
                         (" 주식 수는 해마다 %+.1f%% (분할 보정)." % sh_cagr if sh_cagr is not None else "") +
                         (" 주주 몫이 계속 희석됐다." if sh_cagr is not None and sh_cagr > 1.5 else
                          " 주식 수가 줄었다 — 남은 주주 몫이 커졌다." if sh_cagr is not None and sh_cagr < -0.5 else ""),
@@ -5879,7 +5977,7 @@ def landscape_build(c, prog=None):
                         "then": {"year": oy[0], "text": _short(ov[oy[0]], 170)} if oy else None,
                         "now": {"year": oy[-1], "text": _short(ov[oy[-1]], 170)} if oy else None})
     # 6. ROE 의 꾸준함
-    roes = [(r["year"], r["roe"]) for r in rows if r.get("roe") is not None]
+    roes = [(r["year"], r["roe"]) for r in ann if r.get("roe") is not None]
     if len(roes) >= 5:
         n15 = sum(1 for _, v in roes if v >= 15)
         lessons.append({"k": "roe", "who": "버핏", "title": "자기자본으로 꾸준히 벌었나",
@@ -5897,23 +5995,27 @@ def landscape_build(c, prog=None):
     eps_now = lastq["eps"] if lastq else None
     per_now = now_px / eps_now if (now_px and eps_now and eps_now > 0) else None
     pct_now = _land_pct(pers, per_now) if per_now else None
-    last_type = next((r["type"] for r in reversed(rows) if r.get("type")), None)
+    # 지금 유형 = 마지막 장(章)의 유형 — 한 해(또는 최근 4분기)만 다른 유형은 앞 장에 붙인다(삼성전자 26.2Q: 연간 경기순환 · 4분기만 고성장)
+    last_type = merged[-1]["type"] if merged else next((r["type"] for r in reversed(rows) if r.get("type")), None)
     y4 = next((q for q in qs if lastq and q["year"] == lastq["year"] - 1 and q["q"] == lastq["q"]), None)
     g_now = (eps_now / y4["eps"] - 1) * 100 if (y4 and y4.get("eps") and y4["eps"] > 0 and eps_now and eps_now > 0) else None
     lr = rows[-1]
-    rr5 = [r for r in rows[-5:] if r.get("roe") is not None]
+    rr5 = [r for r in ann[-5:] if r.get("roe") is not None]
+    tr_ = rows[-1] if rows[-1].get("ttm") else None
     idv = next((l["v"] for l in lessons if l["k"] == "identity"), None)
     checks = [
         {"who": "버핏", "q": "이해할 수 있는 사업인가 (15년 설명의 닮음 0.5↑)", "ok": (idv >= 0.5) if idv is not None else None,
          "why": ("사업의 내용 낱말 닮음 %.2f" % idv) if idv is not None else "자료 없음"},
         {"who": "버핏", "q": "꾸준히 버는가 (최근 5년 ROE 15%↑)", "ok": len(rr5) >= 3 and sum(1 for r in rr5 if r["roe"] >= 15) >= 4,
-         "why": "최근 5년 ROE %s" % " · ".join("%.0f" % r["roe"] for r in rr5)},
+         "why": "최근 5년 ROE %s" % " · ".join("%.0f" % r["roe"] for r in rr5) +
+                (" · 최근 4분기(%s) %.0f" % (tr_["ttm"], tr_["roe"]) if tr_ and tr_.get("roe") is not None else "")},
         {"who": "버핏", "q": "빚이 가벼운가 (차입/자본 50%↓)", "ok": (lr["de"] <= 50) if lr.get("de") is not None else
          ((lr.get("liab") or 0) <= (lr.get("eq") or 0) if lr.get("eq") else None),
          "why": ("차입금/자본 %.0f%%" % lr["de"]) if lr.get("de") is not None else "차입금 줄 없음 — 부채/자본으로 봄"},
         {"who": "버핏", "q": "이익이 현금으로 들어오는가 (FCF 흑자 해 ≥ 절반)",
-         "ok": sum(1 for r in rows if (r.get("fcf") or 0) > 0) >= 0.5 * max(1, sum(1 for r in rows if r.get("fcf") is not None)),
-         "why": "FCF 흑자 %d/%d년" % (sum(1 for r in rows if (r.get("fcf") or 0) > 0), sum(1 for r in rows if r.get("fcf") is not None))},
+         "ok": sum(1 for r in ann if (r.get("fcf") or 0) > 0) >= 0.5 * max(1, sum(1 for r in ann if r.get("fcf") is not None)),
+         "why": "FCF 흑자 %d/%d년" % (sum(1 for r in ann if (r.get("fcf") or 0) > 0), sum(1 for r in ann if r.get("fcf") is not None)) +
+                (" · 최근 4분기 %s" % _won_txt(tr_["fcf"]) if tr_ and tr_.get("fcf") is not None else "")},
         {"who": "버핏", "q": "값이 합리적인가 (PER 자기 역사 하위 절반)", "ok": pct_now is not None and pct_now <= 50,
          "why": "지금 PER %s, 자기 역사 %s" % ("%.1f" % per_now if per_now else "—", "하위 %.0f%%" % pct_now if pct_now is not None else "—")},
     ]
@@ -5927,7 +6029,7 @@ def landscape_build(c, prog=None):
         good_biz_note = None
     quad = ("결단" if good_biz and zone == "싸다" else "기다림" if good_biz else
             "함정 주의" if zone == "싸다" else "피함")
-    e5 = [r["eps"] for r in rows[-5:] if r.get("eps") is not None]
+    e5 = [r["eps"] for r in ann[-5:] if r.get("eps") is not None]
     norm_eps = sum(e5) / len(e5) if (last_type == "경기순환" and len(e5) >= 3) else None
     base_eps = norm_eps if (norm_eps and norm_eps > 0) else eps_now
     wait_px = base_eps * band["lo"] if (base_eps and base_eps > 0 and band["lo"]) else None

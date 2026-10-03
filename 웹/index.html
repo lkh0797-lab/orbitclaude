@@ -1991,6 +1991,7 @@ table.lsTbl{border-collapse:collapse;font:12px/1.4 var(--f-num);min-width:100%}
 .lsTbl th,.lsTbl td{padding:5px 9px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line2)}
 .lsTbl th:first-child,.lsTbl td:first-child{position:sticky;left:0;background:var(--panel);text-align:left;font-family:var(--sans);font-weight:600;color:var(--dim);z-index:1}
 .lsTbl thead th{color:var(--ink);font-weight:700;border-bottom:1px solid var(--line)}
+.lsTbl thead th.ttm{color:var(--accent)}.lsTbl thead th.ttm small{display:block;font-size:9.5px;font-weight:500;color:var(--faint)}
 .lsTbl tr.sec td{background:var(--line2);color:var(--faint);font:600 10.5px var(--sans);letter-spacing:.06em;text-align:left}
 .lsTbl td.hot{background:color-mix(in srgb,var(--tier-4) 18%,transparent);color:var(--ink);font-weight:600}
 .lsTbl td.cold{color:var(--del)}
@@ -9345,12 +9346,13 @@ function lsPlate(plate, d, c, animate){
   plate.classList.toggle('full', document.fullscreenElement===plate);
   plate.classList.toggle('anim', !!animate);
   const R=d.rows, dc=d.decide, CH=d.chapters||[];
-  const y0=R[0].year, y1=R[R.length-1].year;
+  const y0=R[0].year, y1=R[R.length-1].year, tt=R[R.length-1].ttm;   // tt = '2026.2Q' — 마지막 사업보고서 뒤 최근 4분기 칸
+  const yEnd=tt?String(tt).slice(2):String(y1);
 
   // ── 머리
   const top=el('div','spTop');
   const eb=el('div','spEyebrow');
-  eb.innerHTML='<b>EXHIBIT 07</b><span></span><em>The long view · '+y0+'–'+y1+'</em>';
+  eb.innerHTML='<b>EXHIBIT 07</b><span></span><em>The long view · '+y0+'–'+(tt||y1)+'</em>';
   eb.querySelector('span').textContent='풍경 · '+c.name;
   top.appendChild(eb);
   const tools=el('div','spTools');
@@ -9364,7 +9366,7 @@ function lsPlate(plate, d, c, animate){
 
   // ── 헤드라인 — 회사의 일생을 유형으로 한 줄
   const path=CH.map(x=>x.type);
-  const h3=c.name+', '+(y1-y0+1)+'년의 풍경 — '+(path.length>1 ? path.join(' → ') : (path[0]||'—')+' 한 길');
+  const h3=c.name+', '+(tt?y0+'–'+yEnd:(y1-y0+1)+'년')+'의 풍경 — '+(path.length>1 ? path.join(' → ') : (path[0]||'—')+' 한 길');
   const hl=el('div','spHead'); hl.appendChild(el('h3',null,h3));
   const fol=(d.lessons||[]).find(l=>l.k==='follow');
   const lineNow=dc.line_now||dc.line_px;
@@ -9409,7 +9411,10 @@ function lsChart(fig, d, plate){
   const W=1000, L=58, RR=118, T=42, H1=300, GAP=40, H2=66, B=28;
   const pTop=T, pBot=T+H1, rTop=pBot+GAP, rBot=rTop+H2, H=rBot+B;
   const R=d.rows, M=d.monthly||[], LN=d.line||[];
-  const t0=Date.UTC(R[0].year,0,1), t1=Math.max(M.length?lsT(M[M.length-1].d):0, Date.UTC(R[R.length-1].year,11,31));
+  // 최근 4분기 칸은 그 분기 말에서 반년 앞(4분기 창의 가운데)에 놓는다
+  const rx=r=>r.ttm&&r.end?Date.UTC(+r.end.slice(0,4),+r.end.slice(4,6)-7,1):Date.UTC(r.year,6,1);
+  const rl=R[R.length-1];
+  const t0=Date.UTC(R[0].year,0,1), t1=Math.max(M.length?lsT(M[M.length-1].d):0, rl.ttm&&rl.end?lsT(rl.end):Date.UTC(rl.year,11,31));
   const X=t=>L+(t-t0)/(t1-t0)*(W-L-RR);
   const vals=[...M.map(m=>m.p), ...LN.filter(x=>x.lo).flatMap(x=>[x.lo,x.hi])].filter(v=>v>0);
   let lo=Math.min(...vals), hi=Math.max(...vals);
@@ -9429,7 +9434,7 @@ function lsChart(fig, d, plate){
     if(i) gch.appendChild(svgEl('line',{x1:a,x2:a,y1:pTop-26,y2:rBot,class:'lsDiv'}));
     if(b-a>46){
       const t=svgEl('text',{x:(a+b)/2,y:pTop-12,'text-anchor':'middle',class:'lsChap'}); t.textContent=ch.type; t.setAttribute('fill',col); gch.appendChild(t);
-      const s=svgEl('text',{x:(a+b)/2,y:pTop-1,'text-anchor':'middle',class:'lsChapY'}); s.textContent=ch.y0===ch.y1?String(ch.y0):"'"+String(ch.y0).slice(2)+"–'"+String(ch.y1).slice(2); gch.appendChild(s);
+      const s=svgEl('text',{x:(a+b)/2,y:pTop-1,'text-anchor':'middle',class:'lsChapY'}); s.textContent=ch.y0===ch.y1&&!ch.y1_label?String(ch.y0):"'"+String(ch.y0).slice(2)+"–'"+String(ch.y1_label||ch.y1).slice(2); gch.appendChild(s);
     }
   });
   svg.appendChild(gch);
@@ -9518,14 +9523,15 @@ function lsChart(fig, d, plate){
   const bw=Math.max(6,(W-L-RR)/R.length*.55);
   R.forEach(r=>{
     if(r.roe===null||r.roe===undefined) return;
-    const x=X(Date.UTC(r.year,6,1)), y=YR(r.roe), y0=YR(0);
+    const x=X(rx(r)), y=YR(r.roe), y0=YR(0);
     const col=r.roe>=15?'#d6b46a':r.roe<0?'#e5534b':'rgba(236,234,228,.32)';
     svg.appendChild(svgEl('rect',{x:x-bw/2,y:Math.min(y,y0),width:bw,height:Math.max(1,Math.abs(y0-y)),rx:2,fill:col}));
     const t=svgEl('text',{x,y:r.roe>=0?Math.min(y,y0)-3:Math.max(y,y0)+10,'text-anchor':'middle',class:'lsRoe'}); t.textContent=r.roe.toFixed(0); svg.appendChild(t);
   });
   // 연도 축
-  R.forEach((r,i)=>{ const x=X(Date.UTC(r.year,6,1)); if(R.length>12 && i%2 && i!==R.length-1) return;
-    const t=svgEl('text',{x,y:H-8,'text-anchor':'middle',class:'lsTick'}); t.textContent="'"+String(r.year).slice(2); svg.appendChild(t); });
+  R.forEach((r,i)=>{ const x=X(rx(r)); if(R.length>12 && i%2 && i!==R.length-1) return;
+    if(r.ttm && i && X(rx(R[i-1]))>x-26) return;     // 바로 앞 해와 겹치면 숫자 하나만
+    const t=svgEl('text',{x,y:H-8,'text-anchor':'middle',class:'lsTick'}); t.textContent=r.ttm?"'"+String(r.ttm).slice(2):"'"+String(r.year).slice(2); svg.appendChild(t); });
 
   // 따라가는 선 — 날짜·주가·이익선·벌어짐
   const guide=svgEl('line',{class:'lsGuide',y1:pTop,y2:rBot}); guide.style.display='none'; svg.appendChild(guide);
@@ -9563,7 +9569,7 @@ function lsLandCol(d){
   col.appendChild(lsColHead('풍경','WHAT THEY SEE','이 회사가 어떤 유형으로 살아왔나 — 장(章)마다'));
   (d.chapters||[]).forEach(ch=>{
     const b=el('div','lsCh'); b.style.setProperty('--c',LS_TC[ch.type]||'#8b95a3');
-    const t=el('div','lsChT'); t.appendChild(el('b',null,ch.type)); t.appendChild(el('small',null,ch.y0===ch.y1?String(ch.y0):ch.y0+'–'+ch.y1));
+    const t=el('div','lsChT'); t.appendChild(el('b',null,ch.type)); t.appendChild(el('small',null,ch.y0===ch.y1&&!ch.y1_label?String(ch.y0):ch.y0+'–'+(ch.y1_label||ch.y1)));
     if(ch.also&&ch.also.length) t.appendChild(el('small',null,'(한 해 '+ch.also.join('·')+')'));
     b.appendChild(t);
     const ty=(d.types||{})[ch.type]; if(ty) b.appendChild(el('div','lsChD',ty[1]));
@@ -9638,11 +9644,14 @@ function lsDecideCol(d){
 function lsLedger(led, d){
   led.innerHTML='';
   const R=d.rows;
-  led.appendChild(el('h4',null,'밸류라인 한 장 — '+R[0].year+'–'+R[R.length-1].year));
-  led.appendChild(el('p','sub','버핏이 회사를 처음 볼 때 펼치는 15년 원장. 주당 값은 오늘 주식 수 기준(분할·무상증자 보정). 금색 칸은 좋은 해(ROE 15%↑ · PER이 자기 역사 하위 25%↓), 빨간 글씨는 뒷걸음친 해.'));
+  const lt=R[R.length-1].ttm;
+  led.appendChild(el('h4',null,'밸류라인 한 장 — '+R[0].year+'–'+(lt||R[R.length-1].year)));
+  led.appendChild(el('p','sub','버핏이 회사를 처음 볼 때 펼치는 15년 원장. 주당 값은 오늘 주식 수 기준(분할·무상증자 보정). 금색 칸은 좋은 해(ROE 15%↑ · PER이 자기 역사 하위 25%↓), 빨간 글씨는 뒷걸음친 해.'+
+    (lt?' 마지막 칸 = 최근 4분기 합('+lt+'까지 · 앞 칸과 기간이 겹친다). 주가·PER은 그 분기 말, 최고·최저는 그 4분기 동안, 배당은 마지막 결산 배당. 새 분기·반기 보고서가 들어오면 이 칸이 바뀐다.':'')));
   const w=el('div','lsTblW'), t=el('table','lsTbl');
   const hd=el('thead'), hr=el('tr'); hr.appendChild(el('th',null,''));
-  R.forEach(r=>hr.appendChild(el('th',null,String(r.year)))); hd.appendChild(hr); t.appendChild(hd);
+  R.forEach(r=>{ const th=el('th',r.ttm?'ttm':null,r.ttm?String(r.ttm).slice(2):String(r.year)); if(r.ttm){ th.appendChild(el('small',null,'최근 4분기')); th.title='최근 4분기 합 — '+r.ttm+'까지'; } hr.appendChild(th); });
+  hd.appendChild(hr); t.appendChild(hd);
   const tb=el('tbody');
   const f1=v=>v===null||v===undefined?'—':v.toFixed(1);
   const sec=nm=>{ const tr=el('tr','sec'); const td=el('td',null,nm); td.colSpan=R.length+1; tr.appendChild(td); tb.appendChild(tr); };
