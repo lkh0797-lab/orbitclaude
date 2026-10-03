@@ -8533,6 +8533,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, value_view(q.get("force") == "1"))
             if path == "/api/value2":
                 return self._send(200, value2_view(q.get("force") == "1"))
+            if path == "/api/ohlcv":
+                # 저평가V2 큰 차트 — 마지막 n봉 + 이동평균을 낼 앞 120봉
+                code = q.get("code", "")
+                n = min(max(int(q.get("n", "250") or 250), 20), 800)
+                d = FIN.fetch_ohlcv(code) if FIN is not None and re.fullmatch(r"[0-9A-Z]{6}", code or "") else {}
+                ks = sorted(d)[-(n + 120):]
+                c = company_by_code(code)
+                return self._send(200, {"code": code, "name": c["name"] if c else code, "n": n,
+                                        "d": ks, "o": [d[k][0] for k in ks], "h": [d[k][1] for k in ks],
+                                        "l": [d[k][2] for k in ks], "c": [d[k][3] for k in ks], "v": [d[k][4] for k in ks]})
             if path == "/api/narrative":
                 d = narrative_view(q.get("code", ""), q.get("term", "").strip())
                 if d is None:
