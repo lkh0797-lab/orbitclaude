@@ -311,6 +311,43 @@ def fetch_prices(stock_code, start="20100101"):
     return out
 
 
+OHLCV_DIR = os.path.join(CACHE_DIR, "ohlcv")
+
+
+def fetch_ohlcv(stock_code, start="20100101", max_age=86400):
+    """네이버 일별 시세 — 시가 · 고가 · 저가 · 종가 · 거래량. {날짜: [o, h, l, c, v]} (2026-10-03, 저평가V2 기술 필터용).
+    fetch_prices(종가만)와 따로 캐시한다 — 그쪽을 쓰는 곳이 많아 형식을 바꾸지 않는다."""
+    os.makedirs(OHLCV_DIR, exist_ok=True)
+    cache = os.path.join(OHLCV_DIR, stock_code + ".json")
+    if os.path.exists(cache) and time.time() - os.path.getmtime(cache) < max_age:
+        try:
+            with open(cache, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except Exception:
+            pass
+    end = dt.date.today().strftime("%Y%m%d")
+    try:
+        r = requests.get(NAVER, timeout=60, headers={"User-Agent": "Mozilla/5.0"},
+                         params={"symbol": stock_code, "requestType": "1", "startTime": start, "endTime": end,
+                                 "timeframe": "day"})
+        r.raise_for_status()
+        rows = json.loads(r.text.replace("'", '"'))
+    except Exception:
+        return {}
+    out = {}
+    for row in rows[1:]:
+        if not row or len(row) < 6:
+            continue
+        d = str(row[0]).strip()
+        o, h, lo, c, v = (num(x) for x in row[1:6])
+        if re.fullmatch(r"\d{8}", d) and c:
+            out[d] = [o or c, h or c, lo or c, c, v or 0]
+    if out:
+        with open(cache, "w", encoding="utf-8") as fh:
+            json.dump(out, fh, ensure_ascii=False)
+    return out
+
+
 def price_on(prices, yyyymmdd, back=12):
     """그 날 종가. 휴장이면 직전 영업일로 최대 back 일 거슬러 올라간다."""
     if not prices:

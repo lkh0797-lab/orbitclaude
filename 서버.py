@@ -8189,6 +8189,122 @@ def value_view(force=False):
     return out
 
 
+# ---------------------------------------------------------------- 저평가V2: 저평가 종목 가운데 차트로 유리한 자리 (2026-10-03)
+# 저평가 등급 종목마다 시세(시가 · 고가 · 저가 · 종가 · 거래량)로 슈퍼개미식 신호(기술.py)를 매긴다.
+# 좋은 자리 신호가 하나 이상이고 나쁜 자리 신호(고점 대량 음봉 · 역배열 하락 · 거래대금 부족)가 없으면 V2.
+# 신호마다 과거 저평가 등급 안 성과(도구/저평가V2_백테스트.py → .cache/value/v2_report.json)를 붙이고,
+# 앞뒤 기간 모두 같은 방향이었던 신호는 '검증됨'으로 표시해 줄 세우기에 먼저 쓴다.
+try:
+    _tspec = _ilu.spec_from_file_location("기술", os.path.join(BASE, "기술.py"))
+    TECH = _ilu.module_from_spec(_tspec)
+    _tspec.loader.exec_module(TECH)
+except Exception as _e:
+    TECH = None
+    print("기술 모듈 로드 실패:", _e)
+V2 = {"running": False, "done": 0, "total": 0, "at": 0, "rows": [], "src_at": 0}
+V2_LOCK = threading.Lock()
+_V2R = {"mt": None, "d": None}
+
+
+def _v2_report():
+    p = os.path.join(VAL_DIR, "v2_report.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return None
+    if _V2R["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                _V2R.update(d=json.load(fh), mt=mt)
+        except Exception:
+            return None
+    return _V2R["d"]
+
+
+def _v2_verdict(rep):
+    """신호별 과거 성과(저평가 등급 안) → {키: {name, dir, ok, diff(6개월), early, late, d1 · d3 · d12, share}}.
+    차트 신호는 짧은 타이밍 도구라 6개월 초과수익으로 판정한다 — 차이 1%p↑이고 앞(~2019) · 뒤(2020~) 같은 방향이면 '검증됨'.
+    (12개월로 보면 V2 규칙은 나머지 저평가보다 −3.0%p — 아직 안 움직인 저평가가 1년 뒤엔 더 따라잡는다)"""
+    out = {}
+    for k, nm, d in (TECH.SIGS if TECH else []):
+        x = ((rep or {}).get("sigs") or {}).get(k) or {}
+        t = x.get("저평가_ex6m") or {}
+        df, e, l_ = t.get("diff"), t.get("early"), t.get("late")
+        ok = d != 0 and df is not None and e is not None and l_ is not None and df * d >= 1 and e * d > 0 and l_ * d > 0
+        out[k] = {"name": nm, "dir": d, "ok": ok, "diff": df, "early": e, "late": l_, "ci": t.get("ci"),
+                  "n_on": t.get("n_on"), "share": t.get("share"),
+                  "d1": (x.get("저평가_ex1m") or {}).get("diff"), "d3": (x.get("저평가_ex3m") or {}).get("diff"),
+                  "d12": (x.get("저평가") or {}).get("diff")}
+    return out
+
+
+def _run_v2(src):
+    try:
+        rows = [r for r in src if r.get("tier") == "저평가"]
+        with V2_LOCK:
+            V2.update(done=0, total=len(rows))
+        out = []
+        from concurrent.futures import ThreadPoolExecutor
+        def one(r):
+            B = TECH.bars_from(FIN.fetch_ohlcv(r["code"]))
+            if not B:
+                return None
+            s = TECH.tech(B, len(B["c"]) - 1)
+            if not s:
+                return None
+            x = {k: r.get(k) for k in ("code", "name", "industry", "cap_rank", "price", "dd", "px_yoy", "ni_yoy", "per", "per_then",
+                                      "comp", "per_pct", "roe", "opm", "score", "debt_eq", "mp_yoy", "hi", "hi_d", "ret3m", "ret1m")}
+            x.update({k: v for k, v in s.items()})
+            x["bar_d"] = str(B["d"][-1])
+            # 최근 60봉 종가 · 거래량(화면 작은 차트)
+            n = len(B["c"])
+            x["spark"] = {"c": B["c"][n - 120:], "v": B["v"][n - 120:], "d": [str(z) for z in B["d"][n - 120:]]}
+            return x
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            for k, x in enumerate(ex.map(one, rows), 1):
+                if x:
+                    out.append(x)
+                with V2_LOCK:
+                    V2["done"] = k
+        with V2_LOCK:
+            V2.update(rows=out, at=time.time())
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+    finally:
+        with V2_LOCK:
+            V2["running"] = False
+
+
+def value2_view(force=False):
+    if TECH is None or FIN is None:
+        return {"error": "기술 모듈이 없습니다."}
+    base = value_view(False)
+    src = base.get("rows") or []
+    with V2_LOCK:
+        stale = force or not V2["at"] or V2["src_at"] != base.get("at") or time.time() - V2["at"] > 12 * 3600
+        if stale and src and not V2["running"]:
+            V2.update(running=True, src_at=base.get("at"))
+            threading.Thread(target=_run_v2, args=(src,), daemon=True).start()
+        out = {k: V2.get(k) for k in ("running", "done", "total", "at", "rows")}
+    rep = _v2_report()
+    ver = _v2_verdict(rep)
+    good = [k for k, v in ver.items() if v["dir"] > 0]
+    bad = [k for k, v in ver.items() if v["dir"] < 0]
+    info = [k for k, v in ver.items() if v["dir"] == 0]
+    for r in out["rows"]:
+        r["good"] = [k for k in good if r.get(k)]
+        r["good_ok"] = [k for k in r["good"] if ver[k]["ok"]]
+        r["bad"] = [k for k in bad if r.get(k) and ver[k]["ok"]]          # 검증된 나쁜 자리만 V2에서 뺀다
+        r["bad_info"] = [k for k in bad if r.get(k) and not ver[k]["ok"]] + [k for k in info if r.get(k)]
+        r["v2"] = bool(r["good_ok"]) and not r["bad"]
+    out["rows"] = sorted(out["rows"], key=lambda r: (not r["v2"], -len(r["good_ok"]), -len(r["good"]), -(r.get("score") or 0)))
+    out["sigs"] = ver
+    out["base_running"], out["base_at"], out["n_tier"] = base.get("running"), base.get("at"), sum(1 for r in src if r.get("tier") == "저평가")
+    out["bt"] = {k: (rep or {}).get(k) for k in ("n_tier", "firms_tier", "n_cand", "tier_all", "tier_all_ex6m", "v2_rule")}
+    return out
+
+
 # ---------------------------------------------------------------- HTTP
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
@@ -8415,6 +8531,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, dip_view(q.get("force") == "1"))
             if path == "/api/value":
                 return self._send(200, value_view(q.get("force") == "1"))
+            if path == "/api/value2":
+                return self._send(200, value2_view(q.get("force") == "1"))
             if path == "/api/narrative":
                 d = narrative_view(q.get("code", ""), q.get("term", "").strip())
                 if d is None:

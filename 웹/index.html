@@ -1761,6 +1761,19 @@ table.tbl td.num{font:12px/1.5 var(--mono);text-align:right}
 .askplate .spHead p{max-width:64em}
 .askplate .spHead p.spEn{margin-top:4px;font:italic 400 12.5px/1.5 var(--f-body);color:var(--p-faint)}
 .askSpot{margin-top:18px}
+.v2Chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.v2Chip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);cursor:pointer;text-align:left}
+.v2Chip b{font:600 12px var(--sans);color:var(--ink)}.v2Chip span{font:500 10.5px var(--mono);color:var(--faint)}
+.v2Chip.good.ok{border-color:var(--add)}.v2Chip.good.ok span{color:var(--add)}
+.v2Chip.bad b{color:var(--del)}.v2Chip.on{background:var(--accent-soft);border-color:var(--accent)}
+.v2All{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--dim);margin:2px 0 10px}
+.v2Note{font-size:11.5px;color:var(--dim);margin-top:6px;line-height:1.55}
+.v2Sig{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.v2Sig span{font:500 10.5px var(--sans);padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--dim)}
+.v2Sig span.g.ok{border-color:var(--add);color:var(--add)}.v2Sig span.b{border-color:var(--del);color:var(--del)}.v2Sig span.i{border-style:dashed;color:var(--faint)}
+.v2Lead{font-size:12.5px;color:var(--ink);line-height:1.6;padding:8px 12px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:4px;margin:6px 0}
+.v2Chip.info b{color:var(--dim)}
+.v2Spark{width:150px;height:46px;display:block}.v2Spark .pl{fill:none;stroke:var(--accent);stroke-width:1.3}.v2Spark .vb{fill:var(--faint);opacity:.55}
 .askMatL{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .askMatI{display:grid;grid-template-columns:46px minmax(0,1fr);gap:12px;align-items:start;padding:10px 14px;border-radius:10px;cursor:pointer;
   border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);transition:background .15s,border-color .15s}
@@ -2159,6 +2172,7 @@ details.linMore>summary::-webkit-details-marker{display:none}
     <main>
       <div class="tabs" id="tabs" hidden>
         <button data-t="val">저평가</button>
+        <button data-t="val2">저평가V2</button>
         <button data-t="orbit" class="on">궤도</button>
         <button data-t="land">풍경</button>
         <button data-t="brief">변화 브리핑</button>
@@ -2369,7 +2383,7 @@ function show(t){
   ({orbit:viewOrbit, land:viewLand, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue}[t])(p);
+    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue, val2:viewValue2}[t])(p);
 }
 
 // ---------------------------------------------------------- 분기 변화 — 보고서가 나올 때마다 직전 공시(3개월 전)와 맞댄다
@@ -3738,6 +3752,130 @@ async function viewValue(p, force){
   if(!rows.length && !d.running) body.appendChild(el('div','empty','지금은 네 관문을 모두 넘은 회사가 없다.'));
   body.appendChild(el('div','finnote','주가 = 네이버 수정주가(분할 보정). 이익 = 분기 보고서 지배주주 순이익 4분기 합. PER 자기 역사 = 최근 10년 분기 말 PER 가운데 지금 자리. '+
     '업황 = ECOS 수출물가 · KOSIS 출하·재고(회사 업종코드). 점수는 순서를 정하는 참고다 — "싸다"는 뜻이지 "오른다"는 뜻은 아니고, 왜 빠졌는지 마지막 확인은 사람이 한다.'));
+}
+
+// ---------------------------------------------------------- 저평가V2 — 저평가 종목 가운데 차트로 유리한 자리(/api/value2 · 기술.py)
+const V2_DEF={
+  box_spike:'최근 20봉 안에 60봉 평균의 3배 넘는 양봉. 그 앞 60봉은 고저 30% 안 박스였고 박스 바닥이 52주 저점 15% 안. 지금 종가가 그 양봉 시가 위',
+  cap_tail:'최근 60봉 안, 거래량 3배 · 저가가 52주 저점 5% 안 · 종가가 그날 고저의 위 40% 안(아래꼬리) · 그 뒤 그 저가를 안 깼다',
+  dry_box:'20일 평균 거래량이 120일 평균의 60% 아래 · 최근 20봉 고저 15% 안 — 팔 사람이 말랐다',
+  ma20_back:'종가가 20일선 위 · 최근 5봉 안에 20일선 아래였던 날이 있다 · 20일선이 5봉 전보다 내려가지 않았다',
+  golden:'20일선이 60일선 위, 10봉 전엔 아래',
+  aligned:'종가 > 5일선 > 20일선 > 60일선',
+  higher_low:'최근 20봉 저점이 그 앞 60봉 저점보다 2%↑ 높고, 그 앞 저점은 52주 저점 10% 안',
+  above120:'종가가 120일선 위 · 120일선이 20봉 전보다 오르는 중',
+  top_dump:'최근 120봉 안, 거래량 3배 · 52주 고점 10% 안 · 음봉이거나 윗꼬리가 고저의 절반↑',
+  down_aligned:'종가 < 20일 < 60일 < 120일, 20일선이 내려가는 중',
+  thin:'최근 20일 평균 거래대금이 하루 3억 원 미만 — 참고(과거엔 오히려 더 올랐다. 드나들기 어려운 것은 사실)'};
+
+async function viewValue2(p, force){
+  p.innerHTML='';
+  const box=el('div','valBox'); p.appendChild(box);
+  const hd=el('div','dipHead');
+  hd.appendChild(el('b',null,'저평가V2'));
+  hd.appendChild(el('span',null,'저평가 종목 가운데 차트로 유리한 자리 — 바닥 횡보 뒤 대량 양봉 · 투매 받아낸 아래꼬리 · 거래 말라붙은 횡보 · 20일선 회복 같은 슈퍼개미식 지침을 숫자로 고정해 붙였다'));
+  const rf=el('button','ghost','다시 계산'); rf.style.marginLeft='auto'; rf.onclick=()=>viewValue2(p,true); hd.appendChild(rf);
+  box.appendChild(hd);
+  const body=el('div'); box.appendChild(body);
+  let d;
+  try{ d=await (await fetch('/api/value2'+(force?'?force=1':''))).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
+  if(!box.isConnected) return;
+  if(d.error){ body.appendChild(el('div','err',d.error)); return; }
+  if(d.running || d.base_running){
+    const pr=el('div','prog'); pr.appendChild(el('span',null,d.base_running&&!(d.rows||[]).length?'저평가 목록을 먼저 만드는 중':'저평가 종목 시세 읽는 중 '+(d.done||0)+'/'+(d.total||0)));
+    const b=el('div','bar'); const i=el('i'); i.style.width=(d.total?Math.round(d.done/d.total*100):5)+'%'; b.appendChild(i); pr.appendChild(b);
+    body.appendChild(pr);
+    setTimeout(()=>{ if(box.isConnected && S.tab==='val2') viewValue2(p,false); }, 4000);
+    if(!(d.rows||[]).length) return;
+  }
+  const rows=d.rows||[], SG=d.sigs||{};
+  S.v2req=S.v2req||new Set(); S.v2all=!!S.v2all;
+  // 신호 칩 — 누르면 그 신호가 있는 종목만. 칩 아래 숫자 = 과거 저평가 등급 안에서 켜짐 − 꺼짐 12개월 초과수익
+  const f=v=>v==null?'—':(v>=0?'+':'')+Math.round(v)+'%p';
+  const chips=el('div','v2Chips');
+  const draw=()=>{
+    const list=rows.filter(r=>(S.v2all||r.v2) && [...S.v2req].every(k=>r[k]));
+    tb.innerHTML='';
+    tb.appendChild(el('div','dipBH',''));
+    tb.firstChild.appendChild(el('b',null,(S.v2all?'저평가 전체 ':'저평가V2 ')+list.length+'곳'));
+    tb.firstChild.appendChild(el('span',null,S.v2all?'저평가 등급 전부 — 신호 칩으로 좁혀 보라':'검증된 좋은 자리 신호(✓)가 하나 이상이고 검증된 나쁜 자리(⚠)가 없는 저평가 종목. ✓가 많은 순, 같으면 저평가 점수 순'));
+    tb.appendChild(v2Table(list,SG));
+    [...chips.querySelectorAll('.v2Chip')].forEach(c=>c.classList.toggle('on',S.v2req.has(c.dataset.k)));
+  };
+  Object.entries(SG).forEach(([k,s])=>{
+    const n=rows.filter(r=>r[k]).length;
+    const c=el('button','v2Chip '+(s.dir>0?'good':s.dir<0?'bad':'info')+(s.ok?' ok':'')); c.dataset.k=k;
+    c.appendChild(el('b',null,(s.dir<0&&s.ok?'⚠ ':'')+s.name));
+    c.appendChild(el('span',null,n+'곳 · 6개월 '+f(s.diff)+(s.ok?' ✓':s.dir===0?' · 참고':s.diff==null?' (표본 모자람)':' · 검증 안 됨')));
+    c.title=(V2_DEF[k]||'')+'\n과거 저평가 등급 안 켜짐 − 꺼짐 초과수익 — 1개월 '+f(s.d1)+' · 3개월 '+f(s.d3)+' · 6개월 '+f(s.diff)+
+      (s.ci&&s.ci[0]!=null?' [90% '+f(s.ci[0])+' ~ '+f(s.ci[1])+']':'')+' (~2019 '+f(s.early)+' · 2020~ '+f(s.late)+') · 12개월 '+f(s.d12)+(s.ok?'\n6개월 기준 앞뒤 기간 같은 방향 — 검증됨':'');
+    if(s.dir>0) c.onclick=()=>{ S.v2req.has(k)?S.v2req.delete(k):S.v2req.add(k); draw(); };
+    else c.style.cursor='default';
+    chips.appendChild(c);
+  });
+  const all=el('label','v2All'); const cb=el('input'); cb.type='checkbox'; cb.checked=S.v2all; cb.onchange=()=>{ S.v2all=cb.checked; draw(); };
+  all.appendChild(cb); all.appendChild(document.createTextNode(' 저평가 '+(d.n_tier||rows.length)+'곳 전부 보기(나쁜 자리 포함)'));
+  const vr=((d.bt||{}).v2_rule||{}).eval||{};
+  if(vr.ex3m&&vr.ex3m.diff!=null) body.appendChild(el('div','v2Lead','과거 검증 — V2(검증된 좋은 자리 · 나쁜 자리 없음)는 나머지 저평가보다 3개월 '+f(vr.ex3m.diff)+' · 6개월 '+f((vr.ex6m||{}).diff)+
+    ' (2019년 이전·이후 모두 +). 그러나 12개월은 '+f((vr.ex12m||{}).diff)+' — 아직 안 움직인 저평가가 1년 뒤엔 더 따라잡았다. 차트 신호는 3~6개월 타이밍 도구로만 쓴다.'));
+  body.appendChild(el('div','v2Note','칩을 누르면 그 신호가 있는 종목만 남는다(여러 개 = 모두). ✓ = 과거 저평가 등급 안에서 6개월 초과수익이 1%p↑ 좋았고 2019년 이전·이후 같은 방향이었던 신호. ⚠ = 같은 기준의 나쁜 자리 — V2에서 뺀다. 칩에 마우스를 올리면 정의와 1·3·6·12개월 숫자.'));
+  body.appendChild(chips); body.appendChild(all);
+  const tb=el('div'); body.appendChild(tb);
+  draw();
+  // 신호 정의와 검증
+  const det=el('details','dipEvd'); det.appendChild(el('summary',null,'신호 정의와 과거 검증 — 저평가 등급 안에서 신호 켜짐 − 꺼짐(1 · 3 · 6 · 12개월 초과수익)'));
+  det.appendChild(el('p',null,'2014~2025 보고서가 공시된 날마다, 그날까지의 봉(시가·고가·저가·종가·거래량)만으로 신호를 다시 매기고 그 뒤 수익률을 전 종목 중앙값과 견줬다(저평가 등급 623건 · 280곳). 신호는 맞추지 않고 흔히 쓰는 정의 그대로 숫자로 고정했다. 판정은 6개월 기준(차이 1%p↑ · 2019년 이전·이후 같은 방향). 회사 단위 재표본 90% 구간.'));
+  const t=el('table','tbl dipTbl');
+  t.innerHTML='<tr><th>신호</th><th>정의</th><th class="r">켜진 비율</th><th class="r">1개월</th><th class="r">3개월</th><th class="r">6개월</th><th class="r">6개월 90% 구간</th><th class="r">6개월 ~2019 · 2020~</th><th class="r">12개월</th><th class="r">판정</th></tr>';
+  Object.entries(SG).forEach(([k,s])=>{ const tr=el('tr'); tr.appendChild(el('td',null,(s.dir<0?'⚠ ':'')+s.name));
+    const dd=el('td',null,V2_DEF[k]||''); dd.style.cssText='font-size:11px;color:var(--dim);max-width:340px;white-space:normal'; tr.appendChild(dd);
+    [s.share!=null?Math.round(s.share)+'%':'—',f(s.d1),f(s.d3),f(s.diff),(s.ci&&s.ci[0]!=null)?f(s.ci[0])+' ~ '+f(s.ci[1]):'—',f(s.early)+' · '+f(s.late),f(s.d12),
+     s.ok?(s.dir>0?'✓ 좋은 자리':'⚠ 나쁜 자리'):s.dir===0?'참고':s.diff==null?'표본 모자람':'검증 안 됨']
+      .forEach((v,i)=>tr.appendChild(el('td','num'+(i==3?' strong':''),v)));
+    t.appendChild(tr); });
+  det.appendChild(t);
+  const ta=(d.bt||{}).tier_all;
+  if(ta) det.appendChild(el('p',null,'비교 기준 — 저평가 등급 전체 12개월 초과수익 중앙 '+f(ta.median).replace('p','')+', 이긴 비율 '+Math.round(ta.hit)+'%. 차트 신호는 이 위에 더해지는 몫만 본다. 다시 재기: python 도구/저평가V2_백테스트.py'));
+  body.appendChild(det);
+  body.appendChild(el('div','finnote','시세 = 네이버 일봉(수정주가). 신호는 오늘 봉까지로 매긴다(장중이면 어제까지). 차트 신호는 저평가(가치) 위에 얹는 타이밍 참고다 — 단독으로 사고팔 근거가 아니다.'));
+}
+
+function v2Spark(s){
+  const W=150,H=46, c=s.c||[], v=s.v||[]; if(c.length<5) return el('span');
+  const mn=Math.min(...c), mx=Math.max(...c), vm=Math.max(...v,1);
+  const x=i=>i/(c.length-1)*W, y=p=>3+(mx-p)/(mx-mn||1)*(H-16);
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'v2Spark'});
+  v.forEach((q,i)=>{ const h=q/vm*11; svg.appendChild(svgEl('rect',{x:x(i)-0.6,y:H-h,width:1.2,height:h,class:'vb'})); });
+  svg.appendChild(svgEl('path',{d:'M'+c.map((p,i)=>x(i).toFixed(1)+','+y(p).toFixed(1)).join('L'),class:'pl'}));
+  return svg;
+}
+
+function v2Table(rows, SG){
+  const t=el('table','tbl dipTbl v2Tbl');
+  t.innerHTML='<tr><th>종목 · 신호</th><th>최근 120일</th><th class="r">고점 대비</th><th class="r">52주 저점 대비</th><th class="r">거래량 20일÷120일</th><th class="r">하루 거래대금</th><th class="r">PER 1년 전→지금</th><th class="r">저평가 점수</th></tr>';
+  const P=v=>v==null?'—':(v>=0?'+':'')+Math.round(v)+'%';
+  const X=v=>v>=200?'200↑':v>=10?Math.round(v):v.toFixed(1);
+  rows.forEach(r=>{
+    const tr=el('tr');
+    const td=el('td'); const a=el('a',null,r.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); pick(r.code); }; td.appendChild(a);
+    td.appendChild(el('small',null,' '+r.code+' · '+(r.industry||'')+(r.cap_rank?' · 시총 '+r.cap_rank+'위':'')));
+    const cs=el('div','v2Sig');
+    (r.good||[]).forEach(k=>{ const x=el('span','g'+((SG[k]||{}).ok?' ok':''),(SG[k]||{}).name||k); x.title=V2_DEF[k]||''; cs.appendChild(x); });
+    (r.bad||[]).forEach(k=>{ const x=el('span','b','⚠ '+((SG[k]||{}).name||k)); x.title=V2_DEF[k]||''; cs.appendChild(x); });
+    (r.bad_info||[]).forEach(k=>{ const x=el('span','i',((SG[k]||{}).name||k)); x.title=(V2_DEF[k]||'')+' — 검증 안 된 표시(참고)'; cs.appendChild(x); });
+    td.appendChild(cs); tr.appendChild(td);
+    const sp=el('td'); sp.appendChild(v2Spark(r.spark||{})); tr.appendChild(sp);
+    const n=(v,cls)=>el('td','num'+(cls?' '+cls:''),v);
+    tr.appendChild(n(P(r.dd),'neg'));
+    tr.appendChild(n(P(r._from_lo),'pos'));
+    tr.appendChild(n(r._v20_120!=null?r._v20_120.toFixed(2)+'배':'—',r._v20_120!=null&&r._v20_120<=0.6?'pos':''));
+    tr.appendChild(n(r._tv20!=null?qWon(r._tv20):'—',r.thin?'neg':''));
+    tr.appendChild(n(r.per_then!=null&&r.per!=null?X(r.per_then)+'→'+X(r.per)+'배':(r.per!=null?X(r.per)+'배':'—')));
+    tr.appendChild(n(r.score!=null?r.score.toFixed(0):'—','strong'));
+    t.appendChild(tr);
+  });
+  if(!rows.length){ const tr=el('tr'); const td=el('td',null,'조건에 맞는 종목이 없다'); td.colSpan=8; tr.appendChild(td); t.appendChild(tr); }
+  return t;
 }
 
 function valEvidence(bt){
