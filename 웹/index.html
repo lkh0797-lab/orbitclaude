@@ -2158,6 +2158,7 @@ details.linMore>summary::-webkit-details-marker{display:none}
     <aside id="side"><div class="empty">기업명을 입력하세요</div></aside>
     <main>
       <div class="tabs" id="tabs" hidden>
+        <button data-t="val">저평가</button>
         <button data-t="orbit" class="on">궤도</button>
         <button data-t="land">풍경</button>
         <button data-t="brief">변화 브리핑</button>
@@ -2177,6 +2178,7 @@ details.linMore>summary::-webkit-details-marker{display:none}
       <div id="panes">
         <div class="empty" id="welcome">
           왼쪽 위 검색창에 기업명을 넣으면 최근 15년 보고서가 전부 열립니다.
+          <div style="margin-top:14px"><button class="ghost" onclick="S.tab='val';jump('val')">저평가 종목 보기 — 가치는 지켰는데 주가가 빠진 회사</button></div>
         </div>
       </div>
     </main>
@@ -2367,7 +2369,7 @@ function show(t){
   ({orbit:viewOrbit, land:viewLand, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    play:viewPlay, cat:viewCatalyst, exp:viewExport}[t])(p);
+    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue}[t])(p);
 }
 
 // ---------------------------------------------------------- 분기 변화 — 보고서가 나올 때마다 직전 공시(3개월 전)와 맞댄다
@@ -3686,6 +3688,169 @@ function dipPerCell(r){
   return td;
 }
 const dipD=s=>s?s.slice(0,4)+'.'+s.slice(4,6)+'.'+s.slice(6,8):'—';
+
+// ---------------------------------------------------------- 저평가 — 가치는 지켰는데 주가가 빠진 회사(/api/value · 서버 value_view)
+// 전 종목에서 ① 흑자 ② 순이익 1년 −5% 이내 ③ 52주 고점 −25%↓ 를 넘은 곳을 과거 검증으로 고른 점수로 줄 세운다(도구/저평가_백테스트.py).
+const VAL_GATES=[
+  ['① 흑자','이익이 있다',['최근 4분기 순이익이 플러스 — PER을 잴 수 있다'],'적자 회사는 값의 기준(이익)이 없다. 싼지 비싼지부터 말할 수 없다.'],
+  ['② 가치','이익은 지켰다',['최근 4분기 순이익이 1년 전보다 5% 넘게 줄지 않았다'],'이익이 줄어 빠진 주가는 싸진 게 아니다 — 과거 표본에서 이익이 줄어든 하락은 시장보다 못 했다(−2%). 다만 이익을 지킨 하락도 그것만으론 시장 수준(+1%) — 가르는 건 ④다.'],
+  ['③ 주가','값은 빠졌다',['52주 고점 대비 −25%↓'],'같은 이익에 시장이 덜 쳐주고 있다. 그 할인이 정당한지는 ④가 가른다.'],
+  ['④ 등급','되돌아올 쪽인가',['(저평가) 빨간불이 없고 점수 50↑ — 점수 = 과거 후보 안에서 되돌아온 쪽을 가른 항목의 백분위 가중평균',
+    '(빨간불) 잔고·선수금이 매출보다 −15%p↓ 느림 · 업종 제품 가격(수출물가) −10%↓ · 업종에 재고가 쌓이는데 회사 매출은 아직 +5%↑ · 부채비율 200%↑'],
+   '싸 보이는 함정(값이 싼 데는 이유가 있는 회사)을 걸러 내는 단계. 항목과 가중치는 아래 과거 검증 상자에 있다.']];
+
+async function viewValue(p, force){
+  p.innerHTML='';
+  const box=el('div','valBox'); p.appendChild(box);
+  const hd=el('div','dipHead');
+  hd.appendChild(el('b',null,'저평가'));
+  hd.appendChild(el('span',null,'지닌 가치(이익)는 지켰거나 늘었는데 주가가 빠져 값이 싸진 회사 — 수집한 전 종목에서, 과거 검증으로 고른 점수로 줄 세운다'));
+  const rf=el('button','ghost','다시 계산'); rf.style.marginLeft='auto'; rf.onclick=()=>viewValue(p,true); hd.appendChild(rf);
+  box.appendChild(hd);
+  const cond=el('details','dipCond'); cond.open=!S.valCondClosed;
+  cond.addEventListener('toggle',()=>{ S.valCondClosed=!cond.open; });
+  cond.appendChild(el('summary',null,'조건식 — 네 관문'));
+  const g=el('div','dipGates');
+  VAL_GATES.forEach(([k,t,items,why])=>{ const c=el('div','dipGate'); c.appendChild(el('em',null,k)); c.appendChild(el('b',null,t));
+    const ul=el('ul'); items.forEach(x=>ul.appendChild(el('li',x.startsWith('(')?'soft':null,x))); c.appendChild(ul); c.appendChild(el('p',null,why)); g.appendChild(c); });
+  cond.appendChild(g); box.appendChild(cond);
+  const body=el('div'); box.appendChild(body);
+  let d;
+  try{ d=await (await fetch('/api/value'+(force?'?force=1':''))).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
+  if(!box.isConnected) return;
+  if(d.error){ body.appendChild(el('div','err',d.error)); return; }
+  if(d.running){
+    const pr=el('div','prog'); pr.appendChild(el('span',null,(d.phase||'계산 중')+(d.total?' '+d.done+'/'+d.total:'')));
+    const b=el('div','bar'); const i=el('i'); i.style.width=(d.total?Math.round(d.done/d.total*100):5)+'%'; b.appendChild(i); pr.appendChild(b);
+    pr.appendChild(el('span',null,'전 종목 주가를 새로 받고, 25% 넘게 빠진 회사만 재무·잔고·업황을 읽는다. 처음엔 10분 안팎, 12시간마다 새로 맞춘다.'));
+    body.appendChild(pr);
+    setTimeout(()=>{ if(box.isConnected && S.tab==='val') viewValue(p,false); }, 5000);
+    if(!(d.rows||[]).length) return;
+  }
+  const rows=d.rows||[], A=rows.filter(r=>r.tier==='저평가'), B=rows.filter(r=>r.tier!=='저평가');
+  const fn=el('div','dipFunnel');
+  [['수집한 회사',d.n_univ],['고점 '+(d.rules?d.rules.dd:-25)+'%↓',d.n_fell],['① 흑자 · ② 이익 지킴',rows.length],['④ 저평가',d.running?undefined:A.length]]
+    .forEach(([k,v],i)=>{ if(i) fn.appendChild(el('i',null,'→')); const x=el('div'); x.appendChild(el('b',null,v===undefined||v===null?'—':String(v))); x.appendChild(el('span',null,k)); fn.appendChild(x); });
+  body.appendChild(fn);
+  if(d.bt) body.appendChild(valEvidence(d.bt));
+  body.appendChild(valTable(A,'저평가','이익은 지켰고, 주가는 25% 넘게 빠졌고, 빨간불이 없고, 점수 50↑ — 같은 이익에 시장이 덜 쳐주는 곳'));
+  if(B.length) body.appendChild(valTable(B,'관찰','관문은 넘었지만 빨간불이 있거나 점수가 50 아래 — 싸진 데 이유가 보이는 곳'));
+  if(!rows.length && !d.running) body.appendChild(el('div','empty','지금은 네 관문을 모두 넘은 회사가 없다.'));
+  body.appendChild(el('div','finnote','주가 = 네이버 수정주가(분할 보정). 이익 = 분기 보고서 지배주주 순이익 4분기 합. PER 자기 역사 = 최근 10년 분기 말 PER 가운데 지금 자리. '+
+    '업황 = ECOS 수출물가 · KOSIS 출하·재고(회사 업종코드). 점수는 순서를 정하는 참고다 — "싸다"는 뜻이지 "오른다"는 뜻은 아니고, 왜 빠졌는지 마지막 확인은 사람이 한다.'));
+}
+
+function valEvidence(bt){
+  const det=el('details','dipEvd'); det.open=!!S.valEvdOpen; det.addEventListener('toggle',()=>{ S.valEvdOpen=det.open; });
+  const f=v=>{ if(v==null) return '—'; const n=Math.round(v); return (n>0?'+':'')+n+'%'; };
+  const TK='빨간불 · 부채 200%↑ 없음 · 점수 50↑';
+  const E=bt.eval||{}, C=E['후보']||{}, Wd=E['넓은 표본']||{}, sc=C['점수'], tr=C[TK], G=bt.groups||{};
+  det.appendChild(el('summary',null,'과거 검증 — '+(sc?'점수 위⅓ 12개월 초과수익 '+f(sc.top)+' vs 아래⅓ '+f(sc.bot):'')+(tr?' · 저평가 '+f(tr.on)+' vs 관찰 '+f(tr.off):'')));
+  const d0=(bt.dates||['',''])[0], d1=(bt.dates||['',''])[1];
+  det.appendChild(el('p',null,(d0?d0.slice(0,4)+'.'+d0.slice(4,6)+'~'+d1.slice(0,4)+'.'+d1.slice(4,6)+' ':'')+'보고서가 공시된 날마다 그때까지 나온 숫자만으로 관문을 다시 세우고, 그 뒤 12개월 수익률을 같은 기간 전 종목 중앙값과 견줬다(초과수익). '+
+    '지금 상장된 회사만 있어 수익률 수준은 부풀어 있다 — 묶음끼리 비교만 믿는다. 회사 단위 재표본 90% 구간.'));
+  const t1=el('table','tbl dipTbl');
+  t1.innerHTML='<tr><th>묶음</th><th class="r">표본</th><th class="r">회사</th><th class="r">12개월 초과 중앙</th><th class="r">이긴 비율</th><th class="r">−30%↓</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
+  Object.entries(G).forEach(([k,x])=>{ if(!x) return; const tr_=el('tr'); tr_.appendChild(el('td',null,k));
+    [String(x.n),String(x.firms),f(x.median),Math.round(x.hit)+'%',Math.round(x.crash)+'%',f(x.early),f(x.late)].forEach((v,i)=>tr_.appendChild(el('td','num'+(i==2?' strong':''),v)));
+    t1.appendChild(tr_); });
+  det.appendChild(t1);
+  const t2=el('table','tbl dipTbl');
+  t2.innerHTML='<tr><th>규칙</th><th class="r">위⅓ / 넘음</th><th class="r">아래⅓ / 나머지</th><th class="r">차이</th><th class="r">90% 구간</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
+  [['점수 — 후보 안',sc,'t'],['점수 — 앞 기간 분포로 잼',C['점수(앞 기간 분포)'],'t'],['점수 — 넓은 표본(흑자 · 고점 −25%↓)',Wd['점수'],'t'],
+   ['등급: 빨간불 · 부채 200%↑ 없음 + 점수 50↑',tr,'g'],['등급 — 넓은 표본',Wd[TK],'g'],['점수 50↑만',C['점수 50↑만'],'g'],['빨간불 없음만',C['빨간불 없음'],'g']].forEach(([lab,x,k])=>{
+    if(!x) return; const r_=el('tr'); r_.appendChild(el('td',null,lab));
+    const a=k==='t'?[x.top,x.bot,x.spread]:[x.on,x.off,x.diff];
+    if(a[2]==null) return;
+    [f(a[0]),f(a[1]),f(a[2]),(x.ci&&x.ci[0]!=null)?f(x.ci[0])+' ~ '+f(x.ci[1]):'—',f(x.early),f(x.late)].forEach((v,i)=>r_.appendChild(el('td','num'+(i==2?' strong':''),v)));
+    t2.appendChild(r_); });
+  det.appendChild(t2);
+  const ul=el('ul','dipEvdL');
+  ul.appendChild(el('li',null,'점수 항목: '+(bt.weights||[]).map(w=>w.name+(w.dir>0?'↑':'↓')+(w.w!==1?' ×'+w.w:'')).join(' · ')+' — 과거 후보 안에서 앞뒤 기간 같은 방향이었던 것만. 가중치는 맞추지 않고 단순하게 정했다.'));
+  const rec=C['추천 묶음'];
+  if(rec) ul.appendChild(el('li',null,'저평가 묶음 12개월 초과수익 중앙 '+f(rec.median)+', 이긴 비율 '+Math.round(rec.hit)+'%, −30% 넘게 진 비율 '+Math.round(rec.crash)+'% (~2019 '+f(rec.early)+' · 2020~ '+f(rec.late)+').'));
+  ul.appendChild(el('li',null,'자기 역사로 PER이 싼(하위 30%) 후보는 오히려 덜 돌아왔다(−3.8%p) — 싼 데 이유가 있었다. 그래서 PER 자기 역사는 "너무 싸면 감점"으로 들어간다. 1년 동안 더 빠진 쪽 · 빚이 적은 쪽 · 업종 제품 가격이 오르는 쪽이 앞뒤 기간 모두 더 돌아왔다.'));
+  ul.appendChild(el('li',null,'요인을 고른 표본과 잰 표본이 같다 — 실제보다 좋아 보인다. 생존 편향(지금 상장된 회사만)도 있다.'));
+  det.appendChild(ul);
+  det.appendChild(el('div','finnote','다시 재기: python 도구/저평가_백테스트.py (표본) → --score. 결과 .cache/value/score.json 을 이 화면과 점수가 바로 읽는다.'));
+  return det;
+}
+
+function valTable(rows, title, sub){
+  const w=el('div','dipBlock');
+  const h=el('div','dipBH'); h.appendChild(el('b',null,title+' '+rows.length+'곳')); h.appendChild(el('span',null,sub)); w.appendChild(h);
+  if(!rows.length){ w.appendChild(el('div','empty','없음')); return w; }
+  const t=el('table','tbl dipTbl');
+  t.innerHTML='<tr><th>종목</th><th class="r">고점 대비</th><th class="r">주가 1년</th><th class="r">순이익 1년</th>'+
+    '<th class="r" title="같은 이익 1원에 시장이 쳐준 값. 1년 전 PER → 지금 PER">PER 1년 전→지금</th><th class="r">PER 자기 역사</th><th class="r">ROE</th><th class="r">영업이익률</th><th class="r">점수</th><th></th></tr>';
+  const P=v=>v==null?'—':(v>=0?'+':'')+Math.round(v)+'%';
+  const X=v=>v>=200?'200↑':v>=10?Math.round(v):v.toFixed(1);
+  S.valOpen=S.valOpen||new Set();
+  const LIM=30, t2=rows.length>LIM?el('table','tbl dipTbl'):null;
+  if(t2) t2.innerHTML=t.innerHTML;
+  rows.forEach((r,ri)=>{
+    const tb=ri<LIM?t:t2;
+    const tr=el('tr','dipRow');
+    const td=el('td'); const a=el('a',null,r.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(r.code); }; td.appendChild(a);
+    td.appendChild(el('small',null,' '+r.code+' · '+(r.industry||'')+(r.cap_rank?' · 시총 '+r.cap_rank+'위':'')));
+    td.appendChild(el('div','dipFwd','고점 '+won(r.hi)+'('+r.hi_d.slice(2,4)+'.'+r.hi_d.slice(4,6)+') → 지금 '+won(r.price)+' · 최근 3개월 '+P(r.ret3m)+
+      (r.mp_yoy!=null?' · 업종 가격 '+P(r.mp_yoy):'')+(r.cyc!=null?' · 재고 순환 '+(r.cyc>=0?'+':'')+Math.round(r.cyc)+'%p':'')));
+    (r.tier_why||[]).forEach(x=>td.appendChild(el('div','dipWhy',x)));
+    tr.appendChild(td);
+    const n=(v,cls)=>el('td','num'+(cls?' '+cls:''),v);
+    tr.appendChild(n(P(r.dd),'neg'));
+    tr.appendChild(n(P(r.px_yoy),r.px_yoy<0?'neg':'pos'));
+    tr.appendChild(n(P(r.ni_yoy),r.ni_yoy>=0?'pos':'neg'));
+    const pc=el('td','num'); pc.title='주가 1년 '+P(r.px_yoy)+' · 순이익 1년 '+P(r.ni_yoy)+' → 같은 이익에 매긴 값(PER) '+P(r.comp);
+    if(r.per_then!=null&&r.per!=null){ pc.appendChild(el('span',null,X(r.per_then)+'→'+X(r.per)+'배')); pc.appendChild(el('small','dipPerChg',' '+P(r.comp))); }
+    else pc.appendChild(el('span',null,r.per!=null?X(r.per)+'배':'—'));
+    tr.appendChild(pc);
+    tr.appendChild(n(r.per_pct!=null?(r.per_pct>=50?'상위 '+Math.max(1,Math.round(100-r.per_pct)):'하위 '+Math.round(r.per_pct))+'%':'—',r.per_pct!=null&&r.per_pct<=30?'pos':r.per_pct>=70?'neg':''));
+    tr.appendChild(n(r.roe!=null?r.roe.toFixed(1)+'%':'—',r.roe>=15?'pos':''));
+    tr.appendChild(n(r.opm!=null?r.opm.toFixed(1)+'%':'—'));
+    tr.appendChild(n(r.score!=null?r.score.toFixed(0):'—','strong'));
+    tr.appendChild(el('td','caret','▾'));
+    const dt=el('tr','dipDet'); dt.hidden=!S.valOpen.has(r.code); const dd=el('td'); dd.colSpan=10; dd.appendChild(valDetail(r)); dt.appendChild(dd);
+    tr.classList.toggle('open',!dt.hidden);
+    tr.onclick=()=>{ dt.hidden=!dt.hidden; tr.classList.toggle('open',!dt.hidden); S.valOpen[dt.hidden?'delete':'add'](r.code); };
+    tb.appendChild(tr); tb.appendChild(dt);
+  });
+  w.appendChild(t);
+  if(t2){ const det=el('details','dipDrop'); det.appendChild(el('summary',null,'나머지 '+(rows.length-LIM)+'곳 — 점수 순. 과거 검증에서 점수 60↑가 50↑보다 더 낫지는 않았다(위 30곳은 읽기 편하게 자른 것)'));
+    det.appendChild(t2); w.appendChild(det); }
+  return w;
+}
+
+function valDetail(r){
+  const box=el('div','dipDetBox');
+  const P=v=>v==null?'—':(v>=0?'+':'')+Math.round(v)+'%';
+  const g=el('div','dipChecks');
+  const col=(title,items)=>{ const c=el('div'); c.appendChild(el('em',null,title));
+    items.forEach(([ok,name,why])=>{ const li=el('div','dipChk '+(ok===true?'ok':ok===false?'no':'soft')); li.appendChild(el('i',null,ok===true?'✓':ok===false?'✗':'△'));
+      const m=el('div'); m.appendChild(el('b',null,name)); m.appendChild(el('small',null,why)); li.appendChild(m); c.appendChild(li); }); g.appendChild(c); };
+  col('① 흑자 · ② 가치',[[true,'4분기 순이익 흑자',qWon(r.ni4)+' ('+(r.lab||'')+'까지)'],[true,'순이익 1년 −5% 이내','순이익 '+P(r.ni_yoy)+' · EPS '+P(r.eps_yoy)+' · 매출 '+P(r.rev_yoy)]]);
+  col('③ 주가',[[true,'52주 고점 대비 −25%↓','고점 '+won(r.hi)+'('+r.hi_d+') → '+won(r.price)+' ('+P(r.dd)+')'],
+    [null,'PER 1년 전 → 지금','주가 '+P(r.px_yoy)+' · 이익 '+P(r.ni_yoy)+' → PER '+P(r.comp)+(r.per!=null?' · 지금 '+r.per.toFixed(1)+'배':'')+(r.per_med!=null?' · 자기 역사 중앙 '+r.per_med.toFixed(1)+'배':'')]]);
+  const red=r.red||[];
+  col('④ 등급',[[!red.length,'빨간불 없음',red.length?red.join(' · '):'앞단 약함 · 업종 가격 하락 · 업종 재고 쌓임 — 모두 아님'],
+    [r.score==null?null:r.score>=50,'점수 50↑',r.score==null?'항목이 모자란다':r.score.toFixed(0)+'점 — 아래 풀이'],
+    [null,'(참고) 부채 · 현금',(r.debt_eq!=null?'부채비율 '+Math.round(r.debt_eq)+'%':'부채비율 —')+(r.cfo_ni!=null?' · 영업현금 ÷ 순이익 '+r.cfo_ni.toFixed(1)+'배':'')]]);
+  box.appendChild(g);
+  if((r.score_parts||[]).length){
+    const sp=el('div','dipParts'); sp.appendChild(el('em',null,'점수 풀이 — '+(r.score!=null?r.score.toFixed(0):'—')+'점 (50 + 항목별 기여)'));
+    const mx=Math.max(...r.score_parts.map(x=>Math.abs(x.pts)),1);
+    r.score_parts.forEach(x=>{ const row=el('div','dipPart'+(x.pts<0?' neg':''));
+      row.appendChild(el('span','k',x.label)); row.appendChild(el('span','v',x.val||''));
+      const bar=el('span','b'); const i=el('i'); i.style.width=Math.round(Math.abs(x.pts)/mx*100)+'%'; bar.appendChild(i); row.appendChild(bar);
+      row.appendChild(el('b',null,(x.pts>=0?'+':'−')+Math.abs(x.pts).toFixed(1))); sp.appendChild(row); });
+    box.appendChild(sp);
+  }
+  const bt=el('div','vcAct');
+  [['이 회사 풍경 보기','land'],['분기 변화 보기','qtr'],['전문검색(주가에 닿을 줄)','find']].forEach(([t,tab])=>{ const b=el('button',null,t);
+    b.onclick=async e=>{ e.stopPropagation(); await pick(r.code); jump(tab); }; bt.appendChild(b); });
+  box.appendChild(bt);
+  return box;
+}
 
 async function viewDip(box, force){
   if(!box._shell){

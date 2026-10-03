@@ -7955,6 +7955,240 @@ def dip_view(force=False):
     return out
 
 
+# ---------------------------------------------------------------- 저평가: 가치는 지켰는데 주가가 빠진 회사 (2026-10-03)
+# 전 종목(수집한 회사 전부)에서 — 4분기 순이익 흑자 · 순이익 1년 −5% 이내(가치는 지켰다) · 52주 고점 대비 −25%↓(주가는 빠졌다).
+# 그 안에서 과거에 되돌아온 쪽을 가른 항목으로 점수를 매기고(도구/저평가_백테스트.py → .cache/value/score.json),
+# 억울한 낙폭과 같은 빨간불(앞단 약함 · 업종 가격 하락 · 업종 재고 쌓임) · 부채비율 200%↑가 없고 점수 50↑이면 '저평가', 아니면 '관찰'.
+# 검증(2014~2025 공시일 · 후보 1,966건 · 498곳): 점수 위⅓ − 아래⅓ +13.6%p [9.3, 17.7] 앞 +15.4 · 뒤 +12.7,
+# 등급 저평가 − 관찰 +10.0%p [6.4, 13.8] 앞 +12.4 · 뒤 +9.3. 후보 자체는 시장 수준(+0.9%) — 가르는 건 점수다.
+VAL_V = 1
+VAL_DIR = os.path.join(CACHE_DIR, "value")
+VAL_DD = -25          # 52주 고점 대비 이만큼 빠져야 후보
+VAL_NI = -5           # 순이익(최근 4분기) 1년 변화가 이 위면 '가치는 지켰다'
+VAL_MIN = 50          # 저평가 = 빨간불 없음 + 점수 50↑
+VAL_PER_MAX = 200     # PER 200배 넘으면 이익이 거의 0 — 값의 기준이 못 된다(엘브이엠씨 15,067배)
+VAL = {"running": False, "done": 0, "total": 0, "phase": "", "at": 0, "rows": [], "n_fell": 0, "n_univ": 0}
+VAL_LOCK = threading.Lock()
+_VAL_SC = {"mt": None, "d": None}
+# 점수 항목 값 — 도구/저평가_백테스트.py 의 FACT 와 같은 변환
+VAL_FX = {
+    "per_pct": lambda r: r.get("per_pct"), "per": lambda r: r.get("per"), "peg": lambda r: r.get("peg"),
+    "comp": lambda r: r.get("comp"), "dd": lambda r: r.get("dd"), "px_yoy": lambda r: r.get("px_yoy"),
+    "ret3m": lambda r: r.get("ret3m"), "ret1m": lambda r: r.get("ret1m"),
+    "ni_yoy": lambda r: min(r["ni_yoy"], 300) if r.get("ni_yoy") is not None else None,
+    "eps_yoy": lambda r: min(r["eps_yoy"], 300) if r.get("eps_yoy") is not None else None,
+    "rev_yoy": lambda r: r.get("rev_yoy"), "opm": lambda r: r.get("opm"), "opm_pct": lambda r: r.get("opm_pct"),
+    "roe": lambda r: r.get("roe"), "roe_chg": lambda r: r.get("roe_chg"), "debt_eq": lambda r: r.get("debt_eq"),
+    "cfo_ni": lambda r: max(min(r["cfo_ni"], 5), -5) if r.get("cfo_ni") is not None else None,
+    "mp_yoy": lambda r: r.get("mp_yoy"), "cyc": lambda r: r.get("cyc"),
+    "bgap": lambda r: r.get("bgap"), "lgap": lambda r: r.get("lgap"), "wgap": lambda r: r.get("wgap"),
+    "capex_yoy": lambda r: min(r["capex_yoy"], 300) if r.get("capex_yoy") is not None else None,
+}
+VAL_FMT = {"per_pct": "자기 역사 %.0f%%", "per": "%.1f배", "peg": "%.2f", "comp": "%+.0f%%", "dd": "%+.0f%%", "px_yoy": "%+.0f%%",
+           "ret3m": "%+.0f%%", "ret1m": "%+.0f%%", "ni_yoy": "%+.0f%%", "eps_yoy": "%+.0f%%", "rev_yoy": "%+.0f%%", "opm": "%.1f%%",
+           "opm_pct": "자기 역사 %.0f%%", "roe": "%.1f%%", "roe_chg": "%+.1f%%p", "debt_eq": "%.0f%%", "cfo_ni": "%.1f배",
+           "mp_yoy": "%+.0f%%", "cyc": "%+.0f%%p", "bgap": "%+.0f%%p", "lgap": "%+.0f%%p", "wgap": "%+.0f%%p", "capex_yoy": "%+.0f%%"}
+
+
+def _val_score_spec():
+    p = os.path.join(VAL_DIR, "score.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return None
+    if _VAL_SC["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                _VAL_SC.update(d=json.load(fh), mt=mt)
+        except Exception:
+            return None
+    return _VAL_SC["d"]
+
+
+def _val_one(c):
+    """한 회사 — 주가가 25%↓ 빠졌고 이익을 지켰으면 지금 값들을, 아니면 None."""
+    code = c["code"]
+    corp = corp_code_of(code) if FIN is not None else None
+    if not corp:
+        return None
+    px = _inv_prices(code) or {}
+    if not px.get("p"):
+        return None
+    import bisect
+    d, p = px["d"], px["p"]
+    now, i = p[-1], len(p) - 1
+    lo = bisect.bisect_left(d, int((dt.datetime.strptime(str(d[-1]), "%Y%m%d") - dt.timedelta(days=365)).strftime("%Y%m%d")))
+    hi_i = max(range(lo, i + 1), key=lambda k: p[k]) if i >= lo else None
+    if hi_i is None or not p[hi_i]:
+        return {"fell": False}
+    dd = (now / p[hi_i] - 1) * 100
+    if dd > VAL_DD:
+        return {"fell": False}
+
+    def back(days):
+        t = int((dt.datetime.strptime(str(d[-1]), "%Y%m%d") - dt.timedelta(days=days)).strftime("%Y%m%d"))
+        k = bisect.bisect_right(d, t) - 1
+        return (now / p[k] - 1) * 100 if k >= 0 and p[k] else None
+    try:
+        mi = matrix_cached(c, corp, "IS", "q", IS_YEARS)
+        mb = matrix_cached(c, corp, "BS", "q", QTR_YEARS)
+        mc = matrix_cached(c, corp, "CF", "q", QTR_YEARS)
+        try:
+            blog_pts = BACK.company_series(c, read_section, max_reports=12) if BACK is not None else []
+        except Exception:
+            blog_pts = []
+        macro = None
+        if MACRO is not None:
+            try:
+                macro = MACRO.for_company(corp, FIN.API_KEY)
+            except Exception:
+                macro = None
+        pr = _pipe_rows(c, mi, mb, mc, px=px, blog_pts=blog_pts, macro=macro)
+    except Exception:
+        return {"fell": True}
+    if not pr:
+        return {"fell": True}
+    R = pr["rows"]
+    lab = next((l for l in reversed(pr["labs"]) if R[l].get("ni_ttm") is not None and R[l].get("eps_ttm") is not None), None)
+    if not lab:
+        return {"fell": True}
+    x = R[lab]
+    et, ni, ry = x.get("eps_ttm"), x.get("ni_ttm"), x.get("rev_yoy")
+    per = now / et if et and et > 0 else None
+    w = (pr.get("hist_per") or [])[-40:]
+    g = lambda k: (x[k] - ry) if x.get(k) is not None and ry is not None else None
+    rev, op, cfo, eqt, debt = x.get("rev_ttm"), x.get("op_ttm"), x.get("cfo_ttm"), x.get("eq_total"), x.get("debt")
+    pyoy = back(365)
+    nyoy = x.get("ni_yoy")
+    r = {"fell": True, "code": code, "name": c["name"], "lab": lab, "price": now, "price_d": str(d[-1]),
+         "hi": p[hi_i], "hi_d": str(d[hi_i]), "dd": dd, "px_yoy": pyoy, "ret3m": back(91), "ret1m": back(30),
+         "per": per, "per_pct": (sum(1 for v in w if v <= per) / len(w) * 100) if per and len(w) >= 8 else None,
+         "per_med": sorted(w)[len(w) // 2] if len(w) >= 8 else None,
+         "peg": per / min(max(nyoy, 1.0), 100.0) if per and nyoy is not None and nyoy > 0 else None,
+         "ni4": ni, "ni_yoy": nyoy, "eps_yoy": x.get("eps_yoy"), "rev_yoy": ry, "rev4": rev, "op4": op,
+         "opm": op / rev * 100 if (rev and op is not None and rev > 0) else None, "opm_pct": x.get("opm_pct"),
+         "roe": x.get("roe"), "roe_chg": x.get("roe_chg"),
+         "debt_eq": debt / eqt * 100 if (debt is not None and eqt and eqt > 0) else None,
+         "cfo_ni": cfo / ni if (cfo is not None and ni and ni > 0) else None,
+         "mp_yoy": x.get("mp_yoy"), "cyc": x.get("cyc"), "bgap": g("blog_yoy"), "lgap": g("liab_yoy"), "wgap": g("wip_yoy"),
+         "capex_yoy": x.get("capex_yoy"),
+         "comp": ((1 + pyoy / 100) / (1 + nyoy / 100) - 1) * 100 if (pyoy is not None and nyoy is not None and nyoy > -100) else None}
+    r["cand"] = bool(per and per <= VAL_PER_MAX and nyoy is not None and nyoy >= VAL_NI)
+    return r
+
+
+def _val_red(r):
+    out = []
+    if r.get("bgap") is not None and r["bgap"] <= -15:
+        out.append("잔고가 매출보다 %.0f%%p 느리다" % -r["bgap"])
+    if r.get("lgap") is not None and r["lgap"] <= -15:
+        out.append("선수금(계약부채)이 매출보다 %.0f%%p 느리다" % -r["lgap"])
+    if r.get("mp_yoy") is not None and r["mp_yoy"] <= -10:
+        out.append("업종 제품 가격(수출물가) %+.0f%%" % r["mp_yoy"])
+    if r.get("cyc") is not None and r.get("rev_yoy") is not None and r["cyc"] <= -10 and r["rev_yoy"] > 5:
+        out.append("업종에 재고가 쌓이는데(재고 순환 %+.0f%%p) 회사 매출은 아직 %+.0f%%" % (r["cyc"], r["rev_yoy"]))
+    # 빚 — 과거 후보 안에서 부채비율 200%↑는 12개월 초과수익 −6.7%p [−11.5, −0.2], 앞뒤 모두 음(도구/저평가_백테스트.py)
+    if r.get("debt_eq") is not None and r["debt_eq"] >= 200:
+        out.append("부채비율 %.0f%% — 200%% 넘는 빚" % r["debt_eq"])
+    return out
+
+
+def _val_rank(r, spec):
+    import bisect
+    parts, tot, wsum = [], 0.0, 0.0
+    for wt in (spec or {}).get("weights") or []:
+        k = wt["key"]
+        sv, v = spec["dist"].get(k) or [], VAL_FX[k](r) if k in VAL_FX else None
+        if v is None or not sv:
+            continue
+        pc = (bisect.bisect_left(sv, v) + bisect.bisect_right(sv, v)) / 2 / len(sv) * 100
+        good = pc if wt["dir"] > 0 else 100 - pc
+        parts.append({"key": k, "label": wt["name"], "w": wt["w"], "good": good,
+                      "val": "%s · 과거 후보 중 좋은 쪽 상위 %d%%" % (VAL_FMT.get(k, "%s") % v, max(1, round(100 - good)))})
+        tot += good * wt["w"]
+        wsum += wt["w"]
+    for x in parts:
+        x["pts"] = round((x["good"] - 50) * x["w"] / wsum, 1) if wsum else 0
+    r["score"] = round(tot / wsum, 1) if wsum >= 2 else None
+    r["score_parts"] = parts
+    r["red"] = _val_red(r)
+    why = list("빨간불: " + x for x in r["red"])
+    if r["score"] is None:
+        why.append("점수를 낼 항목이 모자란다")
+    elif r["score"] < VAL_MIN:
+        why.append("점수 %.1f — %d 미만" % (r["score"], VAL_MIN))
+    r["tier"] = "관찰" if why else "저평가"
+    r["tier_why"] = why
+    # PER 고점 → 지금 — 1년 전 PER = 지금 PER ÷ (1 + PER 변화)
+    r["per_then"] = r["per"] / (1 + r["comp"] / 100) if (r.get("per") and r.get("comp") is not None and r["comp"] > -100) else None
+
+
+def _run_value():
+    try:
+        cos = list(INDEX["companies"])
+        with VAL_LOCK:
+            VAL.update(done=0, total=len(cos), phase="전 종목 주가 · 재무 읽는 중")
+        rows, fell = [], 0
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            futs = {ex.submit(_val_one, c): c for c in cos}
+            for k, f in enumerate(as_completed(futs), 1):
+                try:
+                    r = f.result()
+                except Exception:
+                    r = None
+                if r and r.get("fell"):
+                    fell += 1
+                if r and r.get("cand"):
+                    rows.append(r)
+                with VAL_LOCK:
+                    VAL["done"] = k
+        spec = _val_score_spec()
+        univ, _ = _universe_info()
+        smap = (sector_map() or {}).get("stocks", {})
+        for r in rows:
+            _val_rank(r, spec)
+            u = univ.get(r["code"], {})
+            r.update(cap_rank=u.get("rank"), market=u.get("market"),
+                     industry=(smap.get(r["code"].upper(), {}) or {}).get("industry"))
+        rows.sort(key=lambda r: (r["tier"] != "저평가", -(r.get("score") or -1)))
+        with VAL_LOCK:
+            VAL.update(rows=rows, n_fell=fell, n_univ=len(cos), at=time.time(), phase="")
+        os.makedirs(VAL_DIR, exist_ok=True)
+        with open(os.path.join(VAL_DIR, "_result.json"), "w", encoding="utf-8") as fh:
+            json.dump({"v": VAL_V, "at": VAL["at"], "rows": rows, "n_fell": fell, "n_univ": len(cos)}, fh, ensure_ascii=False)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        with VAL_LOCK:
+            VAL["phase"] = "실패: %s" % e
+    finally:
+        with VAL_LOCK:
+            VAL["running"] = False
+
+
+def value_view(force=False):
+    with VAL_LOCK:
+        if not VAL["rows"] and not VAL["at"]:
+            try:
+                with open(os.path.join(VAL_DIR, "_result.json"), "r", encoding="utf-8") as fh:
+                    old = json.load(fh)
+                if old.get("v") == VAL_V:
+                    VAL.update(rows=old["rows"], at=old["at"], n_fell=old.get("n_fell", 0), n_univ=old.get("n_univ", 0))
+            except Exception:
+                pass
+        stale = force or not VAL["at"] or time.time() - VAL["at"] > 12 * 3600
+        if stale and not VAL["running"] and FIN is not None:
+            VAL["running"] = True
+            threading.Thread(target=_run_value, daemon=True).start()
+        out = {k: VAL.get(k) for k in ("running", "done", "total", "phase", "at", "rows", "n_fell", "n_univ")}
+    spec = _val_score_spec()
+    if spec:
+        out["bt"] = {k: spec.get(k) for k in ("eval", "n_cand", "firms", "dates", "weights", "groups")}
+    out["rules"] = {"dd": VAL_DD, "ni": VAL_NI, "min": VAL_MIN}
+    return out
+
+
 # ---------------------------------------------------------------- HTTP
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
@@ -8179,6 +8413,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, d)
             if path == "/api/dip":
                 return self._send(200, dip_view(q.get("force") == "1"))
+            if path == "/api/value":
+                return self._send(200, value_view(q.get("force") == "1"))
             if path == "/api/narrative":
                 d = narrative_view(q.get("code", ""), q.get("term", "").strip())
                 if d is None:
