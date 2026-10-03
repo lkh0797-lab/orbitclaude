@@ -8334,6 +8334,249 @@ def value2_view(force=False):
     return out
 
 
+# ---------------------------------------------------------------- 밸류체인: 누구에게 팔고 누구에게서 사나 (2026-10-04, 연혁 탭 자리)
+# 사업보고서(15년)마다 「사업의 내용」에서 매출처 · 비중, 종속회사별 최종 고객, 원재료 · 매입처, 수출 · 내수, 경쟁 서술을 뽑고(밸류체인.py),
+# 이름을 수집한 1,000곳 · 상장사 목록과 맞춰(_listed_names) 누르면 그 회사로 간다. 같은 고객 · 같은 매입처를 적은 다른 회사도 찾는다(그물망).
+try:
+    _vcspec = _ilu.spec_from_file_location("밸류체인", os.path.join(BASE, "밸류체인.py"))
+    VCM = _ilu.module_from_spec(_vcspec)
+    _vcspec.loader.exec_module(VCM)
+except Exception as _e:
+    VCM = None
+    print("밸류체인 모듈 로드 실패:", _e)
+VC_V = 3            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
+VC_DIR = os.path.join(CACHE_DIR, "밸류체인")
+VC_LOCK = threading.Lock()
+_VC_PEER = {"at": 0, "cust": {}, "supp": {}, "n": 0}
+
+
+# 별명 — 보고서가 적는 이름 → 상장사 공식 이름(수집 목록 · DART). 같은 회사를 해마다 다르게 적는 것도 여기서 모은다
+VC_ALIAS = {
+    "포스코": "POSCO홀딩스", "posco": "POSCO홀딩스", "포스코홀딩스": "POSCO홀딩스", "한국전력": "한국전력공사", "한전": "한국전력공사",
+    "한국전력공사본사": "한국전력공사", "hico": "HICO America Sales & Tech", "hicoamericasalestech": "HICO America Sales & Tech",
+    "hicoamericasalestechin": "HICO America Sales & Tech", "hicoamericasalestechinc": "HICO America Sales & Tech",
+    "aep": "American Electric Power", "americanelectricpower": "American Electric Power", "eversource": "Eversource Energy",
+    "eversourceenergy": "Eversource Energy", "intersect": "Intersect Power", "intersectpower": "Intersect Power",
+    "georgiapower": "Southern Company", "southern": "Southern Company", "pgcil": "Power Grid Corporation of India",
+    "powergridcorporationofindia": "Power Grid Corporation of India", "삼성전자": "삼성전자", "현대차": "현대자동차", "기아차": "기아",
+    "lg전자": "LG전자", "sk하이닉스": "SK하이닉스", "현대중공업": "HD현대중공업", "hd현대중공업": "HD현대중공업", "대우조선해양": "한화오션",
+    "두산중공업": "두산에너빌리티", "삼성중공업": "삼성중공업", "현대미포조선": "HD현대미포", "한국조선해양": "HD한국조선해양",
+}
+
+
+def _vc_key(name):
+    """회사 이름 맞추기 — 영문은 소문자 · 공백 · 구두점 제거, 한글은 _norm_corp. 'HICO America Sales & Tech, Inc.' ≈ 'HICO AMERICA SALES & TECH., IN'.
+    별명(VC_ALIAS)이 있으면 그 공식 이름의 키로."""
+    n = re.sub(r"\(\*+\)|\(주\)|㈜|주식회사|\s*본사$|\s*등$", "", name or "").strip()
+    n = re.sub(r"\b(?:co|ltd|inc|corp|corporation|company|limited|pvt|llc|gmbh|sa|plc)\b\.?", "", n, flags=re.I)
+    n = re.sub(r"[\s.,'’&\-·ㆍ/()]", "", n).lower()
+    canon = VC_ALIAS.get(n)
+    if canon:
+        n = re.sub(r"[\s.,'’&\-·ㆍ/()]", "", canon).lower()
+    return n[:24] if re.fullmatch(r"[a-z0-9]+", n) else _norm_corp(n)
+
+
+def _vc_canon(name):
+    """화면에 적을 이름 — 별명이면 공식 이름, 아니면 적힌 대로."""
+    n = re.sub(r"\(\*+\)|\(주\)|㈜|주식회사|\s*본사$|\s*등$", "", name or "").strip()
+    k = re.sub(r"\b(?:co|ltd|inc|corp|corporation|company|limited|pvt|llc|gmbh|sa|plc)\b\.?", "", n, flags=re.I)
+    k = re.sub(r"[\s.,'’&\-·ㆍ/()]", "", k).lower()
+    return VC_ALIAS.get(k) or name
+
+
+def _vc_extract(c, r):
+    sec = next((s for s in r["sections"] if s["norm"] == "사업의 내용"), None)
+    if not sec or VCM is None:
+        return None
+    try:
+        return VCM.extract(corpus_text(c, r, sec["file"]))
+    except Exception:
+        return None
+
+
+def _vc_company(c):
+    """회사 하나의 15년 밸류체인 — 사업보고서마다 뽑아 캐시(최신 접수번호 · VC_V 로 묶음)."""
+    p = os.path.join(VC_DIR, c["code"] + ".json")
+    sig = "%s:%d" % (c["reports"][-1]["rcept"] if c["reports"] else "", VC_V)
+    try:
+        with open(p, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+        if d.get("sig") == sig:
+            return d
+    except Exception:
+        pass
+    ann = [r for r in c["reports"] if r["label"] == "사업보고서" and not r["tag"]]
+    years = {}
+    for r in ann:
+        y = int(r["stamp"][:4])
+        if y not in years or r["rcept"] > years[y]["rcept"]:
+            years[y] = r
+    out = {"sig": sig, "code": c["code"], "name": c["name"], "years": {}}
+    for y in sorted(years):
+        d = _vc_extract(c, years[y])
+        if d:
+            out["years"][str(y)] = dict(d, rcept=years[y]["rcept"], stamp=years[y]["stamp"])
+    os.makedirs(VC_DIR, exist_ok=True)
+    with open(p, "w", encoding="utf-8") as fh:
+        json.dump(out, fh, ensure_ascii=False)
+    return out
+
+
+def _vc_peers():
+    """전 종목 최신 사업보고서의 매출처 · 매입처 이름 색인 — {이름키: [(코드, 이름, 비중)]}. 하루 한 번."""
+    try:
+        n_files = len([f for f in os.listdir(VC_DIR) if f.endswith(".json")])
+    except OSError:
+        n_files = 0
+    with VC_LOCK:
+        # 하루 한 번 — 다만 캐시 파일 수가 늘었으면(도구/밸류체인_전종목.py 가 돌아 채워진 것) 바로 다시 짠다
+        if time.time() - _VC_PEER["at"] < 86400 and _VC_PEER["n"] and _VC_PEER.get("files") == n_files:
+            return _VC_PEER
+    cust, supp, n = {}, {}, 0
+    for c in list(INDEX["companies"]):
+        ann = [r for r in c["reports"] if r["label"] == "사업보고서" and not r["tag"]]
+        if not ann:
+            continue
+        p = os.path.join(VC_DIR, c["code"] + ".json")
+        d = None
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+        except Exception:
+            d = None
+        if not d or not d.get("years"):
+            continue           # 아직 안 뽑은 회사는 건너뛴다 — 처음 여는 회사부터 차차 채워진다
+        y = max(d["years"])
+        n += 1
+        for x in d["years"][y].get("customers") or []:
+            if x.get("kind") == "named":
+                nm_ = VCM._strip_amount(x["name"])
+                cust.setdefault(_vc_key(nm_), []).append((c["code"], c["name"], x.get("pct"), nm_))
+        for s in d["years"][y].get("subs") or []:
+            for nm, pct in (s.get("customers") or []) + (s.get("final") or []):
+                cust.setdefault(_vc_key(nm), []).append((c["code"], c["name"], pct, nm))
+        for mt in d["years"][y].get("materials") or []:
+            for sp in mt.get("suppliers") or []:
+                supp.setdefault(_vc_key(sp["name"]), []).append((c["code"], c["name"], mt.get("pct"), sp["name"]))
+    with VC_LOCK:
+        _VC_PEER.update(at=time.time(), cust=cust, supp=supp, n=n, files=n_files)
+    return _VC_PEER
+
+
+def valuechain_view(code):
+    c = company_by_code(code)
+    if not c:
+        return None
+    if VCM is None:
+        return {"error": "밸류체인 모듈이 없습니다."}
+    d = _vc_company(c)
+    years = sorted(d["years"])
+    if not years:
+        return {"error": "사업보고서 「사업의 내용」을 못 읽었습니다."}
+    names = _listed_names()
+    univ = {x["code"]: x for x in INDEX["companies"]}
+
+    def link(nm):
+        """이름 → 수집한 회사 코드(있으면). 별명 표를 거친다. 'Adani' 같은 해외 이름은 못 잇는다.
+        영문만 적힌 이름(KEC · Adani)은 별명 표에 있을 때만 잇는다 — 인도 KEC 가 한국 상장사 KEC 로 이어지던 것을 막는다."""
+        cn = _vc_canon(nm)
+        ascii_only = not re.search(r"[가-힣]", nm or "")
+        if ascii_only and cn == nm:
+            return None
+        for cand in (cn, re.sub(r"\(\*+\)|\s*본사$|\(주\)|㈜|주식회사", "", nm or "").strip()):
+            cd = names.get(_norm_corp(cand))
+            if cd:
+                return {"code": cd, "collected": cd in univ, "name": cn if cn != nm else None}
+        return None
+    last = d["years"][years[-1]]
+    # 고객 — 해마다 비중의 변천 {이름키: {name, country, link, by_year:{y: pct}}}
+    hist = {}
+    for y in years:
+        for x in d["years"][y].get("customers") or []:
+            if x.get("kind") != "named":
+                continue
+            k = _vc_key(x["name"])
+            h = hist.setdefault(k, {"name": _vc_canon(x["name"]), "country": x.get("country"), "by_year": {}, "aka": set()})
+            if h["by_year"].get(y) is None or (x.get("pct") or 0) > (h["by_year"][y] or 0):
+                h["by_year"][y] = x.get("pct")
+            h["aka"].add(x["name"])
+            h["name"] = _vc_canon(x["name"])
+    for h in hist.values():
+        h["link"] = link(h["name"])
+        h["first"], h["last"] = min(h["by_year"]), max(h["by_year"])
+        h["pct"] = h["by_year"].get(years[-1])
+        h["aka"] = sorted(a for a in h["aka"] if a != h["name"])
+        h["country"] = VCM._country(h["name"]) or h.get("country")
+    customers = sorted(hist.values(), key=lambda h: (h["last"] != years[-1], -(h["pct"] or 0), -(max(v or 0 for v in h["by_year"].values()))))
+    hidden = [x for x in last.get("customers") or [] if x.get("kind") == "hidden"]
+    # 종속회사 · 최종 고객
+    subs = []
+    for s in last.get("subs") or []:
+        custs = s.get("final") or s.get("customers") or []
+        subs.append({"sub": s["sub"], "customers": [{"name": nm, "pct": pct, "country": VCM._country(nm), "link": link(nm)} for nm, pct in custs],
+                     "channels": s.get("channels") or []})
+    # 매입처 — 최신 해, 그리고 15년 동안 적힌 적 있는 매입처
+    mats = []
+    for mt in last.get("materials") or []:
+        if not mt.get("item") or re.search(r"합\s*계", mt.get("item") or ""):
+            continue
+        mats.append(dict(mt, suppliers=[dict(sp, link=link(sp["name"])) for sp in mt.get("suppliers") or []]))
+    supp_hist = {}
+    for y in years:
+        for mt in d["years"][y].get("materials") or []:
+            for sp in mt.get("suppliers") or []:
+                k = _vc_key(sp["name"])
+                h = supp_hist.setdefault(k, {"name": sp["name"], "years": [], "items": set()})
+                h["years"].append(y)
+                if mt.get("item"):
+                    h["items"].add(mt["item"])
+    supp_hist = [dict(h, items=sorted(h["items"]), first=min(h["years"]), last=max(h["years"]), link=link(h["name"]), country=VCM._country(h["name"]))
+                 for h in supp_hist.values()]
+    # 수출 비중 변천
+    exp = {y: (d["years"][y].get("export") or {}).get("export_pct") for y in years if d["years"][y].get("export")}
+    # 그물망 — 같은 고객을 적은 다른 회사(수혜 연대), 이 회사를 고객 · 매입처로 적은 회사(위 · 아래 이웃)
+    peers = _vc_peers()
+    me_k = _vc_key(c["name"])
+    # 같은 그룹(지주 ↔ 자회사: 효성 · 효성중공업 · 효성티앤씨)은 연결 보고로 서로의 고객을 베껴 적는다 — 그물망에서 뺀다
+    def _stem(nm):
+        s = re.sub(r"\(주\)|㈜|주식회사|홀딩스|지주|그룹|^HS|^HD|^HL", "", nm or "").strip()
+        m_ = re.match(r"^[A-Za-z가-힣]{2}", s)
+        return m_.group(0) if m_ else s[:2]
+    me_stem = _stem(c["name"])
+    # 같은 그룹 = 두 글자 어간이 같다(효성 · 효성중공업 · HS효성 · 효성티앤씨). 두 글자가 흔한 말(삼성 · 현대 · 한국)이면 세 글자로 본다
+    common = {"한국", "대한", "국제", "동양", "서울", "신한", "제일", "태양", "세계"}
+    same_group = lambda nm: bool(me_stem) and me_stem not in common and _stem(nm) == me_stem
+    shared = {}
+    for h in customers[:12]:
+        for cd, nm, pct, raw in peers["cust"].get(_vc_key(h["name"]), []):
+            if cd != c["code"] and not same_group(nm):
+                shared.setdefault(cd, {"code": cd, "name": nm, "via": []})["via"].append({"customer": h["name"], "pct": pct})
+    buyers = [{"code": cd, "name": nm, "pct": pct, "as": raw} for cd, nm, pct, raw in peers["supp"].get(me_k, []) if cd != c["code"]]       # 나를 매입처로 적은 회사 = 내 고객
+    sellers = [{"code": cd, "name": nm, "pct": pct, "as": raw, "group": same_group(nm)} for cd, nm, pct, raw in peers["cust"].get(me_k, []) if cd != c["code"]]      # 나를 매출처로 적은 회사 = 내 공급사(같은 그룹이면 표시)
+    # 수주 공시 상대(최근 2년) — 공시로 드러난 고객
+    orders = []
+    try:
+        since = (dt.date.today() - dt.timedelta(days=730)).strftime("%Y%m%d")
+        agg = {}
+        for o in _ord_series(c, net=False):
+            if o["kind"] != "체결" or o["date"] < since or not o.get("party"):
+                continue
+            a = agg.setdefault(o["party"], {"party": o["party"], "n": 0, "amount": 0.0, "last": o["date"]})
+            a["n"] += 1
+            a["amount"] += o.get("amount") or 0
+            a["last"] = max(a["last"], o["date"])
+        orders = sorted(agg.values(), key=lambda a: -a["amount"])[:10]
+        for a in orders:
+            a["link"] = link(a["party"])
+    except Exception:
+        orders = []
+    return {"v": VC_V, "code": c["code"], "name": c["name"], "years": years, "stamp": last.get("stamp"),
+            "customers": customers[:30], "hidden": hidden, "subs": subs, "materials": mats, "suppliers_hist": supp_hist,
+            "export": exp, "segments": last.get("segments") or [], "competition": last.get("competitors") or [],
+            "shared": sorted(shared.values(), key=lambda s: -len(s["via"]))[:20], "buyers": buyers, "sellers": sellers,
+            "orders": orders, "peer_n": peers["n"]}
+
+
 # ---------------------------------------------------------------- HTTP
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
@@ -8562,6 +8805,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, value_view(q.get("force") == "1"))
             if path == "/api/value2":
                 return self._send(200, value2_view(q.get("force") == "1"))
+            if path == "/api/valuechain":
+                d = valuechain_view(q.get("code", ""))
+                if d is None:
+                    return self._send(404, {"error": "회사 없음"})
+                return self._send(200, d)
             if path == "/api/ohlcv":
                 # 저평가V2 큰 차트 — 마지막 n봉 + 이동평균을 낼 앞 120봉
                 code = q.get("code", "")

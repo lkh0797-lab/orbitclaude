@@ -111,6 +111,37 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .lane>h5 span{font:11px/1 var(--mono);color:var(--faint);font-weight:400}
 .lane .cards{margin-bottom:4px}
 
+/* ---------- 밸류체인 (연혁 자리) ---------- */
+.vcLead{font-size:13px;color:var(--ink);line-height:1.6;padding:8px 12px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:4px;margin:4px 0 10px}
+.vcFig{border:1px solid var(--line2);border-radius:10px;padding:6px 8px;background:var(--panel)}
+.vcMap{width:100%;height:auto;display:block}
+.vcMap .vcEdge{fill:none;stroke:var(--line);opacity:.9}.vcMap .vcEdge.up{stroke:#7a8fb0}.vcMap .vcEdge.down{stroke:var(--accent)}.vcMap .vcEdge.via{stroke:#d6b46a}
+.vcMap .vcMe{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}.vcMap .vcMeT{font:700 16px var(--sans);fill:var(--ink)}.vcMap .vcMeS{font:11px var(--sans);fill:var(--dim)}
+.vcMap .vcHdr{font:600 11px var(--mono);fill:var(--faint);letter-spacing:.06em}
+.vcMap .vcN{font:500 12.5px var(--sans);fill:var(--ink)}.vcMap .vcNs{font:10.5px var(--mono);fill:var(--faint)}.vcMap .vcDot{fill:var(--panel);stroke:var(--dim);stroke-width:1.4}
+.vcMap .vcNode.go{cursor:pointer}.vcMap .vcNode.go .vcN{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px}.vcMap .vcNode.go:hover .vcN{fill:var(--accent)}
+.vcKey{font-size:11px;color:var(--faint);margin:6px 0 14px}
+.vcTri{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:6px}
+@media (max-width:1200px){.vcTri{grid-template-columns:1fr}}
+.vcColH{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}.vcColH em{font:600 10px var(--mono);color:var(--faint);letter-spacing:.08em;font-style:normal}
+.vcColH b{font:700 15px 'Noto Serif KR',serif;color:var(--ink)}.vcColH span{font-size:11.5px;color:var(--dim);line-height:1.5}
+.vcTbl{font-size:12px}.vcTbl td,.vcTbl th{padding:3px 5px;vertical-align:bottom}.vcTbl th.r,.vcTbl td.r{text-align:right}
+.vcTbl td.vcCell{position:relative;min-width:30px;height:26px;text-align:center;font:10px var(--mono);color:var(--faint)}
+.vcTbl td.vcCell i{display:block;width:12px;margin:0 auto 1px;background:var(--accent);border-radius:2px 2px 0 0;opacity:.75}
+.vcTbl td.vcCell span{display:block;line-height:1}.vcTbl td.neg{color:var(--del)}
+.vcName a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:2px}.vcName a:hover{color:var(--accent)}
+.vcName small{color:var(--faint);font-size:10px}.vcFlag{font-style:normal;margin-right:3px;font-size:12px}.vcAka{color:var(--faint);font-size:10.5px}
+.vcSub,.vcMat{padding:8px 10px;border:1px solid var(--line2);border-radius:8px;margin-bottom:8px;background:var(--panel)}
+.vcSub>b,.vcMat .h b{font-size:12.5px;color:var(--ink)}.vcMat .h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.vcMat .h span{font:11px var(--mono);color:var(--faint)}
+.vcChips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.vcChip{font-size:11.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--bg)}.vcChip em{font-style:normal;color:var(--dim);margin-left:4px;font-family:var(--mono);font-size:10.5px}
+.vcChip.ch{color:var(--dim);border-style:dashed}.vcChip.dim{color:var(--faint);border-style:dashed}
+.vcSeg{font-size:12px;padding:6px 0;border-top:1px dashed var(--line2)}.vcSeg b{display:block;color:var(--ink)}.vcSeg span{color:var(--dim)}.vcSeg small{display:block;color:var(--faint);margin-top:2px}
+.vcNote{font-size:12px;color:var(--dim);margin:8px 0 0;line-height:1.55}
+.vcNet{margin-top:18px}.vcNetG{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}@media (max-width:1200px){.vcNetG{grid-template-columns:1fr 1fr}}
+.vcNetB{border:1px solid var(--line2);border-radius:8px;padding:9px 11px;background:var(--panel)}.vcNetB>b{font-size:12.5px;display:block}.vcNetB>small{display:block;color:var(--faint);font-size:10.5px;line-height:1.4;margin:2px 0 6px}
+.vcRow{font-size:12px;padding:2px 0}.vcRow a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:2px}.vcRow small{color:var(--faint)}
+.vcMore{margin-top:12px}.vcMore>summary{cursor:pointer;font-size:12.5px;color:var(--dim)}.vcQuote{font-size:12px;color:var(--dim);line-height:1.6;margin:6px 0 0 12px;border-left:2px solid var(--line2);padding-left:8px}
 /* ---------- 연혁 ---------- */
 .tl{border-left:2px solid var(--line);margin-left:6px;padding-left:0}
 .yr{position:relative;padding:2px 0 14px 18px}
@@ -2199,7 +2230,7 @@ details.linMore>summary::-webkit-details-marker{display:none}
         <button data-t="qtr">분기 변화</button>
         <button data-t="earn">실적</button>
         <button data-t="druck">가속도</button>
-        <button data-t="tl">연혁</button>
+        <button data-t="tl">밸류체인</button>
         <button data-t="read">본문</button>
         <button data-t="traj">섹션 궤적</button>
         <button data-t="diff">변경점 비교</button>
@@ -8156,11 +8187,135 @@ async function viewBriefClassic(p){
 function labelsParam(){ return S.kind ? '&labels='+encodeURIComponent(S.kind) : ''; }
 
 // ---------------------------------------------------------- 연혁
-function viewTimeline(p){
+// ---------------------------------------------------------- 밸류체인 — 누구에게 팔고 누구에게서 사나 (/api/valuechain · 밸류체인.py, 연혁 탭 자리)
+// 가운데 이 회사, 왼쪽 상류(원재료 → 매입처), 오른쪽 하류(매출처 · 종속회사의 최종 고객 · 수출 비중), 아래 그물망(같은 고객을 적은 회사 · 나를 매입처로 적은 회사 · 수주 공시 상대).
+// 15년 변천: 고객 비중을 해마다 띠로, 매입처는 처음 · 마지막 해로. 상장사(수집한 회사)는 눌러서 간다.
+const VC_FLAG={'한국':'KR','미국':'US','인도':'IN','중국':'CN','사우디':'SA','일본':'JP','독일':'DE','방글라데시':'BD','남아공':'ZA','해외':'··'};
+async function viewTimeline(p){
   const c=S.co; p.innerHTML='';
-  p.appendChild(el('h4','head','보고서 연혁'));
-  p.appendChild(el('p','sub', c.from+' 부터 '+c.to+' 까지 '+c.count+'건. '+
-    '종류마다 칸을 나눠 같은 종류끼리 이어 놓았습니다. 카드를 누르면 본문이 열립니다.'));
+  p.appendChild(el('div','loading','밸류체인을 읽는 중 — 사업보고서 「사업의 내용」 15년치'));
+  let d;
+  try{ d=await (await fetch('/api/valuechain?code='+c.code)).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
+  if(!S.co||S.co.code!==c.code||S.tab!=='tl') return;
+  p.innerHTML='';
+  if(d.error){ p.appendChild(el('div','err',d.error)); return vcReports(p,c); }
+  const Y=d.years, y0=Y[0], y1=Y[Y.length-1];
+  const hd=el('div','dipHead'); hd.appendChild(el('b',null,'밸류체인'));
+  hd.appendChild(el('span',null,c.name+'은(는) 누구에게 팔고 누구에게서 사나 — 사업보고서 '+y0+'~'+y1+' 「사업의 내용」에서 뽑았다. 비중은 보고서가 적은 그대로(대개 모회사 별도 매출 기준)'));
+  p.appendChild(hd);
+  const pct=v=>v==null?'':(Math.round(v*10)/10)+'%';
+  const nameEl=(nm,link,country,cls)=>{ const w=el('span','vcName '+(cls||''));
+    if(country&&VC_FLAG[country]) w.appendChild(el('i','vcFlag',VC_FLAG[country]));
+    if(link&&link.code&&link.collected){ const a=el('a',null,nm); a.href='#'; a.onclick=e=>{ e.preventDefault(); pick(link.code); }; a.title='수집한 회사 — 누르면 간다'; w.appendChild(a); }
+    else { w.appendChild(document.createTextNode(nm)); if(link&&link.code&&!link.collected) w.appendChild(el('small',null,' 상장')); }
+    return w; };
+  // ── 한 줄 요약(그림 위) — 수출 비중 변천 · 가장 큰 고객 · 가려진 고객
+  const ex=d.export||{}, exY=Object.keys(ex).sort(), ex0=exY.length?ex[exY[0]]:null, ex1=exY.length?ex[exY[exY.length-1]]:null;
+  const top=(d.customers||[]).filter(h=>h.pct!=null).slice(0,3);
+  const lead=el('div','vcLead');
+  const bits=[];
+  if(ex1!=null) bits.push('수출 비중 '+(ex0!=null&&exY.length>1?Math.round(ex0)+'%('+exY[0]+') → ':'')+Math.round(ex1)+'%('+exY[exY.length-1]+')');
+  if(top.length) bits.push('가장 큰 고객 '+top.map(h=>h.name+' '+pct(h.pct)).join(' · '));
+  (d.hidden||[]).forEach(h=>bits.push(h.name+(h.pct!=null?' — 매출의 '+pct(h.pct):'')));
+  if(!top.length&&!(d.hidden||[]).length) bits.push('고객 이름을 적지 않는 회사다 — 종속회사 · 세그먼트 · 수주 공시로 짐작한다');
+  lead.textContent=bits.join('  ·  '); p.appendChild(lead);
+
+  // ── 그물망 그림 — 왼쪽 매입처, 가운데 회사(사업부문), 오른쪽 고객. 선 굵기 = 비중
+  const supp=[]; (d.materials||[]).forEach(m=>(m.suppliers||[]).forEach(s=>{ if(!supp.some(x=>x.name===s.name)) supp.push({name:s.name,item:m.item,pct:m.pct,link:s.link,country:s.country}); }));
+  const custs=(d.customers||[]).filter(h=>h.last===y1).slice(0,9);
+  const finals=[]; (d.subs||[]).forEach(s=>(s.customers||[]).slice(0,4).forEach(x=>{ if(!custs.some(h=>h.name===x.name)&&!finals.some(f=>f.name===x.name)) finals.push({...x,via:s.sub}); }));
+  const R=custs.concat(finals.slice(0,Math.max(0,10-custs.length)));
+  const L=supp.slice(0,10);
+  const W=1000, rowH=26, n=Math.max(L.length,R.length,4), H=Math.max(300,n*rowH+70), cx=W/2, cy=H/2;
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'vcMap'});
+  const yAt=(i,len)=>H/2+(i-(len-1)/2)*rowH;
+  const lw=v=>v==null?1.2:Math.max(1.2,Math.min(9,v/4));
+  const link=(x1,y1_,x2,y2_,w,cls)=>svg.appendChild(svgEl('path',{d:'M'+x1+','+y1_+' C'+((x1+x2)/2)+','+y1_+' '+((x1+x2)/2)+','+y2_+' '+x2+','+y2_,class:'vcEdge '+(cls||''),'stroke-width':w}));
+  L.forEach((s,i)=>{ const y=yAt(i,L.length); link(250,y,cx-120,cy,lw(s.pct),'up'); });
+  R.forEach((h,i)=>{ const y=yAt(i,R.length); link(cx+120,cy,W-250,y,lw(h.pct),h.via?'via':'down'); });
+  // 가운데 — 회사와 사업부문
+  const segs=[]; (d.segments||[]).forEach(s=>{ if(s.segment&&!segs.includes(s.segment)) segs.push(s.segment); });
+  svg.appendChild(svgEl('rect',{x:cx-120,y:cy-34,width:240,height:68,rx:12,class:'vcMe'}));
+  const t0=svgEl('text',{x:cx,y:cy-8,'text-anchor':'middle',class:'vcMeT'}); t0.textContent=c.name; svg.appendChild(t0);
+  const t1=svgEl('text',{x:cx,y:cy+14,'text-anchor':'middle',class:'vcMeS'}); t1.textContent=(segs.length?segs.join(' · '):'')+(ex1!=null?(segs.length?'  ·  ':'')+'수출 '+Math.round(ex1)+'%':''); svg.appendChild(t1);
+  const hL=svgEl('text',{x:250,y:28,'text-anchor':'end',class:'vcHdr'}); hL.textContent='상류 — 원재료 · 매입처'; svg.appendChild(hL);
+  const hR=svgEl('text',{x:W-250,y:28,class:'vcHdr'}); hR.textContent='하류 — 매출처 · 최종 고객'; svg.appendChild(hR);
+  const nodes=[];
+  L.forEach((s,i)=>{ const y=yAt(i,L.length); nodes.push({x:250,y,anchor:'end',txt:s.name,sub:(s.item||'')+(s.pct!=null?' · 매입의 '+pct(s.pct):''),link:s.link,country:s.country}); });
+  R.forEach((h,i)=>{ const y=yAt(i,R.length); nodes.push({x:W-250,y,anchor:'start',txt:h.name,sub:(h.pct!=null?pct(h.pct):'')+(h.via?' · '+h.via.replace(/,?\s*(Ltd\.?|Inc\.?|Co\.?|Pvt\.?)/g,'').trim()+' 고객':''),link:h.link,country:h.country}); });
+  nodes.forEach(nd=>{ const g=svgEl('g',{class:'vcNode'+(nd.link&&nd.link.collected?' go':'')});
+    const t=svgEl('text',{x:nd.x+(nd.anchor==='end'?-6:6),y:nd.y+1,'text-anchor':nd.anchor,class:'vcN'}); t.textContent=(nd.country&&VC_FLAG[nd.country]?VC_FLAG[nd.country]+' ':'')+nd.txt; g.appendChild(t);
+    if(nd.sub){ const s=svgEl('text',{x:nd.x+(nd.anchor==='end'?-6:6),y:nd.y+13,'text-anchor':nd.anchor,class:'vcNs'}); s.textContent=nd.sub; g.appendChild(s); }
+    g.appendChild(svgEl('circle',{cx:nd.x,cy:nd.y,r:3.5,class:'vcDot'}));
+    if(nd.link&&nd.link.collected) g.onclick=()=>pick(nd.link.code);
+    svg.appendChild(g); });
+  const fig=el('div','vcFig'); fig.appendChild(svg); p.appendChild(fig);
+  p.appendChild(el('div','vcKey','선 굵기 = 비중(보고서가 적은 매출 · 매입 비중). 금색 선 = 종속회사를 거친 최종 고객. 이름 앞 국기 = 추정 국가. 밑줄 이름 = 수집한 회사(누르면 그 회사의 밸류체인으로)'));
+
+  // ── 세 칸: 고객 15년 띠 · 종속회사 최종 고객 · 매입처
+  const tri=el('div','vcTri');
+  // 고객 변천
+  const colC=el('div'); colC.appendChild(vcHead('매출처 — 15년 변천','DOWNSTREAM','해마다 적은 비중. 띠가 길수록 오래 붙어 있는 고객, 끊기면 그해 주요 매출처에서 빠진 것'));
+  const tbl=el('table','tbl vcTbl'); const hr=el('tr'); hr.appendChild(el('th',null,'고객'));
+  Y.forEach(y=>hr.appendChild(el('th','r',"'"+y.slice(2)))); tbl.appendChild(hr);
+  (d.customers||[]).slice(0,18).forEach(h=>{ const tr=el('tr'); const td=el('td'); td.appendChild(nameEl(h.name,h.link,h.country));
+    if((h.aka||[]).length) td.appendChild(el('small','vcAka',' = '+h.aka.slice(0,2).join(' · '))); tr.appendChild(td);
+    const mx=Math.max(...Object.values(h.by_year).filter(v=>v!=null),1);
+    Y.forEach(y=>{ const v=h.by_year[y]; const c2=el('td','r vcCell'); if(v!=null){ const b=el('i'); b.style.height=Math.max(3,Math.round(v/mx*18))+'px'; c2.appendChild(b); c2.title=y+' · '+pct(v); c2.appendChild(el('span',null,pct(v))); } else if(y in h.by_year){ c2.textContent='·'; c2.title=y+' · 비중 없이 적힘'; } tr.appendChild(c2); });
+    tbl.appendChild(tr); });
+  if(!(d.customers||[]).length) colC.appendChild(el('div','empty','이름을 적은 매출처가 없다'));
+  else colC.appendChild(tbl);
+  (d.hidden||[]).forEach(h=>colC.appendChild(el('p','vcNote',h.name+(h.pct!=null?' — 매출의 '+pct(h.pct):'')+(h.amt?' ('+qWon(h.amt)+')':'')+'. 회사가 이름을 가렸다 — 수주 공시 상대와 세그먼트 표로 짐작한다.')));
+  tri.appendChild(colC);
+  // 종속회사 · 세그먼트
+  const colS=el('div'); colS.appendChild(vcHead('종속회사의 고객 · 사업부문','WHO BUYS WHERE','해외 법인은 그 나라 전력사 · 발주처를 적는다 — 미국 전력 수요, 인도 송전망처럼 산업이 커지는 그림이 여기서 보인다'));
+  (d.subs||[]).forEach(s=>{ if(!(s.customers||[]).length&&!(s.channels||[]).length) return; const b=el('div','vcSub'); b.appendChild(el('b',null,s.sub));
+    const ul=el('div','vcChips'); (s.customers||[]).forEach(x=>{ const ch=el('span','vcChip'); ch.appendChild(nameEl(x.name,x.link,x.country)); if(x.pct!=null) ch.appendChild(el('em',null,pct(x.pct))); ul.appendChild(ch); });
+    (s.channels||[]).forEach(([k,v])=>{ const ch=el('span','vcChip ch'); ch.textContent=k+(v!=null?' '+pct(v):''); ul.appendChild(ch); });
+    b.appendChild(ul); colS.appendChild(b); });
+  (d.segments||[]).forEach(s=>{ const b=el('div','vcSeg'); b.appendChild(el('b',null,(s.segment?s.segment+' · ':'')+s.entity)); b.appendChild(el('span',null,s.goods)); b.appendChild(el('small',null,'고객: '+s.customers)); colS.appendChild(b); });
+  if(!(d.subs||[]).length&&!(d.segments||[]).length) colS.appendChild(el('div','empty','종속회사별 고객 표가 없다'));
+  tri.appendChild(colS);
+  // 매입처
+  const colU=el('div'); colU.appendChild(vcHead('원재료 · 매입처','UPSTREAM','원재료 가격이 오르면 이쪽이 수혜, 이 회사는 원가 부담. 매입처가 바뀐 해는 공급망이 바뀐 해'));
+  (d.materials||[]).forEach(m=>{ const b=el('div','vcMat'); const h=el('div','h'); h.appendChild(el('b',null,(m.segment?m.segment+' · ':'')+(m.item||'')));
+    h.appendChild(el('span',null,(m.amt!=null?qWon(m.amt*1e6):'')+(m.pct!=null?' · 매입의 '+pct(m.pct):''))); b.appendChild(h);
+    const ul=el('div','vcChips'); (m.suppliers||[]).forEach(s=>{ const ch=el('span','vcChip'); ch.appendChild(nameEl(s.name,s.link,s.country)); ul.appendChild(ch); });
+    if(!(m.suppliers||[]).length) ul.appendChild(el('span','vcChip dim','매입처 안 적음')); b.appendChild(ul); colU.appendChild(b); });
+  const sh=(d.suppliers_hist||[]).filter(h=>h.last!==y1||h.first!==y1);
+  if(sh.length){ const dt=el('details','vcMore'); dt.appendChild(el('summary',null,'15년 동안 적힌 매입처 '+(d.suppliers_hist||[]).length+'곳 — 들어오고 나간 해'));
+    const t2=el('table','tbl vcTbl'); t2.innerHTML='<tr><th>매입처</th><th>품목</th><th class="r">처음</th><th class="r">마지막</th></tr>';
+    (d.suppliers_hist||[]).sort((a,b)=>a.first.localeCompare(b.first)||a.last.localeCompare(b.last)).forEach(h=>{ const tr=el('tr'); const td=el('td'); td.appendChild(nameEl(h.name,h.link,h.country)); tr.appendChild(td);
+      tr.appendChild(el('td',null,(h.items||[]).slice(0,3).join(', '))); tr.appendChild(el('td','r',h.first)); tr.appendChild(el('td','r'+(h.last!==y1?' neg':''),h.last+(h.last!==y1?' 빠짐':''))); t2.appendChild(tr); });
+    dt.appendChild(t2); colU.appendChild(dt); }
+  tri.appendChild(colU);
+  p.appendChild(tri);
+
+  // ── 그물망 — 같은 고객을 적은 회사 · 나를 매입처로 적은 회사 · 나를 매출처로 적은 회사 · 수주 공시 상대
+  const net=el('div','vcNet'); net.appendChild(vcHead('그물망 — 같이 움직일 회사','WHO ELSE','이 회사의 고객이 늘면 같은 고객에 파는 회사도 수혜. 나를 매입처로 적은 회사 = 내 고객(그쪽 보고서에서 본), 나를 매출처로 적은 회사 = 내 공급사'));
+  const grid=el('div','vcNetG');
+  const box=(title,sub,items,fmt)=>{ const b=el('div','vcNetB'); b.appendChild(el('b',null,title)); b.appendChild(el('small',null,sub));
+    if(!items.length) b.appendChild(el('div','empty','없음'+(d.peer_n<100?' — 다른 회사 밸류체인을 아직 다 안 뽑았다('+d.peer_n+'곳). python 도구/밸류체인_전종목.py':'')));
+    items.forEach(x=>b.appendChild(fmt(x))); return b; };
+  grid.appendChild(box('같은 고객에 파는 회사','수혜 연대 — 같은 발주처를 주요 매출처로 적은 회사',d.shared||[],x=>{ const r=el('div','vcRow'); const a=el('a',null,x.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); pick(x.code); }; r.appendChild(a);
+    r.appendChild(el('small',null,' ← '+x.via.map(v=>v.customer+(v.pct!=null?' '+pct(v.pct):'')).join(', '))); return r; }));
+  grid.appendChild(box('나를 매입처로 적은 회사','그쪽 보고서가 말하는 내 고객',d.buyers||[],x=>{ const r=el('div','vcRow'); const a=el('a',null,x.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); pick(x.code); }; r.appendChild(a); r.appendChild(el('small',null,x.pct!=null?' · 그쪽 매입의 '+pct(x.pct):'')); return r; }));
+  grid.appendChild(box('나를 매출처로 적은 회사','그쪽 보고서가 말하는 내 공급사',d.sellers||[],x=>{ const r=el('div','vcRow'); const a=el('a',null,x.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); pick(x.code); }; r.appendChild(a); r.appendChild(el('small',null,x.pct!=null?' · 그쪽 매출의 '+pct(x.pct):'')); return r; }));
+  grid.appendChild(box('수주 공시 상대(최근 2년)','단일판매 · 공급계약 공시의 계약상대 — 보고서가 가린 고객이 여기 드러나기도',d.orders||[],x=>{ const r=el('div','vcRow'); r.appendChild(nameEl(x.party,x.link,null)); r.appendChild(el('small',null,' · '+x.n+'건 '+(x.amount?qWon(x.amount):''))); return r; }));
+  net.appendChild(grid); p.appendChild(net);
+  if((d.competition||[]).length){ const cp=el('details','vcMore'); cp.appendChild(el('summary',null,'경쟁 — 보고서가 적은 문장 '+d.competition.length));
+    d.competition.forEach(s=>cp.appendChild(el('p','vcQuote',s))); p.appendChild(cp); }
+  p.appendChild(el('div','finnote','출처 = 사업보고서 「사업의 내용」(주요 매출처 및 비중 · 주요 원재료 현황 · 매출실적 수출/내수 · 종속회사 판매경로 · 사업부문별 현황) + 단일판매·공급계약 공시. '+
+    '회사마다 적는 모양이 달라 비중 기준(별도/연결)과 범위가 다를 수 있다. 이름이 상장사와 맞지 않으면(약칭 · 해외) 글자로만 남는다 — 그물망은 이름이 같은 것만 잇는다.'));
+  vcReports(p,c);
+}
+function vcHead(b,en,sub){ const h=el('div','vcColH'); h.appendChild(el('em',null,en)); h.appendChild(el('b',null,b)); h.appendChild(el('span',null,sub)); return h; }
+function vcReports(p,c){
+  // 예전 연혁(보고서 카드)은 접어 둔다
+  const det=el('details','vcMore'); det.appendChild(el('summary',null,'보고서 연혁 — '+c.from+' 부터 '+c.to+' 까지 '+c.count+'건 (카드를 누르면 본문)'));
+  const box=el('div'); vcLanes(box,c); det.appendChild(box); p.appendChild(det);
+}
+function vcLanes(p,c){
 
   const openRead=(r)=>{
     S.lastRead={rcept:r.rcept, file:(r.sections.find(x=>x.norm===S.section)||r.sections[0]).file};
