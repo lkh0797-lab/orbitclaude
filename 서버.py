@@ -4715,7 +4715,8 @@ def _inv_regimes(code):
 # 초일류 투자자가 정기보고서에 던지는 질문 24개를 회사마다 미리 돌려 둔다(질문 지도).
 # 찾은 문장은 '족보'로 묶는다 — 같은 말이 언제 태어나, 어떻게 고쳐지고, 언제 사라졌나.
 # 원탁 백테스트에서 공시 뒤에도 값에 덜 든 채 남은 건 '새 문장'뿐이었다. 질문 지도는 그 새 문장을 질문별로 가른다.
-ASK_V = 4
+ASK_V = 5            # 5: 주가에 닿을 줄(호재 · 악재 · 잠재, 2026-10-03)
+ASK_MAT_MIN = 2.6    # 이만큼은 돼야 '주가에 닿을 줄' — 방향 낱말 하나만으론 모자라고 금액 · 실제로 일어난 일이 붙어야 한다
 ASK_SIG = 2.8        # 이만큼 무거워야 '새 답'. 금액·범주 낱말·꼬리 위험 없이 문장만 새로 쓴 건 2.0
 _AB, _AM, _AF, _AO = "사업의 내용", "이사의 경영진단 및 분석의견", "재무에 관한 사항", "회사의 개요"
 _AP, _ASH, _AE = "그 밖에 투자자 보호를 위하여 필요한 사항", "주주에 관한 사항", "임원 및 직원 등에 관한 사항"
@@ -5046,6 +5047,192 @@ def _ask_rep(reps, ri):
     return {"stamp": r["stamp"], "label": r["label"], "rcept": r["rcept"]}
 
 
+# ── 주가에 닿을 줄(2026-10-03) — '무게'(금액 · 날짜 · 범주가 있나)는 구체성이지 중요도가 아니다.
+# 주석 · 면책(차이가 있을 수 있음 · 단순 합산 금액)과 조직 설명이 위로 올라왔다(효성중공업 26.2Q).
+# 그래서 새 말마다 방향(호재 · 악재 · 잠재)과 크기(금액 ÷ 매출 · 자본), 실제로 일어난 일인지를 다시 매긴다.
+ASK_MAT_V = 1
+MAT_BOIL = re.compile(r"있을\s*수\s*있|차이가\s*있을|단순\s*(?:가감|합산)|내부\s*거래가?\s*제거|기준으로\s*(?:작성|산정|기재)|"
+                      r"다음과\s*같(?:습니다|음)|아래와\s*같(?:습니다|음)|참[고조]하시|바랍니다|이원화|으로\s*구성되어|를\s*의미|을\s*의미|"
+                      r"을\s*말합니다|를\s*말합니다|정의(?:합니다|됨)|기재\s*단위|단위\s*:|^\(?\s*단위")
+MAT_SOFT = re.compile(r"^\(?\s*주\s*\d*\)|^\(\*\d*\)|포함되어\s*있|지속적으로|추구하고|노력하고|노력할|최선을|강화하고\s*있|힘쓰고|대응하고\s*있|"
+                      r"기여하고\s*있|추진하고\s*있습니다$|하고\s*있습니다$|예정입니다$")
+MAT_BAD = re.compile(r"소송(?:을|이)?\s*(?:제기|접수|계류)|피소|패소|과징금|시정\s*명령|제재\s*(?:를|가|조치)|영업\s*정지|손해\s*배상\s*(?:청구|소송|의무)|리콜|"
+                     r"화재|폭발|중대\s*재해|가동\s*(?:중단|중지)|조업\s*중단|계약\s*(?:이\s*)?(?:해지|취소|해제)|손상\s*차손\s*(?:을\s*)?(?:인식|계상)|"
+                     r"적자\s*(?:로\s*)?전환|영업\s*손실|순\s*손실|유상\s*증자|전환\s*사채\s*(?:를\s*|을\s*)?발행|전환\s*가액\s*(?:의\s*)?(?:조정|하향)|리픽싱|"
+                     r"주식\s*담보|반대\s*매매|횡령|배임|한정\s*의견|부적정|의견\s*거절|계속\s*기업|중요한\s*불확실성|책임\s*준공\s*(?:을\s*)?(?:미이행|기한)|"
+                     r"준공이\s*완료되지|(?:채무|차입금|PF)[^.]{0,40}?인수(?:하였|했|함|하게)|자금\s*보충|최대\s*주주\s*(?:의\s*)?변경|경영권\s*분쟁|"
+                     r"가격\s*경쟁\s*(?:이\s*)?(?:심화|격화)|(?<!구매)(?<!구매 )(?<!원재료)(?<!원재료 )(?<!원자재)(?<!원자재 )(?<!원료)(?<!원료 )(?:판매\s*)?(?:가격|판가|단가|시장\s*가격)\s*(?:의\s*)?(?:하락|인하)|"
+                     r"수요\s*(?:가\s*)?(?:감소|둔화|부진|위축)|매출\s*(?:이\s*)?(?:감소|하락)|(?:납기|공사|준공)\s*(?:가\s*|이\s*)?지연|철회|감산|"
+                     r"구조\s*조정|희망\s*퇴직|부도|회생\s*절차|파산|상장\s*폐지|관리\s*종목|불성실\s*공시|수출\s*규제|반덤핑|상계\s*관세")
+MAT_GOOD = re.compile(r"수주\s*(?:를\s*|을\s*)?(?:달성|확보|성공|하였|했)|(?:공급|납품|판매)\s*계약\s*(?:을\s*)?체결|계약을\s*체결|낙찰|우선\s*협상|"
+                      r"(?:공급사|업체|사업자)로\s*선정|양산(?:화)?\s*(?:를\s*|을\s*)?(?:개시|시작|돌입|완료)|양산화|인증\s*(?:을\s*)?(?:획득|취득|완료)|"
+                      r"승인\s*(?:을\s*)?(?:획득|받)|상용화\s*(?:에\s*)?(?:완료|성공)|증설\s*(?:을\s*)?(?:완료|결정|착수)|신규\s*(?:고객|수주|거래처)\s*(?:를\s*|을\s*)?확보|"
+                      r"점유율\s*(?:이\s*)?(?:상승|확대|증가|1위)|(?:판가|판매\s*가격|단가)\s*(?:를\s*|을\s*|가\s*|이\s*)?(?:인상|상승)|사상\s*최대|최대\s*(?:실적|매출|수주)|"
+                      r"흑자\s*(?:로\s*)?전환|배당\s*(?:을\s*)?(?:확대|증가|상향)|분기\s*배당|(?:자기\s*주식|자사주)\s*(?:을\s*|를\s*)?소각|소각\s*(?:을\s*)?(?:결정|완료)|"
+                      r"상환\s*(?:을\s*)?(?:완료|하였)|전환권\s*(?:이\s*)?소멸|담보\s*(?:가\s*)?해제|해소되|승소|무죄|소\s*취하|집행\s*정지\s*(?:신청\s*)?인용|"
+                      r"수요\s*(?:가\s*|의\s*)?(?:증가|호조|확대|강세)|공급\s*부족|수급\s*(?:이\s*)?타이트|(?:공급|수급)\s*격차")
+MAT_POT = re.compile(r"신규\s*사업|진출|(?:인수|합병|분할|매각)\s*(?:를\s*|을\s*)?(?:결정|추진|완료|예정|검토)|투자\s*(?:를\s*|을\s*)?(?:결정|계획|예정)|"
+                     r"(?:공장|생산\s*시설|라인)\s*(?:을\s*|를\s*)?(?:건설|신설|착공)|착공|준공\s*예정|양해\s*각서|MOU|업무\s*협약|규제|관세|보조금|"
+                     r"법\s*(?:개정|시행)|입찰\s*(?:참여|예정)|주주\s*가치\s*제고|밸류\s*업")
+MAT_DONE = re.compile(r"(?:하였|되었|했|됐)(?:습니다|으며|고|음)|(?:체결|결정|완료|선고|확정|인수|접수|인용|획득|달성|선정)(?:함|됨|하였|되었|했|하고|하는|하여|$)")
+MAT_QTY = re.compile(r"\d[\d,.]*\s*(?:MW|GW|MWh|GWh|kV|척|톤|만\s*대|기\b)")
+_MAT_DT = re.compile(r"(20\d\d)\s*[.년]\s*(\d{1,2})")
+MAT_NAME = re.compile(r"^(?:[A-Z][A-Za-z0-9&.\-]{1,}|[가-힣]{2,}(?:전자|전력|에너지|파워|중공업|건설|화학|오션|그룹))$")
+_MAT_AMT = re.compile(r"(?<![제\d,.])(\d[\d,]*(?:\.\d+)?)\s*(조(?!\s*의\s*\d)(?!\s*제?\s*\d+\s*항)|억|백만|천)\s*(?:\d[\d,]*\s*억\s*)?(?:원|달러|USD|유로)?|"
+                      r"(?:US\$|USD|\$)\s*(\d[\d,]*(?:\.\d+)?)\s*(billion|million|bn|mn)?|"
+                      r"\b(EUR|JPY|CNY|RMB|VND|MXN|ARS|TND|INR|BRL|GBP|HKD|SGD|TWD|IDR|PLN|HUF|CZK|TRY)\s*(\d[\d,]*(?:\.\d+)?)|"
+                      r"(\d[\d,]*(?:\.\d+)?)\s*(EUR|JPY|CNY|RMB|VND|MXN|ARS|TND|INR|BRL|GBP|HKD|SGD|TWD|IDR|PLN|HUF|CZK|TRY)\b")
+_MAT_FX = {"EUR": 1500, "JPY": 9.5, "CNY": 195, "RMB": 195, "VND": 0.055, "MXN": 75, "ARS": 1.4, "TND": 450, "INR": 16, "BRL": 250,
+           "GBP": 1800, "HKD": 180, "SGD": 1050, "TWD": 43, "IDR": 0.085, "PLN": 350, "HUF": 3.8, "CZK": 60, "TRY": 40}
+MAT_PROCEEDS = re.compile(r"조달한\s*자금[^.]{0,80}사용|자금의\s*사용\s*(?:내역|실적)")
+MAT_JOIN = re.compile(r"증자에\s*참여|출자하였|출자\s*건|출자를\s*완료|출자\s*금액|참여하여|(?:지분|주식|보통주)[^.]{0,30}취득|지분율이\s*(?:변동|상승|하락)")
+MAT_OWN = re.compile(r"당사(?:는|가|의)|지배\s*(?:회사|기업)(?:는|가)|(?<![가-힣])회사는")
+MAT_SUB = re.compile(r"종속\s*(?:회사|기업)|자회사|Inc\.?|LLC|Corporation|Ltd|㈜|\(주\)")
+MAT_BS = re.compile(r"(?:유동|비유동)?\s*(?:부채|자산|자본)(?:총계)?\s*(?:는|은|이|가)\s*전년\s*(?:말\s*)?대비|(?:부채|자산|자본)(?:총계)?\s*(?:가|이)?\s*[\d,]+\s*(?:억|조|백만)")
+
+
+def _won_amounts(sent):
+    """문장 속 금액(원). 달러는 1,400원으로 어림한다."""
+    out = []
+    for m in _MAT_AMT.finditer(sent):
+        try:
+            if m.group(1):
+                v = float(m.group(1).replace(",", ""))
+                unit = {"조": 1e12, "억": 1e8, "백만": 1e6, "천": 1e3}[m.group(2)]
+                tail = sent[m.end() - 4:m.end() + 2]
+                fx = 1400 if ("달러" in tail or "USD" in tail) else 1
+                out.append(v * unit * fx)
+            elif m.group(3):
+                v = float(m.group(3).replace(",", ""))
+                unit = {"billion": 1e9, "bn": 1e9, "million": 1e6, "mn": 1e6}.get((m.group(4) or "").lower(), 1)
+                out.append(v * unit * 1400)
+            elif m.group(5):
+                out.append(float(m.group(6).replace(",", "")) * _MAT_FX[m.group(5)])
+            elif m.group(7):
+                out.append(float(m.group(7).replace(",", "")) * _MAT_FX[m.group(8)])
+        except ValueError:
+            continue
+    return out
+
+
+def _ask_scale(c):
+    """회사 규모 — 마지막 사업보고서의 매출 · 자본총계."""
+    corp = corp_code_of(c["code"]) if FIN is not None else None
+    if not corp:
+        return {}
+    this = dt.date.today().year
+    try:
+        a = FIN.annual_actuals(corp, [this - 1, this - 2])
+    except Exception:
+        return {}
+    y = max(a) if a else None
+    return {"rev": a[y].get("매출액"), "eq": a[y].get("자본총계"), "year": y} if y else {}
+
+
+def _ask_material(e, q, scale):
+    """새 말 하나가 주가에 닿을 만한가 — {tone, ms, why[], amt, pct} 또는 None."""
+    sent = _ask_clean(e["text"])
+    if MAT_BOIL.search(sent):
+        return None
+    bad, good, pot = MAT_BAD.search(sent), MAT_GOOD.search(sent), MAT_POT.search(sent)
+    why, tone, ms = [], None, 0.0
+    amts = _won_amounts(sent)
+    amt = max(amts) if amts else None
+    base = max(v for v in (scale.get("rev"), scale.get("eq")) if v) if (scale.get("rev") or scale.get("eq")) else None
+    pct = amt / scale["rev"] * 100 if (amt and scale.get("rev")) else None
+    pct_eq = amt / scale["eq"] * 100 if (amt and scale.get("eq")) else None
+    big = max(x for x in (pct, pct_eq) if x is not None) if (pct is not None or pct_eq is not None) else None
+    if e["k"] == "gone":
+        if not (bad or good):
+            return None
+        tone, ms = "잠재", 1.2
+        why.append(("위험 문장이 빠짐 — 끝났나, 실현됐나" if bad else "좋은 말이 빠짐 — 끝났나, 멈췄나"))
+    elif bad and good:
+        tone, ms = ("악재" if q["clock"] == "risk" else "잠재"), 1.8
+        why += [bad.group(0).strip(), good.group(0).strip()]
+    elif bad and re.search(r"유상\s*증자", bad.group(0)) and (MAT_JOIN.search(sent) or (MAT_SUB.search(sent) and not MAT_OWN.search(sent))):
+        tone, ms = "잠재", 1.4
+        why.append("자회사 · 투자처 증자 참여(희석 아님)")
+    elif bad:
+        tone, ms = "악재", 2.4
+        why.append(bad.group(0).strip())
+    elif good and q["id"] == "mna":
+        tone, ms = "잠재", 1.8
+        why.append(good.group(0).strip())
+    elif good:
+        tone, ms = "호재", 2.0
+        why.append(good.group(0).strip())
+    elif q["id"] == "customer" and e.get("add") and any(MAT_NAME.match(t) for t in e["add"]):
+        tone, ms = "잠재", 1.6
+        why.append("주요 매출처에 새 이름: " + ", ".join([t for t in e["add"] if MAT_NAME.match(t)][:4]))
+    elif pot:
+        tone, ms = "잠재", 1.3
+        why.append(pot.group(0).strip())
+    elif big is not None and big >= 5 and MAT_DONE.search(sent):
+        tone, ms = "잠재", 1.2
+    else:
+        return None
+    if big is not None:
+        ms += 3.0 if big >= 15 else 2.0 if big >= 5 else 1.0 if big >= 1 else 0.0 if big >= 0.1 else -2.0
+        if big >= 1:
+            why.append("%s · %s의 %.0f%%" % (_won_txt(amt), "매출" if pct is not None and pct >= (pct_eq or 0) else "자본", big))
+        elif big < 0.1:
+            why.append("작은 금액(%s)" % _won_txt(amt))
+    elif amt and base is None:
+        ms += 0.5
+    if MAT_QTY.search(sent):
+        ms += 0.5
+        why.append(MAT_QTY.search(sent).group(0).strip())
+    if DATE_RE.search(sent):
+        ms += 0.4
+    done = MAT_DONE.search(sent)
+    if done:
+        ms += 0.6
+    # 지난 일 — 문장 속 날짜가 모두 보고서 시점보다 9개월 넘게 앞이면 이미 알려진 일이다(소송 접수일을 되풀이해 적은 문장)
+    dts = [int(a) * 12 + int(b) for a, b in _MAT_DT.findall(sent) if 1 <= int(b) <= 12]
+    if dts:
+        rep_m = int(e["stamp"][:4]) * 12 + int(e["stamp"][5:7])
+        if rep_m - max(dts) > 9:
+            ms -= 1.2
+            why.append("%d개월 전 일" % (rep_m - max(dts)))
+    else:
+        yrs = [int(y) for y in re.findall(r"(20\d\d)\s*년", sent)]
+        if yrs and max(yrs) < int(e["stamp"][:4]):
+            ms -= 1.0
+            why.append("%d년 일" % max(yrs))
+    # 보고서 자체가 오래됐다 — 최근 네 건이 1년을 넘는 회사(정정 · 첨부 보고서가 섞임)
+    if e.get("latest"):
+        lag = (int(e["latest"][:4]) * 12 + int(e["latest"][5:7])) - (int(e["stamp"][:4]) * 12 + int(e["stamp"][5:7]))
+        if lag > 9:
+            ms -= 0.8
+        elif lag > 6:
+            ms -= 0.4
+    if MAT_PROCEEDS.search(sent):
+        ms -= 1.5
+    if MAT_BS.search(sent):
+        ms -= 1.5
+    if q["clock"] == "risk" and tone == "악재":
+        ms += 0.5
+    if e["k"] == "born":
+        ms += 0.3
+    elif e["k"] == "edit":
+        ms += 0.2 * min(3, len(e.get("add") or []))
+    if MAT_SOFT.search(sent) and not done:
+        ms -= 1.0
+    if len(sent) > 300:
+        ms -= 0.5
+    def lab(t):          # 걸린 원문 → 짧은 이름표('PF) 차입금 346,300백만원을 인수하였' → 'PF 차입금 인수')
+        if "·" in t or "%" in t or "전 일" in t or t.endswith("년 일") or len(t) > 40 or MAT_QTY.fullmatch(t.strip()):
+            return t
+        t = re.sub(r"[()\[\]]", " ", t)
+        t = re.sub(r"[\d,.]+\s*(?:백만|억|조|천)?\s*원?\s*(?:을|를)?", " ", t)
+        t = re.sub(r"\s*(?:을|를|이|가)\s+", " ", t)
+        t = re.sub(r"(?:하였|했|함|하게|되었)$", "", re.sub(r"\s+", " ", t).strip())
+        return t.strip() or "—"
+    return {"tone": tone, "ms": round(ms, 2), "why": [lab(w) for w in why[:3]], "amt": amt,
+            "pct": round(big, 1) if big is not None else None}
+
+
 def ask_build(c, prog=None):
     reps = c["reports"]
     n = len(reps)
@@ -5102,6 +5289,8 @@ def ask_build(c, prog=None):
         seen_lab[reps[i]["label"]] = i
     out = []
     spot = []
+    mats = []                                    # 주가에 닿을 줄 후보 (ms, 질문, 묶음)
+    scale = _ask_scale(c)
     for q in ASK_Q:
         L, cnt = lin[q["id"]], counts[q["id"]]
         ev = []
@@ -5179,7 +5368,13 @@ def ask_build(c, prog=None):
             if e["k"] != "gone" and e["score"] >= ASK_SIG:
                 marks[e["ri"]] += 1
         shown = sig + drop + [e for e in rec if e not in sig and e not in drop]
-        item = {"id": q["id"], "status": st, "score": round(sc, 2), "counts": cnt, "marks": marks,
+        mq = {"호재": 0, "악재": 0, "잠재": 0}
+        for e in rec:
+            m = _ask_material(dict(e, stamp=reps[e["ri"]]["stamp"], latest=reps[-1]["stamp"]), q, scale)
+            if m and m["ms"] >= ASK_MAT_MIN:
+                mq[m["tone"]] += 1
+                mats.append((m["ms"], e["ri"], q["id"], dict(pack(e), **m)))
+        item = {"id": q["id"], "status": st, "score": round(sc, 2), "counts": cnt, "marks": marks, "mat": mq,
                 "first": _ask_rep(reps, first) if first is not None else None,
                 "n_recent": len(sig), "n_drop": len(drop), "n_minor": len(rec) - len(sig) - len(drop), "usual": usual,
                 "n_fams": len(L.fams),
@@ -5192,9 +5387,33 @@ def ask_build(c, prog=None):
         elif st == "first" and rec:
             spot.append((sc, q["id"], pack(rec[0])))
     spot.sort(key=lambda x: -x[0])
+    # 주가에 닿을 줄 — 같은 문장이 여러 질문에 걸리면 무거운 쪽 하나만
+    mats.sort(key=lambda x: (-x[0], -x[1]))
+    import math
+    material, seen_sk = [], set()
+    per_q = Counter()
+    for ms, ri, qid, d in mats:
+        if per_q[qid] >= 2:                      # 한 질문이 목록을 다 차지하지 않게
+            continue
+        sk = _ask_skel(d["text"])[:60]
+        # 같은 사건을 보고서마다 되풀이해 적는다 — 같은 질문 안에서 금액(±25%)이나 날짜(연 · 월)가 같으면 하나만
+        ak = (qid, round(math.log10(d["amt"]), 1)) if d.get("amt") else None
+        dk = (qid, max(_MAT_DT.findall(d["text"]))) if _MAT_DT.findall(d["text"]) else None
+        if sk in seen_sk or (ak and ak in seen_sk) or (dk and dk in seen_sk):
+            continue
+        seen_sk.update(x for x in (sk, ak, dk) if x)
+        per_q[qid] += 1
+        material.append(dict(d, q=qid))
+        if len(material) >= 9:
+            break
+    # 지금 읽을 줄도 주가에 닿을 줄 순서로 — 없으면 예전 무게순
+    spot_m = []
+    for d in material:
+        if d["q"] not in [x["id"] for x in spot_m]:
+            spot_m.append({"id": d["q"], "score": d["ms"], "ev": d})
     return {"v": ASK_V, "reports": [_ask_rep(reps, i) for i in range(n)], "recent_from": recent,
-            "base_end": base_end, "questions": out, "came": came,
-            "spotlight": [{"id": i, "score": round(s, 2), "ev": e} for s, i, e in spot[:5]]}
+            "base_end": base_end, "questions": out, "came": came, "material": material, "scale": scale,
+            "spotlight": spot_m[:5] or [{"id": i, "score": round(s, 2), "ev": e} for s, i, e in spot[:5]]}
 
 
 ASKING = {}

@@ -1761,6 +1761,18 @@ table.tbl td.num{font:12px/1.5 var(--mono);text-align:right}
 .askplate .spHead p{max-width:64em}
 .askplate .spHead p.spEn{margin-top:4px;font:italic 400 12.5px/1.5 var(--f-body);color:var(--p-faint)}
 .askSpot{margin-top:18px}
+.askMatL{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.askMatI{display:grid;grid-template-columns:46px minmax(0,1fr);gap:12px;align-items:start;padding:10px 14px;border-radius:10px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);transition:background .15s,border-color .15s}
+.askMatI:hover,.askMatI.on{background:rgba(214,180,106,.08);border-color:rgba(214,180,106,.45)}
+.askTone{font:700 11.5px var(--f-body);text-align:center;padding:5px 0;border-radius:6px;letter-spacing:.02em}
+.askTone.t-bad,.askQ .mt.t-bad{color:#ff8b84;background:rgba(229,83,75,.17)}
+.askTone.t-good,.askQ .mt.t-good{color:#6fd8b6;background:rgba(79,195,161,.16)}
+.askTone.t-pot,.askQ .mt.t-pot{color:var(--p-gold2);background:rgba(214,180,106,.15)}
+.askWhy{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
+.askWhy span{font:500 10.5px var(--f-num);color:var(--p-dim);border:1px solid rgba(255,255,255,.14);border-radius:4px;padding:1px 6px}
+.askQ .mt{font:700 9.5px var(--f-num);padding:1px 4px;border-radius:3px;margin-left:6px;vertical-align:1px}
+.askMatNone{margin-top:18px;font-size:12.5px;color:var(--p-dim);line-height:1.6;padding:10px 14px;border:1px dashed rgba(255,255,255,.14);border-radius:10px}
 .askSpotL{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:8px}
 .askSpotI{display:flex;gap:12px;align-items:flex-start;padding:12px 14px 11px;border-radius:11px;cursor:pointer;
   background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);transition:background .2s,border-color .2s,transform .2s}
@@ -9018,8 +9030,13 @@ function askPlate(plate, d, c, animate, W){
 
   // ── 헤드라인
   const hot=qs.filter(q=>q.status==='new'||q.status==='first'), usual=qs.filter(q=>q.status==='usual');
+  const MAT=d.material, TONE={'호재':'t-good','악재':'t-bad','잠재':'t-pot'};
+  const nT=t=>(MAT||[]).filter(x=>x.tone===t).length;
   let h3, en;
-  if(d.pending){ h3='무엇을 물어야 할지 모를 때 — 질문 '+total+'개를 이 회사 보고서 전부에 던지는 중';
+  if(!d.pending && MAT && MAT.length){
+    h3='최근 1년 보고서에서 주가에 닿을 줄 '+MAT.length+'개 — '+['악재','호재','잠재'].filter(t=>nT(t)).map(t=>t+' '+nT(t)).join(' · ');
+    en=MAT.length+' lines in the last four filings look able to move the price — the rest were footnotes, disclaimers and boilerplate.'; }
+  else if(d.pending){ h3='무엇을 물어야 할지 모를 때 — 질문 '+total+'개를 이 회사 보고서 전부에 던지는 중';
     en='Running '+total+' standard investor questions against every filing.'; }
   else if(hot.length){ h3=total+'개 질문 중 '+hot.length+'개에서 최근 1년, 평소보다 많은 새 답이 나왔다';
     en=hot.length+' of '+total+' investor questions drew more new answers than usual in the last four filings.'; }
@@ -9027,14 +9044,33 @@ function askPlate(plate, d, c, animate, W){
     en='No question drew more new answers than its own usual rate.'; }
   else { h3='최근 1년, '+total+'개 질문 모두 조용했다'; en='No investor question drew a new answer in the last four filings.'; }
   const hl=el('div','spHead'); hl.appendChild(el('h3',null,h3));
-  const sp=(d.spotlight||[])[0];
-  if(sp && M[sp.id]) hl.appendChild(el('p',null,'가장 먼저 읽을 것 — 「'+M[sp.id].q+'」 '+sp.ev.stamp+' '+sp.ev.label+' · '+sp.ev.short));
+  const sp=(d.spotlight||[])[0], m0=(MAT||[])[0];
+  if(m0 && M[m0.q]) hl.appendChild(el('p',null,'가장 먼저 읽을 것 — ['+m0.tone+'] 「'+M[m0.q].q+'」 '+m0.stamp+' '+m0.label+' · '+m0.short));
+  else if(sp && M[sp.id]) hl.appendChild(el('p',null,'가장 먼저 읽을 것 — 「'+M[sp.id].q+'」 '+sp.ev.stamp+' '+sp.ev.label+' · '+sp.ev.short));
   else if(!d.pending) hl.appendChild(el('p',null,'보고서가 스스로 말을 바꾼 곳이 없다. 이럴 때 숫자는 대개 이미 값에 들어 있다 — 질문을 눌러 15년 족보를 훑어 보라.'));
   hl.appendChild(el('p','spEn',en));
   plate.appendChild(hl);
 
-  // ── 지금 읽을 줄
-  if((d.spotlight||[]).length){
+  // ── 주가에 닿을 줄 — 최근 1년 새 말 가운데 호재 · 악재 · 잠재만(서버 _ask_material: 방향 · 금액 ÷ 매출 · 실제로 일어난 일)
+  if(MAT && MAT.length){
+    const box=el('div','askSpot');
+    const h=el('div','spIdeasH'); h.innerHTML='주가에 닿을 줄 <em>MATERIAL · 주석·면책·조직 설명은 뺐다</em>'; box.appendChild(h);
+    const ul=el('ul','askMatL');
+    MAT.forEach(x=>{ const m=M[x.q]; if(!m) return;
+      const li=el('li','askMatI'); li.dataset.q=x.q; if(S.findAsk===x.q) li.classList.add('on');
+      li.appendChild(el('span','askTone '+TONE[x.tone],x.tone));
+      const mm=el('div','askSpotM'), qh=el('div','askSpotQ');
+      qh.appendChild(el('b',null,m.q)); qh.appendChild(el('span','askK '+x.k,ASK_KT[x.k])); qh.appendChild(el('span',null,x.stamp+' '+x.label+' · '+x.sec_s));
+      mm.appendChild(qh);
+      const t=el('p','askSpotT'); t.textContent=x.text.length>230?x.text.slice(0,228)+'…':x.text; t.title=x.text; mm.appendChild(t);
+      if((x.why||[]).length){ const w=el('div','askWhy'); x.why.forEach(v=>w.appendChild(el('span',null,v))); mm.appendChild(w); }
+      li.appendChild(mm); li.onclick=()=>W.ask(x.q,true); ul.appendChild(li); });
+    box.appendChild(ul); plate.appendChild(box);
+  }
+  else if(MAT && !d.pending){
+    plate.appendChild(el('div','askMatNone','최근 1년 보고서에서 주가에 닿을 만한 새 말은 없다 — 바뀐 건 주석·면책·조직 설명 같은 문구뿐이다. 아래 질문을 누르면 15년 족보를 볼 수 있다.'));
+  }
+  else if((d.spotlight||[]).length){
     const box=el('div','askSpot');
     const h=el('div','spIdeasH'); h.innerHTML='지금 읽을 줄 <em>SPOTLIGHT · 무게순</em>'; box.appendChild(h);
     const ul=el('ul','askSpotL');
@@ -9069,7 +9105,9 @@ function askPlate(plate, d, c, animate, W){
       const row=el('div','askRow s-'+st); row.dataset.q=m.id;
       if(S.findAsk===m.id) row.classList.add('on');
       row.appendChild(el('i','askDot'));
-      row.appendChild(el('span','askQ',m.q));
+      const qn=el('span','askQ',m.q);
+      if(q && q.mat) ['악재','호재','잠재'].forEach(t=>{ if(q.mat[t]) qn.appendChild(el('span','mt '+TONE[t],t[0]+q.mat[t])); });
+      row.appendChild(qn);
       row.appendChild(q?askStrip(q,d):el('span'));
       row.appendChild(el('span','askSt',askStText(q)));
       row.onclick=()=>{ tip.hidden=true; W.ask(m.id,true); };
@@ -9115,7 +9153,7 @@ function askWork(work, c){
   const out=el('div'); work.appendChild(out);
   out.appendChild(el('div','linEmpty','질문 지도를 다 펼치면 가장 무거운 질문이 여기 먼저 열립니다.'));
   let seq=0;
-  const mark=()=>document.querySelectorAll('.askRow,.askSpotI').forEach(r=>r.classList.toggle('on', !!S.findAsk && r.dataset.q===S.findAsk));
+  const mark=()=>document.querySelectorAll('.askRow,.askSpotI,.askMatI').forEach(r=>r.classList.toggle('on', !!S.findAsk && r.dataset.q===S.findAsk));
   async function load(url){
     const my=++seq;
     out.innerHTML=''; out.appendChild(el('div','loading','15년치 본문에서 같은 문장을 이어 족보를 만드는 중…'));
