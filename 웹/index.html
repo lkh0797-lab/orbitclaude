@@ -3756,7 +3756,7 @@ async function viewValue(p, force){
   if(d.running){
     const pr=el('div','prog'); pr.appendChild(el('span',null,(d.phase||'계산 중')+(d.total?' '+d.done+'/'+d.total:'')));
     const b=el('div','bar'); const i=el('i'); i.style.width=(d.total?Math.round(d.done/d.total*100):5)+'%'; b.appendChild(i); pr.appendChild(b);
-    pr.appendChild(el('span',null,'전 종목 주가를 새로 받고, 25% 넘게 빠진 회사만 재무·잔고·업황을 읽는다. 처음엔 10분 안팎, 12시간마다 새로 맞춘다.'));
+    pr.appendChild(el('span',null,'전 종목 주가를 새로 받고, 25% 넘게 빠진 회사만 재무·잔고·업황을 읽는다. 1시간 가까이 걸려 매일 06:30에 미리 센다.'));
     body.appendChild(pr);
     setTimeout(()=>{ if(box.isConnected && S.tab==='val') viewValue(p,false); }, 5000);
     if(!(d.rows||[]).length) return;
@@ -3802,8 +3802,10 @@ async function viewValue2(p, force){
   if(!box.isConnected) return;
   if(d.error){ body.appendChild(el('div','err',d.error)); return; }
   if(d.running || d.base_running){
-    const pr=el('div','prog'); pr.appendChild(el('span',null,d.base_running&&!(d.rows||[]).length?'저평가 목록을 먼저 만드는 중':'저평가 종목 시세 읽는 중 '+(d.done||0)+'/'+(d.total||0)));
-    const b=el('div','bar'); const i=el('i'); i.style.width=(d.total?Math.round(d.done/d.total*100):5)+'%'; b.appendChild(i); pr.appendChild(b);
+    const msg=d.running?'저평가 종목 시세 읽는 중 '+(d.done||0)+'/'+(d.total||0)
+      :(d.rows||[]).length?'저평가 목록을 다시 세는 중 — 끝나면 V2도 다시 센다. 아래는 이전 결과':'저평가 목록을 먼저 만드는 중(1시간 가까이)';
+    const pr=el('div','prog'); pr.appendChild(el('span',null,msg));
+    const b=el('div','bar'); const i=el('i'); i.style.width=(d.running&&d.total?Math.round(d.done/d.total*100):5)+'%'; b.appendChild(i); pr.appendChild(b);
     body.appendChild(pr);
     setTimeout(()=>{ if(box.isConnected && S.tab==='val2') viewValue2(p,false); }, 4000);
     if(!(d.rows||[]).length) return;
@@ -9987,7 +9989,10 @@ function lsChart(fig, d, plate){
     if(r.roe===null||r.roe===undefined) return;
     const x=X(rx(r)), y=YR(r.roe), y0=YR(0);
     const col=r.roe>=15?'#d6b46a':r.roe<0?'#e5534b':'rgba(236,234,228,.32)';
-    svg.appendChild(svgEl('rect',{x:x-bw/2,y:Math.min(y,y0),width:bw,height:Math.max(1,Math.abs(y0-y)),rx:2,fill:col}));
+    // 최근 4분기 칸은 앞 해와 반년 겹친다 — 가늘게, 속을 비워 연간 막대와 가른다
+    const w_=r.ttm?bw*.55:bw;
+    svg.appendChild(svgEl('rect',r.ttm?{x:x-w_/2,y:Math.min(y,y0),width:w_,height:Math.max(1,Math.abs(y0-y)),rx:2,fill:'none',stroke:col,'stroke-width':1.6,'stroke-dasharray':'3 2'}
+      :{x:x-w_/2,y:Math.min(y,y0),width:w_,height:Math.max(1,Math.abs(y0-y)),rx:2,fill:col}));
     const t=svgEl('text',{x,y:r.roe>=0?Math.min(y,y0)-3:Math.max(y,y0)+10,'text-anchor':'middle',class:'lsRoe'}); t.textContent=r.roe.toFixed(0); svg.appendChild(t);
   });
   // 연도 축

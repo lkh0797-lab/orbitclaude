@@ -8177,7 +8177,7 @@ def value_view(force=False):
                     VAL.update(rows=old["rows"], at=old["at"], n_fell=old.get("n_fell", 0), n_univ=old.get("n_univ", 0))
             except Exception:
                 pass
-        stale = force or not VAL["at"] or time.time() - VAL["at"] > 12 * 3600
+        stale = force or not VAL["at"] or time.time() - VAL["at"] > 26 * 3600     # 매일 06:30 _val_auto_loop 가 미리 센다
         if stale and not VAL["running"] and FIN is not None:
             VAL["running"] = True
             threading.Thread(target=_run_value, daemon=True).start()
@@ -8276,13 +8276,42 @@ def _run_v2(src):
             V2["running"] = False
 
 
+VAL_DAILY_AT = (6, 30)    # 밤 공시 수집(00:10) 뒤 · 장 열기 전 — 전 종목 주가를 받아 1시간 가까이 걸려 미리 돌린다
+
+
+def _val_auto_loop():
+    """저평가 → 저평가V2 를 매일 06:30 미리 센다. 뷰어를 켰을 때 결과가 20시간 넘게 묵었으면 10분 뒤 한 번(색인 · 수출 추적이 먼저)."""
+    time.sleep(600)
+    first = True
+    while True:
+        try:
+            p = os.path.join(VAL_DIR, "_result.json")
+            old = (time.time() - os.path.getmtime(p)) if os.path.exists(p) else 1e9
+            if not first or old > 20 * 3600:
+                value_view(True)
+                while True:                       # 저평가가 끝나야 V2 를 센다
+                    time.sleep(30)
+                    with VAL_LOCK:
+                        if not VAL["running"]:
+                            break
+                value2_view(True)
+        except Exception as e:
+            print("저평가 자동 갱신: %s" % e, flush=True)
+        first = False
+        n = dt.datetime.now()
+        nxt = n.replace(hour=VAL_DAILY_AT[0], minute=VAL_DAILY_AT[1], second=0, microsecond=0)
+        if nxt <= n:
+            nxt += dt.timedelta(days=1)
+        time.sleep(max(60, (nxt - n).total_seconds()))
+
+
 def value2_view(force=False):
     if TECH is None or FIN is None:
         return {"error": "기술 모듈이 없습니다."}
     base = value_view(False)
     src = base.get("rows") or []
     with V2_LOCK:
-        stale = force or not V2["at"] or V2["src_at"] != base.get("at") or time.time() - V2["at"] > 12 * 3600
+        stale = force or not V2["at"] or V2["src_at"] != base.get("at") or time.time() - V2["at"] > 26 * 3600
         if stale and src and not V2["running"]:
             V2.update(running=True, src_at=base.get("at"))
             threading.Thread(target=_run_v2, args=(src,), daemon=True).start()
@@ -8645,6 +8674,7 @@ def main():
     threading.Thread(target=_index, daemon=True).start()
     if "--no-auto" not in args:         # 시험용 포트(8766)는 --no-auto — 갱신을 두 번 띄우지 않게
         threading.Thread(target=_exp_auto_loop, daemon=True).start()
+        threading.Thread(target=_val_auto_loop, daemon=True).start()
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
