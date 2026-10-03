@@ -1606,6 +1606,7 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .dipTbl td.num.strong{font-weight:700}
 .dipTbl .dipWhy{font-size:11px;color:var(--warn);margin-top:2px}
 .dipTbl .dipFwd{font-size:11px;color:var(--dim);margin-top:2px}.dipTbl .dipNote{font-size:10.5px;color:var(--faint);margin-top:1px}
+.dipTbl .dipPerChg{display:block;font-size:10.5px;color:var(--faint)}
 .dipTbl .dipWarn{font-size:11px;color:var(--faint);margin-top:2px}
 .dipTbl td.why{font-size:12px;color:var(--dim);max-width:520px}
 .dipRow{cursor:pointer}.dipRow:hover{background:var(--line2)}
@@ -3661,6 +3662,16 @@ const DIP_GATES=[
    '재점검(2026-10-03, 잔고 1년 비교를 같은 분기·같은 방식으로 고친 뒤): 예전 등급(시장·업종 동반·혼자 더 안 빠짐·안 비쌈)은 후보 안 12개월 초과수익 +0.5%p — 가르지 못했다. 새 등급(빨간불 없음 + 점수 50↑)은 후보 안 +12.4%p [3.1, 21.7], 앞 기간 +11.6 · 뒤 +15.6 · 넓은 표본 +7.1%p [3.0, 11.9]. 새 점수 위⅓ − 아래⅓ +20.8%p [14.4, 33.2](예전 점수 +7.0, 뚜렷하지 않음). 요인을 같은 표본에서 골라 실제보다 좋아 보인다.'],
 ];
 const dipP=v=>v===null||v===undefined?'—':(v>=0?'+':'')+Math.round(v)+'%';
+// 고점 때 PER = 지금 PER ÷ (1 + PER 변화). PER 변화 = (1 + 주가 낙폭) ÷ (1 + 그 사이 이익) − 1
+function dipPerHi(r){ return r.per_now>0&&r.rerate!=null&&r.rerate>-100?r.per_now/(1+r.rerate/100):null; }
+function dipPerCell(r){
+  const td=el('td','num'), hi=dipPerHi(r), x=v=>v>=200?'200↑':v>=10?Math.round(v):v.toFixed(1);
+  td.title='주가 '+dipP(r.dd)+' · 그 사이 이익 '+dipP(r.e_chg)+' → 같은 이익에 매긴 값(PER) '+dipP(r.rerate)+
+    (hi>=200?' — 고점 때 이익이 거의 없어 PER이 매우 높았다(기저효과)':'');
+  if(hi!=null){ td.appendChild(el('span',null,x(hi)+'→'+x(r.per_now)+'배')); td.appendChild(el('small','dipPerChg',' '+dipP(r.rerate))); }
+  else td.appendChild(el('span',r.rerate<0?'neg':'',r.rerate==null?'—':'PER '+dipP(r.rerate)));
+  return td;
+}
 const dipD=s=>s?s.slice(0,4)+'.'+s.slice(4,6)+'.'+s.slice(6,8):'—';
 
 async function viewDip(box, force){
@@ -3767,7 +3778,7 @@ function dipEvidence(bt){
   const ul=el('ul','dipEvdL');
   ['지금 점수(2026-10-03): 업종 제품 가격(수출물가 전년 대비, 높을수록) · 북투빌(높을수록) · 고점 대비 낙폭(깊을수록) · 영업이익률(낮을수록) 각 1, 잔고 − 매출 간극 · 업종 재고 순환 각 0.5. 가중치는 맞추지 않고 단순하게 정했다.',
    '왜 이 항목: 업종 제품 가격이 가장 확실했다(앞뒤 기간 같은 방향). 이익률이 높을 때의 낙폭은 꼭대기에 가까웠다(감점). 선수금은 늘 때보다 줄 때(빨간불)가 더 말해 줬다.',
-   '뺀 항목: 잔고 증가율(2020년 뒤로 방향이 뒤집힘), 값 매김 압축, 이익 증가, PER 자기 역사, 업종 동반 하락 — 어느 쪽으로도 일관된 차이가 없었다.',
+   '뺀 항목: 잔고 증가율(2020년 뒤로 방향이 뒤집힘), PER 하락 폭, 이익 증가, PER 자기 역사, 업종 동반 하락 — 어느 쪽으로도 일관된 차이가 없었다.',
    '위 첫 표의 억울·관찰 묶음은 처음 등급이다(후보 안 +0.5%p — 가르지 못함). 지금 등급은 빨간불 없음 + 새 점수 50↑ — 앞뒤 기간 모두 양(+)인 유일한 규칙. 요인을 같은 표본에서 골랐으니 실제보다 좋아 보인다(도구/억울_새점수.py).',
    '표본이 작다(60곳 안팎, 대부분 2020년 뒤 조선·전력·방산 사이클). 구간이 0에 걸쳐 있으면 우연일 수 있다는 뜻이다.'].forEach(x=>ul.appendChild(el('li',null,x)));
   det.appendChild(ul);
@@ -3781,7 +3792,7 @@ function dipTable(rows,title,sub){
   if(!rows.length){ w.appendChild(el('div','empty','해당 없음')); return w; }
   const t=el('table','tbl dipTbl');
   t.innerHTML='<tr><th>종목</th><th class="r">잔고 1년</th><th class="r">북투빌</th><th class="r">고점 대비</th><th class="r">그 사이 이익</th>'+
-    '<th class="r">값 매김</th><th class="r">시장 · 업종</th><th class="r">PER 자기 역사</th><th class="r">점수</th><th></th></tr>';
+    '<th class="r" title="같은 이익 1원에 시장이 쳐준 값. 고점 때 PER → 지금 PER. 이익은 그대로인데 이 숫자만 줄었다면 하락이 전부 값에서 왔다">PER 고점→지금</th><th class="r">시장 · 업종</th><th class="r">PER 자기 역사</th><th class="r">점수</th><th></th></tr>';
   rows.forEach(r=>{
     const tr=el('tr','dipRow');
     const td=el('td'); const a=el('a',null,r.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(r.code); }; td.appendChild(a);
@@ -3798,7 +3809,7 @@ function dipTable(rows,title,sub){
     tr.appendChild(n(r.btb!=null?r.btb.toFixed(2):'—'));
     tr.appendChild(n(dipP(r.dd),'neg'));
     tr.appendChild(n(dipP(r.e_chg),r.e_chg>=0?'pos':'neg'));
-    tr.appendChild(n(dipP(r.rerate),r.rerate<0?'neg':''));
+    tr.appendChild(dipPerCell(r));
     tr.appendChild(n(dipP(r.m_ret)+' · '+dipP(r.i_ret),r.macro?'mac':''));
     tr.appendChild(n(r.pct!=null?(r.pct>=50?'상위 '+Math.max(1,Math.round(100-r.pct)):'하위 '+Math.round(r.pct))+'%':'…',r.pct!=null&&r.pct<=30?'pos':r.pct>=80?'neg':''));
     tr.appendChild(n(r.score!=null?r.score.toFixed(0):'—','strong'));

@@ -7298,8 +7298,8 @@ def _dip_company(r, trend, idx, ind_of):
         rerate = ((1 + dd / 100) / (1 + e_chg / 100) - 1) * 100
     add(5, "그 사이 이익은 버텼다(-5% 이내)", e_chg is not None and e_chg >= -5,
         "고점 무렵 대비 이익(4분기 합) %s" % ("%+.0f%%" % e_chg if e_chg is not None else "—"))
-    add(5, "값 매김만 줄었다(PER 15%↑ 하락)", rerate is not None and rerate <= -15,
-        "값 매김 %s" % ("%+.0f%%" % rerate if rerate is not None else "—"), hard=False)
+    add(5, "PER만 낮아졌다(고점 때보다 15%↑)", rerate is not None and rerate <= -15,
+        ("주가 %+.0f%% · 이익 %+.0f%% → 같은 이익에 매긴 값(PER) %+.0f%%" % (dd, e_chg, rerate)) if rerate is not None else "—", hard=False)
     m_ret = _grp_ret(idx, "__all__", hi_d, last) if hi_d else None
     ind = ind_of.get(code) or r.get("industry")
     i_ret = _grp_ret(idx, ind, hi_d, last, skip=code) if hi_d else None
