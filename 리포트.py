@@ -25,7 +25,7 @@ STORE_DIR = os.path.join(BASE, ".cache", "리포트")
 STATE_PATH = os.path.join(STORE_DIR, "_state.json")
 SESSION_DIR = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "기업추적")
 SESSION = os.path.join(SESSION_DIR, "telegram")          # Telethon 이 .session 을 붙인다
-RULE_V = 7                                               # 읽는 규칙이 바뀌면 올린다 — 쌓아 둔 원문을 다시 읽는다
+RULE_V = 8                                               # 읽는 규칙이 바뀌면 올린다 — 쌓아 둔 원문을 다시 읽는다
 
 BROKERS = [
     ("미래에셋증권", r"미래에셋"), ("삼성증권", r"삼성증권|SAMSUNG\s*SEC|삼성\s*리서치|\[SAMSUNG\]"), ("한국투자증권", r"한국투자|한투증권|KIS\b"),
@@ -128,7 +128,8 @@ def _parse_card(text, codes, names=None):
         ms = CARD_SEC.match(line)
         if ms:
             k = re.sub(r"\s+", "", ms.group(1))
-            cur = "종목" if k.startswith("종목") else ("핵심" if "핵심" in k or "투자포인트" in k else ("실적" if "실적" in k else ("결론" if "결론" in k else ("링크" if "원문" in k else "기타"))))
+            cur = "종목" if k.startswith("종목") else ("핵심" if "핵심" in k or "투자포인트" in k else ("실적" if "실적" in k else ("결론" if "결론" in k else (
+                "링크" if "원문" in k else ("위험" if "리스크" in k else "기타")))))
             rest = line[ms.end():].strip()
             secs.setdefault(cur, [])
             if rest:
@@ -136,9 +137,10 @@ def _parse_card(text, codes, names=None):
             continue
         if line.strip():
             secs.setdefault(cur, []).append(line.strip())
-    bullets = [re.sub(r"^[-•·*▶]\s*", "", l) for l in secs.get("핵심", []) if len(l) >= 6][:5]
-    est = [l for l in secs.get("실적", []) if re.search(r"\d", l)][:4]
-    concl = " ".join(secs.get("결론", []))[:400]
+    bullets = [re.sub(r"^[-•·*▶]\s*", "", l) for l in secs.get("핵심", []) if len(l) >= 6][:10]
+    est = [l for l in secs.get("실적", []) if re.search(r"\d", l)][:8]
+    concl = " ".join(secs.get("결론", []))[:1500]
+    risks = [re.sub(r"^[-•·*▶]\s*", "", l) for l in secs.get("위험", []) if len(l) >= 6][:6]
     urls = [u for u in URL_RX.findall(t) if "stockinfo7.com/" in u and not u.rstrip("/").endswith("stockinfo7.com")][:2] or URL_RX.findall(t)[:1]
     broker = broker_of(t[:600], "") or broker_of(tag2, "")
     out = []
@@ -164,7 +166,7 @@ def _parse_card(text, codes, names=None):
         change = ("상향" if tp_prev and tp and tp > tp_prev else "하향" if tp_prev and tp and tp < tp_prev else (ch.group(0) if ch else None))
         out.append({"kind": "기업", "code": code, "name": codes[code], "broker": broker, "opinion": ("NR" if opn and re.fullmatch(r"N\.?\s*R\.?", opn.strip(), re.I) else opn) if opn and (opn in ("Buy", "Hold", "Sell", "NR", "Trading Buy") or re.fullmatch(r"N\.?\s*R\.?", opn.strip(), re.I)) else None,
                     "tp": tp, "tp_prev": tp_prev, "change": change, "price_at": px, "title": title[:120], "lines": bullets,
-                    "est": est, "concl": concl, "urls": urls, "sector": None})
+                    "est": est, "concl": concl, "risks": risks, "urls": urls, "sector": None})
     # 투자유망 포트폴리오 — '삼성전자 (005930.KS) | 신규 | 기준가 276,000원' + 아래 '-' 줄
     for m in CARD_PICK.finditer(t):
         code = m.group(2)
@@ -180,6 +182,15 @@ def _parse_card(text, codes, names=None):
         code = names[tag2]
         body = [l.strip() for l in t.split("\n")[1:] if l.strip() and not URL_RX.search(l) and "원문" not in l]
         heads = list(dict.fromkeys(l for l in body if len(l) <= 60 and re.search(r"[:：]", l)))[:4]
+        # 소제목 · 문단 짝(신한생각: … / 3Q26 Preview: … / Valuation & Risk: …) — 앞쪽 목차 줄은 문단이 없어 빠진다
+        sections, i = [], 0
+        while i < len(body):
+            l = body[i]
+            if len(l) <= 60 and re.search(r"[:：]", l) and i + 1 < len(body) and len(body[i + 1]) > 60:
+                sections.append({"h": l, "p": body[i + 1][:900]})
+                i += 2
+                continue
+            i += 1
         tps = [_num(x) for x in TP_RX.findall(t)]
         mv = TP_MOVE.search(t)
         tp_prev, tp = (_num(mv.group(1)), _num(mv.group(2))) if mv else (None, tps[0] if tps else None)
@@ -190,13 +201,13 @@ def _parse_card(text, codes, names=None):
         out.append({"kind": "기업", "code": code, "name": codes[code], "broker": broker, "opinion": _norm_op(op.group(1) or op.group(2)) if op else None,
                     "tp": tp, "tp_prev": tp_prev, "change": (chm.group(1) or chm.group(2)) if chm else None, "price_at": None,
                     "title": re.sub(r"^\s*" + re.escape(tag2) + r"\s*[;:：]\s*", "", title)[:120], "lines": heads or body[:3],
-                    "est": [], "concl": "", "urls": urls, "sector": None})
+                    "est": [], "concl": "", "urls": urls, "sector": None, "sections": sections[:5]})
     if tag in ("시장", "산업", "전략", "투자", "채권", "경제") or not out:
         if tag == "기업" and not out:
             return []                     # 우리 수집 밖 종목의 기업 리포트
         ind = INDUSTRY.search(tag2 + " " + title)
         out.append({"kind": "산업", "code": None, "name": None, "broker": broker, "opinion": None, "tp": None, "tp_prev": None, "change": None,
-                    "price_at": None, "title": (("[" + tag2 + "] ") if tag2 else "") + title[:110], "lines": bullets, "est": est, "concl": concl,
+                    "price_at": None, "title": (("[" + tag2 + "] ") if tag2 else "") + title[:110], "lines": bullets, "est": est, "concl": concl, "risks": risks,
                     "urls": urls, "sector": ind.group(0) if ind else (tag2 or tag)})
     return out
 
@@ -205,8 +216,10 @@ def parse(text, channel_title="", names=None, codes=None):
     """글 하나 → 리포트 항목들. names: {회사 이름: 코드}, codes: {코드: 회사 이름}(수집한 회사).
     → [{kind('기업'|'산업'), code, name, broker, opinion, tp, tp_prev, change, title, lines, urls}]
     정형 카드 글(_parse_card)이면 그 규칙으로, 아니면 아래 일반 규칙으로."""
+    import html as _h
     names = names or {}
     codes = codes or {}
+    text = _h.unescape(text or "")            # 미리보기 HTML 이 한 번 더 감싼 '&rarr;' · '&amp;' 같은 것
     card = _parse_card(text, codes, names)
     if card is not None:
         return card
