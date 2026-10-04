@@ -1881,6 +1881,147 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .btbNotes li i{font-style:normal;text-align:center}.btbNotes li.ok i{color:var(--add)}.btbNotes li.no i{color:var(--warn)}.btbNotes li b{color:var(--ink);font-weight:600}
 .btbTbl{font-size:11px;margin-top:8px}.btbTbl td,.btbTbl th{padding:2px 6px}.btbTbl td.neg{color:var(--del)}.btbTbl td.pos{color:var(--add)}
 .dipPart b{text-align:right;font-variant-numeric:tabular-nums}
+/* 저평가 펼침 — vd 접두사(valDetail) */
+.vdBox{container-type:inline-size;padding:12px 6px 12px;display:flex;flex-direction:column;gap:12px;word-break:keep-all}
+/* 1) 판정 */
+.vdTop{display:flex;flex-direction:column;gap:8px;border-left:3px solid var(--line);padding:2px 0 2px 14px}
+.vdTop.c{border-left-color:var(--add)}.vdTop.x{border-left-color:var(--del)}.vdTop.w{border-left-color:var(--warn)}
+.vdHead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 36px}
+.vdLead{display:flex;flex-direction:column;gap:6px;min-width:0}
+.vdPills{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.vdPill{font:600 11.5px/1 var(--sans);padding:4px 9px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.vdPill.c{color:var(--add);background:var(--add-bg)}.vdPill.x{color:var(--del);background:var(--del-bg)}
+.vdPill.n{color:var(--dim);background:var(--line2)}.vdPill.w{color:var(--warn);background:var(--warn-bg)}
+.vdSay{margin:0;font:700 23px/1.35 'Noto Serif KR',serif;letter-spacing:-.015em;color:var(--ink)}
+.vdSay b{font-weight:900;color:var(--add);font-variant-numeric:tabular-nums}.vdSay.x b{color:var(--del)}.vdSay.n b,.vdSay.w b{color:var(--ink)}
+.vdTag{display:grid;grid-template-columns:36px minmax(130px,190px) 44px 48px;gap:4px 8px;align-items:center;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;padding:0 6px 3px 0}
+.vdTag>em{grid-column:1/-1;font:600 11px var(--sans);font-style:normal;color:var(--faint)}
+.vdTag .tr{position:relative;height:14px}
+.vdTag .tr i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.vdTag .tr i.then{background:var(--faint);opacity:.45}
+.vdTag .tr i.ghost{border:1.5px dashed var(--faint);background:transparent}
+.vdTag .tr i.now.c{background:var(--add)}.vdTag .tr i.now.x{background:var(--del)}.vdTag .tr i.now.n{background:var(--dim)}
+.vdTag b{color:var(--ink);font-weight:700;text-align:right}
+.vdTag strong{font:800 13px var(--sans);font-variant-numeric:tabular-nums}
+.vdTag strong.c{color:var(--add)}.vdTag strong.x{color:var(--del)}.vdTag strong.n{color:var(--dim)}
+.vdTag .na{grid-column:2/-1;color:var(--warn);font-size:12px}
+.vdNote{display:grid;grid-template-columns:14px minmax(0,1fr);gap:4px;font-size:12.5px;line-height:1.55;color:var(--ink);border-radius:6px;padding:5px 10px;max-width:1000px}
+.vdNote i{font-style:normal;font-weight:700}
+.vdNote.w{background:var(--warn-bg)}.vdNote.w i{color:var(--warn)}
+.vdNote.x{background:var(--del-bg)}.vdNote.x i{color:var(--del)}
+.vdNote b{font-weight:700}
+/* 2) 두 그림 */
+.vdGrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:28px;align-items:start}
+@container (max-width:880px){.vdGrid{grid-template-columns:minmax(0,1fr);gap:18px}}
+.vdPane{display:flex;flex-direction:column;gap:5px;min-width:0}
+.vdPH{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 14px}
+.vdPH>em{font:600 11px var(--sans);font-style:normal;color:var(--faint);letter-spacing:.02em}
+.vdPH>span{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.vdThen{font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums}.vdThen b.c{color:var(--add)}.vdThen b.x{color:var(--del)}.vdThen b.n{color:var(--dim)}.vdThen i{font-style:normal;color:var(--faint);margin:0 5px}
+.vdBig{font-size:14px;font-weight:700;line-height:1.5;color:var(--ink);font-variant-numeric:tabular-nums}
+.vdBig.c{color:var(--add)}.vdBig.x{color:var(--del)}.vdBig.n{color:var(--dim)}.vdBig.w{color:var(--warn)}
+.vdLeg{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);align-items:center}
+.vdLeg span{display:inline-flex;align-items:center;gap:5px}
+.vdLeg i{display:inline-block;width:16px;height:0;border-top:2px solid var(--ink)}
+.vdLeg i.e{border-top:2.5px solid var(--syn-1)}
+.vdLeg i.f{height:10px;border:none;background:var(--add);opacity:.3;border-radius:2px}.vdLeg i.f.x{background:var(--del)}
+.vdFig{position:relative;max-width:660px}
+.vdFig svg{display:block;width:100%;height:auto;overflow:visible}
+.vdFig text{font-family:var(--sans);font-variant-numeric:tabular-nums}
+.vdFig .g{stroke:var(--line2);stroke-width:1}.vdFig .g0{stroke:var(--faint);stroke-width:1;stroke-dasharray:3 3}
+.vdFig .ax{font-size:10px;fill:var(--faint)}.vdFig .ax0{font-size:10px;fill:var(--dim);font-weight:600}
+.vdFig .pl{fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linejoin:round}
+.vdFig .el{fill:none;stroke:var(--syn-1);stroke-width:2.6;stroke-linejoin:round}
+.vdFig .ed{fill:var(--syn-1)}
+.vdFig .fc{fill:var(--add);fill-opacity:.22}.vdFig .fx{fill:var(--del);fill-opacity:.22}
+.vdFig .lbE{font-size:12.5px;font-weight:700;fill:var(--syn-1)}.vdFig .lbP{font-size:12.5px;font-weight:700;fill:var(--ink)}
+.vdFig .lbs{font-size:10px;fill:var(--dim)}
+.vdFig .gapT{font-size:13px;font-weight:800}.vdFig .gapS{font-size:10.5px;font-weight:600}
+.vdFig .gapT.c,.vdFig .gapS.c{fill:var(--add)}.vdFig .gapT.x,.vdFig .gapS.x{fill:var(--del)}
+.vdFig .brk{stroke:var(--dim);stroke-width:1;fill:none}
+.vdFig .stepT{font-size:9.5px;fill:var(--faint)}
+.vdFig .gd{stroke:var(--faint);stroke-width:1}
+.vdFig .eb.p{fill:var(--syn-1);opacity:.85}.vdFig .eb.n{fill:var(--del);opacity:.85}
+.vdFig .ebT{font-size:11px;font-weight:700}.vdFig .ebT.p{fill:var(--syn-1)}.vdFig .ebT.n{fill:var(--del)}
+.vdFig .ebK{font-size:11px;font-weight:700;fill:var(--ink)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .vdFig .fc,:root:not([data-theme="light"]) .vdFig .fx{fill-opacity:.32}}
+:root[data-theme="dark"] .vdFig .fc,:root[data-theme="dark"] .vdFig .fx{fill-opacity:.32}
+.vdTip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:11.5px;line-height:1.5;
+  color:var(--ink);box-shadow:0 6px 20px rgba(0,0,0,.12);white-space:nowrap;font-variant-numeric:tabular-nums;z-index:3}
+.vdTip b{font-weight:700}.vdTip small{color:var(--dim);font-size:11px}
+.vdHow{font-size:10.5px;color:var(--faint);line-height:1.5}
+.vdGauge{display:block;width:100%;max-width:470px;height:auto;overflow:visible;margin-top:4px}
+.vdGauge text{font-family:var(--sans);font-variant-numeric:tabular-nums}
+.vdGauge .dot{fill:var(--faint);opacity:.6}.vdGauge .dot.out{fill:none;stroke:var(--faint);stroke-width:1.2;opacity:.9}
+.vdGauge .z0{fill:var(--add);opacity:.26}.vdGauge .z1{fill:var(--faint);opacity:.2}.vdGauge .z2{fill:var(--del);opacity:.26}.vdGauge .zN{fill:var(--faint);opacity:.16}
+.vdGauge .zl{font-size:11px;font-weight:600}.vdGauge .zl.z0{fill:var(--add);opacity:1}.vdGauge .zl.z1{fill:var(--dim);opacity:1}.vdGauge .zl.z2{fill:var(--del);opacity:1}.vdGauge .zl.zN{fill:var(--faint);opacity:1;font-weight:400}
+.vdGauge .med{stroke:var(--ink);stroke-width:1;stroke-dasharray:3 3;opacity:.5}.vdGauge .medT{font-size:11px;fill:var(--dim)}
+.vdGauge .edge{font-size:9.5px;fill:var(--faint)}
+.vdGauge .then{fill:var(--panel);stroke:var(--dim);stroke-width:2}
+.vdGauge .now{stroke:var(--panel);stroke-width:2}
+.vdGauge .now.c{fill:var(--add)}.vdGauge .now.x{fill:var(--del)}.vdGauge .now.n{fill:var(--ink)}
+.vdGauge .arr{fill:none;stroke-width:2.6;stroke-linecap:round}
+.vdGauge .arr.c{stroke:var(--add)}.vdGauge .arr.x{stroke:var(--del)}.vdGauge .arr.n,.vdGauge .arr.w{stroke:var(--dim)}
+.vdGauge .ah.c{fill:var(--add)}.vdGauge .ah.x{fill:var(--del)}.vdGauge .ah.n,.vdGauge .ah.w{fill:var(--dim)}
+.vdGauge .thenT{font-size:12px;fill:var(--dim)}.vdGauge .nowT{font-size:13.5px;font-weight:700;fill:var(--ink)}
+.vdGauge .nowT.c{fill:var(--add)}.vdGauge .nowT.x{fill:var(--del)}
+.vdGauge .lead{stroke:var(--faint);stroke-width:1;opacity:.7}
+@container (max-width:880px){.vdGauge{max-width:520px}}
+/* 3) 관문 */
+.vdGates{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;padding:8px 0 0;border-top:1px solid var(--line2)}
+.vdGates>em{font:600 11px var(--sans);font-style:normal;color:var(--faint)}
+.vdGate{display:inline-flex;gap:5px;align-items:baseline;white-space:nowrap}
+.vdGate i{font-style:normal;font-weight:700}.vdGate.ok i{color:var(--add)}.vdGate.no i{color:var(--del)}
+.vdGate b{font-weight:600}.vdGate span{color:var(--dim);font-variant-numeric:tabular-nums}
+.vdGate.no{white-space:normal}.vdGate.no span{color:var(--del)}
+.vdTier{font-weight:700;padding:2px 8px;border-radius:5px}.vdTier.ok{color:var(--add);background:var(--add-bg)}.vdTier.no{color:var(--warn);background:var(--warn-bg)}
+.vdRef{color:var(--faint);font-size:11px;font-variant-numeric:tabular-nums}
+/* 4) 점수 풀이 */
+.vdScore{display:flex;flex-direction:column;gap:4px;padding-top:10px;border-top:1px solid var(--line2)}
+.vdSH{display:flex;gap:4px 10px;align-items:baseline;flex-wrap:wrap}
+.vdSH b{font:700 15px 'Noto Serif KR',serif;color:var(--ink)}.vdSH b span{font-variant-numeric:tabular-nums}
+.vdSH>span{font-size:12.5px;color:var(--ink);font-weight:600}
+.vdSP{margin:0;font-size:11.5px;color:var(--dim);line-height:1.55;font-variant-numeric:tabular-nums}
+.vdSP b{color:var(--ink);font-weight:600}.vdSP span{color:var(--faint)}
+.vdRows{display:grid;grid-template-columns:minmax(124px,150px) 60px minmax(140px,220px) 50px 82px minmax(0,1fr);column-gap:12px;row-gap:4px;align-items:center;font-size:12.5px;margin-top:4px}
+.vdRows .h{font-size:10.5px;color:var(--faint);font-weight:600;padding-bottom:2px;border-bottom:1px solid var(--line2)}
+.vdRows .h.tr{display:flex;justify-content:space-between}
+.vdRows .h.r{text-align:right}
+.vdRows .k{color:var(--ink);font-weight:600;white-space:nowrap}.vdRows .k small{font-weight:400;color:var(--faint);font-size:10.5px;margin-left:4px}
+.vdRows .v{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.vdRows .rk{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);font-weight:700;white-space:nowrap}
+.vdRows .pt{display:flex;justify-content:flex-end;align-items:center;gap:6px;font-weight:700;font-variant-numeric:tabular-nums}
+.vdRows .pt i{display:block;height:8px;border-radius:2px}
+.vdRows .pt.c{color:var(--add)}.vdRows .pt.c i{background:var(--add)}.vdRows .pt.x{color:var(--del)}.vdRows .pt.x i{background:var(--del)}
+.vdRows .why{color:var(--dim);font-size:11.5px;line-height:1.45}.vdRows .why.x{color:var(--del)}
+.vdTr{position:relative;height:14px}
+.vdTr::before{content:'';position:absolute;left:0;right:0;top:6px;height:2px;background:var(--line2);border-radius:1px}
+.vdTr::after{content:'';position:absolute;left:50%;top:2px;height:10px;width:1px;background:var(--faint)}
+.vdTr i{position:absolute;top:5px;height:4px;border-radius:2px}
+.vdTr b{position:absolute;top:2px;width:10px;height:10px;border-radius:50%;margin-left:-5px;border:2px solid var(--panel)}
+.vdTr.c i,.vdTr.c b{background:var(--add)}.vdTr.x i,.vdTr.x b{background:var(--del)}
+.vdSum{grid-column:1/-1;display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--dim);border-top:1px solid var(--line2);padding-top:5px;font-variant-numeric:tabular-nums}
+.vdSum b{color:var(--ink)}
+@container (max-width:860px){
+  .vdRows{grid-template-columns:minmax(140px,170px) 56px minmax(100px,1fr) 48px 78px}
+  .vdRows .why{grid-column:1/-1;padding:0 0 4px 0;margin-top:-3px}
+  .vdRows .h.w{display:none}
+}
+/* 표 줄 */
+.dipTbl .vdChg{display:block;font:600 10.5px/1.4 var(--sans);white-space:nowrap}
+.dipTbl .vdChg.c{color:var(--add)}.dipTbl .vdChg.x{color:var(--del)}.dipTbl .vdChg.n{color:var(--faint);font-weight:400}
+.dipTbl .vdChg.w{color:var(--warn);font-weight:400}
+.dipTbl td.vdHc{white-space:nowrap}
+.dipTbl .vdMini{display:inline-flex;align-items:center;gap:6px;font:600 11.5px/1.4 var(--sans)}
+.dipTbl .vdMini.c{color:var(--add)}.dipTbl .vdMini.x{color:var(--del)}.dipTbl .vdMini.n{color:var(--dim)}.dipTbl .vdMini.w{color:var(--faint);font-weight:400}
+.vdMini u{position:relative;display:inline-flex;width:40px;height:6px;text-decoration:none}
+.vdMini u s{display:block;height:100%;text-decoration:none}
+.vdMini u s:nth-child(1){width:35%;background:var(--add);opacity:.4;border-radius:3px 0 0 3px}
+.vdMini u s:nth-child(2){width:30%;background:var(--faint);opacity:.35}
+.vdMini u s:nth-child(3){width:35%;background:var(--del);opacity:.4;border-radius:0 3px 3px 0}
+.vdMini u b{position:absolute;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;border:1.5px solid var(--panel)}
+.vdMini.c u b{background:var(--add)}.vdMini.x u b{background:var(--del)}.vdMini.n u b{background:var(--dim)}
+.dipTbl td.vdHc small{display:block;font:10.5px/1.4 var(--sans);color:var(--faint)}
 .dipE.x{color:var(--del)}.dipE.w{color:var(--warn)}.dipE.g{color:var(--add)}
 .dipDrop{margin:4px 0 10px}
 .dipDrop>summary{cursor:pointer;font-size:12.5px;color:var(--accent);padding:6px 0}
@@ -4000,6 +4141,7 @@ async function viewValue(p, force){
   [['수집한 회사',d.n_univ],['고점 '+(d.rules?d.rules.dd:-25)+'%↓',d.n_fell],['① 흑자 · ② 이익 지킴',rows.length],['④ 저평가',d.running?undefined:A.length]]
     .forEach(([k,v],i)=>{ if(i) fn.appendChild(el('i',null,'→')); const x=el('div'); x.appendChild(el('b',null,v===undefined||v===null?'—':String(v))); x.appendChild(el('span',null,k)); fn.appendChild(x); });
   body.appendChild(fn);
+  S.valBt=d.bt||null;                       // 펼침 점수 머리말의 검증 숫자(valBtNums)
   if(d.bt) body.appendChild(valEvidence(d.bt));
   body.appendChild(valTable(A,'저평가','이익은 지켰고, 주가는 25% 넘게 빠졌고, 빨간불이 없고, 점수 50↑ — 같은 이익에 시장이 덜 쳐주는 곳'));
   if(B.length) body.appendChild(valTable(B,'관찰','관문은 넘었지만 빨간불이 있거나 점수가 50 아래 — 싸진 데 이유가 보이는 곳'));
@@ -4271,80 +4413,566 @@ function valEvidence(bt){
   return det;
 }
 
-function valTable(rows, title, sub){
-  const w=el('div','dipBlock');
-  const h=el('div','dipBH'); h.appendChild(el('b',null,title+' '+rows.length+'곳')); h.appendChild(el('span',null,sub)); w.appendChild(h);
-  if(!rows.length){ w.appendChild(el('div','empty','없음')); return w; }
-  const t=el('table','tbl dipTbl');
-  t.innerHTML='<tr><th>종목</th><th class="r">고점 대비</th><th class="r">주가 1년</th><th class="r">순이익 1년</th>'+
-    '<th class="r" title="같은 이익 1원에 시장이 쳐준 값. 1년 전 PER → 지금 PER">PER 1년 전→지금</th><th class="r">PER 자기 역사</th><th class="r">ROE</th><th class="r">영업이익률</th><th class="r">점수</th><th></th></tr>';
-  const P=v=>v==null?'—':(v>=0?'+':'')+Math.round(v)+'%';
-  const X=v=>v>=200?'200↑':v>=10?Math.round(v):v.toFixed(1);
-  S.valOpen=S.valOpen||new Set();
-  const LIM=30, t2=rows.length>LIM?el('table','tbl dipTbl'):null;
-  if(t2) t2.innerHTML=t.innerHTML;
-  rows.forEach((r,ri)=>{
-    const tb=ri<LIM?t:t2;
-    const tr=el('tr','dipRow');
-    const td=el('td'); const a=el('a',null,r.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(r.code); }; td.appendChild(a);
-    td.appendChild(el('small',null,' '+r.code+' · '+(r.industry||'')+(r.cap_rank?' · 시총 '+r.cap_rank+'위':'')));
-    td.appendChild(el('div','dipFwd','고점 '+won(r.hi)+'('+r.hi_d.slice(2,4)+'.'+r.hi_d.slice(4,6)+') → 지금 '+won(r.price)+' · 최근 3개월 '+P(r.ret3m)+
-      (r.mp_yoy!=null?' · 업종 가격 '+P(r.mp_yoy):'')+(r.cyc!=null?' · 재고 순환 '+(r.cyc>=0?'+':'')+Math.round(r.cyc)+'%p':'')));
-    (r.tier_why||[]).forEach(x=>td.appendChild(el('div','dipWhy',x)));
+// 저평가 펼침(2026-10-05) — 판정 한 문장 · 1년 전과(가위 그림: 주가 vs 주당순이익) · 자기 역사와(분기 PER 온도계) · 관문 한 줄 ·
+// 점수 풀이(과거 후보 100곳 중 몇 등, 과거엔 왜 그 쪽이 좋았나). 시안 셋을 실제 화면에 찍어 견주고 합쳤다(README 저평가 펼침).
+// ---------- 도우미 ----------
+const valPct = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(Math.round(v)) + '%';
+const valMul = v => v == null ? '—' : v >= 10 ? Math.round(v).toLocaleString('ko-KR') : v.toFixed(1);          // PER 배수 · 이익 1원 값
+const valWon = v => (v < 0 ? '−' : '') + Math.abs(Math.round(v)).toLocaleString('ko-KR');
+const valChg = c => c >= 100 ? (1 + c / 100).toFixed(1) + '배' : Math.round(c) + '%';                          // 비싸진 폭
+const valT = s => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8));
+const valYmd = t => { const d = new Date(t); return String(d.getUTCFullYear()).slice(2) + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') + '.' + String(d.getUTCDate()).padStart(2, '0'); };
+const valLab = (lab, k) => { let y = +lab.slice(0, 4), q = +lab.slice(5) + k; while (q < 1) { q += 4; y--; } while (q > 4) { q -= 4; y++; } return y + 'Q' + q; };
+// 분기 실적이 시장에 알려지는 무렵(근사: 분기 끝 +45일, 4분기는 사업보고서 +90일) — 그때 이익 선이 계단처럼 바뀐다
+const valFile = L => { const y = +L.slice(0, 4), q = +L.slice(5); const md = { 1: [4, 15], 2: [7, 14], 3: [10, 14], 4: [2, 31] }[q]; return Date.UTC(q === 4 ? y + 1 : y, md[0], md[1]); };
+// 자기 역사 말 — per_pct(지금 PER 이 기록 중 몇 %보다 높거나 같은가). 띠 경계 35/65 와 같은 기준.
+const valHistWord = p => p == null ? null : p <= 10 ? '바닥 근처' : p <= 35 ? '싼 편' : p < 65 ? '중간' : p < 90 ? '비싼 편' : '꼭대기 근처';
+const valHistCls = p => p == null ? 'n' : p <= 35 ? 'c' : p >= 65 ? 'x' : 'n';
+const valTitle = (e, txt) => { const t = svgEl('title', {}); t.textContent = txt; e.appendChild(t); return e; };
+// 점수 항목 — [이름, 이 회사 값]. 서버 score_parts 에 새 key 가 오면 서버 label 로 떨어진다.
+const VAL_K = {
+  mp_yoy: ['업종 제품 값 1년', r => valPct(r.mp_yoy)],
+  px_yoy: ['주가 1년', r => valPct(r.px_yoy)],
+  debt_eq: ['부채비율', r => r.debt_eq == null ? '—' : Math.round(r.debt_eq) + '%'],
+  rev_yoy: ['매출 1년', r => valPct(r.rev_yoy)],
+  ret1m: ['최근 1개월 주가', r => valPct(r.ret1m)],
+  per_pct: ['PER 자기 역사', r => r.per_pct == null ? '—' : (valHistWord(r.per_pct) || '').replace(' 근처', '')],
+};
+
+// 1년 전 · 지금 · 2년 전 4분기 합 EPS — 1년 전이 0 이하면 '몇 % 싸졌다'가 성립하지 않는다(서버 comp 는 이 경우 부호가 뒤집혀 나온다)
+function valBase(r) {
+  const eq = {}; (r.eps_q || []).forEach(([l, v]) => { eq[l] = v; });
+  const L0 = r.lab ? valLab(r.lab, -4) : null;
+  const e0 = L0 ? eq[L0] : null, e1 = r.lab ? eq[r.lab] : null, e2 = r.lab ? eq[valLab(r.lab, -8)] : null;
+  return { eq, L0, e0, e1, e2, neg: e0 != null && e0 <= 0 };
+}
+// 자기 역사 — 분기 말 PER 기록(per_pct 와 같은 창)에서 지금 이하였던 분기 수(≤ 로 세면 서버 per_pct 와 맞다)
+function valHist(r) {
+  const h = (r.per_hist || []).filter(x => x && x[1] > 0), n = h.length;
+  const k = r.per != null ? h.filter(x => x[1] <= r.per).length : null;
+  return { h, n, k, ok: r.per_pct != null && n >= 8, y0: n ? h[0][0].slice(0, 4) : '', y1: n ? h[n - 1][0].slice(0, 4) : '' };
+}
+// 1년 가위 그림 재료 — 주가(주 단위)와 그때 알던 4분기 합 EPS, 둘 다 1년 전 = 100
+function valSeries(r, B) {
+  if (B.neg) return { why: 'neg' };
+  if (!r.px_w || r.px_w.length < 4 || r.px_yoy == null || !r.price || !(B.e0 > 0) || B.e1 == null) return { why: 'data' };
+  const end = valT(r.price_d), start = end - 365 * 864e5;
+  const base = r.price / (1 + r.px_yoy / 100);          // 1년 전 그날 주가(주가 1년 % 와 같은 값)
+  const P = [[start, 100, base]];
+  r.px_w.forEach(([d, p]) => { const t = valT(d); if (t > start && t < end) P.push([t, p / base * 100, p]); });
+  P.push([end, r.price / base * 100, r.price]);
+  const E = [[start, 100, B.e0, B.L0]];
+  for (let k = -3; k <= 0; k++) { const L = valLab(r.lab, k); if (B.eq[L] == null) continue;
+    const t = Math.min(Math.max(valFile(L), start), end); E.push([t, B.eq[L] / B.e0 * 100, B.eq[L], L]); }
+  return { start, end, base, P, E };
+}
+// 1년 사이 주가가 이익보다 5% 넘게 아래(쌈) · 위(비쌈)로 간 주가 몇 번 있었나 — 범례에 반대 색 구간을 넣을지
+function valMixed(D) {
+  const o = { c: 0, x: 0 };
+  D.P.forEach(([t, v]) => { let e = D.E[0]; D.E.forEach(q => { if (q[0] <= t) e = q; }); const g = v / e[1]; if (g < 0.95) o.c++; if (g > 1.05) o.x++; });
+  return { c: o.c >= 2, x: o.x >= 2 };
+}
+// 판정 — 1년 비교(comp = 1년 새 PER 변화 %)
+function valVerdict(r, B) {
+  if (B.neg) return { cls: 'w', pill: '1년 비교 못 함', say: ['1년 전엔 이익이 적자라 같은 잣대로 견줄 수 없다'] };
+  if (r.comp == null || r.per == null || r.per_then == null) return { cls: 'w', pill: '1년 비교 못 함', say: ['1년 전 값과 견줄 재료가 모자란다'] };
+  const c = r.comp;
+  if (c <= -10) return { cls: 'c', pill: '1년 전보다 싸졌다', say: ['같은 이익인데 1년 전보다 ', Math.round(-c) + '%', ' 싸게 팔린다'] };
+  if (c >= 10) return { cls: 'x', pill: '1년 전보다 비싸졌다', say: ['같은 이익인데 1년 전보다 ', valChg(c), ' 비싸게 팔린다'] };
+  return { cls: 'n', pill: '1년 전과 비슷', say: ['같은 이익에 1년 전과 ', '비슷한 값', '이 매겨져 있다'] };
+}
+// 출발점이 부풀었나 — 1년 전 PER 이 자기 보통의 2배를 넘었거나, 1년 전 이익이 그 1년 전보다 크게 꺼져 있었다
+function valInflate(r, B, V) {
+  if (V.cls !== 'c') return null;
+  const hiThen = r.per_then != null && r.per_med != null && r.per_then > 2 * r.per_med;
+  const dip = B.e2 > 0 && B.e0 > 0 && B.e0 < B.e2 * 0.6;
+  if (!hiThen && !dip) return null;
+  const pill = dip ? '1년 전이 이익 바닥 — 싸진 폭이 부풀었다' : '1년 전이 비쌌던 때 — 싸진 폭이 부풀었다';
+  const why = dip ? '이익이 꺼졌던 때(주당 ' + valWon(B.e0) + '원, 그 1년 전 ' + valWon(B.e2) + '원)라' : '출발점이 비쌌던 때라';
+  const text = hiThen
+    ? ['1년 전 PER ' + valMul(r.per_then) + '배는 자기 보통(' + valMul(r.per_med) + '배)의 ', (r.per_then / r.per_med).toFixed(1) + '배', '였다 — ' + why + ' 1년 비교는 싸진 폭을 부풀린다. 자기 역사 그림을 함께 본다.']
+    : ['1년 전 이익이 그 1년 전보다 크게 꺼져 있었다(주당 ' + valWon(B.e2) + ' → ' + valWon(B.e0) + '원) — 1년 비교는 싸진 폭을 부풀린다.'];
+  return { pill, text };
+}
+// 등급 결론 문장
+function valTierWhy(r) {
+  const red = r.red || [];
+  if (r.score == null) return '점수 없음 → ' + r.tier;
+  if (r.score >= 50) return red.length ? '50 넘었지만 빨간불 → ' + r.tier : '50 넘음 · 빨간불 없음 → ' + r.tier;
+  return '50 못 미침 → ' + r.tier;
+}
+// 과거 검증 숫자 — 실제 뷰어는 viewValue 에서 S.valBt = d.bt. 없으면 서버 머리 주석 값.
+function valBtNums() {
+  const bt = (typeof S !== 'undefined' && S.valBt) || {};
+  const ev = (bt.eval || {})['후보'] || {}, sc = ev['점수'] || {}, tr = ev['빨간불 · 부채 200%↑ 없음 · 점수 50↑'] || {};
+  return { n: sc.n || 1966, firms: sc.firms || 498, spread: sc.spread != null ? sc.spread : 13.6, ci: sc.ci || [9.3, 17.7], tier: tr.diff != null ? tr.diff : 10.0 };
+}
+
+// ---------- 1) 판정 ----------
+function valTag(r, V) {
+  const t = el('div', 'vdTag');
+  t.appendChild(el('em', null, '이익 1원에 치르는 값(PER)'));
+  const mx = Math.max(r.per_then, r.per);
+  const row = (lab, v, kind, tail) => {
+    t.appendChild(el('span', null, lab));
+    const tr = el('div', 'tr');
+    if (kind !== 'then' && v < r.per_then) { const g = el('i', 'ghost'); g.style.width = (r.per_then / mx * 100) + '%'; tr.appendChild(g); }
+    const i = el('i', kind); i.style.width = Math.max(1.5, v / mx * 100) + '%'; tr.appendChild(i);
+    t.appendChild(tr); t.appendChild(el('b', null, valMul(v) + '원')); t.appendChild(tail || el('span'));
+  };
+  row('1년 전', r.per_then, 'then');
+  row('지금', r.per, 'now ' + V.cls, el('strong', V.cls, V.cls === 'c' ? '−' + Math.round(-r.comp) + '%' : V.cls === 'x' ? valChg(r.comp) : '비슷'));
+  t.title = 'PER ' + valMul(r.per_then) + '배 → ' + valMul(r.per) + '배. 주가 1년 ' + valPct(r.px_yoy) + ' · 순이익 1년 ' + valPct(r.ni_yoy);
+  return t;
+}
+function valTop(r, B, V, F) {
+  const top = el('div', 'vdTop ' + V.cls);
+  const head = el('div', 'vdHead'), lead = el('div', 'vdLead');
+  const pills = el('div', 'vdPills');
+  pills.appendChild(el('span', 'vdPill ' + V.cls, V.pill));
+  const hw = valHistWord(r.per_pct);
+  pills.appendChild(el('span', 'vdPill ' + (hw ? valHistCls(r.per_pct) : 'w'), hw ? '자기 역사로는 ' + hw : '자기 역사 기록 짧음'));
+  if (F) pills.appendChild(el('span', 'vdPill w', F.pill));
+  lead.appendChild(pills);
+  const say = el('p', 'vdSay ' + V.cls);
+  V.say.forEach((s, i) => { if (i === 1) say.appendChild(el('b', null, s)); else say.appendChild(document.createTextNode(s)); });
+  lead.appendChild(say);
+  head.appendChild(lead);
+  if (V.cls !== 'w') head.appendChild(valTag(r, V));
+  else if (r.per != null) {   // 1년 비교를 못 할 때도 같은 자리에 지금 값만 — 1년 전 칸은 왜 비었는지 적는다
+    const t = el('div', 'vdTag'); t.appendChild(el('em', null, '이익 1원에 치르는 값(PER)'));
+    t.appendChild(el('span', null, '1년 전')); t.appendChild(el('span', 'na', B.neg ? '이익이 적자(주당 ' + valWon(B.e0) + '원)라 값이 없다' : '견줄 재료가 모자란다'));
+    t.appendChild(el('span', null, '지금')); t.appendChild(el('span')); t.appendChild(el('b', null, valMul(r.per) + '원')); t.appendChild(el('span'));
+    head.appendChild(t);
+  }
+  top.appendChild(head);
+  const note = (cls, parts) => { const d = el('div', 'vdNote ' + cls); d.appendChild(el('i', null, cls === 'x' ? '✗' : '△'));
+    const m = el('div'); parts.forEach((s, i) => { if (i % 2) m.appendChild(el('b', null, s)); else m.appendChild(document.createTextNode(s)); }); d.appendChild(m); top.appendChild(d); };
+  const red = r.red || [];
+  if (red.length) note('x', ['등급은 관찰이다 — 빨간불: ', red.join(' · '), V.cls === 'c' ? '. 싸진 데 이유가 보인다.' : '.']);
+  else if (r.tier !== '저평가') note('x', ['등급은 관찰이다 — ', r.score == null ? '점수를 낼 항목이 모자란다' : '점수가 50 아래다', '.']);
+  if (F) note('w', F.text);
+  if (r.tier === '저평가' && (V.cls === 'x' || (r.per_pct != null && r.per_pct >= 65))) {
+    const top2 = (r.score_parts || []).filter(x => x.pts > 0).sort((a, b) => b.pts - a.pts).slice(0, 2)
+      .map(x => (VAL_K[x.key] || [x.label])[0] + (x.key === 'per_pct' && r.per_pct >= 65 ? '(비싼 쪽이라 받은 점수)' : ''));
+    note('x', ['등급은 "저평가"지만 ', V.cls === 'x' ? '값으로는 싸지 않다' : '자기 역사로는 아직 비싼 편이다',
+      '. "저평가"는 후보(흑자 · 순이익 1년 −5% 이내 · 고점 −25%↓) 가운데 빨간불이 없고 점수 50↑인 곳이다 — 이 회사 점수는 주로 ' + top2.join(' · ') + '에서 나왔다.']);
+  }
+  return top;
+}
+
+// ---------- 2-1) 1년 전과 — 가위 그림 ----------
+function valScissors(r, D, cls) {
+  const W = 640, H = 196, L = 52, R = 132, T = 14, B = 26;
+  const vals = D.P.map(x => x[1]).concat(D.E.map(x => x[1]), [100]).filter(v => v > 0);
+  let lo = Math.log(Math.min(...vals)), hi = Math.log(Math.max(...vals));
+  const pad = (hi - lo) * 0.1 + 0.04; lo -= pad; hi += pad;
+  const X = t => L + (t - D.start) / (D.end - D.start) * (W - L - R);
+  const Y = v => T + (hi - Math.log(Math.max(v, Math.exp(lo)))) / (hi - lo) * (H - T - B);
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '1년 전을 같은 출발점으로 맞춘 주가와 주당순이익' });
+  // 세로 눈금 — 1년 전 = 100 기준 배수. 우선순위대로 넣되 20px 안쪽으로 붙는 눈금은 버린다
+  const ticks = [];
+  [100, 50, 200, 25, 400, 800, 12.5, 1600, 75, 150, 125, 300, 6.25, 3200].forEach(v => {
+    if (Math.log(v) < lo || Math.log(v) > hi) return;
+    if (ticks.every(u => Math.abs(Y(u) - Y(v)) >= 20)) ticks.push(v);
+  });
+  const fmt = v => v === 100 ? '1년 전' : v < 100 ? '−' + Math.round(100 - v) + '%' : v < 200 ? '+' + Math.round(v - 100) + '%' : (v / 100) + '배';
+  ticks.forEach(v => {
+    svg.appendChild(svgEl('line', { x1: L, x2: W - R, y1: Y(v), y2: Y(v), class: v === 100 ? 'g0' : 'g' }));
+    const t = svgEl('text', { x: L - 6, y: Y(v) + 3.5, 'text-anchor': 'end', class: v === 100 ? 'ax0' : 'ax' }); t.textContent = fmt(v); svg.appendChild(t);
+  });
+  // 가로 눈금 — 분기 첫날
+  const sd = new Date(D.start);
+  for (let y = sd.getUTCFullYear(); y <= sd.getUTCFullYear() + 1; y++) [0, 3, 6, 9].forEach(m => {
+    const t = Date.UTC(y, m, 1); if (t <= D.start || t >= D.end) return; const x = X(t);
+    svg.appendChild(svgEl('line', { x1: x, x2: x, y1: H - B, y2: H - B + 4, class: 'g' }));
+    if (x - L < 44 || W - R - x < 30) return;
+    const tx = svgEl('text', { x, y: H - B + 15, 'text-anchor': 'middle', class: 'ax' }); tx.textContent = String(y).slice(2) + '.' + String(m + 1).padStart(2, '0'); svg.appendChild(tx);
+  });
+  const t0 = svgEl('text', { x: L, y: H - B + 15, 'text-anchor': 'start', class: 'ax0' }); t0.textContent = '1년 전 ' + valYmd(D.start).slice(0, 5); svg.appendChild(t0);
+  const t1 = svgEl('text', { x: W - R, y: H - B + 15, 'text-anchor': 'end', class: 'ax0' }); t1.textContent = '지금'; svg.appendChild(t1);
+  // 선 좌표
+  const pPts = D.P.map(([t, v]) => [X(t), Y(v)]);
+  const ePts = []; D.E.forEach(([t, v], i) => { const x = X(t), y = Y(v); if (i) ePts.push([x, ePts[ePts.length - 1][1]]); ePts.push([x, y]); });
+  ePts.push([X(D.end), ePts[ePts.length - 1][1]]);
+  const path = a => a.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  // 틈 칠하기 — 이익 선 아래(주가가 이익보다 덜 오름 = 싸짐)는 초록, 위는 빨강
+  const id = 'vd' + r.code + Math.random().toString(36).slice(2, 7);
+  const defs = svgEl('defs', {});
+  const cpC = svgEl('clipPath', { id: id + 'c' }); cpC.appendChild(svgEl('path', { d: path(ePts) + `L${X(D.end)} ${H}L${L} ${H}Z` }));
+  const cpX = svgEl('clipPath', { id: id + 'x' }); cpX.appendChild(svgEl('path', { d: path(ePts) + `L${X(D.end)} 0L${L} 0Z` }));
+  defs.appendChild(cpC); defs.appendChild(cpX); svg.appendChild(defs);
+  const band = path(pPts) + path(ePts.slice().reverse()).replace(/^M/, 'L') + 'Z';
+  svg.appendChild(svgEl('path', { d: band, class: 'fc', 'clip-path': `url(#${id}c)` }));
+  svg.appendChild(svgEl('path', { d: band, class: 'fx', 'clip-path': `url(#${id}x)` }));
+  svg.appendChild(svgEl('path', { d: path(ePts), class: 'el' }));
+  svg.appendChild(svgEl('path', { d: path(pPts), class: 'pl' }));
+  // 오른쪽 끝 — 두 선의 끝값과 틈
+  const xe = X(D.end), yP = Y(D.P[D.P.length - 1][1]), yE = Y(D.E[D.E.length - 1][1]);
+  svg.appendChild(svgEl('path', { d: `M${xe + 4} ${yP}H${xe + 9}V${yE}H${xe + 4}`, class: 'brk' }));
+  let yu = Math.min(yP, yE), yl = Math.max(yP, yE);
+  if (yl - yu < 30) { const m = (yu + yl) / 2; yu = m - 15; yl = m + 15; }
+  const lab = (y, main, sub, cl, above) => {
+    const a = svgEl('text', { x: xe + 15, y: y + 4.5, class: cl }); a.textContent = main; svg.appendChild(a);
+    const b = svgEl('text', { x: xe + 15, y: above ? y - 9 : y + 17, class: 'lbs' }); b.textContent = sub; svg.appendChild(b);
+  };
+  const eMain = '주당순이익 ' + valPct(r.eps_yoy), eSub = valWon(D.E[0][2]) + ' → ' + valWon(D.E[D.E.length - 1][2]) + '원';
+  const pMain = '주가 ' + valPct(r.px_yoy), pSub = valWon(D.base) + ' → ' + valWon(r.price) + '원';
+  if (yE < yP) { lab(yu, eMain, eSub, 'lbE', true); lab(yl, pMain, pSub, 'lbP', false); }
+  else { lab(yu, pMain, pSub, 'lbP', true); lab(yl, eMain, eSub, 'lbE', false); }
+  // 틈 이름표(틈이 넓을 때만)
+  const taken = [];
+  if (Math.abs(yP - yE) >= 42 && (cls === 'c' || cls === 'x')) {
+    const ym = (yP + yE) / 2;
+    const a = svgEl('text', { x: xe - 8, y: ym - 2, 'text-anchor': 'end', class: 'gapT ' + cls }); a.textContent = cls === 'c' ? '싸진 몫' : '비싸진 몫'; svg.appendChild(a);
+    const b = svgEl('text', { x: xe - 8, y: ym + 12, 'text-anchor': 'end', class: 'gapS ' + cls });
+    b.textContent = 'PER ' + valMul(r.per_then) + '→' + valMul(r.per) + '배'; svg.appendChild(b);
+    taken.push([xe - 82, ym - 15, xe, ym + 16]);
+  }
+  // 실적 계단 표시 — 이름표는 주가 선 · 1년 전 점선 · 이익 선 · 다른 이름표와 겹치지 않는 자리에만 단다(자리가 없으면 뺀다)
+  const hits = (pts, rc) => { for (let i = 1; i < pts.length; i++) { let [x1, y1] = pts[i - 1], [x2, y2] = pts[i];
+      if (x2 < x1) { [x1, x2] = [x2, x1]; [y1, y2] = [y2, y1]; }
+      if (x2 < rc[0] || x1 > rc[2]) continue;
+      let ya = y1, yb = y2;
+      if (x2 - x1 > 1e-6) { const xa = Math.max(x1, rc[0]), xb = Math.min(x2, rc[2]); ya = y1 + (y2 - y1) * (xa - x1) / (x2 - x1); yb = y1 + (y2 - y1) * (xb - x1) / (x2 - x1); }
+      if (Math.max(ya, yb) >= rc[1] && Math.min(ya, yb) <= rc[3]) return true; }
+    return false; };
+  const box = (a, b) => !(a[2] < b[0] || a[0] > b[2] || a[3] < b[1] || a[1] > b[3]);
+  const y100 = [[L, Y(100)], [W - R, Y(100)]];
+  D.E.slice(1).forEach(([t, v, e, Lb]) => {
+    const x = X(t), y = Y(v);
+    svg.appendChild(valTitle(svgEl('circle', { cx: x, cy: y, r: 2.8, class: 'ed' }), Lb + ' 실적 — 4분기 합 주당순이익 ' + valWon(e) + '원 (알려진 날은 근사)'));
+    const txt = Lb.slice(2, 4) + '.' + Lb.slice(5) + 'Q 실적', tw = txt.length * 6.2;
+    const cand = [[x + 4, y - 5, 'start'], [x + 4, y + 12, 'start'], [x - 4, y - 5, 'end'], [x - 4, y + 12, 'end']];
+    const spot = cand.find(([tx, ty, an]) => {
+      const rc = [an === 'start' ? tx - 1 : tx - tw - 1, ty - 9.5, an === 'start' ? tx + tw + 1 : tx + 1, ty + 2.5];
+      if (rc[0] < L || rc[2] > W - R - 2 || rc[1] < T - 4 || rc[3] > H - B) return false;
+      if (hits(pPts, rc) || hits(ePts, rc) || hits(y100, rc) || taken.some(b => box(b, rc))) return false;
+      taken.push(rc); return true;
+    });
+    if (spot) { const s = svgEl('text', { x: spot[0], y: spot[1], 'text-anchor': spot[2], class: 'stepT' }); s.textContent = txt; svg.appendChild(s); }
+  });
+  // 따라가며 읽기
+  const fig = el('div', 'vdFig'); fig.appendChild(svg);
+  const tip = el('div', 'vdTip'); tip.hidden = true; fig.appendChild(tip);
+  const gd = svgEl('line', { y1: T, y2: H - B, class: 'gd' }); gd.style.display = 'none'; svg.appendChild(gd);
+  const hit = svgEl('rect', { x: L, y: T, width: W - L - R, height: H - T - B, fill: 'transparent' }); svg.appendChild(hit);
+  hit.addEventListener('pointermove', ev => {
+    const bb = svg.getBoundingClientRect(), sc = bb.width / W, x = (ev.clientX - bb.left) / sc;
+    const t = D.start + (x - L) / (W - L - R) * (D.end - D.start);
+    let k = 0; D.P.forEach((p, i) => { if (Math.abs(p[0] - t) < Math.abs(D.P[k][0] - t)) k = i; });
+    const p = D.P[k]; let e = D.E[0]; D.E.forEach(q => { if (q[0] <= p[0]) e = q; });
+    gd.setAttribute('x1', X(p[0])); gd.setAttribute('x2', X(p[0])); gd.style.display = '';
+    tip.innerHTML = ''; tip.appendChild(el('b', null, valYmd(p[0])));
+    tip.appendChild(el('div', null, '주가 ' + valWon(p[2]) + '원 (' + valPct(p[1] - 100) + ')'));
+    tip.appendChild(el('div', null, '그때 알던 주당순이익 ' + valWon(e[2]) + '원 (' + valPct(e[1] - 100) + ')'));
+    tip.appendChild(el('small', null, '이익 1원에 ' + valMul(p[2] / e[2]) + '원 (그날 PER)'));
+    tip.hidden = false;
+    let lx = X(p[0]) * sc + 12; if (lx + tip.offsetWidth > bb.width - 4) lx = X(p[0]) * sc - tip.offsetWidth - 12;
+    tip.style.left = Math.max(0, lx) + 'px'; tip.style.top = '6px';
+  });
+  hit.addEventListener('pointerleave', () => { gd.style.display = 'none'; tip.hidden = true; });
+  return fig;
+}
+function valYearPane(r, B, V, D) {
+  const p = el('div', 'vdPane');
+  const ph = el('div', 'vdPH'); ph.appendChild(el('em', null, '1년 전과 견주면')); p.appendChild(ph);
+  if (D.why) {
+    p.appendChild(el('div', 'vdBig w', D.why === 'neg'
+      ? '견줄 수 없다 — 1년 전(' + B.L0 + ') 4분기 합 주당순이익이 ' + valWon(B.e0) + '원, 적자였다.'
+      : !r.px_w ? '1년 그림 재료는 다음 계산(매일 06:30 · 다시 계산)부터 나온다.' : '1년 그림을 그릴 주가나 이익 기록이 모자란다.'));
+    if (D.why === 'neg') { const f = valEpsBars(r, B); if (f) p.appendChild(f);
+      p.appendChild(el('div', 'vdHow', '출발점이 0 아래라 "몇 % 싸졌다"는 숫자가 성립하지 않는다 · 막대 = 그 분기까지 4분기 합 주당순이익')); }
+    return p;
+  }
+  const px = r.px_yoy, e = r.eps_yoy;
+  let t;
+  if (px < 0 && e >= 0) t = '주당순이익은 ' + valPct(e) + ' 늘었는데 주가는 ' + valPct(px) + ' — 벌어진 틈만큼 싸졌다.';
+  else if (px < 0 && e < 0) t = e > px ? '주당순이익도 ' + valPct(e) + ' 줄었지만 주가가 ' + valPct(px) + '로 더 빠졌다.' : '주가(' + valPct(px) + ')보다 주당순이익(' + valPct(e) + ')이 더 줄었다 — 싸진 게 아니다.';
+  else if (e >= px) t = '주가도 ' + valPct(px) + ' 올랐지만 주당순이익이 ' + valPct(e) + '로 더 늘었다.';
+  else t = '주가가 ' + valPct(px) + ' 오르는 동안 주당순이익은 ' + valPct(e) + ' — 주가가 이익을 크게 앞질렀다.';
+  const leg = el('div', 'vdLeg');
+  const a = el('span'); a.appendChild(el('i')); a.appendChild(document.createTextNode('주가')); leg.appendChild(a);
+  const b = el('span'); b.appendChild(el('i', 'e')); b.appendChild(document.createTextNode('주당순이익(4분기 합)')); leg.appendChild(b);
+  // 1년 중 반대 색이 나온 구간이 있으면(이익이 잠깐 꺼진 때 등) 그 색도 범례에 넣는다
+  const mx = valMixed(D), fills = [];
+  if (V.cls !== 'x' || mx.c) fills.push(['', V.cls === 'x' ? '싸진 구간' : '싸진 몫 — 주가가 이익을 못 따라간 만큼']);
+  if (V.cls === 'x' || mx.x) fills.push([' x', V.cls === 'x' ? '비싸진 몫 — 주가가 이익보다 더 오른 만큼' : '비싸진 구간']);
+  fills.forEach(([k, s]) => { const c = el('span'); c.appendChild(el('i', 'f' + k)); c.appendChild(document.createTextNode(s)); leg.appendChild(c); });
+  ph.appendChild(leg);
+  p.appendChild(el('div', 'vdBig ' + V.cls, t));
+  p.appendChild(valScissors(r, D, V.cls));
+  p.appendChild(el('div', 'vdHow', '두 선 모두 1년 전에 같이 출발 · 눈금은 배수(로그) · 이익 선은 실적이 알려질 무렵(근사: 분기 끝 +45일) 바뀐다'));
+  return p;
+}
+
+// 1년 전 이익이 적자일 때 — 가위 그림 대신 4분기 합 주당순이익 막대(적자 → 흑자가 보이게)
+function valEpsBars(r, B) {
+  const q = (r.eps_q || []).filter(x => x[1] != null); if (q.length < 3) return null;
+  const W = 640, H = 150, L = 52, R = 132, T = 20, Bm = 30;
+  const vals = q.map(x => x[1]), mx = Math.max(0, ...vals), mn = Math.min(0, ...vals);
+  const Y = v => T + (mx - v) / ((mx - mn) || 1) * (H - T - Bm);
+  const bw = (W - L - R) / q.length;
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': '4분기 합 주당순이익' });
+  const add = (n, a, t) => { const e = svgEl(n, a); if (t != null) e.textContent = t; svg.appendChild(e); return e; };
+  add('line', { x1: L, x2: W - R, y1: Y(0), y2: Y(0), class: 'g0' });
+  add('text', { x: L - 6, y: Y(0) + 3.5, 'text-anchor': 'end', class: 'ax0' }, '0원');
+  q.forEach(([l, v], i) => {
+    const x = L + i * bw + bw * 0.2, w = bw * 0.6, k = v >= 0 ? 'p' : 'n';
+    add('rect', { x, y: Math.min(Y(v), Y(0)), width: w, height: Math.max(1, Math.abs(Y(v) - Y(0))), class: 'eb ' + k });
+    add('text', { x: x + w / 2, y: v >= 0 ? Y(v) - 5 : Y(0) - 5, 'text-anchor': 'middle', class: 'ebT ' + k }, valWon(v));
+    const mark = l === B.L0 ? '1년 전' : l === r.lab ? '지금' : null;
+    add('text', { x: x + w / 2, y: H - Bm + 15, 'text-anchor': 'middle', class: mark ? 'ebK' : 'ax' }, mark || (l.slice(2, 4) + '.' + l.slice(5) + 'Q'));
+    if (mark) add('text', { x: x + w / 2, y: H - Bm + 27, 'text-anchor': 'middle', class: 'ax' }, l.slice(2, 4) + '.' + l.slice(5) + 'Q');
+  });
+  const fig = el('div', 'vdFig'); fig.appendChild(svg); return fig;
+}
+
+// ---------- 2-2) 자기 역사와 — 온도계 ----------
+function valGauge(r, B, V, Hs) {
+  const N = Hs.n; if (!N || r.per == null) return null;
+  const s = Hs.h.map(x => x[1]).sort((a, b) => a - b);
+  const now = r.per, then = (V.cls === 'w') ? null : r.per_then;
+  const q = p => { const i = (N - 1) * p, a = Math.floor(i), b = Math.ceil(i); return Math.exp(Math.log(s[a]) + (Math.log(s[b]) - Math.log(s[a])) * (i - a)); };
+  // 눈금 — 지금 · 1년 전 · 기록 가운데 80% 를 넣고, 그 2.5배 안쪽 기록까지 넓힌다. 그 밖(이익이 거의 없던 분기)은 끝에 걸쳐 둔다.
+  const core = [now, then, q(0.1), q(0.9), r.per_med].filter(v => v != null && v > 0);
+  const cMin = Math.min(...core), cMax = Math.max(...core);
+  const inV = s.filter(v => v >= cMin / 2.5 && v <= cMax * 2.5);
+  const lo = Math.min(cMin, ...inV) / 1.15, hi = Math.max(cMax, ...inV) * 1.15;
+  const W = 440, L = 12, R = 12;
+  const X = v => L + (Math.log(Math.min(hi, Math.max(lo, v))) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)) * (W - L - R);
+  // 점 하나 = 한 분기(쌓아 올린 점 그림)
+  const rad = 4.2, gapX = rad * 2 + 0.8, levels = [];
+  const pts = Hs.h.map(x => ({ v: x[1], l: x[0], x: X(x[1]), out: x[1] > hi || x[1] < lo })).sort((a, b) => a.x - b.x);
+  pts.forEach(p => { let k = 0; while (levels[k] != null && p.x - levels[k] < gapX) k++; levels[k] = p.x; p.k = k; });
+  const nL = Math.max(1, levels.length), stepY = Math.min(gapX, 56 / nL);
+  const BY = 18 + 6 + (nL - 1) * stepY + rad + 7, BH = 18, CY = BY + BH / 2, ZY = BY + BH + 14, LY = ZY + 20, HH = LY + 6;
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${HH}`, class: 'vdGauge', role: 'img', 'aria-label': '자기 역사 PER 온도계' });
+  const add = (n, a, t) => { const e = svgEl(n, a); if (t != null) e.textContent = t; svg.appendChild(e); return e; };
+  // 띠 — 판정 말과 같은 기준: 싼 편 = 기록의 35% 이하 자리, 비싼 편 = 65% 이상 자리
+  const xn = X(now), xt = then != null ? X(then) : null;
+  if (Hs.ok) {
+    const ba = s[Math.floor(0.35 * N)], bb = s[Math.ceil(0.65 * N) - 1];
+    const seg = [[L, X(ba), 'z0', '싼 편'], [X(ba), X(bb), 'z1', '중간'], [X(bb), W - R, 'z2', '비싼 편']];
+    seg.forEach(([a, b, c]) => add('rect', { x: a, y: BY, width: Math.max(0, b - a), height: BH, class: c }));
+    const avoid = [xn, xt].filter(v => v != null);
+    seg.forEach(([a, b, c, t]) => { const tw = t.length * 11 + 4; if (b - a < tw + 4) return;
+      const cand = [(a + b) / 2, a + tw / 2 + 4, b - tw / 2 - 4, (a * 3 + b) / 4, (a + b * 3) / 4];
+      const x = cand.find(cx => cx - tw / 2 >= a && cx + tw / 2 <= b && avoid.every(v => Math.abs(v - cx) > tw / 2 + 6));
+      if (x != null) add('text', { x, y: ZY, 'text-anchor': 'middle', class: 'zl ' + c }, t); });
+  } else {
+    add('rect', { x: L, y: BY, width: W - L - R, height: BH, class: 'zN' });
+    const tx = '기록 ' + N + '분기 — 싼 편 · 비싼 편을 가르기엔 짧다', tw = tx.length * 9;
+    const cx = [(L + W - R) / 2, L + tw / 2 + 6, W - R - tw / 2 - 6].find(c => [xn, xt].filter(v => v != null).every(v => Math.abs(v - c) > tw / 2 + 6));
+    if (cx != null) add('text', { x: cx, y: ZY, 'text-anchor': 'middle', class: 'zl zN' }, tx);
+  }
+  pts.forEach(p => valTitle(add('circle', { cx: p.x, cy: BY - 7 - p.k * stepY, r: rad, class: 'dot' + (p.out ? ' out' : '') }), p.l + ' 분기 말 PER ' + valMul(p.v) + '배'));
+  const hiO = pts.filter(p => p.v > hi), loO = pts.filter(p => p.v < lo);
+  if (hiO.length) add('text', { x: W - 2, y: BY - 7 - (Math.max(...hiO.map(p => p.k)) + 1) * stepY - 2, 'text-anchor': 'end', class: 'edge' }, hiO.map(p => valMul(p.v)).join(' · ') + '배 — 눈금 밖 ›');
+  if (loO.length) add('text', { x: 2, y: BY - 7 - (Math.max(...loO.map(p => p.k)) + 1) * stepY - 2, 'text-anchor': 'start', class: 'edge' }, '‹ 눈금 밖 — ' + loO.map(p => valMul(p.v)).join(' · ') + '배');
+  // 평소(중앙값)
+  if (r.per_med != null) {
+    const mx = X(r.per_med);
+    add('line', { x1: mx, x2: mx, y1: 15, y2: BY + BH + 1, class: 'med' });
+    add('text', { x: Math.min(W - 34, Math.max(34, mx)), y: 11, 'text-anchor': 'middle', class: 'medT' }, '보통 ' + valMul(r.per_med) + '배');
+  }
+  // 1년 전 → 지금
+  const ac = V.cls, hc = Hs.ok ? valHistCls(r.per_pct) : 'n';
+  if (xt != null && Math.abs(xn - xt) > 20) {
+    const dir = xn < xt ? -1 : 1, xe = xn - dir * 13;
+    add('path', { d: 'M' + (xt + dir * 7) + ' ' + CY + ' L' + xe + ' ' + CY, class: 'arr ' + ac });
+    add('path', { d: 'M' + (xe - dir) + ' ' + (CY - 5.5) + ' L' + (xe + dir * 6) + ' ' + CY + ' L' + (xe - dir) + ' ' + (CY + 5.5) + ' Z', class: 'ah ' + ac });
+  }
+  if (xt != null) add('circle', { cx: xt, cy: CY, r: 6.2, class: 'then' });
+  add('circle', { cx: xn, cy: CY, r: 8.5, class: 'now ' + hc });
+  // 이름표 — 겹치면 벌린다
+  const lab = [];
+  if (xt != null) lab.push({ x: xt, d: xt, t: '1년 전 ' + valMul(then) + '배', c: 'thenT', f: 12 });
+  lab.push({ x: xn, d: xn, t: '지금 ' + valMul(now) + '배', c: 'nowT ' + hc, f: 13.5 });
+  lab.forEach(o => { o.w = ((o.t.match(/[가-힣]/g) || []).length + (o.t.length - (o.t.match(/[가-힣]/g) || []).length) * 0.6) * o.f; });
+  if (lab.length === 2) { const [a, b] = lab[0].x <= lab[1].x ? [lab[0], lab[1]] : [lab[1], lab[0]]; const need = (a.w + b.w) / 2 + 10 - (b.x - a.x); if (need > 0) { a.x -= need / 2; b.x += need / 2; } }
+  lab.forEach(o => { const x = Math.min(W - o.w / 2 - 1, Math.max(o.w / 2 + 1, o.x)); add('text', { x, y: LY, 'text-anchor': 'middle', class: o.c }, o.t);
+    if (Math.abs(o.d - x) > 8) add('line', { x1: x, x2: o.d, y1: LY - 12, y2: CY + 9, class: 'lead' }); });
+  return svg;
+}
+function valHistPane(r, B, V, Hs) {
+  const p = el('div', 'vdPane');
+  const ph = el('div', 'vdPH'); ph.appendChild(el('em', null, '자기 역사와 견주면')); if (Hs.n) ph.appendChild(el('span', null, '분기 말 PER ' + Hs.n + '개 · ' + Hs.y0 + '~' + Hs.y1)); p.appendChild(ph);
+  if (Hs.ok) {
+    const w = valHistWord(r.per_pct), k = Hs.k, n = Hs.n;
+    p.appendChild(el('div', 'vdBig ' + valHistCls(r.per_pct), w + ' — ' + (k === 0 ? Hs.y0 + '년 이후 ' + n + '분기 중 지금보다 싼 때가 없었다' : k === n ? Hs.y0 + '년 이후 ' + n + '분기 내내 지금보다 쌌다' : Hs.y0 + '년 이후 ' + n + '분기 중 ' + k + '번은 지금보다 쌌다')));
+  } else if (!r.per_hist && r.per_pct != null) {           // 그림 재료(per_hist)가 없는 예전 계산 — 서버 백분위로만 말한다
+    p.appendChild(el('div', 'vdBig ' + valHistCls(r.per_pct), valHistWord(r.per_pct) + ' — 최근 10년 분기 말 PER 가운데 지금이 ' + Math.round(r.per_pct) + '% 자리' + (r.per_med != null ? ' · 보통 ' + valMul(r.per_med) + '배' : '')));
+    p.appendChild(el('div', 'vdHow', '점 그림은 다음 계산(매일 06:30 · 다시 계산)부터 나온다.'));
+    return p;
+  } else p.appendChild(el('div', 'vdBig w', !r.per_hist ? '비교 못 한다 — PER 기록이 짧다(8분기 이상 필요).' : '비교 못 한다 — PER 기록이 ' + Hs.n + '분기뿐이다(8분기 이상 필요).'));
+  const g = valGauge(r, B, V, Hs); if (g) p.appendChild(g);
+  if (Hs.ok && V.cls !== 'w' && r.per_then != null) {   // 두 비교를 잇는 한 줄 — 1년 전 자리 → 지금 자리
+    const pt = Hs.h.filter(x => x[1] <= r.per_then).length / Hs.n * 100, d = el('div', 'vdThen');
+    d.appendChild(document.createTextNode('1년 전 ' + valMul(r.per_then) + '배는 ')); d.appendChild(el('b', valHistCls(pt), valHistWord(pt)));
+    d.appendChild(el('i', null, '→')); d.appendChild(document.createTextNode('지금 ' + valMul(r.per) + '배는 ')); d.appendChild(el('b', valHistCls(r.per_pct), valHistWord(r.per_pct)));
+    p.appendChild(d);
+  }
+  if (Hs.n) p.appendChild(el('div', 'vdHow', '점 하나 = 한 분기 말 PER · 왼쪽일수록 싸다' + (Hs.ok ? ' · 띠 = 기록의 35% · 65% 자리' : '') + (V.cls !== 'w' ? ' · 빈 점 = 1년 전' : '')));
+  return p;
+}
+
+// ---------- 3) 관문 한 줄(옛 ①②③④) ----------
+function valGates(r, B) {
+  const red = r.red || [];
+  const gt = el('div', 'vdGates'); gt.appendChild(el('em', null, '관문'));
+  const gate = (ok, name, val, tip) => { const g = el('span', 'vdGate ' + (ok ? 'ok' : 'no')); g.appendChild(el('i', null, ok ? '✓' : '✗')); g.appendChild(el('b', null, name)); if (val) g.appendChild(el('span', null, val)); if (tip) g.title = tip; gt.appendChild(g); };
+  gate(r.ni4 > 0, '흑자', '4분기 순이익 ' + qWon(r.ni4));
+  gate(B.neg || (r.ni_yoy != null && r.ni_yoy >= -5), '이익 지킴', '순이익 1년 ' + (B.neg ? '적자→흑자' : valPct(r.ni_yoy)), '순이익(최근 4분기) 1년 변화 −5% 이내');
+  gate(r.dd != null && r.dd <= -25, '주가 빠짐', '고점 ' + won(r.hi) + '원(' + r.hi_d.slice(2, 4) + '.' + r.hi_d.slice(4, 6) + ') 대비 ' + valPct(r.dd), '52주 고점 대비 −25%↓');
+  gate(!red.length, red.length ? '빨간불' : '빨간불 없음', red.length ? red.join(' · ') : '', '앞단 약함 · 업종 제품 가격 하락 · 업종 재고 쌓임 · 부채비율 200%↑');
+  gate(r.score != null && r.score >= 50, '점수 50↑', r.score != null ? r.score.toFixed(0) + '점' : '항목 모자람');
+  const ti = el('span', 'vdTier ' + (r.tier === '저평가' ? 'ok' : 'no'), '= ' + r.tier); gt.appendChild(ti);
+  gt.appendChild(el('span', 'vdRef', '(참고) 부채비율 ' + (r.debt_eq != null ? Math.round(r.debt_eq) + '%' : '—') + (r.cfo_ni != null ? ' · 영업현금 ÷ 순이익 ' + r.cfo_ni.toFixed(1) + '배' : '')));
+  return gt;
+}
+
+// ---------- 4) 점수 풀이 — 과거 후보 100곳 중 몇 등, 그리고 과거엔 왜 그 쪽이 좋았나 ----------
+// 이유 문장 — 회사 값과 더했나/뺐나에 따라 갈린다
+function valWhy(x, r) {
+  const up = x.pts >= 0;
+  switch (x.key) {
+    case 'mp_yoy': return up ? '제품 값이 오르는 업종은 이익이 따라와 더 돌아왔다' : '제품 값이 약한 업종은 덜 돌아왔다 — 그래서 감점';
+    case 'px_yoy': { const v = r.px_yoy;
+      if (v >= 0) { const m = 1 + v / 100; return (m >= 2 ? '1년 새 ' + m.toFixed(1) + '배가 됐다' : '1년 새 올랐다') + ' — 이미 오른 후보는 덜 돌아왔다. 그래서 감점'; }
+      return up ? '많이 빠진 후보일수록 되돌아올 몫도 컸다' : '덜 빠졌다 — 더 빠진 후보가 더 돌아왔다. 그래서 감점'; }
+    case 'debt_eq': return up ? '빚이 적으면 버틸 힘이 있어 더 돌아왔다' : '빚이 많은 편 — 과거엔 덜 돌아왔다. 그래서 감점';
+    case 'rev_yoy': return up ? '매출이 느는 후보가 더 돌아왔다' : r.rev_yoy < 0 ? '매출이 줄었다 — 과거엔 덜 돌아왔다. 그래서 감점' : '매출이 덜 늘었다 — 더 는 후보가 더 돌아왔다. 그래서 감점';
+    case 'ret1m': { const v = r.ret1m;
+      if (!up) return '아직 빠지는 중 — 과거엔 덜 돌아왔다. 그래서 감점';
+      return v >= 3 ? '돌아서는 중 — 바닥에서 고개를 든 후보가 더 돌아왔다' : v > -3 ? '한 달 거의 그대로 — 계속 빠지는 후보보다 더 돌아왔다' : '한 달 조금 더 빠졌지만 과거 후보 가운데선 덜 빠진 편'; }
+    case 'per_pct': return !up ? '자기 역사로 너무 싸다 — 과거엔 싼 데 이유가 있었다. 그래서 감점'
+      : r.per_pct >= 65 ? '비싼 쪽이라 받은 점수다 — 과거엔 자기 역사로 너무 싼 곳이 오히려 덜 돌아왔다'
+      : '너무 싸지 않아 더한다 — 과거엔 자기 역사로 너무 싼 곳이 덜 돌아왔다';
+  }
+  return '';
+}
+function valScore(r) {
+  const parts = r.score_parts || []; if (!parts.length) return null;
+  const sec = el('div', 'vdScore'), N = valBtNums();
+  const sh = el('div', 'vdSH');
+  const b = el('b'); b.appendChild(document.createTextNode('점수 ')); b.appendChild(el('span', null, r.score != null ? r.score.toFixed(0) : '—')); b.appendChild(document.createTextNode('점'));
+  sh.appendChild(b); sh.appendChild(el('span', null, '얼마나 싼가가 아니라, 과거에 되돌아온 쪽을 얼마나 닮았나'));
+  sec.appendChild(sh);
+  const p = el('p', 'vdSP');
+  p.appendChild(document.createTextNode('같은 관문을 넘은 과거 후보 ' + N.n.toLocaleString('ko-KR') + '건(' + N.firms + '곳, 2014~2025)을 항목마다 100곳으로 줄 세운 등수다. 검증: '));
+  p.appendChild(el('b', null, '점수 위⅓이 아래⅓보다 1년 뒤 +' + N.spread.toFixed(1) + '%p'));
+  p.appendChild(document.createTextNode(' 더 올랐다'));
+  p.appendChild(el('span', null, ' (90% 구간 ' + N.ci[0].toFixed(1) + '~' + N.ci[1].toFixed(1) + '%p)'));
+  sec.appendChild(p);
+  const g = el('div', 'vdRows');
+  [['항목', ''], ['이 회사', 'r'], ['', 'tr'], ['100곳 중', 'r'], ['점수', 'r'], ['과거엔 이랬다', 'w']].forEach(([t, c]) => {
+    const h = el('div', 'h' + (c ? ' ' + c : ''));
+    if (c === 'tr') { h.appendChild(el('span', null, '← 뒤쪽')); h.appendChild(el('span', null, '50등 = 0점')); h.appendChild(el('span', null, '앞쪽 →')); }
+    else h.textContent = t;
+    g.appendChild(h);
+  });
+  let tot = 0;
+  parts.forEach(x => {
+    const K = VAL_K[x.key] || [x.label, () => (x.val || '').split(' · ')[0]];
+    const cl = x.good >= 50 ? 'c' : 'x';
+    const k = el('div', 'k', K[0]); if (x.w < 1) k.appendChild(el('small', null, '반만 반영')); g.appendChild(k);
+    g.appendChild(el('div', 'v', K[1](r)));
+    const tr = el('div', 'vdTr ' + cl); const i = el('i'); i.style.left = Math.min(50, x.good) + '%'; i.style.width = Math.abs(x.good - 50) + '%';
+    const d = el('b'); d.style.left = x.good + '%'; tr.appendChild(i); tr.appendChild(d); g.appendChild(tr);
+    tr.title = '과거 후보 100곳 중 ' + Math.max(1, Math.round(100 - x.good)) + '등(1등이 그 항목에서 가장 좋은 쪽)';
+    g.appendChild(el('div', 'rk', Math.max(1, Math.round(100 - x.good)) + '등'));
+    const pt = el('div', 'pt ' + (x.pts >= 0 ? 'c' : 'x')); const bar = el('i'); bar.style.width = Math.max(2, Math.min(1, Math.abs(x.pts) / 16) * 34) + 'px';
+    pt.appendChild(bar); pt.appendChild(el('span', null, (x.pts >= 0 ? '+' : '−') + Math.abs(x.pts).toFixed(1))); g.appendChild(pt);
+    g.appendChild(el('div', 'why' + (x.pts < 0 ? ' x' : ''), valWhy(x, r)));
+    tot += x.pts;
+  });
+  const sm = el('div', 'vdSum'); sm.appendChild(el('span', null, '보통 50'));
+  sm.appendChild(el('span', null, (tot >= 0 ? '+ ' : '− ') + Math.abs(tot).toFixed(1)));
+  const z = el('span'); z.appendChild(document.createTextNode('= ')); z.appendChild(el('b', null, (r.score != null ? r.score.toFixed(0) : '—') + '점')); sm.appendChild(z);
+  const tw = el('span', 'vdTier ' + (r.tier === '저평가' ? 'ok' : 'no'), valTierWhy(r)); tw.title = '과거에 저평가 묶음이 관찰 묶음보다 1년 뒤 +' + N.tier.toFixed(1) + '%p 더 올랐다'; sm.appendChild(tw);
+  g.appendChild(sm);
+  sec.appendChild(g);
+  return sec;
+}
+
+// ---------- 펼침 ----------
+function valDetail(r) {
+  const box = el('div', 'vdBox');
+  const B = valBase(r), V = valVerdict(r, B), D = valSeries(r, B), F = valInflate(r, B, V), Hs = valHist(r);
+  box.appendChild(valTop(r, B, V, F));
+  const grid = el('div', 'vdGrid');
+  grid.appendChild(valYearPane(r, B, V, D));
+  grid.appendChild(valHistPane(r, B, V, Hs));
+  box.appendChild(grid);
+  box.appendChild(valGates(r, B));
+  const ss = valScore(r); if (ss) box.appendChild(ss);
+  const bt = el('div', 'vcAct');
+  [['이 회사 풍경 보기', 'land'], ['분기 변화 보기', 'qtr'], ['전문검색(주가에 닿을 줄)', 'find']].forEach(([t, tab]) => { const b = el('button', null, t);
+    b.onclick = async e => { e.stopPropagation(); await pick(r.code); jump(tab); }; bt.appendChild(b); });
+  box.appendChild(bt);
+  return box;
+}
+
+// ---------- 표 한 줄 — 열은 그대로. PER 칸에 싸짐/비싸짐, 자기 역사 칸에 작은 온도계 + 말 + 쌌던 때 ----------
+function valTable(rows, title, sub) {
+  const w = el('div', 'dipBlock');
+  const h = el('div', 'dipBH'); h.appendChild(el('b', null, title + ' ' + rows.length + '곳')); h.appendChild(el('span', null, sub)); w.appendChild(h);
+  if (!rows.length) { w.appendChild(el('div', 'empty', '없음')); return w; }
+  const t = el('table', 'tbl dipTbl');
+  t.innerHTML = '<tr><th>종목</th><th class="r">고점 대비</th><th class="r">주가 1년</th><th class="r">순이익 1년</th>' +
+    '<th class="r" title="같은 이익 1원에 시장이 쳐준 값. 1년 전 PER → 지금 PER">PER 1년 전→지금</th><th class="r" title="최근 10년 분기 말 PER 가운데 지금 자리. 쌌던 때 = 지금보다 PER 이 낮았던 분기 수">PER 자기 역사</th><th class="r">ROE</th><th class="r">영업이익률</th><th class="r">점수</th><th></th></tr>';
+  const X = v => v >= 200 ? '200↑' : v >= 10 ? Math.round(v) : v.toFixed(1);
+  S.valOpen = S.valOpen || new Set();
+  const LIM = 30, t2 = rows.length > LIM ? el('table', 'tbl dipTbl') : null;
+  if (t2) t2.innerHTML = t.innerHTML;
+  rows.forEach((r, ri) => {
+    const tb = ri < LIM ? t : t2;
+    const tr = el('tr', 'dipRow');
+    const td = el('td'); const a = el('a', null, r.name); a.href = '#'; a.onclick = e => { e.preventDefault(); e.stopPropagation(); pick(r.code); }; td.appendChild(a);
+    td.appendChild(el('small', null, ' ' + r.code + ' · ' + (r.industry || '') + (r.cap_rank ? ' · 시총 ' + r.cap_rank + '위' : '')));
+    td.appendChild(el('div', 'dipFwd', '고점 ' + won(r.hi) + '(' + r.hi_d.slice(2, 4) + '.' + r.hi_d.slice(4, 6) + ') → 지금 ' + won(r.price) + ' · 최근 3개월 ' + valPct(r.ret3m) +
+      (r.mp_yoy != null ? ' · 업종 가격 ' + valPct(r.mp_yoy) : '') + (r.cyc != null ? ' · 재고 순환 ' + (r.cyc >= 0 ? '+' : '') + Math.round(r.cyc) + '%p' : '')));
+    (r.tier_why || []).forEach(x => td.appendChild(el('div', 'dipWhy', x)));
     tr.appendChild(td);
-    const n=(v,cls)=>el('td','num'+(cls?' '+cls:''),v);
-    tr.appendChild(n(P(r.dd),'neg'));
-    tr.appendChild(n(P(r.px_yoy),r.px_yoy<0?'neg':'pos'));
-    tr.appendChild(n(P(r.ni_yoy),r.ni_yoy>=0?'pos':'neg'));
-    const pc=el('td','num'); pc.title='주가 1년 '+P(r.px_yoy)+' · 순이익 1년 '+P(r.ni_yoy)+' → 같은 이익에 매긴 값(PER) '+P(r.comp);
-    if(r.per_then!=null&&r.per!=null){ pc.appendChild(el('span',null,X(r.per_then)+'→'+X(r.per)+'배')); pc.appendChild(el('small','dipPerChg',' '+P(r.comp))); }
-    else pc.appendChild(el('span',null,r.per!=null?X(r.per)+'배':'—'));
+    const n = (v, cls) => el('td', 'num' + (cls ? ' ' + cls : ''), v);
+    const B = valBase(r), V = valVerdict(r, B), F = valInflate(r, B, V), Hs = valHist(r);
+    tr.appendChild(n(valPct(r.dd), 'neg'));
+    tr.appendChild(n(valPct(r.px_yoy), r.px_yoy < 0 ? 'neg' : 'pos'));
+    tr.appendChild(n(B.neg ? '적자→흑자' : valPct(r.ni_yoy), B.neg || r.ni_yoy >= 0 ? 'pos' : 'neg'));
+    const pc = el('td', 'num');
+    if (B.neg) { pc.appendChild(el('span', null, r.per != null ? X(r.per) + '배' : '—')); pc.appendChild(el('small', 'vdChg w', '1년 전 적자 · 비교 못 함')); }
+    else if (r.per_then != null && r.per != null && r.comp != null) {
+      pc.appendChild(el('span', null, X(r.per_then) + '→' + X(r.per) + '배'));
+      pc.appendChild(el('small', 'vdChg ' + V.cls, V.cls === 'c' ? Math.round(-r.comp) + '% 싸짐' : V.cls === 'x' ? valChg(r.comp) + ' 비싸짐' : '비슷'));
+      if (F) pc.appendChild(el('small', 'vdChg w', '△ 1년 전 ' + (F.pill.startsWith('1년 전이 이익') ? '이익 바닥' : '비쌌던 때')));
+      pc.title = '주가 1년 ' + valPct(r.px_yoy) + ' · 순이익 1년 ' + valPct(r.ni_yoy) + ' → 같은 이익에 매긴 값(PER) ' + valPct(r.comp);
+    } else pc.appendChild(el('span', null, r.per != null ? X(r.per) + '배' : '—'));
     tr.appendChild(pc);
-    tr.appendChild(n(r.per_pct!=null?(r.per_pct>=50?'상위 '+Math.max(1,Math.round(100-r.per_pct)):'하위 '+Math.round(r.per_pct))+'%':'—',r.per_pct!=null&&r.per_pct<=30?'pos':r.per_pct>=70?'neg':''));
-    tr.appendChild(n(r.roe!=null?r.roe.toFixed(1)+'%':'—',r.roe>=15?'pos':''));
-    tr.appendChild(n(r.opm!=null?r.opm.toFixed(1)+'%':'—'));
-    tr.appendChild(n(r.score!=null?r.score.toFixed(0):'—','strong'));
-    tr.appendChild(el('td','caret','▾'));
-    const dt=el('tr','dipDet'); dt.hidden=!S.valOpen.has(r.code); const dd=el('td'); dd.colSpan=10; dd.appendChild(valDetail(r)); dt.appendChild(dd);
-    tr.classList.toggle('open',!dt.hidden);
-    tr.onclick=()=>{ dt.hidden=!dt.hidden; tr.classList.toggle('open',!dt.hidden); S.valOpen[dt.hidden?'delete':'add'](r.code); };
+    const hc = el('td', 'num vdHc'); const hw = valHistWord(r.per_pct);
+    if (hw) {
+      const cl = valHistCls(r.per_pct), m = el('span', 'vdMini ' + cl), u = el('u');
+      u.appendChild(el('s')); u.appendChild(el('s')); u.appendChild(el('s'));
+      const d = el('b'); d.style.left = Math.max(0, Math.min(100, r.per_pct)) + '%'; u.appendChild(d);
+      m.appendChild(u); m.appendChild(el('span', null, hw)); hc.appendChild(m);
+      hc.appendChild(el('small', null, (Hs.n ? '쌌던 때 ' + Hs.k + '/' + Hs.n + ' · ' : '') + '보통 ' + valMul(r.per_med) + '배'));
+    } else { hc.appendChild(el('span', 'vdMini w', '기록 짧음')); if (Hs.n) hc.appendChild(el('small', null, Hs.n + '분기뿐')); }
+    tr.appendChild(hc);
+    tr.appendChild(n(r.roe != null ? r.roe.toFixed(1) + '%' : '—', r.roe >= 15 ? 'pos' : ''));
+    tr.appendChild(n(r.opm != null ? r.opm.toFixed(1) + '%' : '—'));
+    tr.appendChild(n(r.score != null ? r.score.toFixed(0) : '—', 'strong'));
+    tr.appendChild(el('td', 'caret', '▾'));
+    const dt = el('tr', 'dipDet'); dt.hidden = !S.valOpen.has(r.code); const dd = el('td'); dd.colSpan = 10; dt.appendChild(dd);
+    const fill = () => { if (!dd.firstChild) dd.appendChild(valDetail(r)); };      // 펼침은 처음 열 때 그린다
+    if (!dt.hidden) fill();
+    tr.classList.toggle('open', !dt.hidden);
+    tr.onclick = () => { dt.hidden = !dt.hidden; if (!dt.hidden) fill(); tr.classList.toggle('open', !dt.hidden); S.valOpen[dt.hidden ? 'delete' : 'add'](r.code); };
     tb.appendChild(tr); tb.appendChild(dt);
   });
   w.appendChild(t);
-  if(t2){ const det=el('details','dipDrop'); det.appendChild(el('summary',null,'나머지 '+(rows.length-LIM)+'곳 — 점수 순. 과거 검증에서 점수 60↑가 50↑보다 더 낫지는 않았다(위 30곳은 읽기 편하게 자른 것)'));
+  if (t2) { const det = el('details', 'dipDrop'); det.appendChild(el('summary', null, '나머지 ' + (rows.length - LIM) + '곳 — 점수 순. 과거 검증에서 점수 60↑가 50↑보다 더 낫지는 않았다(위 30곳은 읽기 편하게 자른 것)'));
     det.appendChild(t2); w.appendChild(det); }
   return w;
-}
-
-function valDetail(r){
-  const box=el('div','dipDetBox');
-  const P=v=>v==null?'—':(v>=0?'+':'')+Math.round(v)+'%';
-  const g=el('div','dipChecks');
-  const col=(title,items)=>{ const c=el('div'); c.appendChild(el('em',null,title));
-    items.forEach(([ok,name,why])=>{ const li=el('div','dipChk '+(ok===true?'ok':ok===false?'no':'soft')); li.appendChild(el('i',null,ok===true?'✓':ok===false?'✗':'△'));
-      const m=el('div'); m.appendChild(el('b',null,name)); m.appendChild(el('small',null,why)); li.appendChild(m); c.appendChild(li); }); g.appendChild(c); };
-  col('① 흑자 · ② 가치',[[true,'4분기 순이익 흑자',qWon(r.ni4)+' ('+(r.lab||'')+'까지)'],[true,'순이익 1년 −5% 이내','순이익 '+P(r.ni_yoy)+' · EPS '+P(r.eps_yoy)+' · 매출 '+P(r.rev_yoy)]]);
-  col('③ 주가',[[true,'52주 고점 대비 −25%↓','고점 '+won(r.hi)+'('+r.hi_d+') → '+won(r.price)+' ('+P(r.dd)+')'],
-    [null,'PER 1년 전 → 지금','주가 '+P(r.px_yoy)+' · 이익 '+P(r.ni_yoy)+' → PER '+P(r.comp)+(r.per!=null?' · 지금 '+r.per.toFixed(1)+'배':'')+(r.per_med!=null?' · 자기 역사 중앙 '+r.per_med.toFixed(1)+'배':'')]]);
-  const red=r.red||[];
-  col('④ 등급',[[!red.length,'빨간불 없음',red.length?red.join(' · '):'앞단 약함 · 업종 가격 하락 · 업종 재고 쌓임 — 모두 아님'],
-    [r.score==null?null:r.score>=50,'점수 50↑',r.score==null?'항목이 모자란다':r.score.toFixed(0)+'점 — 아래 풀이'],
-    [null,'(참고) 부채 · 현금',(r.debt_eq!=null?'부채비율 '+Math.round(r.debt_eq)+'%':'부채비율 —')+(r.cfo_ni!=null?' · 영업현금 ÷ 순이익 '+r.cfo_ni.toFixed(1)+'배':'')]]);
-  box.appendChild(g);
-  if((r.score_parts||[]).length){
-    const sp=el('div','dipParts'); sp.appendChild(el('em',null,'점수 풀이 — '+(r.score!=null?r.score.toFixed(0):'—')+'점 (50 + 항목별 기여)'));
-    const mx=Math.max(...r.score_parts.map(x=>Math.abs(x.pts)),1);
-    r.score_parts.forEach(x=>{ const row=el('div','dipPart'+(x.pts<0?' neg':''));
-      row.appendChild(el('span','k',x.label)); row.appendChild(el('span','v',x.val||''));
-      const bar=el('span','b'); const i=el('i'); i.style.width=Math.round(Math.abs(x.pts)/mx*100)+'%'; bar.appendChild(i); row.appendChild(bar);
-      row.appendChild(el('b',null,(x.pts>=0?'+':'−')+Math.abs(x.pts).toFixed(1))); sp.appendChild(row); });
-    box.appendChild(sp);
-  }
-  const bt=el('div','vcAct');
-  [['이 회사 풍경 보기','land'],['분기 변화 보기','qtr'],['전문검색(주가에 닿을 줄)','find']].forEach(([t,tab])=>{ const b=el('button',null,t);
-    b.onclick=async e=>{ e.stopPropagation(); await pick(r.code); jump(tab); }; bt.appendChild(b); });
-  box.appendChild(bt);
-  return box;
 }
 
 async function viewDip(box, force){

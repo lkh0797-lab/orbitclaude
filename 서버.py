@@ -8060,6 +8060,9 @@ def _val_one(c):
     rev, op, cfo, eqt, debt = x.get("rev_ttm"), x.get("op_ttm"), x.get("cfo_ttm"), x.get("eq_total"), x.get("debt")
     pyoy = back(365)
     nyoy = x.get("ni_yoy")
+    # 1년 전 4분기 합 순이익이 0 이하면 'PER 이 몇 % 바뀌었다'가 성립하지 않는다(적자 → 흑자를 +339% 로 읽으면 PER −83% 같은 엉터리) — comp · per_then 을 비운다
+    ni_ly = (R.get(_qshift(lab, 4)) or {}).get("ni_ttm")
+    base_ok = not (ni_ly is not None and ni_ly <= 0)
     r = {"fell": True, "code": code, "name": c["name"], "lab": lab, "price": now, "price_d": str(d[-1]),
          "hi": p[hi_i], "hi_d": str(d[hi_i]), "dd": dd, "px_yoy": pyoy, "ret3m": back(91), "ret1m": back(30),
          "per": per, "per_pct": (sum(1 for v in w if v <= per) / len(w) * 100) if per and len(w) >= 8 else None,
@@ -8072,8 +8075,17 @@ def _val_one(c):
          "cfo_ni": cfo / ni if (cfo is not None and ni and ni > 0) else None,
          "mp_yoy": x.get("mp_yoy"), "cyc": x.get("cyc"), "bgap": g("blog_yoy"), "lgap": g("liab_yoy"), "wgap": g("wip_yoy"),
          "capex_yoy": x.get("capex_yoy"),
-         "comp": ((1 + pyoy / 100) / (1 + nyoy / 100) - 1) * 100 if (pyoy is not None and nyoy is not None and nyoy > -100) else None}
+         "ni_ly": ni_ly,
+         "comp": ((1 + pyoy / 100) / (1 + nyoy / 100) - 1) * 100 if (base_ok and pyoy is not None and nyoy is not None and nyoy > -100) else None}
     r["cand"] = bool(per and per <= VAL_PER_MAX and nyoy is not None and nyoy >= VAL_NI)
+    if r["cand"]:
+        # 그림 재료(점수에는 안 쓴다) — 분기별 PER 최근 10년(per_pct 와 같은 창) · 최근 9분기 EPS(4분기 합) · 최근 1년 주가(주 단위)
+        labs = pr["labs"]
+        r["per_hist"] = [[l, round(R[l]["per"], 2)] for l in labs if R[l].get("per") and R[l]["per"] > 0][-40:]
+        r["eps_q"] = [[l, R[l]["eps_ttm"]] for l in labs[-9:] if R[l].get("eps_ttm") is not None]
+        t0 = int((dt.datetime.strptime(str(d[-1]), "%Y%m%d") - dt.timedelta(days=372)).strftime("%Y%m%d"))
+        k0 = max(0, bisect.bisect_left(d, t0) - 1)
+        r["px_w"] = [[str(d[k]), p[k]] for k in list(range(k0, i, 5)) + [i]]
     return r
 
 
@@ -8126,6 +8138,10 @@ def _val_rank(r, spec):
 def _run_value():
     try:
         cos = list(INDEX["companies"])
+        if not cos:                       # 켜진 직후 색인이 아직 없다 — 빈 결과로 지난 결과를 덮어쓰지 않는다
+            with VAL_LOCK:
+                VAL["phase"] = "색인을 읽는 중 — 잠시 뒤 다시 계산"
+            return
         with VAL_LOCK:
             VAL.update(done=0, total=len(cos), phase="전 종목 주가 · 재무 읽는 중")
         rows, fell = [], 0
