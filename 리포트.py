@@ -242,8 +242,8 @@ def _gen_title(lines):
     '[넷마블 3분기 프리뷰, 하나증권 … 이준호]' 처럼 머리에 제목이 붙었으면 쉼표 앞을."""
     for l in lines:
         s = re.sub(r"^[^\w\[(『「<《]+", "", re.sub(r"\s+", " ", l).strip()).strip("『』「」《》<> '\"‘’“”")
-        if len(s) < 6 or (URL_RX.search(s) and len(URL_RX.sub("", s).strip()) < 12):
-            continue                      # 링크 줄 · '채널: https://t.me/…'
+        if len(s) < 6 or (URL_RX.search(s) and len(URL_RX.sub("", s).strip()) < 12) or re.fullmatch(r"[\d\s./:()\-년월일월화수목금토]+", s):
+            continue                      # 링크 줄 · '채널: https://t.me/…' · 날짜만 있는 줄('2026.5.4(월)')
         mb = re.fullmatch(r"\[([^\]]*)\]", s)
         if mb:
             x, x0 = mb.group(1), mb.group(1).split(",")[0].strip()
@@ -267,6 +267,7 @@ def _gen_title(lines):
 
 
 TP_ALT = re.compile(r"(?:BUY|HOLD|매수|중립|Trading\s*Buy)\s*/\s*(?:TP\s*)?" + NUM, re.I)      # 'BUY/140,000원' · 'BUY/TP 500,000'
+COMPLIANCE = re.compile(r"컴플라이언스|법적\s*책임|증빙\s*자료|사전\s*공표|승인을\s*받아|투자\s*판단의\s*최종|당사는\s*(?:동\s*)?자료")
 REPORT_WORD = re.compile(r"리포트|보고서|프리뷰|Preview|리뷰|Review|발간|코멘트|Comment|실적|투자\s*의견|목표\s*주?가|\bBUY\b|매수|\.pdf|자료\s*[:：]|원문", re.I)
 
 
@@ -274,13 +275,16 @@ def _whole_post(text, broker, nmap, nrx, codes):
     """증권사 공식 채널 글 — 글 하나가 리포트 하나. 앞 여섯 줄에 우리 종목(6자리 코드, 또는 '[삼성전자]' · '『POSCO홀딩스(' · '삼성E&A(' 꼴 이름)이 있고
     리포트 낱말 · 목표가가 있으면 글 전체를 기업 항목 하나로. 아니면 None(항목으로 쪼개 읽는다)."""
     lines = [l.strip(" \t•·-*▶■◆●□▣◇►✅📌🔹🔸") for l in text.split("\n") if l.strip()]
-    top = "\n".join(lines[:6])
+    top = "\n".join(l for l in lines[:6] if len(l) <= 100)     # 머리 · 제목 줄만 — 본문 문단 속 '삼성전자(+5%)' 같은 언급은 아니다
     if len(lines) <= 2 and re.search(r"\.pdf\b", text, re.I):
         return None                       # 앞 글에 붙은 첨부 파일만 있는 글
-    if re.search(r"Daily|데일리|Weekly|위클리|Monthly|먼슬리|모닝|Morning|시황|Nowcast|마감|수급|모니터링|Calendar|캘린더|뉴스\s*\(|News", " ".join(lines[:2]), re.I):
+    if re.search(r"Daily|데일리|Weekly|위클리|Monthly|먼슬리|모닝|Morning|시황|Nowcast|마감|수급|모니터링|Calendar|캘린더|뉴스\s*\(|News|장\s*시작\s*전|주간|Quant의|퀀트|마켓\s*레이더|Market\s*Radar",
+                 " ".join(lines[:2]), re.I):
         return None                       # 데일리 · 주간 · 시황 묶음 — 종목 이름이 나와도 그 종목 리포트가 아니다
     if len({m.group(1) for m in CODE_RX.finditer(text) if m.group(1) in codes}) >= 2:
         return None                       # 종목 여럿(산업 리포트의 관심종목 · 커버리지 표) — 항목으로 쪼개 읽는다
+    if len({m.group(1) for m in re.finditer(r"(?m)^\s*[*\-•·▶►◆■]?\s*([^\s:：(\[\]]{2,20})\s*[:：(]", text) if m.group(1) in nmap}) >= 2:
+        return None                       # '* 삼성전자: … / * SK하이닉스: …' 줄 머리에 종목이 여럿 — 퀀트 · 업종 묶음
     code = name = None
     for m in CODE_RX.finditer(top):
         if m.group(1) in codes:
@@ -293,11 +297,13 @@ def _whole_post(text, broker, nmap, nrx, codes):
             nm = m.group(1)
             if any(rx.search(nm) for _, rx in BROKER_RX) or nm not in nmap or re.match(r"\s*(?:증권|투자증권|리서치)|\.[A-Z]{1,3}\b", top[m.end():m.end() + 6]):
                 continue                  # '[SK 증권 조준기]' 의 SK, '골드만삭스 (GS.US)' 의 GS
-            if re.search(r"[\[『「(]\s*$", top[max(0, m.start() - 2):m.start()]) or re.match(r"\s*[\]』」(:：]", top[m.end():m.end() + 2]):
+            if re.search(r"[\[『「(]\s*$", top[max(0, m.start() - 2):m.start()]) or re.match(r"\s*(?:[\]』」:：]|\(\s*(?:A?\d{6}|[A-Za-z]{2,}|매수|중립|매도))", top[m.end():m.end() + 12]):
                 code, name = nmap[nm], nm
                 break
     if not code:
         return None
+    if len({m.group(1) for m in nrx.finditer(text) if re.match(r"\s*\(\s*(?:매수|중립|매도|Buy|BUY|Hold|HOLD|A?\d{6})", text[m.end():m.end() + 12])} if nrx else set()) >= 2:
+        return None                       # 'KB금융(매수/TP …)과 신한지주(매수/TP …)' — 선호 종목 묶음
     tp = tp_prev = None
     mv = TP_MOVE.search(text)
     if mv and re.search(r"목표|TP|Target", text[max(0, mv.start() - 40):mv.start()], re.I):
@@ -323,7 +329,8 @@ def _whole_post(text, broker, nmap, nrx, codes):
     title = re.sub(r"^\[[^\]]{1,20}\]\s*", "", title)
     title = re.sub(r"^\s*" + re.escape(name) + r"\s*(?:\(\s*A?\d{6}(?:\.K[SQ])?(?:\s*/[^)]*)?\s*\))?\s*[:：\-—–;]\s*", "", title)[:120]
     body = [re.sub(r"^[-•·*»▶►]\s*", "", l.strip()) for l in text.split("\n") if re.match(r"\s*[-•·*»▶►]\s*\S", l)]
-    body = [l for l in body if len(l) >= 8 and not URL_RX.search(l)][:5] or [l for l in lines[1:] if len(l) >= 20 and not URL_RX.search(l)][:3]
+    body = [l for l in body if len(l) >= 8 and not URL_RX.search(l) and not COMPLIANCE.search(l)][:5] or \
+        [l for l in lines[1:] if len(l) >= 20 and not URL_RX.search(l) and not COMPLIANCE.search(l)][:3]
     return {"kind": "기업", "code": code, "name": name, "broker": broker, "opinion": _norm_op(op.group(1) or op.group(2)) if op else None,
             "tp": tp, "tp_prev": tp_prev, "change": change, "title": title, "lines": body, "urls": URL_RX.findall(text)[:3],
             "src": "brk", "ref": False, "sector": None}
@@ -413,7 +420,9 @@ def parse(text, channel_title="", names=None, codes=None):
         else:
             continue
         if kind == "기업" and not (tp or re.search(r"리포트|Report|보고서|코멘트|Comment|프리뷰|Preview|리뷰|Review", lines[0] if lines else "", re.I)):
-            continue                      # 종목 이름만 스친 글(시황 · 뉴스 · 일정)은 리포트가 아니다 — 목표가 · 의견이 있거나 첫 줄이 리포트 낱말일 때만
+            continue
+        if kind == "기업" and chb and not tp:
+            continue                      # 증권사 채널 글을 쪼갠 기업 항목은 목표가가 있을 때만(글 하나 = 리포트 하나는 _whole_post 가 이미 봤다)                      # 종목 이름만 스친 글(시황 · 뉴스 · 일정)은 리포트가 아니다 — 목표가 · 의견이 있거나 첫 줄이 리포트 낱말일 때만
         if not title.strip():
             continue
         # src — 'brk': 증권사 공식 채널 글(증권사가 확실, 대조의 근거), 'agg': 모음 채널의 카드 아닌 글(대조로 증권사를 채울 대상).
