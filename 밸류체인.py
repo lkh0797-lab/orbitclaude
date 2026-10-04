@@ -37,6 +37,37 @@ COUNTRY_HINT = [("한국", r"한국전력|한전|㈜|\(주\)|주식회사|정비
                 ("독일", r"Germany|Siemens|ATOTECH"), ("방글라데시", r"DESCO|Bangladesh")]
 
 
+JUNK_NAME = re.compile(r"같습니다|없습니다|않습니다|않았습니다|바랍니다|입니다|합니다|됩니다|있습니다|참고|해당\s*사항|^아래$|^다음$|^위$|^각각|"
+                       r"비율|증가율|금융자산|예탁금|부채|차입금|자본금|매출액|대비|생산하는|하는$|되는$|기준|^\d+(?![A-Za-z\d])|^주\s*\d|^\((?!주\))|^[^\w가-힣]+$|개사$|"
+                       r"계열회사|^(?:당기|전기|합\s*계|소\s*계|총\s*계|지배회사|종속회사|USD|JPY|EUR|CNY|KRW|GBP|원화|외화)$|연구\s*개발|경영\s*자문|가나다\s*순|^[^(]*\)$")
+TYPE_NAME = re.compile(r"^(?:유럽|중국|일본|미국|아시아|북미|남미|중남미|중동|동남아|아프리카|오세아니아|글로벌|국내|해외|관수|민수|일반|개인(?:\s*고객)?|기업\s*고객|업무용|가정용|산업용|"
+                       r"면세점|금융기관|공공기관|관공서|정부|지자체|건설사|EPC|대리점|특약점|도매|소매|병원|약국|의원|유통|딜러|홈쇼핑|온라인|백화점|할인점|편의점|"
+                       r"반도체|디스플레이|자동차|조선|가전|통신|기타|완성차|정유사|발전사|전력사)(?:\s*(?:업체|회사|등|사))?(?:\s*등)?$", re.I)
+ANON_NAME = re.compile(r"^(?:주요\s*)?(?:고객|거래처|매출처)\s*\(?\s*([A-Za-z]|[가-하])\s*\)?(?:\s*사)?$|^[\"'“”‘’]?([A-Z]|[가-하])[\"'“”‘’]?\s*사(?:\s*\(社\))?$")
+CORP_HINT = re.compile(r"㈜|\(주\)|주식회사|유한|[A-Za-z]{2,}")
+
+
+def name_kind(nm):
+    """'named' · 'type'(고객군 · 지역) · 'hidden'(익명 표기) · None(잡음)."""
+    nm = (nm or "").strip()
+    if not nm or len(nm) < 2:
+        return None
+    if ANON_NAME.match(nm):
+        return "hidden"
+    if TYPE_NAME.match(nm):
+        return "type"
+    if JUNK_NAME.search(nm):
+        return None
+    if len(nm.split()) >= 4 and not CORP_HINT.search(nm):
+        return None                   # 띄어쓴 낱말 넷 이상 + 법인 표시 없음 = 문장 조각('전기 전자 완제품을 생산하는')
+    return "named"
+
+
+def _anon_label(nm):
+    m = ANON_NAME.match(nm.strip())
+    return "고객 %s(이름 비공개)" % ((m.group(1) or m.group(2)) if m else nm)
+
+
 def _clean_name(s):
     s = re.sub(r"\s+", " ", s or "").strip(" ,·ㆍ-")
     s = TRAIL.sub("", s).strip()
@@ -58,6 +89,8 @@ def _names_in(text):
         nm = _clean_name(m.group(1))
         # 앞 문장의 꼬리가 섞여 들어온다('2025년 주요 매출처는 HICO') — 마지막 구분자 뒤만
         nm = re.split(r"(?:매출처는|고객은|거래처는|매입처는|비중은|는|은)\s+", nm)[-1].strip() if len(nm) > 40 else nm
+        # '동국제강(주)이며, 매출비율은 동국제강(주)' — 문장 이음말 뒤의 마지막 이름만
+        nm = re.split(r"(?:이며|이고|이다|으로서|로서)[,\s]+|(?:비율|비중|매출처|거래처|고객)(?:은|는)\s+", nm)[-1].strip()
         if not nm or BAD_NAME.match(nm) or len(nm) < 2 or len(nm) > 60:
             continue
         if re.search(r"사업\s*부문|부문$|억\s*원|백만\s*원|\d조|매출액|대비|전체|비중", nm):
@@ -76,8 +109,51 @@ def _without_subs(text):
     return text[:m.start()] + text[stop:]
 
 
+UNIT = {"천": 1e3, "백만": 1e6, "억": 1e8}
+
+
+def _ten_pct(text):
+    """'매출액의 10% 이상' 고객 문장.
+    LG디스플레이 '고객은 "가"사(社)와 "나"사(社)이며, 각각 14,835,862백만원(2024년: …)과 3,412,768백만원' → 익명 둘 + 금액
+    솔루엠 'A사와 그 종속기업 … 827,048,769천원' · 송원산업 '1개 고객사 … 111,028백만원' → 익명 + 금액
+    S-Oil '주요매출처는 Aramco Trading Singapore Pte. Ltd.(매출액 비중 21.5%)입니다' · GS 'Chevron U.S.A. Inc.입니다' → 이름
+    PI첨단소재 '주요고객에 대한 매출비중은 각각 매출액의 25.72%와 25.98%' → 익명 1 + 비중(당기)
+    OCI · 대웅 '10% 이상을 차지하는 … 고객은 없습니다' → none"""
+    out = []
+    for m in re.finditer(r"10\s*%\s*이상", text):
+        # 문장 = 앞쪽 '다.' · 줄바꿈 뒤부터 뒤쪽 '다.' · '다(' · 줄바꿈까지 — 'Pte. Ltd.' 처럼 이름 속 마침표에서 끊기지 않게
+        a = max(text.rfind("다.", max(0, m.start() - 200), m.start()), text.rfind("\n", max(0, m.start() - 200), m.start()))
+        a = a + 2 if a >= 0 else max(0, m.start() - 200)
+        e = re.search(r"다[.(]|\n", text[m.end():m.end() + 450])
+        sen = text[a:m.end() + (e.end() if e else 450)]
+        if not re.search(r"고객|거래처|매출처", sen) or re.search(r"자회사|자산총액|지분|주주|채권|대손|신용위험이\s*집중", sen) and not re.search(r"매출", sen):
+            continue
+        if re.search(r"없습니다|없음|해당\s*사항(?:이)?\s*없", sen):
+            out.append({"name": "매출 10% 넘는 고객 없음", "pct": None, "scope": "연결", "kind": "none", "country": None})
+            continue
+        body = re.sub(r"\([^)]*\d{4}\s*년[^)]*\)", "", sen)            # '(2024년: 14,281,844백만원)' 같은 전기 금액은 지운다
+        amts = [float(a.replace(",", "")) * UNIT[u] for a, u in re.findall(r"([\d,]{3,})\s*(천|백만|억)\s*원", body)]
+        pcts = [float(x) for x in re.findall(r"(\d{1,2}(?:\.\d+)?)\s*%", body) if float(x) != 10]
+        labels = re.findall(r"[\"'“”‘’]([가-하A-Z])[\"'“”‘’]\s*사|(?<![A-Za-z])([A-Z])\s*사(?:와|과|,|\s|이|는|의)", body)
+        labels = [a or b for a, b in labels]
+        nco = re.search(r"(\d+)\s*개\s*(?:의\s*)?(?:고객|거래처|매출처)", body)
+        named = re.search(r"(?:매출처|고객|거래처)(?:는|은)\s+((?:[A-Z][A-Za-z0-9.&,'\- ]{2,70}?)|(?:[가-힣][가-힣A-Za-z0-9()㈜ ]{1,30}?))(?:\s*\(\s*매출(?:액)?\s*비중\s*(\d{1,3}(?:\.\d+)?)\s*%\s*\))?\s*(?:입니다|이며|이고|및\s*그|와\s*그|과\s*그)", body)
+        if labels:
+            for i, lb in enumerate(dict.fromkeys(labels)):
+                out.append({"name": "고객 %s(이름 비공개)" % lb, "pct": pcts[i] if i < len(pcts) and len(pcts) >= len(labels) else (pcts[0] if len(labels) == 1 and pcts else None),
+                            "amt": amts[i] if i < len(amts) else None, "scope": "연결", "kind": "hidden", "country": None})
+        elif not nco and named and name_kind(_clean_name(named.group(1))) == "named" and not re.match(r"\d", named.group(1)):
+            nm = _clean_name(named.group(1))
+            out.append({"name": nm, "pct": float(named.group(2)) if named.group(2) else (pcts[0] if pcts else None), "scope": "연결", "kind": "named", "country": _country(nm)})
+        elif nco or pcts or amts:
+            n = int(nco.group(1)) if nco else 1
+            out.append({"name": "매출 10%% 이상 고객 %d곳(이름 비공개)" % n, "pct": pcts[0] if pcts else None, "amt": amts[0] if amts else None,
+                        "scope": "연결", "kind": "hidden", "country": None})
+    return out
+
+
 def customers(text):
-    """매출처 — [{name, pct, scope('지배회사'|'종속회사명'|'연결'), kind('named'|'hidden'|'desc'), country}]"""
+    """매출처 — [{name, pct, scope('지배회사'|'종속회사명'|'연결'), kind('named'|'hidden'|'type'|'none'), country}]"""
     text = _without_subs(text)
     out = []
     # (다) 가려진 고객 — 10% 이상 n곳, 금액
@@ -88,6 +164,9 @@ def customers(text):
         pct = re.search(r"\(\s*(\d{1,3}(?:\.\d+)?)\s*%\s*\)", seg)
         out.append({"name": "매출 10%% 이상 고객 %d곳(이름 비공개)" % n, "pct": float(pct.group(1)) if pct else None,
                     "amt": float(amt.group(1).replace(",", "")) * 1e6 if amt else None, "scope": "연결", "kind": "hidden", "country": None})
+    # (다') '10% 이상' 문장의 다른 꼴 — 익명 '가'사 · A사 · n개 고객사, 이름 + 비중, '없습니다'
+    if not out:
+        out += _ten_pct(text)
     # (나) 한 곳 + 비중
     for m in SINGLE.finditer(text):
         out.append({"name": _clean_name(m.group(1)), "pct": float(m.group(2)), "scope": "연결", "kind": "named", "country": None})
@@ -117,6 +196,28 @@ def customers(text):
     # (사)(아) 이름만 나열(비중 없음) — 표의 '주요고객' 칸, 문장 "주요 매출처는 A, B, C 등"
     if not any(x.get("pct") is not None for x in out):
         out += _customer_names_only(text)
+    # 이름 판정 — 잡음은 버리고, 고객군 · 지역은 type, 익명 표기는 hidden
+    keep = []
+    for x0 in out:
+        # 한 칸에 여럿('삼성전자, SK하이닉스 외' · 'Intel, TSMC, Micron 외') — 가른다. 비중은 누구 몫인지 몰라 비운다
+        parts = [_supp_name(t) for t in re.split(r",\s*", x0["name"])] if x0.get("kind") == "named" and re.search(r",\s*\S", x0["name"]) \
+            and not re.search(r",\s*(?:Inc|Ltd|LLC|Co|Corp|S\.A|N\.V|GmbH|PLC|Limited)\b", x0["name"], re.I) else [x0["name"]]
+        parts = [t for t in parts if t]
+        if len(parts) > 1:
+            xs = [dict(x0, name=t, pct=None, country=_country(t)) for t in parts]
+        else:
+            xs = [dict(x0, name=_supp_name(x0["name"]) if x0.get("kind") == "named" else x0["name"])]
+        for x in xs:
+            if x.get("kind") == "named":
+                k_ = name_kind(x["name"])
+                if k_ is None:
+                    continue
+                if k_ == "hidden":
+                    x = dict(x, name=_anon_label(x["name"]), kind="hidden", country=None)
+                elif k_ == "type":
+                    x = dict(x, kind="type")
+            keep.append(x)
+    out = keep
     # 같은 이름은 큰 비중 하나로
     seen, uniq = {}, []
     for x in out:
@@ -133,7 +234,7 @@ def customers(text):
 CUST_TBL_HDR = re.compile(r"(?:주요\s*)?(?:매출처|거래처|고객(?:사|명)?|판매처)\s*(?:명)?\s*\n")
 CUST_NAME_OK = re.compile(r"[가-힣A-Za-z]{2,}")
 CUST_NAME_BAD = re.compile(r"^(?:합\s*계|소\s*계|기타(?:\s*거래처)?|국내|해외|수출|내수|제품|상품|용역|매출|합계|총계|비\s*고|구\s*분|당기|전기|금\s*액|비\s*중|주식|자동차|전자|부품|조선|건설|은행|보험)$|"
-                           r"점유율|시장\s*규모|거래처\s*\d+|고객\s*[A-Z0-9]$|^[A-Z]\s*사$|^(?:A|B|C|D)\s*(?:사|고객)|고객\s*수|이상\s*차지|\*\*|^\d{2}년|유지보수|체결하고|있습니다|합니다$|입니다$")
+                           r"점유율|시장\s*규모|거래처\s*\d+|고객\s*[0-9]$|고객\s*수|이상\s*차지|\*\*|^\d{2}년|유지보수|체결하고|있습니다|합니다$|입니다$")
 
 
 def _customer_tables(text):
@@ -257,8 +358,13 @@ def seg_customer_tables(text):
             if not mv or BAD_NAME.match(nm) or CUST_NAME_BAD.search(nm) or re.match(r"합\s*계|기\s*타", nm):
                 continue
             nm = re.sub(r"\s+\(주\)$", "(주)", nm).strip()
-            typ = CUST_TYPE.search(nm) and not CORP_MARK.search(nm)
-            rows.append({"seg": seg, "name": nm, "pct": float(mv.group(1)), "kind": "type" if typ else "named"})
+            k_ = name_kind(nm)
+            if k_ is None:
+                continue
+            typ = k_ == "type" or (CUST_TYPE.search(nm) and not CORP_MARK.search(nm))
+            if k_ == "hidden":
+                nm = _anon_label(nm)
+            rows.append({"seg": seg, "name": nm, "pct": float(mv.group(1)), "kind": "type" if typ else k_})
         if not rows:
             continue
         # 법인 머리 — 표 안 부문 이름과 같은 [대괄호](예: [전력시스템])는 부문 소제목이다. 그 앞의 법인 머리를 쓴다
@@ -300,6 +406,8 @@ def subsidiaries(text):
                 chans.append((nm, pct))
         fin = re.search(r"최종\s*고객\s*기준\s*주요\s*매출처는([^.\n]{0,400})", blk)
         final = _names_in(fin.group(1)) if fin else []
+        custs = [(nm, p) for nm, p in custs if name_kind(nm) == "named"]
+        final = [(nm, p) for nm, p in final if name_kind(nm) == "named"]
         out.append({"sub": _clean_name(h.group(1)), "customers": custs, "final": final, "channels": chans})
     return out
 
@@ -332,34 +440,137 @@ def segments(text):
     return out
 
 
+MAT_HEAD = re.compile(r"주요\s*원\s*재\s*료\s*(?:등\s*의?\s*)?(?:현\s*황|매입\s*(?:현황|실적)?)?\s*(?:\([^)\n]{0,30}\)[^\n]{0,40})?\s*\n")
+SUBTOTAL = re.compile(r"^(?:합\s*계|소\s*계|총\s*계|계|Total|Sub\s*total)$", re.I)
+NOTE_SUPP = re.compile(r"㈜|\(주\)|주식회사|[A-Za-z]{4,}|(?:제철|제강|화학|전자|중공업|산업|금속|물산|상사|케미칼|소재|에너지|정유|석유|철강|스틸|머티리얼|엔진|빌리티|가스|전력|제지|유리|섬유)$")
+HDR_KEY = re.compile(r"^(?:사업부문|사업구분|구분|부문|매입유형|품목|품명|원재료|원재료명|원자재|구체적용도|용도|매입액|매입금액|금액|투입액|비율|비중|매입처|주요매입처|공급처|공급사|공급업체|구입처|업체명|비고|회사명|법인명)")
+MAT_COLS = (("seg", r"사업부문|사업구분|^구분$|^부문$"), ("ent", r"회사명|법인명"), ("kind", r"매입유형"), ("item", r"품목|품명|원재료|원자재"),
+            ("amt", r"매입액|금액|투입액"), ("pct", r"비중|비율"), ("use", r"용도"), ("supp", r"매입처|업체|구입처|공급사|공급처"), ("note", r"비고"))
+NUMLIKE = re.compile(r"^\(?\s*-?[\d,]+(?:\.\d+)?\s*\)?\s*(?:\(\s*\d{1,3}(?:\.\d+)?\s*%\s*\))?\s*%?$")
+
+
+def _nz(s):
+    return re.sub(r"\s+", "", s or "")
+
+
+PROD_HDR_KEY = re.compile(r"^(?:사업부문|사업구분|구분|부문|매출유형|품목|품명|제품|주요제품|구체적용도|용도|주요상표|상표|매출액|금액|비율|비중)")
+PROD_COLS = (("seg", r"사업부문|사업구분|^구분$|^부문$"), ("kind", r"매출유형"), ("item", r"품목|품명|제품"), ("use", r"용도"),
+             ("brand", r"상표"), ("amt", r"매출액|금액"), ("pct", r"비중|비율"))
+
+
+def _hdr_like(cells, mode="mat"):
+    """머리 행인가 — 머리 낱말 칸이 둘 이상이고 그중 품목 · 매입액 · 매입처(제품표는 품목 · 매출액 · 비율) 가운데 하나가 있다. '사 업 부 문' 처럼 띄어 써도."""
+    if mode == "prod":
+        keys = [c for c in cells if PROD_HDR_KEY.match(_nz(c))]
+        # 매출액 · 비율 칸이 머리 다음 행으로 내려간 표(효성중공업 '제8기(당기)(2025년 1~12월)' · LG디스플레이 '2025년 연간')도 머리로 본다
+        return len(keys) >= 2 and any(re.search(r"품목|품명|제품", _nz(c)) for c in cells) and \
+            any(re.search(r"매출액|금액|비율|비중", _nz(c)) or PERIOD_HEAD.match(c.strip()) for c in cells)
+    keys = [c for c in cells if HDR_KEY.match(_nz(c))]
+    return len(keys) >= 2 and any(re.search(r"품목|품명|원재료|원자재|매입액|금액|매입처|공급", _nz(c)) for c in keys)
+
+
 def materials(text):
-    """주요 원재료 현황 표 — [{segment, item, amt(백만원), pct, suppliers:[...]}]. 효성(비중 없음) · 삼성전기(비중 있음) 둘 다."""
-    ms = [m for m in re.finditer(r"주요\s*원재료\s*등?의?\s*현황(?!\s*및)", text)]
-    if not ms:
-        return []
-    m = ms[0]
-    body = text[m.end():m.end() + 6000]
-    end = re.search(r"\n[^\n]{0,6}주요\s*원재료\s*등?의?\s*가격\s*변동|\n[^\n]{0,6}가격변동\s*추이|\n\s*\(\d\)\s*생산|\n\s*[가-하]\.\s*생산", body)
-    body = body[:end.start()] if end else body
-    hdr_m = re.search(r"(?:사업부문|구\s*분)\n", body)
-    if not hdr_m:
-        return []
-    rows = _rows(body[hdr_m.start():])
-    if not rows:
-        return []
+    """주요 원재료 현황 표 — [{segment, kind, item, amt(백만원), pct, suppliers:[...]}].
+    머리 행은 '사업부문'으로 시작하지 않아도 찾는다 — 머리 낱말이 둘 넘는 첫 행(CJ제일제당 '품 목 / 구체적용도 / 매입액',
+    DB하이텍 · KG스틸 '매입유형 / …', HD현대중공업 '사 업 부 문 / 회 사 명 / 품 목 / 매 입 액(비 중)').
+    칸 수가 머리보다 적은 행은 병합 칸이다 — 앞 · 뒤 어디가 빠졌는지 숫자 칸이 숫자로 떨어지는 자리를 골라 맞추고, 앞에서 빠진 칸은 위 행 값을 잇는다.
+    표 가운데 다시 나온 머리 행(종속회사 표)은 그 머리로 다시 맞춘다. 표가 없으면 문장('주요 원재료는 Glass, 편광판 … 등이며')을 품목 하나로."""
+    out = []
+    for m in list(MAT_HEAD.finditer(text))[:4]:
+        body = text[m.end():m.end() + 7000]
+        end = re.search(r"\n\s*[나-하]\.\s|\n[^\n]{0,8}(?:주요\s*)?원\s*재\s*료\s*(?:등\s*의?\s*)?가\s*격|\n[^\n]{0,6}가격\s*변동\s*추이|\n\s*\(\d\)\s*생산|\n\s*[가-하]\.\s*생산|\n\s*\d\.\s*생산", body)
+        body = body[:end.start()] if end else body
+        rows = _rows(body)
+        hi = next((i for i, r_ in enumerate(rows[:8]) if _hdr_like(r_)), None)
+        if hi is None:
+            continue
+        got = _mat_rows(rows[hi:])
+        if got:
+            out = got
+            break
+    if not out:
+        # 문장형(삼성전기): "주요 원재료는 PASTE/POWDER로 SHOEI, GUANGBO 등에서 매입"
+        for m2 in re.finditer(r"주요\s*원재료는\s*([A-Za-z가-힣0-9/&\s]{2,40}?)[로으]로?\s*([A-Za-z가-힣0-9&,\s·]{2,80}?)\s*등?\s*(?:에서|으로부터|로부터)\s*(?:매입|구매|공급)", text):
+            item, supp = m2.group(1).strip(), m2.group(2)
+            if not any(x.get("item") == item for x in out):
+                sl = [_clean_name(s) for s in re.split(r",|·|ㆍ", supp) if _clean_name(s)]
+                out.append({"segment": None, "item": item, "amt": None, "pct": None, "suppliers": [{"name": s, "country": _country(s)} for s in sl]})
+    if not out:
+        # 문장형(LG디스플레이): "Display 패널 생산을 위한 주요 원재료는 Glass, 반도체류, 편광판, 유기물, Backlight, PCB 등이며"
+        m3 = re.search(r"주요\s*원재료는\s*([^.\n]{3,140}?)\s*(?:등(?:이며|이고|입니다|이다|으로|을|이)|(?:이며|입니다))", text)
+        if m3 and not re.search(r"다음과|아래|표", m3.group(1)):
+            out.append({"segment": None, "kind": "문장", "item": m3.group(1).strip(" ,"), "amt": None, "pct": None, "suppliers": []})
+    return out
+
+
+PERIOD = re.compile(r"^(?:제\s*\d+\s*기|\d{4}\s*년?|당\s*기|전\s*기|전전기|\d{2}\s*년)$")
+PERIOD_HEAD = re.compile(r"^(?:\[?\s*제\s*\d+\s*기|\d{4}\s*년|당\s*기|전\s*기|전전기)")      # 머리 칸 속 기수('제8기(당기)(2025년 1~12월)', '2025년 연간')
+
+
+def _unspace(s):
+    """한 글자씩 띄어 쓴 칸('대 두' · '원 당' · '조 선' · '사 업 부 문')을 붙인다."""
+    if s and re.fullmatch(r"(?:[가-힣]{1,2}\s)+[가-힣]{1,2}", s.strip()):
+        return re.sub(r"\s+", "", s)
+    return s
+
+
+def _item_ok(item):
+    """원재료 품목 칸으로 쓸 만한가 — 문장('…습니다') · 기수('제51기', '(제26기)') · 숫자 · '※' 주석 · 지나치게 긴 칸은 아니다."""
+    it = (item or "").strip()
+    if not it or len(it) > 80 or it.startswith(("※", "-", "·", "*")):
+        return False
+    if re.search(r"습니다|있으며|입니다|하였|되었|않았", it) or re.search(r"제\s*\d+\s*기|^\(?\d{4}\s*년", it) or \
+            re.search(r"단\s*가|사\s*용\s*량|비\s*용$|\(원/", it):         # 연료 · 단가 표가 이어 붙은 행(CJ제일제당 '경 유 비 용', '단가(원/ℓ)')
+        return False
+    return not re.match(r"^[\s\d,.%()~\-$/]+$", it)
+
+
+def _mat_rows(rows, mode="mat"):
+    """원재료 표(mode='mat') · 주요 제품 표(mode='prod') 행 읽기 — 머리로 칸을 정하고 병합 · 넘친 칸을 맞춘다."""
+    COLS = PROD_COLS if mode == "prod" else MAT_COLS
     hdr = rows[0]
+    ci = {}
+    # 머리 다음 행이 기수뿐이면('제 18기 / 제 17기 / 제 16기') 머리 마지막 칸이 해마다 갈라진 것 — 머리를 넓힌다(E1 '매입물량')
+    if len(rows) > 1 and len(rows[1]) >= 2 and all(PERIOD.match(x.strip()) for x in rows[1]):
+        hdr = hdr[:-1] + ["%s %s" % (hdr[-1], x) for x in rows[1]]
+        rows = [hdr] + rows[2:]
+    # 머리에 기수가 섞이고 다음 행이 '매출액 / 비율(%)' 되풀이면(KG스틸 제품표) — 기수를 빼고 그 행을 머리 뒤에 붙인다(첫 짝 = 당기)
+    elif len(rows) > 1 and any(PERIOD_HEAD.match(x.strip()) for x in hdr) and rows[1] and all(re.search(r"매출액|매입액|금액|비율|비중|%", x) for x in rows[1]):
+        hdr = [x for x in hdr if not PERIOD_HEAD.match(x.strip())] + rows[1]
+        rows = [hdr] + rows[2:]
+    # 칸 하나가 빈 줄로 떨어져 따로 행이 된 것(SK하이닉스 '…SK하이닉스⏎⏎97,146,675(100%)') — 숫자 한 칸뿐인 행은 앞 행에 붙인다
+    merged = [rows[0]]
+    for r_ in rows[1:]:
+        if len(r_) == 1 and NUMLIKE.match(r_[0].replace(" ", "")) and len(merged) > 1 and len(merged[-1]) < len(hdr):
+            merged[-1] = merged[-1] + r_
+        else:
+            merged.append(r_)
+    rows = merged
+
+    def set_hdr(h):
+        nonlocal hdr, ci
+        hdr = h
+        hz = [_nz(x) for x in h]
+        ci = {k: next((i for i, x in enumerate(hz) if re.search(rx, x)), None) for k, rx in COLS}
+        if mode == "mat" and ci["supp"] is None:   # 매입처 칸이 없으면 비고 칸에 적는 회사(한화오션: 'POSCO현대제철…')
+            ci["supp"] = ci["note"]
+            ci["supp_note"] = True
+        if ci["amt"] is not None and ci["pct"] is not None and ci["amt"] == ci["pct"]:
+            ci["pct"] = None              # '투입액(비율)' · '매입액(비중)' 한 칸
+    set_hdr(hdr)
+    if mode == "prod" and (ci["item"] is None or (ci["amt"] is None and ci["pct"] is None)):
+        return []
+    if mode == "mat" and ci["supp"] is None and ci["item"] is None:
+        return []
 
     def fold(cells):
         """칸 수가 머리글보다 많으면 셀 안 줄바꿈이다('변압기 생산' + '변압기, 전동기 생산' / '포스코, 보무강철,' + '삼동, 티씨티 등').
         뒤에서부터 쉼표로 끝나는 줄 · 매입처처럼 보이는 연속 줄을 합친다."""
         is_use = lambda s: bool(re.search(r"(?:생산|제조|용|재료|부품|가공|조립)\s*$", s)) and not re.search(r",|\s등$", s)
         while len(cells) > len(hdr):
-            # 1) 쉼표로 끝나는 줄 = 매입처 이름이 다음 줄로 이어짐('포스코, 보무강철,' + '삼동, 티씨티 등')
             j = next((i for i in range(len(cells) - 1) if cells[i].endswith(",")), None)
-            # 2) 용도 줄이 둘('변압기 생산' + '변압기, 전동기 생산') — 둘 다 용도처럼 끝나면 합친다
             if j is None:
                 j = next((i for i in range(len(cells) - 1) if is_use(cells[i]) and is_use(cells[i + 1])), None)
-            # 3) 그래도 남으면 숫자 없는 이웃 칸 중 뒤쪽을 합친다
             if j is None:
                 cand = [i for i in range(len(cells) - 1) if not re.search(r"\d", cells[i]) and not re.search(r"\d", cells[i + 1])
                         and cells[i + 1] != "-" and len(cells[i]) < 30]
@@ -368,58 +579,99 @@ def materials(text):
                 j = cand[-1]
             cells = cells[:j] + [cells[j] + " " + cells[j + 1]] + cells[j + 2:]
         return cells
-    rows = [rows[0]] + [fold(r) for r in rows[1:]]
-    ci = {k: next((i for i, h in enumerate(hdr) if re.search(rx, h)), None) for k, rx in
-          (("seg", r"사업\s*(?:부문|구분)|구\s*분"), ("kind", r"매입유형"), ("item", r"원재료|품\s*목|원자재"), ("amt", r"매입액|금액|투입액"), ("pct", r"비\s*중|비율"),
-           ("use", r"용도"), ("supp", r"매입처|업체명|구입처|공급사"), ("note", r"비\s*고"))}
-    if ci["supp"] is None and ci["item"] is None:
-        return []
-    if ci["supp"] is None:            # 매입처 칸이 없으면 비고 칸에 적는 회사(한화오션: 'POSCO현대제철…')
-        ci["supp"] = ci["note"]
-    if ci["amt"] is not None and ci["pct"] is not None and ci["amt"] == ci["pct"]:
-        ci["pct"] = None              # '투입액(비율)' 한 칸
-    out, seg, kind = [], None, None
+
+    def score(row):
+        """맞춘 행이 그럴듯한가 — 금액 · 비중 칸은 숫자, 품목 · 매입처 칸은 글자."""
+        g = lambda k: row[ci[k]] if ci.get(k) is not None and ci[k] < len(row) else None
+        sc = 0
+        for k in ("amt", "pct"):
+            v = g(k)
+            if v is not None and v not in ("-", ""):
+                sc += 2 if NUMLIKE.match(v.replace(" ", "")) else -3
+        for k in ("item", "supp", "use", "seg", "kind"):
+            v = g(k)
+            if v is not None and v not in ("-", ""):
+                sc += -3 if NUMLIKE.match(v.replace(" ", "")) else 1
+        return sc
+
+    out, prev = [], None
+    seg = kind = None
     for cells in rows[1:]:
-        if len(cells) == len(hdr):
-            seg = cells[ci["seg"]] if ci["seg"] is not None else seg
-            row = cells
-        elif len(cells) == len(hdr) - 1 and ci["note"] is not None and ci["note"] == len(hdr) - 1 and \
-                ci["seg"] is not None and not re.fullmatch(r"(?:원재료|원자재|상품|부재료|저장품|기타)", cells[0]):
-            # 비고(매입처) 칸이 첫 행에만 있는 표(한화오션) — 앞에서 맞추고 비고만 비운다
-            seg = cells[ci["seg"]]
-            row = cells + [None]
+        if _hdr_like(cells, mode):
+            set_hdr(cells)                # 표 가운데 다시 나온 머리(종속회사 표) — 그 머리로 다시 맞춘다
+            prev = None
+            continue
+        if len(cells) < 2:
+            continue                      # '(2) 종속회사 DB글로벌칩' 같은 소제목 · '(단위 : 백만원)'
+        if all(PERIOD.match(x.strip()) for x in cells):
+            continue
+        if any(SUBTOTAL.match(_nz(x)) or SUBTOTAL.match(x.strip()) for x in cells):
+            continue                      # 소계 · 합계 행 — 병합 칸을 위 행에서 이으면 품목처럼 보인다
+        n = len(hdr)
+        while len(cells) > n and NUMLIKE.match(cells[-1].replace(" ", "")) and NUMLIKE.match(cells[-2].replace(" ", "")):
+            cells = cells[:-1]            # 머리 한 칸이 해마다 여러 칸으로 갈라진 표(E1 '매입물량' 제18 · 17 · 16기) — 뒤쪽 숫자를 덜어낸다
+        cells = fold(cells)
+        if len(cells) >= n:
+            row = cells[:n]
         else:
-            # 사업부문 · 매입유형 칸이 병합돼 빠진 행 — 뒤에서 맞춘다
-            miss = len(hdr) - len(cells)
-            row = [None] * miss + cells
-            if miss >= 1 and ci["seg"] == 0:
-                row[0] = seg
-        g = lambda k: (row[ci[k]] if ci[k] is not None and ci[k] < len(row) else None)
+            miss = n - len(cells)
+            best = None
+            for off in range(miss, -1, -1):          # 같은 점수면 뒤에 붙인(앞 칸이 병합된) 쪽 — 흔한 모양
+                cand = [None] * off + cells + [None] * (miss - off)
+                sc = score(cand)
+                if best is None or sc > best[0]:
+                    best = (sc, cand, off)
+            row, off = best[1], best[2]
+            if best[0] < 0:
+                continue                  # 어떻게 맞춰도 숫자 · 글자 칸이 엇갈리는 행
+            if prev:
+                for i in range(off):
+                    row[i] = prev[i]                # 앞에서 빠진(병합된) 칸은 위 행 값을 잇는다
+        g = lambda k: (row[ci[k]] if ci.get(k) is not None and ci[k] < len(row) else None)
+        if g("seg"):
+            seg = g("seg")
+        if g("kind"):
+            kind = g("kind")
         item, amt, pct, supp = g("item"), g("amt"), g("pct"), g("supp")
-        if kind is None or g("kind"):
-            kind = g("kind") or kind
-        if not item or re.search(r"합\s*계|소\s*계", item or "") or re.fullmatch(r"품\s*목|원\s*재\s*료\s*명?|구\s*분|매입\s*유형|원자재", item):
-            continue          # 머리글이 둘째 행으로 한 번 더 나온 표(LS ELECTRIC '사업부문 / 매입유형 / 품 목')
+        prev = row
+        if not item or re.search(r"합\s*계|소\s*계", (item or "") + " " + (seg or "")) or re.fullmatch(r"품\s*목|원\s*재\s*료\s*명?|구\s*분|매입\s*유형|원자재|-", item):
+            continue
+        if NUMLIKE.match(item.replace(" ", "")) or not _item_ok(item):
+            continue                      # 맞춤이 어긋나 숫자 · 기수 · 문장이 품목 칸에 온 행(가격 변동 표가 이어 붙은 것 포함)
+        if seg and (PERIOD.match(seg.strip()) or re.match(r"^[\s\d,.%()~\-$]+$", seg) or re.search(r"\d{4}\s*년", seg)):
+            continue
         amt_v = pct_v = None
+        if amt and re.fullmatch(r"\s*\d{1,3}(?:\.\d+)?\s*%\s*", amt):
+            pct, amt = amt, None          # '매입액(비율)' 칸에 비율만 적은 행(E1 'LNG 98.1%')
         if amt and re.search(r"\d", amt):
             mm = re.match(r"\(?\s*([\d,]+)\s*\)?\s*(?:\(\s*(\d{1,3}(?:\.\d+)?)\s*%\s*\))?", amt.strip())
-            if mm:
+            if mm and mm.group(1).replace(",", ""):
                 amt_v = float(mm.group(1).replace(",", ""))
                 if mm.group(2):
                     pct_v = float(mm.group(2))
         if pct and re.search(r"\d", pct):
-            pct_v = float(re.search(r"(\d{1,3}(?:\.\d+)?)", pct).group(1))
+            pv = float(re.search(r"(\d{1,3}(?:\.\d+)?)", pct).group(1))
+            pct_v = pv if pv <= 100 else pct_v
+        if mode == "prod":
+            if amt_v is None and pct_v is None:
+                continue
+            out.append({"segment": _unspace(seg), "kind": kind, "item": _unspace(item), "use": g("use"), "amt": amt_v, "pct": pct_v})
+            continue
         if supp and not re.search(r"[,·ㆍ/]", supp) and len(re.sub(r"\s*등\s*$", "", supp)) > 14:
             supp = _split_glued(supp)      # 줄바꿈 없이 붙은 이름들(POSCO현대제철동국제강HD현대중공업한화엔진두산에너빌리티 등)
-        sl = [x for x in (_clean_name(x) for x in re.split(r",|·|ㆍ|/|\s등", supp or "")) if _supplier_ok(x)] if supp else []
-        out.append({"segment": seg, "kind": kind, "item": item, "amt": amt_v, "pct": pct_v,
+        # 칸 안에서 '외'로 이어 적은 이름('TOM GREYHOUND 외 예진에프앤지㈜', '대광직물㈜ 외㈜해성인터내셔날')도 가른다
+        sl = [x for x in (_supp_name(x) for x in re.split(r",|·|ㆍ|/|\s등|\s+(?:외|外)\s*(?=㈜|\(주\)|[가-힣A-Z])", supp or "")) if _supplier_ok(x)] if supp else []
+        item, seg = _unspace(item), _unspace(seg)
+        out.append({"segment": seg, "kind": kind, "item": item, "amt": amt_v, "pct": pct_v, "_note": bool(ci.get("supp_note")),
                     "suppliers": [{"name": x, "country": _country(x)} for x in sl if len(x) <= 40]})
-    # 문장형 보강(삼성전기): "주요 원재료는 PASTE/POWDER로 SHOEI, GUANGBO 등에서 매입"
-    for m2 in re.finditer(r"주요\s*원재료는\s*([A-Za-z가-힣0-9/&\s]{2,40}?)[로으]로?\s*([A-Za-z가-힣0-9&,\s·]{2,80}?)\s*등?\s*(?:에서|으로부터|로부터)\s*(?:매입|구매|공급)", text):
-        item, supp = m2.group(1).strip(), m2.group(2)
-        if not any(x.get("item") == item for x in out):
-            sl = [_clean_name(s) for s in re.split(r",|·|ㆍ", supp) if _clean_name(s)]
-            out.append({"segment": None, "item": item, "amt": None, "pct": None, "suppliers": [{"name": s, "country": _country(s)} for s in sl]})
+    # 비고 칸을 매입처로 읽은 행 — 표 전체에서 회사 이름처럼 보이는 것이 하나도 없으면 품목 메모다
+    # (KG스틸 비고 'BP, GI, SGL, AL' · '페인트' 는 버리고, DB하이텍 비고 'Siltron, Shin-Etsu' · '동우화인켐' 은 살린다)
+    nr = [r for r in out if r.get("_note")]
+    if nr and not any(NOTE_SUPP.search(s["name"]) or s["name"] in KNOWN_CO for r in nr for s in r["suppliers"]):
+        for r in nr:
+            r["suppliers"] = []
+    for r in out:
+        r.pop("_note", None)
     return out
 
 
@@ -435,7 +687,9 @@ SUPP_JUNK_IN = re.compile(r"장부가액|환율변동|당기증감|상각|기말
 def _supplier_ok(x):
     """매입처 이름으로 쓸 만한가 — 숫자 · 비율 조각('2', '129', '305(29.8%)', '11.6%'), 용도 문구('플랜트 용', '특수선박 건조용'),
     표 머리글 조각('비고', '주요 매입처', '당기증감 당기상각 …'), 법인 꼬리만 남은 것('LTD'), 금액이 붙은 이름은 뺀다."""
-    if not x or x == "-" or BAD_NAME.match(x) or SUPP_JUNK.match(x) or SUPP_JUNK_IN.search(x):
+    if not x or x == "-" or BAD_NAME.match(x) or SUPP_JUNK.match(x) or SUPP_JUNK.match(re.sub(r"\s+", "", x)) or SUPP_JUNK_IN.search(x):
+        return False
+    if name_kind(x) is None or re.search(r"계열회사|입니다|^주\s*\d|비율|계약\s*\(", x):
         return False
     if re.fullmatch(r"[\d,.\s()%]+", x):
         return False
@@ -444,6 +698,14 @@ def _supplier_ok(x):
     if len(x) < 2 or len(x) > 40:
         return False
     return True
+
+
+def _supp_name(x):
+    """매입처 이름 — '롯데케미칼 외' · '(주)덕진 外' · '금강석유(주) 外 3개사' 의 꼬리를 뗀다(상장사와 이어지게)."""
+    x = _clean_name(x)
+    x = re.sub(r"\s*(?:외|外)\s*(?:\d+\s*(?:개사|곳|社))?\s*$", "", x).strip()
+    x = re.sub(r"(?<=[가-힣A-Za-z)㈜])(?:외|外)$", "", x).strip()
+    return x
 
 
 def _strip_amount(x):
@@ -519,6 +781,73 @@ def competitors(text):
     return out[:8]
 
 
+PROD_HEAD = re.compile(r"주요\s*제\s*품\s*(?:등\s*의?\s*)?(?:현\s*황|매\s*출|및\s*서비스)[^\n]{0,40}\n")
+
+
+def products(text):
+    """주요 제품 등의 현황 — 무엇을 팔아 매출을 내나 [{segment, kind, item, use, amt(백만원), pct}].
+    머리 '사업부문 / 매출유형 / 품목 / 구체적용도 / 주요상표 / 매출액(비율)'(CJ제일제당 · SK하이닉스 · HD현대중공업 '매 출 액(비 율)'),
+    기수마다 갈라진 머리(KG스틸 '제44기 · 제43기 …' 다음 '매출액 / 비율(%)')는 첫 짝(당기)을 쓴다."""
+    for m in list(PROD_HEAD.finditer(text))[:4]:
+        body = text[m.end():m.end() + 6000]
+        end = re.search(r"\n\s*[나-하]\.\s|\n\s*\d\.\s", body)
+        body = body[:end.start()] if end else body
+        rows = _rows(body)
+        hi = next((i for i, r_ in enumerate(rows[:8]) if _hdr_like(r_, "prod")), None)
+        if hi is None:
+            continue
+        got = _mat_rows(rows[hi:], "prod")
+        if got:
+            return got[:20]
+    return []
+
+
+CHAN_HEAD = re.compile(r"판매\s*경로[^\n]{0,40}\n")
+
+
+def channels(text):
+    """판매경로 비중 — 고객 이름을 안 적는 회사의 '누구에게 파나'를 대신한다 [{name, desc, pct}].
+    CJ제일제당 '경로구분 / 주요 거래처 유형 / 매출비중'('대리점 · 전문점,복합점,식당전문점 등 · 18.9'), 문장 '판매경로는 직판 70%, 대리점 30%'."""
+    for m in list(CHAN_HEAD.finditer(text))[:3]:
+        body = text[m.end():m.end() + 2500]
+        rows = _rows(body)
+        hi = next((i for i, r_ in enumerate(rows[:6]) if any(re.search(r"경로|구분", _nz(x)) for x in r_)
+                   and any(re.search(r"비중|비율", _nz(x)) for x in r_) and len(r_) >= 2), None)
+        if hi is not None:
+            hz = [_nz(x) for x in rows[hi]]
+            wide = sum(1 for x in hz if re.search(r"직판|대리점|특약점|도매|소매|관계회사|온라인", x)) >= 2
+            out = []
+            if not wide:                  # 긴 꼴만 — 경로가 칸 머리로 늘어선 넓은 꼴(LS ELECTRIC '직판 / 관계회사 / 특약점')은 건너뛴다
+                for cells in rows[hi + 1:hi + 16]:
+                    if len(cells) < 2 or SUBTOTAL.match(_nz(cells[0])) or re.match(r"^\(?단위|^※|^주\d", cells[0]):
+                        continue
+                    nums = [x for x in cells[1:] if re.fullmatch(r"\s*\d{1,3}(?:\.\d+)?\s*%?\s*", x)]
+                    if not nums:
+                        if out:
+                            break
+                        continue
+                    pv = float(re.search(r"\d{1,3}(?:\.\d+)?", nums[0]).group(0))
+                    if pv > 100:
+                        continue
+                    desc = next((x for x in cells[1:] if not re.search(r"\d", x) and x != "-"), None)
+                    if re.search(r"비중|비율|÷|합\s*계", cells[0]):
+                        continue          # '해외매출 비중(해외매출÷전체매출)' 같은 집계 행
+                    out.append({"name": cells[0][:30], "desc": (desc or "")[:60], "pct": pv})
+                    if sum(x["pct"] for x in out) >= 99:
+                        break             # 한 표가 100%를 채우면 끝(LG디스플레이처럼 해외 · 국내 표가 이어 붙은 꼴에서 둘째 표를 섞지 않게)
+            if out:
+                return out[:8]
+        seg = text[m.end():m.end() + 400]
+        got = [(nm, p) for nm, p in _names_in(seg.split("\n\n")[0]) if len(nm) <= 20]
+        # 문장형은 경로 낱말일 때만(직판 · 대리점 · 온라인 …) — 판매경로 제목 밑의 매출처 이름(TANTRANSCO 3.2%)을 경로로 읽지 않게
+        chan = [g for g in got if re.search(r"직판|직접|대리점|특약점|도매|소매|온라인|오프라인|수출|내수|위탁|유통|홈쇼핑|할인점|편의점|백화점|"
+                                            r"마트|면세|관수|조달|B2B|B2C|OEM|로컬|해외|국내|자사|가맹|딜러|총판|상사", g[0], re.I)]
+        if len(chan) >= 2 and len(chan) * 2 >= len(got):
+            return [{"name": nm, "desc": "", "pct": p} for nm, p in chan[:8]]
+    return []
+
+
 def extract(text):
     return {"customers": customers(text), "subs": subsidiaries(text), "segments": segments(text),
-            "materials": materials(text), "export": export_split(text), "competitors": competitors(text)}
+            "materials": materials(text), "products": products(text), "channels": channels(text),
+            "export": export_split(text), "competitors": competitors(text)}

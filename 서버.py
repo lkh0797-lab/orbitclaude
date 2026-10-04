@@ -8344,7 +8344,7 @@ try:
 except Exception as _e:
     VCM = None
     print("밸류체인 모듈 로드 실패:", _e)
-VC_V = 8            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
+VC_V = 13            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
 VC_DIR = os.path.join(CACHE_DIR, "밸류체인")
 VC_LOCK = threading.Lock()
 _VC_PEER = {"at": 0, "cust": {}, "supp": {}, "n": 0}
@@ -8599,6 +8599,7 @@ def valuechain_view(code):
         h["country"] = VCM._country(h["name"]) or h.get("country")
     customers = sorted(hist.values(), key=lambda h: (h["last"] != years[-1], -(h["pct"] or 0), -(max(v or 0 for v in h["by_year"].values()))))
     hidden = [x for x in last.get("customers") or [] if x.get("kind") == "hidden"]
+    no_major = any(x.get("kind") == "none" for x in last.get("customers") or [])      # 매출 10% 넘는 고객 없음(고루 퍼짐)
     types = [{"name": x["name"], "pct": x.get("pct"), "seg": x.get("seg")} for x in last.get("customers") or [] if x.get("kind") == "type"]
     # 같은 그룹 판정 — 내 이름 · 지배회사 법인 머리(LS ELECTRIC) · 종속회사 이름과 키가 겹치면 계열 내부 거래다
     own_keys = {_vc_key(c["name"])} | {_vc_key(s["sub"]) for s in last.get("subs") or []}
@@ -8681,12 +8682,15 @@ def valuechain_view(code):
             if cd != c["code"] and not same_group(pnm, cd) and cd not in seen:
                 seen.add(cd)
                 out_.append({"code": cd, "name": pnm, "pct": pct})
-        return sorted(out_, key=lambda x: -(x["pct"] or 0))[:5]
+        return sorted(out_, key=lambda x: -(x["pct"] or 0))
+    # peer_n = 이 고객을 주요 매출처로 적은 다른 상장사 수 — 삼성전자 · 현대차처럼 많으면(공급사 17곳) 칩 대신 '공급 상장사 n곳'으로 묶고 역방향 보기로
     for h in customers[:30]:
-        h["peers"] = [] if h["own"] else peers_of(h["name"])
+        ps = [] if h["own"] else peers_of(h["name"])
+        h["peers"], h["peer_n"], h["key"] = ps[:5], len(ps), _vc_key(h["name"])
     for s in subs:
         for x in s["customers"]:
-            x["peers"] = [] if x["own"] else peers_of(x["name"])
+            ps = [] if x["own"] else peers_of(x["name"])
+            x["peers"], x["peer_n"], x["key"] = ps[:5], len(ps), _vc_key(x["name"])
     # 매입처마다 '같은 곳에서 사는 다른 상장사' — 공급사 쪽 그물망
     for mt in mats:
         for sp in mt["suppliers"]:
@@ -8695,7 +8699,7 @@ def valuechain_view(code):
                 if cd != c["code"] and not same_group(pnm, cd) and cd not in seen:
                     seen.add(cd)
                     oth.append({"code": cd, "name": pnm})
-            sp["others"] = oth[:5]
+            sp["others"], sp["others_n"], sp["key"] = oth[:5], len(oth), _vc_key(sp["name"])
             o = own_of(sp["name"])
             sp["own"], sp["self"] = bool(o), o == me_k
     buyers = [{"code": cd, "name": nm, "pct": pct, "as": raw} for cd, nm, pct, raw in peers["supp"].get(me_k, []) if cd != c["code"]]       # 나를 매입처로 적은 회사 = 내 고객
@@ -8715,15 +8719,87 @@ def valuechain_view(code):
         orders = sorted(agg.values(), key=lambda a: -a["amount"])[:10]
         for a in orders:
             a["link"] = link(a["party"])
+            # 계약상대 칸에 사업 · 조합 이름을 적는 공시(건설 수주 '답십리 자동차 부품상가 도시정비형 재개발')
+            a["kind"] = "사업" if re.search(r"재개발|재건축|정비\s*사업|조합|프로젝트|PJT|현장|신축|구역|공사$|사업$", a["party"]) else "상대"
     except Exception:
         orders = []
     periods = {y: {"label": d["years"][y].get("label") or "사업보고서", "stamp": d["years"][y].get("stamp"),
                    "partial": bool(d["years"][y].get("partial"))} for y in years}
+    # 매출처 이름을 적은 해 — 그해 표가 없었으면 다음 해 고객은 '새 고객'이 아니라 '그해부터 적힘'
+    cust_years = [y for y in years if any(x.get("kind") == "named" for x in d["years"][y].get("customers") or [])]
+    # 무엇을 파나(제품 매출 구성) · 판매경로 — 지금 모습 칸에 없으면 그 앞 해에서
+    prods = next((d["years"][y].get("products") for y in reversed(years) if d["years"][y].get("products")), []) or []
+    chans = next((d["years"][y].get("channels") for y in reversed(years) if d["years"][y].get("channels")), []) or []
     return {"v": VC_V, "code": c["code"], "name": c["name"], "years": years, "periods": periods, "stamp": last.get("stamp"),
-            "customers": customers[:30], "hidden": hidden, "types": types, "subs": subs, "materials": mats, "suppliers_hist": supp_hist,
+            "customers": customers[:30], "cust_years": cust_years, "products": prods[:12], "channels": chans[:8],
+            "hidden": hidden, "no_major": no_major, "types": types, "subs": subs, "materials": mats, "suppliers_hist": supp_hist,
             "export": exp, "segments": last.get("segments") or [], "competition": last.get("competitors") or [],
             "shared": sorted(shared.values(), key=lambda s: -len(s["via"]))[:20], "buyers": buyers, "sellers": sellers,
             "orders": orders, "peer_n": peers["n"]}
+
+
+def vcbuyer_view(key, kind="cust"):
+    """고객(kind='cust') 또는 매입처(kind='supp') 하나를 가운데 두고 — 그 이름을 적은 상장사 전부, 해마다의 비중, 무엇을 파는(사는)지.
+    '삼성SDI에 파는 상장사 8곳' · '포스코에서 사는 상장사 10곳'처럼 산업 단위로 같이 움직일 회사를 본다."""
+    if VCM is None or not key:
+        return None
+    peers = _vc_peers()
+    rows0 = peers["supp" if kind == "supp" else "cust"].get(key) or []
+    if not rows0:
+        return {"key": key, "kind": kind, "name": key, "rows": [], "years": []}
+    import collections
+    names = collections.Counter(r[3] for r in rows0)
+    disp = _vc_canon(names.most_common(1)[0][0])
+    univ = {x["code"]: x for x in INDEX["companies"]}
+    out, yrs = [], set()
+    for cd in dict.fromkeys(r[0] for r in rows0):
+        c = univ.get(cd)
+        if not c:
+            continue
+        try:
+            d = _vc_company(c)
+        except Exception:
+            continue
+        ys = sorted(d["years"])
+        by, seg, basis, item = {}, None, None, None
+        for y in ys:
+            L = d["years"][y]
+            if kind == "supp":
+                for mt in L.get("materials") or []:
+                    if any(_vc_key(sp["name"]) == key for sp in mt.get("suppliers") or []):
+                        by[y] = max(by.get(y) or 0, mt.get("pct") or 0) or by.get(y)
+                        if y == ys[-1]:
+                            item, seg = mt.get("item"), mt.get("segment")
+            else:
+                cands = [x for x in L.get("customers") or [] if x.get("kind") == "named" and _vc_key(x["name"]) == key]
+                cands += [{"pct": p_} for s_ in L.get("subs") or [] for nm_, p_ in (s_.get("final") or s_.get("customers") or []) if _vc_key(nm_) == key]
+                if cands:
+                    by[y] = max((x.get("pct") or 0) for x in cands) or None
+                    if y == ys[-1]:
+                        seg, basis = cands[0].get("seg"), cands[0].get("basis")
+        if not by:
+            continue
+        yrs |= set(by)
+        L = d["years"][ys[-1]]
+        prod = next((p_.get("item") for p_ in sorted(L.get("products") or [], key=lambda p_: -(p_.get("amt") or p_.get("pct") or 0))), None)
+        last_y = max(by)
+        out.append({"code": cd, "name": c["name"], "pct": by.get(ys[-1]), "last": last_y, "by_year": by, "seg": seg, "basis": basis,
+                    "item": item, "product": prod, "periods": {y: bool(d["years"][y].get("partial")) for y in by}})
+    out.sort(key=lambda r: (r["last"] != max(r["by_year"]), -(r["pct"] or 0)))
+    # 지주가 연결로 자회사 숫자를 그대로 적은 것(효성 = 효성중공업, LS = 엘에스일렉트릭) — 두 해 넘게 같은 비중이면 짧게 적힌 쪽(지주)을 '연결' 로 표시
+    for a in out:
+        for b in out:
+            if a is b or a.get("dup") or b.get("dup"):
+                continue
+            same = [y for y in a["by_year"] if a["by_year"][y] and b["by_year"].get(y) == a["by_year"][y]]
+            if len(same) >= 2 and len(a["by_year"]) <= len(b["by_year"]) and (len(a["by_year"]) < len(b["by_year"]) or len(a["name"]) < len(b["name"])):
+                a["dup"] = b["name"]
+    lk = None
+    cd = _listed_names().get(_norm_corp(disp))
+    if cd:
+        lk = {"code": cd, "collected": cd in univ}
+    return {"key": key, "kind": kind, "name": disp, "aka": [n for n, _ in names.most_common(6) if n != disp], "link": lk,
+            "rows": out, "years": sorted(yrs)}
 
 
 # ---------------------------------------------------------------- HTTP
@@ -8955,6 +9031,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, value_view(q.get("force") == "1"))
             if path == "/api/value2":
                 return self._send(200, value2_view(q.get("force") == "1"))
+            if path == "/api/vcbuyer":
+                return self._send(200, vcbuyer_view(q.get("key", ""), q.get("kind", "cust")) or {"rows": []})
             if path == "/api/valuechain":
                 d = valuechain_view(q.get("code", ""))
                 if d is None:
