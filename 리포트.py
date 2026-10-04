@@ -25,7 +25,7 @@ STORE_DIR = os.path.join(BASE, ".cache", "리포트")
 STATE_PATH = os.path.join(STORE_DIR, "_state.json")
 SESSION_DIR = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "기업추적")
 SESSION = os.path.join(SESSION_DIR, "telegram")          # Telethon 이 .session 을 붙인다
-RULE_V = 8                                               # 읽는 규칙이 바뀌면 올린다 — 쌓아 둔 원문을 다시 읽는다
+RULE_V = 9                                               # 읽는 규칙이 바뀌면 올린다 — 쌓아 둔 원문을 다시 읽는다
 
 BROKERS = [
     ("미래에셋증권", r"미래에셋"), ("삼성증권", r"삼성증권|SAMSUNG\s*SEC|삼성\s*리서치|\[SAMSUNG\]"), ("한국투자증권", r"한국투자|한투증권|KIS\b"),
@@ -39,6 +39,18 @@ BROKERS = [
 ]
 BROKER_RX = [(n, re.compile(rx, re.I)) for n, rx in BROKERS]
 CHANNEL_HINT = re.compile(r"증권|리서치|Research|리포트|Report|투자전략|애널리스트", re.I)
+# 증권사 이름 없이 시리즈 이름만 적힌 머리('[IBKS Daily]' · '[HANA US Weekly]') · 채널 제목('대신 전략. 돌직구') — 본문에는 쓰지 않는다('~ 대신 전략을' 같은 말)
+SERIES = [(re.compile(rx), n) for rx, n in [
+    (r"\bIBKS\b", "IBK투자증권"), (r"\bDS\s+(?:Defense|시황)", "DS투자증권"),
+    (r"(?:HANA|Hana)\s+(?:US|China|Macro|Global|Strategy|Japan)|하나\s*채권|Wedbush\s*X\s*HANA", "하나증권"), (r"대신\s*전략", "대신증권"),
+]]
+
+
+def series_broker(s):
+    for rx, n in SERIES:
+        if rx.search(s or ""):
+            return n
+    return None
 
 OPINION = re.compile(r"(?<![A-Za-z])(Strong\s*Buy|Trading\s*Buy|Buy|Outperform|Overweight|Hold|Neutral|Marketperform|Market\s*Perform|"
                      r"Underperform|Underweight|Reduce|Sell|Not\s*Rated|NR)(?![A-Za-z])|(?<![가-힣])(매수|중립|매도)(?![가-힣])", re.I)   # '순매수' · '매수세' 는 의견이 아니다
@@ -90,11 +102,20 @@ def _items(text):
     return out or [t.strip()]
 
 
+_NI = {"key": None, "val": None}
+
+
 def _name_index(names):
-    """수집한 회사 이름 → 코드. 긴 이름부터 맞춰야 'LG' 가 'LG에너지솔루션' 을 먹지 않는다. 두 글자 이름은 앞뒤가 글자가 아닐 때만."""
+    """수집한 회사 이름 → 코드. 긴 이름부터 맞춰야 'LG' 가 'LG에너지솔루션' 을 먹지 않는다. 두 글자 이름은 앞뒤가 글자가 아닐 때만.
+    build 는 같은 dict 로 글 수만 번 부른다 — 같은 dict(·크기)면 만들어 둔 것을 쓴다."""
+    key = (id(names), len(names))
+    if _NI["key"] == key:
+        return _NI["val"]
     pairs = sorted(((n, c) for n, c in names.items() if len(n) >= 2), key=lambda x: -len(x[0]))
     alt = "|".join(re.escape(n) for n, _ in pairs)
-    return dict(pairs), (re.compile(r"(?<![가-힣A-Za-z0-9])(" + alt + r")(?![가-힣A-Za-z0-9])") if alt else None)
+    val = dict(pairs), (re.compile(r"(?<![가-힣A-Za-z0-9])(" + alt + r")(?![가-힣A-Za-z0-9])") if alt else None)
+    _NI.update(key=key, val=val)
+    return val
 
 
 CARD_SKIP = re.compile(r"^\s*\[(?:단독|속보|특징주|공시|주식뉴스!?|리포트|뉴스|일정)\]")
@@ -142,7 +163,11 @@ def _parse_card(text, codes, names=None):
     concl = " ".join(secs.get("결론", []))[:1500]
     risks = [re.sub(r"^[-•·*▶]\s*", "", l) for l in secs.get("위험", []) if len(l) >= 6][:6]
     urls = [u for u in URL_RX.findall(t) if "stockinfo7.com/" in u and not u.rstrip("/").endswith("stockinfo7.com")][:2] or URL_RX.findall(t)[:1]
-    broker = broker_of(t[:600], "") or broker_of(tag2, "")
+    bt = t[:600]
+    for nm in ([tag2] if tag == "기업" and tag2 else []) + [m.group(1).strip() for m in CARD_STOCK.finditer(t)]:
+        if nm:
+            bt = bt.replace(nm, " ")
+    broker = broker_of(bt, "") or (broker_of(tag2, "") if tag != "기업" else None) or series_broker(tag2 + " " + title)
     out = []
     # 제목 속 의견 — '[웹젠/매수]' · 'KT&G(033780.KS/매수):'
     mto = re.search(r"/\s*(매수|중립|매도|보유|Buy|BUY|Hold|HOLD|Sell|Trading\s*Buy|Outperform|Marketperform)\s*[\])]", title)
@@ -212,6 +237,98 @@ def _parse_card(text, codes, names=None):
     return out
 
 
+def _gen_title(lines):
+    """일반 글 항목의 제목 — 증권사 · 애널리스트 머리 줄, '종목(코드) BUY/TP …' 줄, 인사 · 링크 줄은 건너뛴다.
+    '[넷마블 3분기 프리뷰, 하나증권 … 이준호]' 처럼 머리에 제목이 붙었으면 쉼표 앞을."""
+    for l in lines:
+        s = re.sub(r"^[^\w\[(『「<《]+", "", re.sub(r"\s+", " ", l).strip()).strip("『』「」《》<> '\"‘’“”")
+        if len(s) < 6 or (URL_RX.search(s) and len(URL_RX.sub("", s).strip()) < 12):
+            continue                      # 링크 줄 · '채널: https://t.me/…'
+        mb = re.fullmatch(r"\[([^\]]*)\]", s)
+        if mb:
+            x, x0 = mb.group(1), mb.group(1).split(",")[0].strip()
+            if "," in x and any(rx.search(x) for _, rx in BROKER_RX) and len(x0) >= 6 and not any(rx.search(x0) for _, rx in BROKER_RX):
+                return x0                 # '[넷마블 3분기 프리뷰, 하나증권 …]' — '[키움 스몰캡 오현진, 이하곤]' 은 머리
+            continue
+        if any(rx.search(s) for _, rx in BROKER_RX) and len(s) <= 40 and not re.search(r"[:：]\s*\S", s):
+            continue                      # 'IBK투자증권' · '하나증권 Global ETF 장치영(T.3771-3669)'
+        if len(s) <= 70 and re.search(r"\(\s*(?:Analyst|애널리스트|연구원)\b", s, re.I):
+            continue                      # '스몰캡/로봇/AI (Analyst 한유건, 권태우)'
+        if re.match(r"(?:목표\s*주?가|투자\s*의견|TP\b|안녕하세요|보고서\s*링크|자료\s*[:：]|텔레그램|\*?텔레그램)", s, re.I):
+            continue
+        if len(s) <= 60 and re.search(r"(?:BUY|HOLD|SELL|Trading\s*Buy|매수|중립|OVERWEIGHT|NEUTRAL)\s*/\s*(?:TP\s*)?[\d,]+|(?:BUY|HOLD|SELL|OVERWEIGHT|NEUTRAL)\s*/\s*(?:유지|신규|상향|하향)", s, re.I):
+            continue                      # '코스메카코리아(241710) BUY/140,000원 (유지/상향)' · '증권업(OVERWEIGHT/유지)'
+        if re.fullmatch(r"[^()\n]{1,30}\(\s*A?\d{6}(?:\.K[SQ])?\s*\)\s*", s) or (len(s) <= 40 and re.search(r"\(\s*TP\b", s)):
+            continue                      # '현대오토에버(307950)' · '천보 (TP 4.5만원)'
+        if re.fullmatch(r"[A-Za-z가-힣·&\s]{1,12}(?:/[A-Za-z가-힣·&\s]{1,12})+", s) or re.fullmatch(r"[가-힣]{2,4}\s*(?:수석\s*)?(?:연구위원|연구원|애널리스트|리서치본부장|센터장|팀장|이사)", s):
+            continue                      # 'IT/반도체' · '조선/기계/운송' 담당 줄, '김운호 연구위원'
+        return s
+    return lines[0] if lines else ""
+
+
+TP_ALT = re.compile(r"(?:BUY|HOLD|매수|중립|Trading\s*Buy)\s*/\s*(?:TP\s*)?" + NUM, re.I)      # 'BUY/140,000원' · 'BUY/TP 500,000'
+REPORT_WORD = re.compile(r"리포트|보고서|프리뷰|Preview|리뷰|Review|발간|코멘트|Comment|실적|투자\s*의견|목표\s*주?가|\bBUY\b|매수|\.pdf|자료\s*[:：]|원문", re.I)
+
+
+def _whole_post(text, broker, nmap, nrx, codes):
+    """증권사 공식 채널 글 — 글 하나가 리포트 하나. 앞 여섯 줄에 우리 종목(6자리 코드, 또는 '[삼성전자]' · '『POSCO홀딩스(' · '삼성E&A(' 꼴 이름)이 있고
+    리포트 낱말 · 목표가가 있으면 글 전체를 기업 항목 하나로. 아니면 None(항목으로 쪼개 읽는다)."""
+    lines = [l.strip(" \t•·-*▶■◆●□▣◇►✅📌🔹🔸") for l in text.split("\n") if l.strip()]
+    top = "\n".join(lines[:6])
+    if len(lines) <= 2 and re.search(r"\.pdf\b", text, re.I):
+        return None                       # 앞 글에 붙은 첨부 파일만 있는 글
+    if re.search(r"Daily|데일리|Weekly|위클리|Monthly|먼슬리|모닝|Morning|시황|Nowcast|마감|수급|모니터링|Calendar|캘린더|뉴스\s*\(|News", " ".join(lines[:2]), re.I):
+        return None                       # 데일리 · 주간 · 시황 묶음 — 종목 이름이 나와도 그 종목 리포트가 아니다
+    if len({m.group(1) for m in CODE_RX.finditer(text) if m.group(1) in codes}) >= 2:
+        return None                       # 종목 여럿(산업 리포트의 관심종목 · 커버리지 표) — 항목으로 쪼개 읽는다
+    code = name = None
+    for m in CODE_RX.finditer(top):
+        if m.group(1) in codes:
+            code, name = m.group(1), codes[m.group(1)]
+            break
+    if not code and (re.search(r"\(\s*A?\d{6}(?:\.K[SQ])?\s*[/)]", top) or re.search(r"\(\s*[0-9A-Z]{1,6}\.(?:HK|US|O|N|T|SS|SZ|TW|CH|JP)\s*[/)]", top)):
+        return None                       # 수집 밖 종목('케이카 (381970.KS/…)') · 해외 종목('레노버(0992.HK)') 글 — 본문의 다른 이름을 종목으로 잡지 않게
+    if not code and nrx:
+        for m in nrx.finditer(top):
+            nm = m.group(1)
+            if any(rx.search(nm) for _, rx in BROKER_RX) or nm not in nmap or re.match(r"\s*(?:증권|투자증권|리서치)|\.[A-Z]{1,3}\b", top[m.end():m.end() + 6]):
+                continue                  # '[SK 증권 조준기]' 의 SK, '골드만삭스 (GS.US)' 의 GS
+            if re.search(r"[\[『「(]\s*$", top[max(0, m.start() - 2):m.start()]) or re.match(r"\s*[\]』」(:：]", top[m.end():m.end() + 2]):
+                code, name = nmap[nm], nm
+                break
+    if not code:
+        return None
+    tp = tp_prev = None
+    mv = TP_MOVE.search(text)
+    if mv and re.search(r"목표|TP|Target", text[max(0, mv.start() - 40):mv.start()], re.I):
+        a, b = _num(mv.group(1)), _num(mv.group(2))
+        if a and b and 0.3 < b / a < 3:
+            tp_prev, tp = a, b
+    if tp is None:
+        m = TP_RX.search(text) or TP_ALT.search(text)
+        tp = _num(m.group(1)) if m else None
+    if tp is None:
+        m = re.search(r"(?:TP|목표\s*주?가)\s*[:：]?\s*(\d{1,4}(?:\.\d{1,2})?)\s*만\s*원", text)      # 'TP 4.5만원'
+        tp = int(round(float(m.group(1)) * 10000)) if m else None
+    if not (tp or REPORT_WORD.search(text)):
+        return None
+    op = OPINION.search(text)
+    if op and op.group(2) and not re.search(r"(?:의견\s*[:：]?\s*|[(/\[]\s*)$", text[max(0, op.start() - 12):op.start()]):
+        op = None
+    mc = re.search(r"\((?:유지|신규|상향|하향)\s*/\s*(유지|신규|상향|하향)\)", text)         # '(유지/상향)' — 뒤가 목표가
+    mtp = re.search(r"목표\s*주?\s*가[^\n]{0,30}?(상향|하향|유지|신규)|(상향|하향)\s*조정", text)
+    change = ("상향" if tp > tp_prev else "하향" if tp < tp_prev else "유지") if (tp and tp_prev) else (
+        mc.group(1) if mc else ((mtp.group(1) or mtp.group(2)) if mtp else None))
+    title = _gen_title(lines)
+    title = re.sub(r"^\[[^\]]{1,20}\]\s*", "", title)
+    title = re.sub(r"^\s*" + re.escape(name) + r"\s*(?:\(\s*A?\d{6}(?:\.K[SQ])?(?:\s*/[^)]*)?\s*\))?\s*[:：\-—–;]\s*", "", title)[:120]
+    body = [re.sub(r"^[-•·*»▶►]\s*", "", l.strip()) for l in text.split("\n") if re.match(r"\s*[-•·*»▶►]\s*\S", l)]
+    body = [l for l in body if len(l) >= 8 and not URL_RX.search(l)][:5] or [l for l in lines[1:] if len(l) >= 20 and not URL_RX.search(l)][:3]
+    return {"kind": "기업", "code": code, "name": name, "broker": broker, "opinion": _norm_op(op.group(1) or op.group(2)) if op else None,
+            "tp": tp, "tp_prev": tp_prev, "change": change, "title": title, "lines": body, "urls": URL_RX.findall(text)[:3],
+            "src": "brk", "ref": False, "sector": None}
+
+
 def parse(text, channel_title="", names=None, codes=None):
     """글 하나 → 리포트 항목들. names: {회사 이름: 코드}, codes: {코드: 회사 이름}(수집한 회사).
     → [{kind('기업'|'산업'), code, name, broker, opinion, tp, tp_prev, change, title, lines, urls}]
@@ -222,10 +339,18 @@ def parse(text, channel_title="", names=None, codes=None):
     text = _h.unescape(text or "")            # 미리보기 HTML 이 한 번 더 감싼 '&rarr;' · '&amp;' 같은 것
     card = _parse_card(text, codes, names)
     if card is not None:
+        for r in card:
+            r["src"] = "card"
         return card
     nmap, nrx = _name_index(names) if names else ({}, None)
     out = []
-    broker0 = broker_of(text, channel_title)
+    # 증권사 공식 채널(제목에 증권사 이름)이면 그 증권사 — 글 속에 다른 증권사 이름('JP모건 보고서에 따르면')이 나와도
+    chb = broker_of("", channel_title) or series_broker(channel_title)
+    broker0 = chb or broker_of(text, "")
+    if chb:
+        one = _whole_post(text, chb, nmap, nrx, codes)
+        if one:
+            return [one]
     for it in _items(text):
         if len(it) < 12:
             continue
@@ -259,7 +384,7 @@ def parse(text, channel_title="", names=None, codes=None):
         # 한글 의견(매수 · 매도)은 '투자의견' · '(매수' · '/매수' 꼴일 때만 — 시황 글의 '매도 물량' · '매수 복귀' 는 의견이 아니다
         if op and op.group(2) and not re.search(r"(?:의견\s*[:：]?\s*|[(/\[]\s*)$", it[max(0, op.start() - 12):op.start()]):
             op = None
-        broker = broker_of(it, "") or broker0
+        broker = chb or broker_of(it, "") or broker0
         # 상향 · 하향 — 목표가가 '이전 → 새' 로 적혔으면 숫자로, 아니면 '목표' 낱말 가까이의 말로
         if tp_prev and tp:
             change = "상향" if tp > tp_prev else ("하향" if tp < tp_prev else "유지")
@@ -267,11 +392,11 @@ def parse(text, channel_title="", names=None, codes=None):
             mtp = re.search(r"목표\s*주?\s*가[^\n]{0,30}?(상향|하향|유지|신규)|(상향|하향)\s*조정", it)
             ch = CHANGE.search(it)
             change = (mtp.group(1) or mtp.group(2)) if mtp else (ch.group(1) if ch else None)
-        title = next((l for l in lines if not re.fullmatch(r"\[?[^\]]{0,12}\]?", l) and len(l) >= 6), lines[0] if lines else "")
+        title = _gen_title(lines)
         title = re.sub(r"^\[[^\]]{1,20}\]\s*", "", title)
         title = re.sub(r"\s*\((?=[^)]*(?:Buy|BUY|Hold|Sell|매수|중립|매도|TP|목표|NR))[^)]*\)?\s*$", "", title)   # 끝의 '(Buy, TP 112,000원)'
         if name:
-            title = re.sub(r"^\s*" + re.escape(name) + r"\s*(?:\(\s*A?\d{6}\s*\))?\s*[:：\-—–]\s*", "", title)      # 앞의 '두산에너빌리티:' — 종목 칸이 따로 있다
+            title = re.sub(r"^\s*" + re.escape(name) + r"\s*(?:\(\s*A?\d{6}(?:\.K[SQ])?(?:\s*/[^)]*)?\s*\))?\s*[:：\-—–]\s*", "", title)      # 앞의 '두산에너빌리티:' — 종목 칸이 따로 있다
         title = title[:120]
         body = [l for l in lines[1:] if len(l) >= 8 and not URL_RX.fullmatch(l)][:5]
         urls = URL_RX.findall(it)[:3]
@@ -291,9 +416,11 @@ def parse(text, channel_title="", names=None, codes=None):
             continue                      # 종목 이름만 스친 글(시황 · 뉴스 · 일정)은 리포트가 아니다 — 목표가 · 의견이 있거나 첫 줄이 리포트 낱말일 때만
         if not title.strip():
             continue
+        # src — 'brk': 증권사 공식 채널 글(증권사가 확실, 대조의 근거), 'agg': 모음 채널의 카드 아닌 글(대조로 증권사를 채울 대상).
+        # 증권사 채널의 산업 항목은 목록에 내지 않고 대조에만 — 뉴스 묶음 · 데일리가 한 글에 수십 줄이라 산업 칸을 덮는다
         out.append({"kind": kind, "code": code, "name": name, "broker": broker, "opinion": _norm_op(op.group(1) or op.group(2)) if op else None,
                     "tp": tp, "tp_prev": tp_prev, "change": change, "title": title,
-                    "lines": body, "urls": urls,
+                    "lines": body, "urls": urls, "src": "brk" if chb else "agg", "ref": bool(chb) and kind == "산업",
                     "sector": (ind.group(0) if kind == "산업" else None)})
     return out
 
@@ -360,17 +487,120 @@ def store_sig():
     return "|".join(parts) + ":%d" % RULE_V
 
 
+GENERIC = re.compile(r"daily|weekly|monthly|데일리|위클리|먼슬리|시황|모닝|morning|브리프|brief|코멘트|comment|review|리뷰|preview|프리뷰|"
+                     r"채권|전략|매크로|macro|증시|마감|주간|월간|일일|update|업데이트|global|글로벌|강세|약세|코스피|코스닥|kospi|kosdaq|나스닥|nasdaq|"
+                     r"s&p|미국|국내|기준금리|금리|인상|인하|동결|환율|유가|\d+", re.I)
+
+
+def _bigrams(s, drop=(), generic=False):
+    """낱자 짝 집합. generic=True 면 어느 증권사나 쓰는 말('채권 Daily' · 날짜 · 숫자)을 빼고 — 산업 글은 제목만으로 맞추니 흔한 말로 엮이지 않게."""
+    s = (s or "").lower()
+    for d in drop:
+        if d:
+            s = s.replace(d.lower(), " ")
+    s = re.sub(r"\[[^\]]{0,30}\]", " ", s)
+    if generic:
+        s = GENERIC.sub(" ", s)
+    s = re.sub(r"[\W_]+", "", s)
+    return {s[i:i + 2] for i in range(len(s) - 1)}
+
+
+def _day(d):
+    try:
+        return dt.date.fromisoformat(d[:10]).toordinal()
+    except Exception:
+        return 0
+
+
+MATCH_DAYS = (-5, 2)          # 증권사 채널 글 날짜 - 카드 날짜. 카드는 보통 같은 날 ~ 며칠 뒤에 올라온다
+
+
+def _attribute(cards, gens):
+    """증권사 이름이 없는 카드(companyreport) ↔ 증권사 공식 채널 글 대조.
+    기업: 같은 종목 · 날짜 차 MATCH_DAYS 안 · (목표가 같음 또는 카드 제목 낱자 짝의 60% 이상이 채널 글 제목 · 첫 줄들에 있음).
+    산업: 날짜 차 안 · 카드 제목 낱자 짝의 80% 이상(흔한 말 · 숫자를 뺀 제목 8짝 이상). 맞으면 카드에 증권사 · 채널 글 링크를 채우고(빈 목표가 · 의견 · 요약도),
+    맞은 채널 기업 글은 목록에서 뺀다(같은 리포트가 두 번 나오지 않게). 이미 증권사가 있는 카드는 같은 증권사 글과만 맞춰 중복만 걷어낸다.
+    다른 증권사 글도 거의 같은 점수면(기준금리 결정 · 같은 날 실적 리뷰 — 여러 곳이 같은 제목을 쓴다) 어느 쪽인지 모르니 채우지 않는다."""
+    by_code, by_day = {}, {}
+    for g in gens:
+        if not g.get("broker"):
+            continue
+        g["_d"] = _day(g["date"])
+        if g["kind"] == "기업" and g.get("code"):
+            g["_bg"] = _bigrams(" ".join([g.get("title") or ""] + (g.get("lines") or [])[:3]), (g.get("name"),))
+            by_code.setdefault(g["code"], []).append(g)
+        elif g["kind"] == "산업":
+            g["_bg"] = _bigrams(" ".join([g.get("title") or ""] + (g.get("lines") or [])[:2]), generic=True)
+            by_day.setdefault(g["_d"], []).append(g)
+    lo, hi = MATCH_DAYS
+    n = 0
+    for c in cards:
+        cd = _day(c["date"])
+        cand = []                                              # (점수, 채널 글)
+        if c["kind"] == "기업" and c.get("code"):
+            a = _bigrams(c.get("title"), (c.get("name"),))
+            for g in by_code.get(c["code"], ()):
+                if not (lo <= g["_d"] - cd <= hi) or (c.get("broker") and g["broker"] != c["broker"]):
+                    continue
+                s = (len(a & g["_bg"]) / len(a)) if len(a) >= 4 else 0.0
+                if c.get("tp") and g.get("tp") == c["tp"]:
+                    s = max(s, 0.9) + 0.05                     # 목표가까지 같으면 더 확실
+                if s >= 0.6:
+                    cand.append((s, g))
+        elif c["kind"] == "산업" and not c.get("broker"):
+            a = _bigrams(c.get("title"), generic=True)
+            if len(a) >= 8:
+                for dd in range(cd + lo, cd + hi + 1):        # 날짜 창 안의 증권사 채널 산업 글만(하루 수십 건)
+                    for g in by_day.get(dd, ()):
+                        s = len(a & g["_bg"]) / len(a)
+                        if s >= 0.8:
+                            cand.append((s, g))
+        if not cand:
+            continue
+        score, best = max(cand, key=lambda x: x[0])
+        if any(g["broker"] != best["broker"] and s >= score - 0.1 for s, g in cand):
+            continue                                           # 다른 증권사도 거의 같은 점수 — 모른다
+        best["_used"] = True
+        if not c.get("broker"):
+            c["broker"], c["broker_via"] = best["broker"], best.get("channel")
+            n += 1
+        c["brk_url"] = best.get("msg_url")
+        for k in ("tp", "tp_prev", "opinion", "change"):
+            if not c.get(k) and best.get(k):
+                c[k] = best[k]
+        if not c.get("lines") and best.get("lines"):
+            c["lines"] = best["lines"][:5]
+    return n
+
+
 def build(names, codes):
-    """쌓인 글 → 리포트 항목(글마다 parse). 같은 증권사 · 종목 · 날짜 · 목표가는 하나로(채널 둘이 같은 리포트를 올린 것)."""
-    rows, seen = [], set()
+    """쌓인 글 → 리포트 항목(글마다 parse). 카드 ↔ 증권사 채널 대조(_attribute)로 증권사를 채운 뒤,
+    같은 증권사 · 종목 · 날짜 · 목표가는 하나로(채널 둘이 같은 리포트를 올린 것). 증권사 없는 카드끼리는 제목도 봐야 다른 리포트를 합치지 않는다."""
+    cards, gens = [], []
     for m in raw_messages():
         for r in parse(m.get("text", ""), m.get("channel_title", ""), names, codes):
-            k = (r["broker"], r["code"] or r["title"][:30], m["date"][:10], r["tp"])
-            if k in seen:
-                continue
-            seen.add(k)
             r.update(date=m["date"], channel=m.get("channel_title"), msg_url=m.get("url"), msg_id=m.get("id"))
-            rows.append(r)
+            (gens if r.get("src") == "brk" else cards).append(r)
+    _attribute(cards, gens)
+    rows, seen, gen_at = [], set(), {}
+    for r in cards + [g for g in gens if not g.get("ref") and not g.get("_used")]:
+        k = (r["broker"], r["code"] or r["title"][:30], r["date"][:10], r["tp"]) + (() if r["broker"] else (r["title"][:20],))
+        if k in seen:
+            continue
+        if r.get("src") == "brk" and r["kind"] == "기업":
+            k2 = (r["broker"], r["code"], r["date"][:10])       # 한 글에 같은 종목 두 줄('3Q26 Preview' · '삼성E&A(028050): …') — 목표가 있는 쪽
+            if k2 in gen_at:
+                old = gen_at[k2]
+                if r.get("tp") and not old.get("tp"):
+                    rows[rows.index(old)] = r
+                    gen_at[k2] = r
+                continue
+            gen_at[k2] = r
+        seen.add(k)
+        rows.append(r)
+    for r in rows:
+        for k in ("_d", "_bg", "_used", "ref"):
+            r.pop(k, None)
     rows.sort(key=lambda r: r["date"], reverse=True)
     return rows
 

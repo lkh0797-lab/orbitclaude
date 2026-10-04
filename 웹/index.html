@@ -8863,7 +8863,8 @@ function repCompany(p,d,c){
 // 리포트 한 줄(목록) — 머리(날짜 · 증권사 · 꼬리표 · 목표가) + 제목(누르면 말풍선) + 핵심 두 줄 미리보기
 function repItem(r,mode){
   const it=el('div','repIt'); const h=el('div','h');
-  h.appendChild(el('span','dt',r.date.slice(0,10))); h.appendChild(el('span','br'+(r.broker?'':' nb'),r.broker||'증권사 미표기'));
+  h.appendChild(el('span','dt',r.date.slice(0,10))); const bs=el('span','br'+(r.broker?'':' nb'),r.broker||'증권사 미표기');
+  if(r.broker_via) bs.title='요약 카드엔 증권사가 없어 '+r.broker_via+' 채널의 같은 리포트로 채움'; h.appendChild(bs);
   if(mode==='ind'&&r.sector) h.appendChild(el('span','op',r.sector));
   if(r.pick) h.appendChild(el('span','op pick','유망 포트폴리오'));
   if(r.opinion) h.appendChild(el('span','op '+(/Buy/.test(r.opinion)?'buy':/Sell/.test(r.opinion)?'sell':''),r.opinion));
@@ -8899,7 +8900,8 @@ function repPop(r,anchor,ev){
   const tt=repTitle(r);
   const head=el('div','rpH');
   const meta=el('div','rpMeta');
-  meta.appendChild(el('span','d',r.date.slice(0,10))); meta.appendChild(el('span','b'+(r.broker?'':' nb'),r.broker||'증권사 미표기'));
+  meta.appendChild(el('span','d',r.date.slice(0,10))); const mb=el('span','b'+(r.broker?'':' nb'),r.broker||'증권사 미표기');
+  if(r.broker_via) mb.title='요약 카드엔 증권사가 없어 '+r.broker_via+' 채널의 같은 리포트로 채움'; meta.appendChild(mb);
   if(tt.tag) meta.appendChild(el('span','t',tt.tag));
   if(r.kind==='산업'&&r.sector&&r.sector!==tt.tag) meta.appendChild(el('span','t',r.sector));
   if(r.kind==='기업'&&r.name) meta.appendChild(el('span','t co',r.name));
@@ -8925,6 +8927,7 @@ function repPop(r,anchor,ev){
   const foot=el('div','rpF');
   const lk=(t,u)=>{ const a=el('a','rpL',t); a.href=u; a.target='_blank'; a.rel='noopener'; foot.appendChild(a); };
   const orig=(r.urls||[]).find(u=>!/t\.me\//.test(u)); if(orig) lk('원문 보기 ↗',orig); if(r.msg_url) lk('텔레그램 글 ↗',r.msg_url);
+  if(r.brk_url&&r.brk_url!==r.msg_url) lk((r.broker||'증권사')+' 채널 글 ↗',r.brk_url);
   foot.appendChild(el('span','hint','바깥을 누르거나 Esc'));
   bub.appendChild(foot);
   document.body.appendChild(bub);
