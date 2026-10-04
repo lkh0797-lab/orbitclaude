@@ -253,6 +253,8 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .vcHeat td.c{min-width:36px;height:26px;text-align:center;border-radius:5px;color:var(--faint);background:var(--bg);font-variant-numeric:tabular-nums;font-size:11.5px}
 .vcHeat td.c.on{background:color-mix(in srgb,var(--accent) calc(var(--a) * 100%),var(--panel));color:var(--ink);font-weight:600}
 .vcHeat td.c.on.hi{color:var(--accent-ink)}
+.vcHeat th.pt{color:var(--accent);white-space:nowrap}.vcHeat td.c.pt.on{outline:1.5px dashed var(--accent-ink);outline-offset:-3px}.vcHeat td.c.pt:not(.on){background:transparent}
+.dipHead .vcNow{flex-basis:100%;font-size:11.5px;color:var(--accent);margin-top:-6px}
 /* 접어 둔 것 */
 .vcMore{margin-top:12px}.vcMore>summary{cursor:pointer;font-size:12.5px;color:var(--dim)}
 .vcQuote{font-size:12px;color:var(--dim);line-height:1.6;margin:6px 0 0 12px;border-left:2px solid var(--line2);padding-left:8px}
@@ -8311,7 +8313,9 @@ function labelsParam(){ return S.kind ? '&labels='+encodeURIComponent(S.kind) : 
 const VC_FLAG={'한국':'KR','미국':'US','인도':'IN','중국':'CN','사우디':'SA','일본':'JP','독일':'DE','방글라데시':'BD','남아공':'ZA','베트남':'VN','멕시코':'MX','태국':'TH','유럽':'EU','해외':'··'};
 let VC_RO=null;
 const vcPct=v=>v==null?'':(Math.abs(v)>=10?Math.round(v):Math.round(v*10)/10)+'%';
-const vcYY=y=>"'"+String(y).slice(2);
+const vcYY=y=>{ const t=String(y); if(!t.includes('-')) return "'"+t.slice(2);
+  const [yy,mm]=t.split('-'); return "'"+yy.slice(2)+' '+({'03':'1Q','06':'반기','09':'3Q'}[mm]||(+mm)+'월'); };
+const vcYear=y=>parseInt(String(y).slice(0,4),10);
 function vcCc(country,name){ if((!country||country==='해외')&&name) country=vcSubCountry(name); if(!country||country==='해외') return null;
   const k=VC_FLAG[country]; return k?el('span','vcCc'+(country==='한국'?'':' fx'),k):null; }
 function vcSubCountry(nm){
@@ -8386,7 +8390,10 @@ async function viewTimeline(p){
   if(d.error){ p.appendChild(el('div','err',d.error)); return vcReports(p,c); }
   const V=vcPrep(d);
   const hd=el('div','dipHead'); hd.appendChild(el('b',null,'밸류체인'));
-  hd.appendChild(el('span',null,c.name+'이(가) 무엇을 누구에게서 사서 누구에게 파는지 — 사업보고서 '+V.Y[0]+'~'+V.y1+' 「사업의 내용」. 비중은 보고서가 적은 그대로'));
+  const pd=(d.periods||{})[V.y1]||{}, annY=V.Y.filter(y=>!((d.periods||{})[y]||{}).partial);
+  hd.appendChild(el('span',null,c.name+'이(가) 무엇을 누구에게서 사서 누구에게 파는지 — 사업보고서 '+(annY.length?annY[0]+'~'+annY[annY.length-1]:'')+
+    (pd.partial?' + '+vcYear(V.y1)+' '+pd.label:'')+' 「사업의 내용」. 비중은 보고서가 적은 그대로'));
+  if(pd.partial) hd.appendChild(el('span','vcNow','지금 모습 = '+vcYear(V.y1)+' '+pd.label+'('+pd.stamp+') — 새 분기 · 반기 · 사업보고서가 수집되면 그날 아침 06:00에 다시 뽑는다'));
   p.appendChild(hd);
   p.appendChild(vcSignals(d,V));
   const map=vcMap(d,V,c); p.appendChild(map);
@@ -8414,7 +8421,7 @@ function vcSignals(d,V){
   const spk=h=>vcSpark(V.Y.map(y=>[y,h.by_year[y]]),64,24);
   if(ups.length) add('up','커지는 고객',ups[0].name,ups[0].tr.t+(ups.length>1?' · 외 '+(ups.length-1)+'곳 ↑':''),spk(ups[0]),ups[0].name);
   if(dns.length) add('dn','줄어든 고객',dns[0].name,dns[0].tr.t+(dns.length>1?' · 외 '+(dns.length-1)+'곳 ↓':''),spk(dns[0]),dns[0].name);
-  const gone=(d.customers||[]).filter(h=>!h.own&&h.last!==V.y1&&+h.last>=+V.y1-2&&Math.max(...Object.values(h.by_year).map(v=>v||0))>=3);
+  const gone=(d.customers||[]).filter(h=>!h.own&&h.last!==V.y1&&vcYear(h.last)>=vcYear(V.y1)-2&&Math.max(...Object.values(h.by_year).map(v=>v||0))>=3);
   if(!dns.length&&gone.length) add('dn','빠진 고객',gone[0].name,vcYY(gone[0].last)+'까지 적힘'+(gone.length>1?' · 외 '+(gone.length-1)+'곳':''),null,gone[0].name);
   if(!ups.length&&named.length){ const t=named.slice().sort((a,b)=>b.pct-a.pct)[0]; add('','가장 큰 고객',t.name,(t.seg?t.seg+' 매출의 ':'매출의 ')+vcPct(t.pct),null,t.name); }
   const own=V.cur.filter(h=>h.own&&h.pct!=null).sort((a,b)=>b.pct-a.pct);
@@ -8590,10 +8597,12 @@ function vcHeat(d,V){
   const rows=(d.customers||[]).slice(0,18);
   if(!rows.length){ w.appendChild(el('div','vcEmpty','이름을 적은 매출처가 없다')); return w; }
   const mx=Math.max(1,...rows.flatMap(h=>Object.values(h.by_year).filter(v=>v!=null)));
-  const t=el('table','vcHeat'); const hr=el('tr'); hr.appendChild(el('th','n','고객')); V.Y.forEach(y=>hr.appendChild(el('th',null,vcYY(y)))); t.appendChild(hr);
+  const part=y=>!!((d.periods||{})[y]||{}).partial;
+  const t=el('table','vcHeat'); const hr=el('tr'); hr.appendChild(el('th','n','고객'));
+  V.Y.forEach(y=>{ const th=el('th',part(y)?'pt':null,vcYY(y)); if(part(y)) th.title=((d.periods||{})[y]||{}).label+' '+((d.periods||{})[y]||{}).stamp+' — 그해 누적 기간의 비중'; hr.appendChild(th); }); t.appendChild(hr);
   rows.forEach(h=>{ const tr=el('tr'); const td=el('td','n'); const cc=vcCc(h.country,h.name); if(cc) td.appendChild(cc); td.appendChild(vcNm(h.name,h.link)); td.title=h.name+((h.aka||[]).length?' = '+h.aka.join(' · '):'');
     if(h.own) td.appendChild(el('span','vcBadge',h.self?'이 회사':'계열')); if(h.seg) td.appendChild(el('small',null,' '+h.seg)); tr.appendChild(td);
-    V.Y.forEach(y=>{ const v=h.by_year[y]; const c2=el('td','c');
+    V.Y.forEach(y=>{ const v=h.by_year[y]; const c2=el('td','c'+(part(y)?' pt':''));
       if(v!=null){ const a=0.14+0.8*Math.sqrt(v/mx); c2.style.setProperty('--a',a.toFixed(2)); c2.classList.add('on'); if(a>0.6) c2.classList.add('hi'); c2.textContent=v>=10?Math.round(v):(Math.round(v*10)/10); c2.title=h.name+' · '+y+' · '+vcPct(v); }
       else if(y in h.by_year){ c2.classList.add('dot'); c2.textContent='·'; c2.title=h.name+' · '+y+' · 비중 없이 적힘'; }
       tr.appendChild(c2); });

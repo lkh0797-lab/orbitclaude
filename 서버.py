@@ -8344,7 +8344,7 @@ try:
 except Exception as _e:
     VCM = None
     print("밸류체인 모듈 로드 실패:", _e)
-VC_V = 7            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
+VC_V = 8            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
 VC_DIR = os.path.join(CACHE_DIR, "밸류체인")
 VC_LOCK = threading.Lock()
 _VC_PEER = {"at": 0, "cust": {}, "supp": {}, "n": 0}
@@ -8396,10 +8396,26 @@ def _vc_extract(c, r):
         return None
 
 
+def _vc_sig(c):
+    return "%s:%d" % (max((r["rcept"] for r in c["reports"]), default=""), VC_V)
+
+
+def _vc_amount(d):
+    """뽑힌 양 — 이름 적힌 매출처 · 가려진 고객 · 종속법인 고객 · 원재료 줄 수."""
+    if not d:
+        return 0
+    return (sum(1 for x in d.get("customers") or [] if x.get("kind") in ("named", "hidden")) +
+            sum(len(s.get("customers") or []) for s in d.get("subs") or []) + len(d.get("materials") or []))
+
+
 def _vc_company(c):
-    """회사 하나의 15년 밸류체인 — 사업보고서마다 뽑아 캐시(최신 접수번호 · VC_V 로 묶음)."""
+    """회사 하나의 밸류체인 — 해마다 사업보고서, 그리고 마지막 사업보고서 뒤에 나온 최신 분기 · 반기보고서 하나(지금 모습).
+    분기 · 반기보고서 「사업의 내용」도 매출처 · 원재료 · 수출을 거의 같은 만큼 적는다(표본 60곳: 사업 14곳 · 분기 12곳에서 매출처).
+    분기 칸 열쇠는 'YYYY-MM'(예: '2026-06') — 연도 열쇠('2025')보다 뒤로 정렬된다. 다음 사업보고서가 나오면 그 뒤 분기가 없으니 빠진다.
+    분기 칸이 사업보고서보다 크게 덜 적었으면(절반 미만) 넣지 않는다 — 요약만 적은 분기를 '고객이 빠졌다'로 읽지 않게.
+    캐시는 최신 접수번호 · VC_V 로 묶음 — 새 보고서(분기 포함)가 들어오면 다시 뽑는다."""
     p = os.path.join(VC_DIR, c["code"] + ".json")
-    sig = "%s:%d" % (c["reports"][-1]["rcept"] if c["reports"] else "", VC_V)
+    sig = _vc_sig(c)
     try:
         with open(p, "r", encoding="utf-8") as fh:
             d = json.load(fh)
@@ -8417,11 +8433,76 @@ def _vc_company(c):
     for y in sorted(years):
         d = _vc_extract(c, years[y])
         if d:
-            out["years"][str(y)] = dict(d, rcept=years[y]["rcept"], stamp=years[y]["stamp"])
+            out["years"][str(y)] = dict(d, rcept=years[y]["rcept"], stamp=years[y]["stamp"], label="사업보고서")
+    last_ann = max((r["stamp"] for r in ann), default="")
+    qs = [r for r in c["reports"] if r["label"] in ("분기보고서", "반기보고서") and not r["tag"] and r["stamp"] > last_ann]
+    if qs:
+        q = max(qs, key=lambda r: (r["stamp"], r["rcept"]))
+        dq = _vc_extract(c, q)
+        prev = out["years"][max(out["years"])] if out["years"] else None
+        if dq and _vc_amount(dq) > 0 and _vc_amount(dq) * 2 >= _vc_amount(prev):
+            out["years"][q["stamp"][:7]] = dict(dq, rcept=q["rcept"], stamp=q["stamp"], label=q["label"], partial=True)
     os.makedirs(VC_DIR, exist_ok=True)
     with open(p, "w", encoding="utf-8") as fh:
         json.dump(out, fh, ensure_ascii=False)
     return out
+
+
+VC_DAILY_AT = (6, 0)     # 밤 공시 수집(00:10, 보통 30~50분) 뒤 · 저평가 자동 갱신(06:30) 전
+VC_REFRESH = {"running": False, "at": 0, "changed": 0, "n": 0}
+
+
+def _vc_refresh_all():
+    """새 보고서가 들어온 회사의 밸류체인 캐시를 다시 뽑고 그물망 색인을 비운다 — 다른 회사 그물망이 열 때까지 묵지 않게.
+    바뀐 회사만 다시 뽑는다(서명 = 최신 접수번호). 아무것도 안 바뀌었으면 캐시 파일만 훑고 끝."""
+    with VC_LOCK:
+        if VC_REFRESH["running"] or VCM is None:
+            return
+        VC_REFRESH["running"] = True
+    changed = n = 0
+    try:
+        for c in list(INDEX["companies"]):
+            n += 1
+            p = os.path.join(VC_DIR, c["code"] + ".json")
+            try:
+                with open(p, "r", encoding="utf-8") as fh:
+                    if json.load(fh).get("sig") == _vc_sig(c):
+                        continue
+            except Exception:
+                pass
+            try:
+                _vc_company(c)
+                changed += 1
+            except Exception as e:
+                print("밸류체인 갱신 %s: %s" % (c["code"], e), flush=True)
+        if changed:
+            with VC_LOCK:
+                _VC_PEER["at"] = 0           # 그물망 색인은 다음 요청 때 새로
+        print("밸류체인 갱신: %d곳 중 %d곳 다시 뽑음" % (n, changed), flush=True)
+    finally:
+        with VC_LOCK:
+            VC_REFRESH.update(running=False, at=time.time(), changed=changed, n=n)
+
+
+def _vc_auto_loop():
+    """뷰어가 켜지면 색인이 선 뒤 한 번(꺼져 있던 동안 들어온 보고서), 그 뒤 매일 06:00 — 색인을 새로 읽고(밤 수집분) 밸류체인을 갱신."""
+    time.sleep(300)
+    while not INDEX_STATE.get("ready"):
+        time.sleep(30)
+    first = True
+    while True:
+        try:
+            if not first:
+                build_index()            # 밤 00:10 수집분 — 뷰어는 00:05 에 다시 켜져 수집 전 색인을 들고 있다
+            _vc_refresh_all()
+        except Exception as e:
+            print("밸류체인 자동 갱신: %s" % e, flush=True)
+        first = False
+        n = dt.datetime.now()
+        nxt = n.replace(hour=VC_DAILY_AT[0], minute=VC_DAILY_AT[1], second=0, microsecond=0)
+        if nxt <= n:
+            nxt += dt.timedelta(days=1)
+        time.sleep(max(60, (nxt - n).total_seconds()))
 
 
 def _vc_peers():
@@ -8636,7 +8717,9 @@ def valuechain_view(code):
             a["link"] = link(a["party"])
     except Exception:
         orders = []
-    return {"v": VC_V, "code": c["code"], "name": c["name"], "years": years, "stamp": last.get("stamp"),
+    periods = {y: {"label": d["years"][y].get("label") or "사업보고서", "stamp": d["years"][y].get("stamp"),
+                   "partial": bool(d["years"][y].get("partial"))} for y in years}
+    return {"v": VC_V, "code": c["code"], "name": c["name"], "years": years, "periods": periods, "stamp": last.get("stamp"),
             "customers": customers[:30], "hidden": hidden, "types": types, "subs": subs, "materials": mats, "suppliers_hist": supp_hist,
             "export": exp, "segments": last.get("segments") or [], "competition": last.get("competitors") or [],
             "shared": sorted(shared.values(), key=lambda s: -len(s["via"]))[:20], "buyers": buyers, "sellers": sellers,
@@ -8687,6 +8770,7 @@ class Handler(BaseHTTPRequestHandler):
                     for c in INDEX["companies"]])
             if path == "/api/reindex":
                 build_index(force=True)
+                threading.Thread(target=_vc_refresh_all, daemon=True).start()
                 return self._send(200, {"ok": True,
                                         "companies": len(INDEX["companies"])})
             if path == "/api/company":
@@ -8989,6 +9073,7 @@ def main():
     if "--no-auto" not in args:         # 시험용 포트(8766)는 --no-auto — 갱신을 두 번 띄우지 않게
         threading.Thread(target=_exp_auto_loop, daemon=True).start()
         threading.Thread(target=_val_auto_loop, daemon=True).start()
+        threading.Thread(target=_vc_auto_loop, daemon=True).start()
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
