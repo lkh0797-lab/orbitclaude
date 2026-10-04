@@ -8879,7 +8879,7 @@ def reports_view(code):
         if r.get("opinion"):
             ops[r["opinion"]] = ops.get(r["opinion"], 0) + 1
     avg = sum(tps) / len(tps) if tps else None
-    return {"code": code, "name": c["name"], "rows": rows[:200], "n180": len(recent), "brokers": len({r.get("broker") for r in recent if r.get("broker")}), "no_broker": sum(1 for r in recent if not r.get("broker")),
+    return {"code": code, "name": c["name"], "rows": rows[:600], "n180": len(recent), "brokers": len({r.get("broker") for r in recent if r.get("broker")}), "no_broker": sum(1 for r in recent if not r.get("broker")),
             "tp_avg": avg, "tp_max": max(tps) if tps else None, "tp_min": min(tps) if tps else None, "price": price,
             "upside": (avg / price - 1) * 100 if avg and price else None, "opinions": ops,
             "latest": sorted(({"broker": b, "tp": r["tp"], "tp_prev": r.get("tp_prev"), "date": r["date"], "opinion": r.get("opinion")} for b, r in latest.items()),
@@ -8888,12 +8888,25 @@ def reports_view(code):
             "series": series, "status": reports_status()}
 
 
-def reports_recent(kind="", days=14):
-    """최근 리포트 전체 — 산업 리포트 목록 · 오늘 나온 기업 리포트."""
+def _rep_sector(r):
+    k = r.get("sector") or "기타"
+    return k.upper() if re.fullmatch(r"[A-Za-z&\s]+", k) else k          # 'ai' · 'AI' 를 하나로
+
+
+def reports_recent(kind="", days=14, sector="", q="", mention="", offset=0, limit=60):
+    """최근 리포트 — 산업 리포트 칸. 업종 · 찾는 말 · 종목 이름 언급으로 걸러 쪽(limit)만 준다(1년치는 1만 건이 넘는다). 업종별 건수는 거르기 전 기준."""
     R = _rep_rows()
     since = (dt.date.today() - dt.timedelta(days=days)).isoformat()
-    rows = [r for r in R["rows"] if r["date"][:10] >= since and (not kind or r["kind"] == kind)]
-    return {"rows": rows[:300], "status": reports_status()}
+    base = [r for r in R["rows"] if r["date"][:10] >= since and (not kind or r["kind"] == kind)]
+    secs = {}
+    for r in base:
+        k = _rep_sector(r)
+        secs[k] = secs.get(k, 0) + 1
+    hay = lambda r: ((r.get("title") or "") + " " + " ".join(r.get("lines") or []) + " " + (r.get("concl") or "") + " " + (r.get("sector") or "")).lower()
+    q, mention = (q or "").strip().lower(), (mention or "").strip().lower()
+    rows = [r for r in base if (not sector or _rep_sector(r) == sector) and (not q or q in hay(r)) and (not mention or mention in hay(r))]
+    return {"rows": rows[offset:offset + limit], "total": len(rows), "all": len(base), "oldest": base[-1]["date"][:10] if base else None,
+            "sectors": sorted(secs.items(), key=lambda kv: -kv[1])[:24], "status": reports_status()}
 
 
 def _rep_collect():
@@ -9163,7 +9176,8 @@ class Handler(BaseHTTPRequestHandler):
                 d = reports_view(q.get("code", ""))
                 return self._send(200 if d else 404, d or {"error": "회사 없음"})
             if path == "/api/reports/recent":
-                return self._send(200, reports_recent(q.get("kind", ""), int(q.get("days", "14") or 14)))
+                return self._send(200, reports_recent(q.get("kind", ""), int(q.get("days", "14") or 14), q.get("sector", ""), q.get("q", ""),
+                                                      q.get("mention", ""), int(q.get("offset", "0") or 0), min(200, int(q.get("limit", "60") or 60))))
             if path == "/api/reports/collect":
                 threading.Thread(target=_rep_collect, daemon=True).start()
                 return self._send(200, reports_status())

@@ -2,7 +2,7 @@
 """
 증권사 리포트 채널 받기 — 뷰어가 하루 몇 번 부르고, 손으로도 돌린다.
 
-  python 도구/리포트_수집.py            # 채널마다 지난번 뒤의 새 글(처음이면 최근 180일)
+  python 도구/리포트_수집.py            # 채널마다 지난번 뒤의 새 글(처음이면 최근 1년 — 한 번에 다 못 받으면 다음 수집 때 거슬러 이어서)
   python 도구/리포트_수집.py --list     # 읽을 채널 목록만
   python 도구/리포트_수집.py --days 365 # 처음 받을 때 더 오래 전까지
 
@@ -17,7 +17,7 @@ import 리포트 as R  # noqa: E402
 
 
 def main(argv):
-    days = 180
+    days = 365
     if "--days" in argv:
         days = int(argv[argv.index("--days") + 1])
     if not R.can_collect():

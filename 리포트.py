@@ -25,7 +25,7 @@ STORE_DIR = os.path.join(BASE, ".cache", "리포트")
 STATE_PATH = os.path.join(STORE_DIR, "_state.json")
 SESSION_DIR = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "기업추적")
 SESSION = os.path.join(SESSION_DIR, "telegram")          # Telethon 이 .session 을 붙인다
-RULE_V = 6                                               # 읽는 규칙이 바뀌면 올린다 — 쌓아 둔 원문을 다시 읽는다
+RULE_V = 7                                               # 읽는 규칙이 바뀌면 올린다 — 쌓아 둔 원문을 다시 읽는다
 
 BROKERS = [
     ("미래에셋증권", r"미래에셋"), ("삼성증권", r"삼성증권|SAMSUNG\s*SEC|삼성\s*리서치|\[SAMSUNG\]"), ("한국투자증권", r"한국투자|한투증권|KIS\b"),
@@ -51,7 +51,7 @@ CHANGE = re.compile(r"(상향|하향|유지|신규|커버리지\s*개시|Initiat
 CODE_RX = re.compile(r"(?<![\d])A?(\d{6})(?![\d])")
 URL_RX = re.compile(r"https?://\S+")
 INDUSTRY = re.compile(r"반도체|디스플레이|2차\s*전지|이차전지|배터리|자동차|조선|해운|철강|화학|정유|건설|기계|방산|원전|전력|유틸리티|통신|인터넷|게임|엔터|미디어|"
-                      r"화장품|음식료|유통|은행|보험|증권|지주|제약|바이오|헬스케어|의료기기|항공|운송|소프트웨어|AI|로봇|우주|섬유|의류|"
+                      r"화장품|음식료|유통|은행|보험|증권|지주|제약|바이오|헬스케어|의료기기|항공|운송|소프트웨어|(?-i:(?<![A-Za-z])AI(?![A-Za-z]))|로봇|우주|섬유|의류|"   # 'Chain' · 'Taiwan' 속 ai 는 아니다
                       r"산업|섹터|Sector|Industry|업종|전략|매크로|Macro|시황|채권|퀀트", re.I)
 
 
@@ -428,7 +428,7 @@ def _web_parse(page, name):
     return title, sorted(out, key=lambda m: m["id"])
 
 
-def _collect_web(days=180, log=print, max_pages=120):
+def _collect_web(days=365, log=print, max_pages=120):
     """공개 채널마다 (1) 지난번 뒤의 새 글 — 최신 쪽부터 '?before=' 로 마지막 글 번호까지,
     (2) 남은 쪽수로 거슬러 채우기 — 받아 둔 가장 오래된 글 앞쪽을 days 일 전까지(한 번에 다 못 받으면 다음 수집 때 이어서). 요청 사이 1초."""
     import requests
@@ -565,7 +565,7 @@ async def _collect(days=180, per_channel=3000, list_only=False, log=print):
     return got
 
 
-def collect(days=180, per_channel=3000, list_only=False, log=print):
+def collect(days=365, per_channel=3000, list_only=False, log=print):
     """로그인 세션이 있으면 Telethon(구독 채널 전부), 없으면 웹 미리보기(적어 둔 공개 채널)."""
     if not session_exists():
         if list_only:
