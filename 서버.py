@@ -8802,6 +8802,134 @@ def vcbuyer_view(key, kind="cust"):
             "rows": out, "years": sorted(yrs)}
 
 
+# ---------------------------------------------------------------- 리포트: 증권사 텔레그램 채널의 기업 · 산업 리포트 (2026-10-04)
+# 리포트.py 가 내 계정으로 구독한 증권사 채널 글을 받아 .cache/리포트/ 에 쌓고(도구/리포트_수집.py), 여기서 종목별로 묶는다.
+# 처음 한 번은 사람이 터미널에서 도구/텔레그램_로그인.py 로 로그인한다. 뷰어는 그 세션으로 2시간마다(07~22시) 새 글만 받는다.
+try:
+    _repspec = _ilu.spec_from_file_location("리포트", os.path.join(BASE, "리포트.py"))
+    REP = _ilu.module_from_spec(_repspec)
+    _repspec.loader.exec_module(REP)
+except Exception as _e:
+    REP = None
+    print("리포트 모듈 로드 실패:", _e)
+REP_LOCK = threading.Lock()
+_REP = {"sig": None, "rows": [], "by_code": {}}
+REP_RUN = {"running": False, "at": 0, "msg": ""}
+
+
+def _rep_rows():
+    """쌓인 글 → 리포트 항목(종목별 묶음). 쌓인 파일이 바뀌었을 때만 다시 읽는다."""
+    if REP is None:
+        return _REP
+    sig = REP.store_sig()
+    with REP_LOCK:
+        if _REP["sig"] == sig:
+            return _REP
+    names = {c["name"]: c["code"] for c in INDEX["companies"]}
+    codes = {c["code"]: c["name"] for c in INDEX["companies"]}
+    rows = REP.build(names, codes)
+    by = {}
+    for r in rows:
+        if r.get("code"):
+            by.setdefault(r["code"], []).append(r)
+    with REP_LOCK:
+        _REP.update(sig=sig, rows=rows, by_code=by)
+    return _REP
+
+
+def reports_status():
+    if REP is None:
+        return {"ready": False, "why": "리포트 모듈이 없습니다"}
+    import 설정 as _cfg
+    st = REP._load_state()
+    return {"ready": REP.session_exists(), "creds": bool(_cfg.get("TELEGRAM_API_ID") and _cfg.get("TELEGRAM_API_HASH")),
+            "session": REP.session_exists(), "channels": [v.get("title") for v in st.get("channels", {}).values()],
+            "last": st.get("at") or 0, "running": REP_RUN["running"], "msg": REP_RUN["msg"]}
+
+
+def reports_view(code):
+    """한 종목의 리포트 — 최근 것부터, 증권사마다 최신 목표가 · 직전 목표가, 목표가 평균과 현재가 괴리, 의견 분포, 목표가 · 주가 그림."""
+    c = company_by_code(code)
+    if not c:
+        return None
+    R = _rep_rows()
+    rows = R["by_code"].get(code, [])
+    today = dt.date.today()
+    recent = [r for r in rows if r["date"][:10] >= (today - dt.timedelta(days=180)).isoformat()]
+    latest = {}
+    for r in rows:                               # 최근 것부터 — 증권사마다 첫 목표가가 최신
+        b = r.get("broker") or r.get("channel") or "?"
+        if r.get("tp") and b not in latest:
+            latest[b] = r
+    tps = [r["tp"] for b, r in latest.items() if r["date"][:10] >= (today - dt.timedelta(days=180)).isoformat()]
+    price = None
+    series = []
+    if FIN is not None:
+        try:
+            since_px = (today - dt.timedelta(days=760)).strftime("%Y%m%d")
+            pr = FIN.fetch_prices(code)
+            ks = [k for k in sorted(pr) if k >= since_px]      # 캐시는 2010년부터 — 그림은 최근 2년만
+            if ks:
+                price = pr[ks[-1]]
+                series = [[k[:4] + "-" + k[4:6] + "-" + k[6:], pr[k]] for k in ks[::2]]
+        except Exception:
+            pass
+    ops = {}
+    for r in recent:
+        if r.get("opinion"):
+            ops[r["opinion"]] = ops.get(r["opinion"], 0) + 1
+    avg = sum(tps) / len(tps) if tps else None
+    return {"code": code, "name": c["name"], "rows": rows[:200], "n180": len(recent), "brokers": len({r.get("broker") for r in recent if r.get("broker")}),
+            "tp_avg": avg, "tp_max": max(tps) if tps else None, "tp_min": min(tps) if tps else None, "price": price,
+            "upside": (avg / price - 1) * 100 if avg and price else None, "opinions": ops,
+            "latest": sorted(({"broker": b, "tp": r["tp"], "tp_prev": r.get("tp_prev"), "date": r["date"], "opinion": r.get("opinion")} for b, r in latest.items()),
+                             key=lambda x: x["date"], reverse=True),
+            "tp_points": [{"date": r["date"][:10], "tp": r["tp"], "broker": r.get("broker")} for r in rows if r.get("tp")],
+            "series": series, "status": reports_status()}
+
+
+def reports_recent(kind="", days=14):
+    """최근 리포트 전체 — 산업 리포트 목록 · 오늘 나온 기업 리포트."""
+    R = _rep_rows()
+    since = (dt.date.today() - dt.timedelta(days=days)).isoformat()
+    rows = [r for r in R["rows"] if r["date"][:10] >= since and (not kind or r["kind"] == kind)]
+    return {"rows": rows[:300], "status": reports_status()}
+
+
+def _rep_collect():
+    """도구/리포트_수집.py 를 따로 띄워 새 글만 받는다(Telethon 은 자기 이벤트 루프를 쓴다 — 뷰어 실과 떼어 둔다)."""
+    if REP is None or not REP.session_exists() or REP_RUN["running"]:
+        return
+    REP_RUN["running"] = True
+    try:
+        exe = sys.executable.replace("pythonw.exe", "python.exe")
+        log = os.path.join(BASE, "리포트_auto.log")
+        with open(log, "a", encoding="utf-8") as fh:
+            fh.write("\n== %s\n" % dt.datetime.now().strftime("%Y-%m-%d %H:%M"))
+            fh.flush()
+            r = subprocess.run([exe, os.path.join(BASE, "도구", "리포트_수집.py")], cwd=BASE, stdout=fh, stderr=subprocess.STDOUT,
+                               timeout=1200, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                               env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+        REP_RUN["msg"] = "끝(%d)" % r.returncode
+    except Exception as e:
+        REP_RUN["msg"] = "실패: %s" % e
+    finally:
+        REP_RUN.update(running=False, at=time.time())
+
+
+def _rep_auto_loop():
+    """뷰어가 켜지고 3분 뒤 한 번, 그 뒤 07~22시에 2시간마다 — 로그인 세션이 있을 때만."""
+    time.sleep(180)
+    while True:
+        try:
+            h = dt.datetime.now().hour
+            if REP is not None and REP.session_exists() and (7 <= h <= 22 or not REP_RUN["at"]):
+                _rep_collect()
+        except Exception as e:
+            print("리포트 자동 수집: %s" % e, flush=True)
+        time.sleep(7200)
+
+
 # ---------------------------------------------------------------- HTTP
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
@@ -9031,6 +9159,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, value_view(q.get("force") == "1"))
             if path == "/api/value2":
                 return self._send(200, value2_view(q.get("force") == "1"))
+            if path == "/api/reports":
+                d = reports_view(q.get("code", ""))
+                return self._send(200 if d else 404, d or {"error": "회사 없음"})
+            if path == "/api/reports/recent":
+                return self._send(200, reports_recent(q.get("kind", ""), int(q.get("days", "14") or 14)))
+            if path == "/api/reports/collect":
+                threading.Thread(target=_rep_collect, daemon=True).start()
+                return self._send(200, reports_status())
             if path == "/api/vcbuyer":
                 return self._send(200, vcbuyer_view(q.get("key", ""), q.get("kind", "cust")) or {"rows": []})
             if path == "/api/valuechain":
@@ -9152,6 +9288,7 @@ def main():
         threading.Thread(target=_exp_auto_loop, daemon=True).start()
         threading.Thread(target=_val_auto_loop, daemon=True).start()
         threading.Thread(target=_vc_auto_loop, daemon=True).start()
+        threading.Thread(target=_rep_auto_loop, daemon=True).start()
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
