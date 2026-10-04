@@ -17,13 +17,13 @@ PCT = r"\(?\s*(?:약\s*)?(\d{1,3}(?:\.\d+)?)\s*%\s*\)?"
 # 이름(비중) 나열 — "HICO(6.78%), 부산우암1구역 주택재개발정비사업조합(4.31%), AL FANAR(3.39%) 등"
 NAME_PCT = re.compile(r"([A-Za-z가-힣0-9&＆·ㆍ.,'’\-\s()㈜]+?)\s*(?:\(\s*(?:약\s*)?(\d{1,3}(?:\.\d+)?)\s*%\s*\)|\s(?:약\s*)?(\d{1,3}(?:\.\d+)?)\s*%(?=[,\s등을를이가]|$))")
 CUST_LEAD = re.compile(r"(?:주요\s*(?:매출처|고객(?:사)?|거래처|판매처)(?:\s*및\s*비중)?(?:는|은|로는|으로는|:)|(?:최종\s*고객\s*기준\s*)?주요\s*매출처는|"
-                       r"거래처\s*별로?\s*(?:전체\s*)?매출(?:액)?에서\s*차지하는\s*비중은|매출\s*비중은)")
+                       r"거래처\s*별로?\s*(?:전체\s*)?매출(?:액)?에서\s*차지하는\s*비중은)")
 HIDDEN = re.compile(r"매출액의\s*10\s*%\s*이상을?\s*차지하는\s*주요\s*고객(?:수)?[은는]?\s*(\d+)\s*개")
 HIDDEN_AMT = re.compile(r"해당\s*거래처(?:에|에서)?\s*발생한\s*매출액은?\s*([\d,]+)\s*백만\s*원")
 SINGLE = re.compile(r"주요\s*매출처는\s*([가-힣A-Za-z0-9&\s·]+?)(?:와|과|및)\s*(?:그\s*)?(?:종속|계열|관계)\s*(?:기업|회사)[^.]{0,80}?(?:약\s*)?(\d{1,3}(?:\.\d+)?)\s*%")
 TRAIL = re.compile(r"\s*(?:등|등의|등을|등이|로|으로|에|에게|입니다|이며|이고|임|,|·|ㆍ|및|와|과)\s*$")
 BAD_NAME = re.compile(r"^(?:수출|내수|직수출|LOCAL\s*수출|로컬\s*수출|민수|기타(?:\s*거래처|\s*고객|\s*매출처)?|합계|소계|국내|해외|현지|중국내수|중국\s*내수|관수|관급|민간|수입|상품|제품|용역|제\s*\d+\s*기|당기|전기|합\s*계|"
-                      r"[가-힣]+(?:팀|부서|본부|사업부|실|과)|기타\s*\d+\s*%?)$", re.I)
+                      r"[가-힣]+(?:팀|부서|본부|사업부|실|과)|기타\s*\d+\s*%?|Others?|ETC\.?|Miscellaneous)$", re.I)
 CHANNEL = re.compile(r"^(?:수출|내수|직수출|LOCAL\s*수출|로컬\s*수출|민수|중국\s*내수|중국내수|관수|관급|민간|국내|해외)$", re.I)
 COMPETE = re.compile(r"(?:경쟁(?:사|업체|회사|기업)(?:로는|는|은|인|로|으로|:)?\s*)([A-Za-z가-힣0-9&·ㆍ,\s()㈜/]+?)(?:등|와|과|및|이|가)\b")
 SUBS_HEAD = re.compile(r"주요종속회사\s*\n\s*판매경로\s*\n\s*판매전략\s*\n\s*주요매출처\s*및\s*비중\s*\n\s*비고")
@@ -60,6 +60,8 @@ def _names_in(text):
         nm = re.split(r"(?:매출처는|고객은|거래처는|매입처는|비중은|는|은)\s+", nm)[-1].strip() if len(nm) > 40 else nm
         if not nm or BAD_NAME.match(nm) or len(nm) < 2 or len(nm) > 60:
             continue
+        if re.search(r"사업\s*부문|부문$|억\s*원|백만\s*원|\d조|매출액|대비|전체|비중", nm):
+            continue          # 부문 매출 비중 문장('컴포넌트 사업부문 5조 1,985억원 45.95%') — 고객이 아니다
         out.append((nm, float(m.group(2) or m.group(3))))
     return out
 
@@ -103,8 +105,15 @@ def customers(text):
                 if CHANNEL.match(nm):
                     continue
                 out.append({"name": nm, "pct": pct, "scope": "지배회사", "kind": "named", "country": _country(nm)})
+    # (카) 법인 · 사업부문별 매출처 표(LS ELECTRIC) — 지배회사 몫. 있으면 일반 표 읽기는 건너뛴다(판매경로 표를 매출처로 잘못 읽는다)
+    segt = [t for t in seg_customer_tables(text) if t["parent"]]
+    for t in segt:
+        for r in t["rows"]:
+            out.append({"name": r["name"], "pct": r["pct"], "scope": t["entity"] or "지배회사", "seg": r["seg"], "basis": "부문",
+                        "kind": r["kind"], "country": _country(r["name"])})
     # (마)(바)(차) 표 — 머리글에 매출처 · 거래처 · 고객 칸과 금액 · 비중 칸이 있는 표
-    out += _customer_tables(text)
+    if not segt:
+        out += _customer_tables(text)
     # (사)(아) 이름만 나열(비중 없음) — 표의 '주요고객' 칸, 문장 "주요 매출처는 A, B, C 등"
     if not any(x.get("pct") is not None for x in out):
         out += _customer_names_only(text)
@@ -124,14 +133,15 @@ def customers(text):
 CUST_TBL_HDR = re.compile(r"(?:주요\s*)?(?:매출처|거래처|고객(?:사|명)?|판매처)\s*(?:명)?\s*\n")
 CUST_NAME_OK = re.compile(r"[가-힣A-Za-z]{2,}")
 CUST_NAME_BAD = re.compile(r"^(?:합\s*계|소\s*계|기타(?:\s*거래처)?|국내|해외|수출|내수|제품|상품|용역|매출|합계|총계|비\s*고|구\s*분|당기|전기|금\s*액|비\s*중|주식|자동차|전자|부품|조선|건설|은행|보험)$|"
-                           r"거래처\s*\d+|고객\s*[A-Z0-9]$|^[A-Z]\s*사$|^(?:A|B|C|D)\s*(?:사|고객)|고객\s*수|이상\s*차지|\*\*|^\d{2}년|유지보수|체결하고|있습니다|합니다$|입니다$")
+                           r"점유율|시장\s*규모|거래처\s*\d+|고객\s*[A-Z0-9]$|^[A-Z]\s*사$|^(?:A|B|C|D)\s*(?:사|고객)|고객\s*수|이상\s*차지|\*\*|^\d{2}년|유지보수|체결하고|있습니다|합니다$|입니다$")
 
 
 def _customer_tables(text):
     """표로 적은 매출처 — 머리글 줄에 매출처 · 거래처 · 고객 칸이 있고 금액 · 비중 칸이 따라오는 표.
     SJG세종(주요 매출처 / 금액 / 비중 / 비고) · 오리엔탈정공(거래처 / 금액 비중 금액 비중 증감률) · DB(구분 / 당기 / 전기 — 이름 · 금액 · 비중)."""
-    out = []
-    for m in re.finditer(r"(?:주요\s*)?(?:매출처|거래처|고객)(?:별)?\s*(?:판매\s*현황|매출\s*현황|에\s*대한\s*정보|현황|및\s*비중)?[^\n]{0,30}\n", text):
+    best = []
+    # 머리 줄은 번호('다.' '④' '(5)') 뒤 곧장 매출처 · 거래처 · 고객으로 시작해야 한다 — 문장 속 '고객' 뒤의 품목 · 부문 매출표(한화오션 'LNGC 등')를 막는다
+    for m in re.finditer(r"(?m)^[\s()\d.가-하①-⑳\-]{0,8}(?:주요\s*)?(?:매출처|거래처|고객)(?:별|사)?[^\n]{0,300}\n", text):
         if re.search(r"위험\s*관리|파생|헤지|조직|부서|거래\s*중|거래를|거래는|거래의", text[max(0, m.start() - 160):m.end()]):
             continue          # '헤지거래 … 거래처' 처럼 문장 속 낱말 — 표 머리글이 아니다
         body = text[m.end():m.end() + 3500]
@@ -146,18 +156,19 @@ def _customer_tables(text):
                 break
         if not any(re.search(r"매출처|거래처|고객|구\s*분|회사|업체", h) for h in hdr) or not any(re.search(r"비\s*중|비\s*율|%", h) for h in hdr):
             continue
-        if any(re.search(r"담당\s*부서|관련\s*부서|부서|담당자|담당\s*업무|관리\s*조직|인\s*원|연락처|위험|헤지|파생|결제\s*조건|판매\s*방법", h) for h in hdr):
+        if any(re.search(r"담당\s*부서|관련\s*부서|부서|담당자|담당\s*업무|관리\s*조직|인\s*원|연락처|위험|헤지|파생|결제\s*조건|판매\s*방법|"
+                         r"판매\s*경로|직판|특약점|대리점|도매|소매|구성비", h) for h in hdr):
             continue          # 판매 조직 · 위험관리 조직 · 파생상품 표가 '거래처' 낱말 뒤에 오기도 한다(한화오션 '국제금융팀 3')
         start = len([r_ for r_ in rows[:3] if r_ and r_ is not None][:rows.index(r_) + 1]) if False else next(
             (i + 1 for i, r_ in enumerate(rows[:3]) if any(re.search(r"비\s*중|비\s*율|매출액|금\s*액", h) for h in r_)), 1)
-        got = 0
+        got, out = 0, []
         for cells in rows[start:start + 25]:
             if not cells:
                 continue
             nm = cells[0]
             if re.search(r"^\(?단위|^\(?\*|^※|^주\d|^\[주", nm):
                 continue
-            if not CUST_NAME_OK.search(nm) or CUST_NAME_BAD.search(nm) or re.search(r"\d{3,}|^\d", nm) or len(nm) > 40:
+            if not CUST_NAME_OK.search(nm) or CUST_NAME_BAD.search(nm) or BAD_NAME.match(nm) or re.search(r"\d{3,}|^\d", nm) or len(nm) > 40:
                 if got:
                     break
                 continue
@@ -179,9 +190,9 @@ def _customer_tables(text):
             nm2 = re.sub(r"\s*(?:및\s*(?:그\s*)?종속(?:기업|회사)|\(주\d*\)|\[주\d*\]|\(\*+\))\s*$", "", nm).strip()
             out.append({"name": nm2, "pct": pct, "scope": "표", "kind": "named", "country": _country(nm2)})
             got += 1
-        if got:
-            break
-    return out
+        if got > len(best):
+            best = out
+    return best
 
 
 def _customer_names_only(text):
@@ -218,15 +229,64 @@ def _customer_names_only(text):
     return out[:10]
 
 
+SEGCUST_HEAD = re.compile(r"(?:사업\s*부문|부\s*문|구\s*분)\s*\n+\s*주요\s*(?:매출처|고객(?:사)?|거래처)(?:명)?\s*\n+\s*(?:매출\s*)?(?:비\s*중|비\s*율)(?:\s*\(\s*%\s*\))?\s*\n")
+ENTITY_HEAD = re.compile(r"\[(?!주\s*\d|단위|참고|별첨)([A-Za-z가-힣][^\]\n]{1,48})\]")
+CUST_TYPE = re.compile(r"(?:회사|산업|업체|업계|대리점|특약점|상사|고객|기관|사업자|건설사|제조사|유통|딜러|EPC)(?:\s*등)?$|/|^(?:관공서|공공기관|민수|관수|개인|일반|기업|지자체)$|^시설|투자\s*\(")
+CORP_MARK = re.compile(r"주식회사|\(주\)|㈜|유한\s*공사|유한\s*회사|\b(?:LLC|INC|LTD|CORP|CO\.|GmbH|LIMITED|COMPANY)\b", re.I)
+
+
+def seg_customer_tables(text):
+    """법인 · 사업부문별 주요 매출처 표 — '[LS ELECTRIC] … (4) 주요 매출처 및 매출비중' 다음 '사업부문 / 주요매출처 / 매출 비중'.
+    법인 이름은 표 앞의 [대괄호] 머리이고 첫 법인이 지배회사다. 비중은 그 부문 매출 가운데 비중.
+    '제조회사 50 · 조선회사/EPC 32' 처럼 이름이 아니라 고객군이면 kind='type'.
+    → [{entity, parent, rows:[{seg, name, pct, kind}]}]"""
+    out, first = [], None
+    for m in SEGCUST_HEAD.finditer(text):
+        heads = list(ENTITY_HEAD.finditer(text, max(0, m.start() - 9000), m.start()))
+        body = text[m.end():m.end() + 3000]
+        stop = re.search(r"\n\s*\[|\n\s*\(\d\)|\n\s*[가-하]\.\s|\n\s*\d\.\s", body)
+        body = body[:stop.start()] if stop else body
+        rows, seg = [], None
+        for cells in _rows(body):
+            if len(cells) >= 3:
+                seg, cells = cells[0], cells[1:3]      # 세 칸 = 부문 · 이름 · 비중, 두 칸 = 이름 · 비중(부문은 위 행에서 이어짐)
+            if len(cells) != 2:
+                continue
+            nm, v = cells
+            mv = re.fullmatch(r"\(?\s*(\d{1,3}(?:\.\d+)?)\s*%?\s*\)?", v.replace(",", ""))
+            if not mv or BAD_NAME.match(nm) or CUST_NAME_BAD.search(nm) or re.match(r"합\s*계|기\s*타", nm):
+                continue
+            nm = re.sub(r"\s+\(주\)$", "(주)", nm).strip()
+            typ = CUST_TYPE.search(nm) and not CORP_MARK.search(nm)
+            rows.append({"seg": seg, "name": nm, "pct": float(mv.group(1)), "kind": "type" if typ else "named"})
+        if not rows:
+            continue
+        # 법인 머리 — 표 안 부문 이름과 같은 [대괄호](예: [전력시스템])는 부문 소제목이다. 그 앞의 법인 머리를 쓴다
+        segs = {re.sub(r"\s+", "", r["seg"] or "") for r in rows}
+        heads = [h for h in heads if re.sub(r"\s+", "", h.group(1)) not in segs]
+        ent = heads[-1].group(1).strip() if heads else None
+        if first is None:
+            first = ent or ""
+        out.append({"entity": ent, "parent": (ent or "") == first, "rows": rows})
+    return out
+
+
 def subsidiaries(text):
-    """종속회사 표(판매경로 · 판매전략 · 주요매출처 및 비중) — [{sub, customers:[(이름, 비중)], channels:[(경로, 비중)], note}]"""
+    """종속회사 표(판매경로 · 판매전략 · 주요매출처 및 비중) — [{sub, customers:[(이름, 비중)], channels:[(경로, 비중)], note}]
+    법인별 매출처 표('[LS ELECTRIC America] … 사업부문 / 주요매출처 / 매출 비중')의 종속회사 몫도 여기로 — 고객군은 types."""
+    out = []
+    for t in seg_customer_tables(text):
+        if t["parent"] or not t["entity"]:
+            continue
+        out.append({"sub": t["entity"], "customers": [(r["name"], r["pct"]) for r in t["rows"] if r["kind"] == "named"],
+                    "types": [(r["name"], r["pct"]) for r in t["rows"] if r["kind"] == "type"], "final": [], "channels": [],
+                    "segs": sorted({r["seg"] for r in t["rows"] if r["seg"]})})
     m = SUBS_HEAD.search(text)
     if not m:
-        return []
+        return out
     body = text[m.end():]
     end = re.search(r"\n\s*\(\d\)\s*수주상황|\n\s*[가-하]\.\s*수주|\n\s*\d\.\s*수주", body)
     body = body[:end.start()] if end else body[:8000]
-    out = []
     # 법인명 줄 — 영문 법인(Co., Ltd / Inc / Pvt / GmbH) 또는 (주)
     heads = list(re.finditer(r"(?m)^\s*([A-Z][A-Za-z0-9&.,'\- ]{3,}(?:Ltd\.?|Inc\.?|Co\.|Corp\.?|GmbH|LLC|S\.A\.|Pvt\.?\s*Ltd\.?)|[가-힣A-Za-z0-9]+(?:㈜|\(주\))[가-힣A-Za-z0-9]*)\s*$", body))
     for i, h in enumerate(heads):
@@ -338,8 +398,8 @@ def materials(text):
         item, amt, pct, supp = g("item"), g("amt"), g("pct"), g("supp")
         if kind is None or g("kind"):
             kind = g("kind") or kind
-        if not item or re.search(r"합\s*계|소\s*계", item or ""):
-            continue
+        if not item or re.search(r"합\s*계|소\s*계", item or "") or re.fullmatch(r"품\s*목|원\s*재\s*료\s*명?|구\s*분|매입\s*유형|원자재", item):
+            continue          # 머리글이 둘째 행으로 한 번 더 나온 표(LS ELECTRIC '사업부문 / 매입유형 / 품 목')
         amt_v = pct_v = None
         if amt and re.search(r"\d", amt):
             mm = re.match(r"\(?\s*([\d,]+)\s*\)?\s*(?:\(\s*(\d{1,3}(?:\.\d+)?)\s*%\s*\))?", amt.strip())

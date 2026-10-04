@@ -8344,7 +8344,7 @@ try:
 except Exception as _e:
     VCM = None
     print("밸류체인 모듈 로드 실패:", _e)
-VC_V = 3            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
+VC_V = 7            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
 VC_DIR = os.path.join(CACHE_DIR, "밸류체인")
 VC_LOCK = threading.Lock()
 _VC_PEER = {"at": 0, "cust": {}, "supp": {}, "n": 0}
@@ -8361,6 +8361,8 @@ VC_ALIAS = {
     "powergridcorporationofindia": "Power Grid Corporation of India", "삼성전자": "삼성전자", "현대차": "현대자동차", "기아차": "기아",
     "lg전자": "LG전자", "sk하이닉스": "SK하이닉스", "현대중공업": "HD현대중공업", "hd현대중공업": "HD현대중공업", "대우조선해양": "한화오션",
     "두산중공업": "두산에너빌리티", "삼성중공업": "삼성중공업", "현대미포조선": "HD현대미포", "한국조선해양": "HD한국조선해양",
+    "삼성에스디아이": "삼성SDI", "엘지에너지솔루션": "LG에너지솔루션", "lg에너지솔루션": "LG에너지솔루션", "hanwhaqcells": "한화솔루션",
+    "한화큐셀": "한화솔루션", "엘지화학": "LG화학", "에스케이하이닉스": "SK하이닉스", "기아자동차": "기아",
 }
 
 
@@ -8491,12 +8493,19 @@ def valuechain_view(code):
     last = d["years"][years[-1]]
     # 고객 — 해마다 비중의 변천 {이름키: {name, country, link, by_year:{y: pct}}}
     hist = {}
+    seg_names = set()
+    for y in years:
+        dy = d["years"][y]
+        seg_names |= {re.sub(r"\s+", "", v) for v in [x.get("seg") for x in dy.get("customers") or []] +
+                      [m.get("segment") for m in dy.get("materials") or []] + [g.get("segment") for g in dy.get("segments") or []] if v}
     for y in years:
         for x in d["years"][y].get("customers") or []:
-            if x.get("kind") != "named":
+            if x.get("kind") != "named" or re.sub(r"\s+", "", x["name"]) in seg_names or re.search(r"수주\s*잔|잔고|매출액|당기말|전기말", x["name"]):
                 continue
             k = _vc_key(x["name"])
             h = hist.setdefault(k, {"name": _vc_canon(x["name"]), "country": x.get("country"), "by_year": {}, "aka": set()})
+            if y == years[-1]:
+                h["seg"], h["basis"] = x.get("seg"), x.get("basis")
             if h["by_year"].get(y) is None or (x.get("pct") or 0) > (h["by_year"][y] or 0):
                 h["by_year"][y] = x.get("pct")
             h["aka"].add(x["name"])
@@ -8509,16 +8518,30 @@ def valuechain_view(code):
         h["country"] = VCM._country(h["name"]) or h.get("country")
     customers = sorted(hist.values(), key=lambda h: (h["last"] != years[-1], -(h["pct"] or 0), -(max(v or 0 for v in h["by_year"].values()))))
     hidden = [x for x in last.get("customers") or [] if x.get("kind") == "hidden"]
+    types = [{"name": x["name"], "pct": x.get("pct"), "seg": x.get("seg")} for x in last.get("customers") or [] if x.get("kind") == "type"]
+    # 같은 그룹 판정 — 내 이름 · 지배회사 법인 머리(LS ELECTRIC) · 종속회사 이름과 키가 겹치면 계열 내부 거래다
+    own_keys = {_vc_key(c["name"])} | {_vc_key(s["sub"]) for s in last.get("subs") or []}
+    own_keys |= {_vc_key(x["scope"]) for x in last.get("customers") or [] if x.get("basis") == "부문" and x.get("scope")}
+    own_keys = {k for k in own_keys if len(k) >= 4}
+
+    def own_of(nm):
+        k = _vc_key(nm)
+        if k in own_keys:
+            return k
+        hits = [o for o in own_keys if len(o) >= 6 and (k.startswith(o) or (o.startswith(k) and len(k) >= 6))]
+        return max(hits, key=len) if hits else None
+    sub_by_key = {_vc_key(s["sub"]): s["sub"] for s in last.get("subs") or []}
     # 종속회사 · 최종 고객
     subs = []
     for s in last.get("subs") or []:
         custs = s.get("final") or s.get("customers") or []
-        subs.append({"sub": s["sub"], "customers": [{"name": nm, "pct": pct, "country": VCM._country(nm), "link": link(nm)} for nm, pct in custs],
+        subs.append({"sub": s["sub"], "customers": [{"name": nm, "pct": pct, "country": VCM._country(nm), "link": link(nm), "own": bool(own_of(nm))} for nm, pct in custs],
+                     "types": [{"name": nm, "pct": pct} for nm, pct in s.get("types") or []], "segs": s.get("segs") or [],
                      "channels": s.get("channels") or []})
     # 매입처 — 최신 해, 그리고 15년 동안 적힌 적 있는 매입처
     mats = []
     for mt in last.get("materials") or []:
-        if not mt.get("item") or re.search(r"합\s*계", mt.get("item") or ""):
+        if not mt.get("item") or mt.get("item") == "-" or re.search(r"합\s*계", (mt.get("item") or "") + " " + (mt.get("segment") or "")):
             continue
         mats.append(dict(mt, suppliers=[dict(sp, link=link(sp["name"])) for sp in mt.get("suppliers") or []]))
     supp_hist = {}
@@ -8547,12 +8570,55 @@ def valuechain_view(code):
     common = {"한국", "대한", "국제", "동양", "서울", "신한", "제일", "태양", "세계"}
     same_group = lambda nm: bool(me_stem) and me_stem not in common and _stem(nm) == me_stem
     shared = {}
+    for h in customers:
+        o = own_of(h["name"])
+        h["own"] = bool(o)
+        h["self"] = o == me_k
+        h["via_sub"] = sub_by_key.get(o) if o else None
+    for s_ in subs:
+        for x in s_["customers"]:
+            x["self"] = own_of(x["name"]) == me_k
+    my_names = [h["name"] for h in customers if not h["own"] and h["last"] == years[-1]] + \
+               [nm for s_ in subs for nm in [x["name"] for x in s_["customers"] if not x["own"]]]
+    overlap = {}
+    for nm in set(my_names):
+        for cd in {t[0] for t in peers["cust"].get(_vc_key(nm), [])}:
+            overlap[cd] = overlap.get(cd, 0) + 1
+    holders = {cd for cd, n in overlap.items() if cd != c["code"] and n >= 3 and n >= 0.4 * len(set(my_names))}
+    _sg = same_group
+    same_group = lambda nm, cd=None: _sg(nm) or (cd in holders)
     for h in customers[:12]:
+        if h["own"]:
+            continue
         for cd, nm, pct, raw in peers["cust"].get(_vc_key(h["name"]), []):
-            if cd != c["code"] and not same_group(nm):
+            if cd != c["code"] and not same_group(nm, cd):
                 shared.setdefault(cd, {"code": cd, "name": nm, "via": []})["via"].append({"customer": h["name"], "pct": pct})
+    # 고객마다 · 종속회사 고객마다 '같은 고객에 파는 다른 상장사' — 그림에서 고객 옆에 바로 붙인다
+    def peers_of(nm):
+        seen, out_ = set(), []
+        for cd, pnm, pct, raw in peers["cust"].get(_vc_key(nm), []):
+            if cd != c["code"] and not same_group(pnm, cd) and cd not in seen:
+                seen.add(cd)
+                out_.append({"code": cd, "name": pnm, "pct": pct})
+        return sorted(out_, key=lambda x: -(x["pct"] or 0))[:5]
+    for h in customers[:30]:
+        h["peers"] = [] if h["own"] else peers_of(h["name"])
+    for s in subs:
+        for x in s["customers"]:
+            x["peers"] = [] if x["own"] else peers_of(x["name"])
+    # 매입처마다 '같은 곳에서 사는 다른 상장사' — 공급사 쪽 그물망
+    for mt in mats:
+        for sp in mt["suppliers"]:
+            seen, oth = set(), []
+            for cd, pnm, pct, raw in peers["supp"].get(_vc_key(sp["name"]), []):
+                if cd != c["code"] and not same_group(pnm, cd) and cd not in seen:
+                    seen.add(cd)
+                    oth.append({"code": cd, "name": pnm})
+            sp["others"] = oth[:5]
+            o = own_of(sp["name"])
+            sp["own"], sp["self"] = bool(o), o == me_k
     buyers = [{"code": cd, "name": nm, "pct": pct, "as": raw} for cd, nm, pct, raw in peers["supp"].get(me_k, []) if cd != c["code"]]       # 나를 매입처로 적은 회사 = 내 고객
-    sellers = [{"code": cd, "name": nm, "pct": pct, "as": raw, "group": same_group(nm)} for cd, nm, pct, raw in peers["cust"].get(me_k, []) if cd != c["code"]]      # 나를 매출처로 적은 회사 = 내 공급사(같은 그룹이면 표시)
+    sellers = [{"code": cd, "name": nm, "pct": pct, "as": raw, "group": same_group(nm, cd)} for cd, nm, pct, raw in peers["cust"].get(me_k, []) if cd != c["code"]]      # 나를 매출처로 적은 회사 = 내 공급사(같은 그룹이면 표시)
     # 수주 공시 상대(최근 2년) — 공시로 드러난 고객
     orders = []
     try:
@@ -8571,7 +8637,7 @@ def valuechain_view(code):
     except Exception:
         orders = []
     return {"v": VC_V, "code": c["code"], "name": c["name"], "years": years, "stamp": last.get("stamp"),
-            "customers": customers[:30], "hidden": hidden, "subs": subs, "materials": mats, "suppliers_hist": supp_hist,
+            "customers": customers[:30], "hidden": hidden, "types": types, "subs": subs, "materials": mats, "suppliers_hist": supp_hist,
             "export": exp, "segments": last.get("segments") or [], "competition": last.get("competitors") or [],
             "shared": sorted(shared.values(), key=lambda s: -len(s["via"]))[:20], "buyers": buyers, "sellers": sellers,
             "orders": orders, "peer_n": peers["n"]}
