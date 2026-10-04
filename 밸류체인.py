@@ -803,45 +803,185 @@ def products(text):
 
 
 CHAN_HEAD = re.compile(r"판매\s*경로[^\n]{0,40}\n")
+CH_WORD = re.compile(r"직판|직접|직매|대리점|특약점|도매|소매|관계회사|계열사|온라인|오프라인|위탁|유통|홈쇼핑|할인점|편의점|백화점|대형마트|마트|면세|총판|딜러|"
+                     r"OEM|ODM|B2B|B2C|수출|내수|직수출|로컬|관수|조달|에이전트|Agent|대행|상사|가맹|이커머스|e-?커머스", re.I)
+PCT_CELL = re.compile(r"\(?\s*(\d{1,3}(?:\.\d+)?)\s*%?\s*\)?")
+
+
+def _chan_label(h):
+    """'직판(직매점 포함)' → '직판', '특약점(대리점 포함)' → '특약점', '수 출' → '수출'."""
+    h = re.sub(r"\([^)]*\)", "", h or "").strip()
+    return _unspace(h) or h
+
+
+def _wide_channels(rows, hi):
+    """가로형 — 경로가 칸 머리로 늘어선 표. LS ELECTRIC '사업부 / 구분 / 직판(직매점 포함) / 관계회사 / 특약점(대리점 포함) / 도매상 / 기타 / 합계'
+    + '전력 · 국내 · 19.8 · - · 80.2 · - · - · 100', 다음 행 '해외 · 9.3 · 74.7 · …'(사업부 칸 병합 — 위 행에서 잇는다).
+    농심홀딩스 '사업부문 / 내수직납 / 수 출 / 대리점 / 합 계'(행 값이 회사 전체 매출 대비라 합이 100이 아니어도 그대로).
+    값이 금액(합이 100을 크게 넘음)이면 행 안 비중으로 바꾼다. → [{name: 행 이름, parts: [{ch, pct}], pct: None}]"""
+    hdr = rows[hi]
+    hz = [_nz(x) for x in hdr]
+    first = next((i for i, x in enumerate(hz) if CH_WORD.search(x)), None)
+    if first is None:
+        return []
+    cols = [i for i in range(first, len(hdr)) if not re.search(r"^(?:합계|계|총계|비고|소계)$", hz[i])]
+    # 경로 칸 머리는 짧은 낱말이어야 한다 — '- 방 법 : 선주와의 직접매매 계약' · '당사 → 해당 국가 대리점' 같은 문장 칸이면 가로형 표가 아니다
+    okh = lambda h: len(_chan_label(h)) <= 14 and not re.search(r"[→:,]|^-|\s\S+\s", _chan_label(h))
+    good = [i for i in cols if okh(hdr[i])]
+    if len(good) < 2 or len(good) < 0.6 * len(cols):
+        return []
+    cols = good
+    n, out, prev = len(hdr), [], None
+    for cells in rows[hi + 1:hi + 24]:
+        if len(cells) < 2 or re.match(r"^\(?단위|^※|^\*|^주\d", cells[0]):
+            if out:
+                break
+            continue
+        if len(cells) > n:
+            if out:
+                break
+            continue
+        if len(cells) < n:                # 앞쪽 이름 칸이 병합돼 빠진 행 — 위 행 값을 잇는다
+            miss = n - len(cells)
+            if miss > first:
+                if out:
+                    break
+                continue
+            cells = (prev[:miss] if prev else [""] * miss) + cells
+        vals, ok = [], True
+        for i in cols:
+            v = (cells[i] or "").replace(",", "").strip()
+            mv = PCT_CELL.fullmatch(v)
+            if mv:
+                vals.append((_chan_label(hdr[i]), float(mv.group(1))))
+            elif v in ("-", "", "—", "–"):
+                vals.append((_chan_label(hdr[i]), 0.0))
+            elif re.fullmatch(r"\(?\s*[\d.]+\s*\)?", v):
+                vals.append((_chan_label(hdr[i]), float(re.sub(r"[()\s]", "", v))))      # 금액 칸 — 아래서 행 안 비중으로
+            else:
+                ok = False
+                break
+        if not ok:
+            if out:
+                break
+            continue
+        prev = cells
+        label = " · ".join(_unspace(x.replace("　", " ").strip()) for x in cells[:first] if x and x.strip() not in ("-", "")) or "전체"
+        if SUBTOTAL.match(_nz(label)) or re.search(r"^합\s*계|^총\s*계", label):
+            continue
+        if re.fullmatch(r"비\s*율|비\s*중|구\s*분|매출\s*비중|매출\s*액|매출액\s*비중|비중\s*\(\s*%\s*\)|%|당\s*기", label.strip()):
+            label = "전체"                # 경로가 칸 머리고 값 행이 하나뿐인 표(OCI · 두산밥캣 '비율 / 직판 31 · 내수판매상 13 · 수출 54')
+        elif re.search(r"\d", label) or len(label) > 30 or re.search(r"현금|자산|부채|차입|자본|고객|이상|차지|단위|당\s*기|전\s*기|^(?:USD|EUR|JPY|CNY|GBP|KRW)$", label):
+            if out:
+                break
+            continue                      # 재무표 · 고객 수 같은 다른 표의 행
+        tot = sum(v for _, v in vals)
+        if tot <= 0:
+            continue
+        scale = 100.0 / tot if tot > 105 else 1.0
+        parts = [{"ch": ch, "pct": round(v * scale, 1)} for ch, v in vals if v > 0]
+        if any(o["name"] == label[:30] for o in out):
+            continue                      # 같은 이름 줄이 또(기수별로 되풀이한 표) — 첫 줄(당기)만
+        out.append({"name": label[:30], "desc": "", "pct": None, "parts": parts, "share": "행 안" if scale != 1.0 else "보고서 그대로"})
+    return out[:10]
+
+
+def _pair_channels(rows):
+    """두 짝씩 늘어선 꼴 — 사조대림 '상온대리점 · 11.23% · 할인점 · 9.43%' / '신선대리점 · 9.41% · 케터링 · 10.84%'."""
+    out = []
+    for cells in rows[:14]:
+        if len(cells) >= 2 and len(cells) % 2 == 0 and all(PCT_CELL.fullmatch(cells[i + 1].replace(",", "").strip()) and
+                                                           not re.search(r"\d", cells[i]) for i in range(0, len(cells), 2)):
+            for i in range(0, len(cells), 2):
+                pv = float(PCT_CELL.fullmatch(cells[i + 1].replace(",", "").strip()).group(1))
+                if pv <= 100 and not SUBTOTAL.match(_nz(cells[i])):
+                    out.append({"name": cells[i][:30], "desc": "", "pct": pv})
+        elif out:
+            break
+    return out if len(out) >= 2 and sum(x["pct"] for x in out) <= 105 else []
+
+
+def _labeled_channels(rows):
+    """이름 칸이 여럿인 긴 꼴 — 아스플로 '제품 · 반도체 부품 · 내수 · 직접판매 · 42,545,375 · 62.64% · …', 지앤비에스 에코 '내수 · 직접매출 · 55,998 · 60.92 · …'.
+    경로 낱말 칸을 이어 이름으로, 첫 비율 칸(%가 붙었거나 쉼표 없는 100 이하 소수)을 당기 비중으로. 소계 · 합계 행은 건너뛴다."""
+    out, prod = [], None
+    is_num = lambda x: bool(re.fullmatch(r"[\d,.\s%()\-]+", x or ""))
+    for cells in rows[:24]:
+        if cells and SUBTOTAL.match(_nz(cells[0])) and any(CH_WORD.search(_nz(x)) for x in cells[1:]):
+            break                         # '합 계 · 수출 · 25.71%' — 전체 합계 묶음이 시작되면 끝(그 아래 '내수 74.29%'를 품목 줄로 읽지 않게)
+        if len(cells) < 3 or any(SUBTOTAL.match(_nz(x)) for x in cells[:3]):
+            continue
+        texts = [x for x in cells if not is_num(x) and x.strip() not in ("-", "")]
+        labs = [x for x in texts if CH_WORD.search(_nz(x)) and len(x) <= 24]
+        prods = [x for x in texts if not CH_WORD.search(_nz(x)) and not re.fullmatch(r"제품|상품|제품/상품|상품/제품|용역|기타|매출유형", _nz(x)) and len(x) <= 30]
+        pc = next((x for x in cells if re.fullmatch(r"\s*\d{1,3}(?:\.\d+)?\s*%\s*", x)), None) or \
+            next((x for x in cells if re.fullmatch(r"\s*\d{1,2}\.\d+\s*", x)), None)
+        if not labs or pc is None:
+            if out and len(cells) >= 3:
+                break
+            continue
+        if prods:
+            prod = _unspace(prods[-1])          # 품목 칸이 병합된 다음 행은 위 행 품목을 잇는다
+        elif len(cells) >= 4 and not is_num(cells[0]) and not CH_WORD.search(_nz(cells[0])):
+            prod = _unspace(cells[0])           # 새 묶음 첫 칸이 '기 타' · '상 품' 같은 일반 낱말이어도 그 묶음 이름이다
+        pv = float(re.search(r"\d{1,3}(?:\.\d+)?", pc).group(0))
+        if pv > 100 or pv <= 0:
+            continue
+        name = " · ".join(dict.fromkeys(([prod] if prod else []) + [_chan_label(x) for x in labs]))
+        out.append({"name": name[:40], "desc": "", "pct": pv})
+    return out if len(out) >= 2 and sum(x["pct"] for x in out) <= 105 else []
 
 
 def channels(text):
-    """판매경로 비중 — 고객 이름을 안 적는 회사의 '누구에게 파나'를 대신한다 [{name, desc, pct}].
-    CJ제일제당 '경로구분 / 주요 거래처 유형 / 매출비중'('대리점 · 전문점,복합점,식당전문점 등 · 18.9'), 문장 '판매경로는 직판 70%, 대리점 30%'."""
+    """판매경로 비중 — 고객 이름을 안 적는 회사의 '누구에게 파나'를 대신한다.
+    긴 꼴 [{name, desc, pct}]: CJ제일제당 '경로구분 / 주요 거래처 유형 / 매출비중'('대리점 · 전문점,복합점,식당전문점 등 · 18.9').
+    가로형 [{name, parts:[{ch, pct}]}]: 경로가 칸 머리로 늘어선 표(LS ELECTRIC · 농심홀딩스) — _wide_channels.
+    짝 꼴: 사조대림 '상온대리점 11.23% · 할인점 9.43%'. 문장: '판매경로는 수출(13.18%), 내수직판(86.82%)'."""
     for m in list(CHAN_HEAD.finditer(text))[:3]:
         body = text[m.end():m.end() + 2500]
         rows = _rows(body)
+        # 가로형 — 경로 낱말 칸이 둘 넘는 머리 행 뒤로 숫자 행
+        wi = next((i for i, r_ in enumerate(rows[:6]) if len(r_) >= 3 and sum(1 for x in r_ if CH_WORD.search(_nz(x)) and len(x) <= 20) >= 2
+                   and not any(re.search(r"\d", x) for x in r_)), None)
+        if wi is not None:
+            got = _wide_channels(rows, wi)
+            if got:
+                return got
         hi = next((i for i, r_ in enumerate(rows[:6]) if any(re.search(r"경로|구분", _nz(x)) for x in r_)
                    and any(re.search(r"비중|비율", _nz(x)) for x in r_) and len(r_) >= 2), None)
         if hi is not None:
-            hz = [_nz(x) for x in rows[hi]]
-            wide = sum(1 for x in hz if re.search(r"직판|대리점|특약점|도매|소매|관계회사|온라인", x)) >= 2
             out = []
-            if not wide:                  # 긴 꼴만 — 경로가 칸 머리로 늘어선 넓은 꼴(LS ELECTRIC '직판 / 관계회사 / 특약점')은 건너뛴다
-                for cells in rows[hi + 1:hi + 16]:
-                    if len(cells) < 2 or SUBTOTAL.match(_nz(cells[0])) or re.match(r"^\(?단위|^※|^주\d", cells[0]):
-                        continue
-                    nums = [x for x in cells[1:] if re.fullmatch(r"\s*\d{1,3}(?:\.\d+)?\s*%?\s*", x)]
-                    if not nums:
-                        if out:
-                            break
-                        continue
-                    pv = float(re.search(r"\d{1,3}(?:\.\d+)?", nums[0]).group(0))
-                    if pv > 100:
-                        continue
-                    desc = next((x for x in cells[1:] if not re.search(r"\d", x) and x != "-"), None)
-                    if re.search(r"비중|비율|÷|합\s*계", cells[0]):
-                        continue          # '해외매출 비중(해외매출÷전체매출)' 같은 집계 행
-                    out.append({"name": cells[0][:30], "desc": (desc or "")[:60], "pct": pv})
-                    if sum(x["pct"] for x in out) >= 99:
-                        break             # 한 표가 100%를 채우면 끝(LG디스플레이처럼 해외 · 국내 표가 이어 붙은 꼴에서 둘째 표를 섞지 않게)
+            for cells in rows[hi + 1:hi + 16]:
+                if len(cells) < 2 or SUBTOTAL.match(_nz(cells[0])) or re.match(r"^\(?단위|^※|^주\d", cells[0]):
+                    continue
+                nums = [x for x in cells[1:] if re.fullmatch(r"\s*\d{1,3}(?:\.\d+)?\s*%?\s*", x)]
+                if not nums:
+                    if out:
+                        break
+                    continue
+                pv = float(re.search(r"\d{1,3}(?:\.\d+)?", nums[0]).group(0))
+                if pv > 100:
+                    continue
+                desc = next((x for x in cells[1:] if not re.search(r"\d", x) and x != "-"), None)
+                if re.search(r"비중|비율|÷|합\s*계", cells[0]):
+                    continue          # '해외매출 비중(해외매출÷전체매출)' 같은 집계 행
+                out.append({"name": cells[0][:30], "desc": (desc or "")[:60], "pct": pv})
+                if sum(x["pct"] for x in out) >= 99:
+                    break             # 한 표가 100%를 채우면 끝(LG디스플레이처럼 해외 · 국내 표가 이어 붙은 꼴에서 둘째 표를 섞지 않게)
+            names_ = [x["name"] for x in out]
+            if out and (not any(CH_WORD.search(n_) for n_ in names_) or len(set(names_)) < len(names_)):
+                alt = _labeled_channels(rows[hi + 1:])     # 첫 칸이 경로가 아니라 품목인 표(상신이디피 'ENERGY · 제품 · 수출 · 직판')
+                if alt:
+                    return alt[:8]
             if out:
                 return out[:8]
+        got = _pair_channels(rows) or _labeled_channels(rows)
+        if got:
+            return got[:8]
         seg = text[m.end():m.end() + 400]
         got = [(nm, p) for nm, p in _names_in(seg.split("\n\n")[0]) if len(nm) <= 20]
         # 문장형은 경로 낱말일 때만(직판 · 대리점 · 온라인 …) — 판매경로 제목 밑의 매출처 이름(TANTRANSCO 3.2%)을 경로로 읽지 않게
-        chan = [g for g in got if re.search(r"직판|직접|대리점|특약점|도매|소매|온라인|오프라인|수출|내수|위탁|유통|홈쇼핑|할인점|편의점|백화점|"
-                                            r"마트|면세|관수|조달|B2B|B2C|OEM|로컬|해외|국내|자사|가맹|딜러|총판|상사", g[0], re.I)]
+        chan = [g for g in got if CH_WORD.search(g[0]) or re.search(r"해외|국내|자사", g[0])]
         if len(chan) >= 2 and len(chan) * 2 >= len(got):
             return [{"name": nm, "desc": "", "pct": p} for nm, p in chan[:8]]
     return []

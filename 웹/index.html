@@ -262,6 +262,8 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .vcMeP .r .bar{height:5px;border-radius:3px;background:var(--panel);overflow:hidden}.vcMeP .r .bar i{display:block;height:100%;background:var(--accent)}
 .vcMeP .r b{font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
 .vcGrp.ch{border-left-color:var(--dim)}.vcGrp.ch::before{border-color:var(--dim)}
+.vcStack{display:flex;height:15px;border-radius:4px;overflow:hidden;background:var(--line2);margin-top:5px}.vcStack i{display:block;height:100%;font:600 9.5px/15px var(--sans);font-style:normal;color:#fff;text-align:center;overflow:hidden;white-space:nowrap}.vcStack i+i{box-shadow:inset 1px 0 0 var(--panel)}
+.vcStackKey{display:flex;flex-wrap:wrap;gap:4px 12px;padding:7px 0 3px;font-size:11px;color:var(--dim)}.vcStackKey span{display:inline-flex;align-items:center;gap:5px}.vcStackKey i{width:9px;height:9px;border-radius:2px;display:inline-block}
 .vcRev{font-size:11px;font-weight:700;color:var(--accent);text-decoration:none;white-space:nowrap;cursor:pointer;padding:0 4px;border-radius:4px}
 .vcRev:hover{background:var(--accent-soft)}
 .vcOth{cursor:pointer}.vcOth:hover{text-decoration:underline}
@@ -8544,12 +8546,7 @@ function vcMap(d,V,c){
       if(x.pct!=null){ const mb=el('span','mini'); const f=el('i'); f.style.width=Math.max(4,x.pct/mx*100)+'%'; mb.appendChild(f); l1.appendChild(mb); }
       l1.appendChild(el('b','pc',x.pct!=null?vcPct(x.pct):(x.amt?qWon(x.amt):''))); r.appendChild(l1); box.appendChild(r); });
     box.appendChild(el('div','vcMoreN','이름은 가렸지만 매출이 한두 곳에 몰린 회사 — 아래 「수주 공시 상대」에서 짐작')); R.appendChild(box); }
-  if(!V.groups.length&&(d.channels||[]).length){ const box=el('div','vcGrp ch'); box.dataset.wire='down'; box.dataset.k='c0'; box.dataset.w='4';
-    const h=el('div','vcGrpH'); h.appendChild(el('b',null,'판매경로 · 거래처 유형')); h.appendChild(el('span','vcBasis','회사 매출 대비')); box.appendChild(h);
-    const mx=Math.max(1,...d.channels.map(x=>x.pct||0));
-    d.channels.forEach(x=>{ const r=el('div','vcRow2'); const l1=el('div','l1'); l1.appendChild(el('span','nm',x.name)); l1.appendChild(el('b','pc',vcPct(x.pct))); r.appendChild(l1);
-      const l2=el('div','l2'); const b=el('span','bar'); const f=el('i'); f.style.width=Math.max(3,x.pct/mx*100)+'%'; b.appendChild(f); l2.appendChild(b); if(x.desc) l2.appendChild(el('span','tr',x.desc)); r.appendChild(l2); box.appendChild(r); });
-    R.appendChild(box); }
+  if((d.channels||[]).length) R.appendChild(vcChanBox(d.channels,V));
   if(!V.groups.length&&d.no_major){ const box=el('div','vcGrp hid'); box.dataset.wire='down'; box.dataset.k='n0'; box.dataset.w='2';
     const h=el('div','vcGrpH'); h.appendChild(el('b',null,'매출 10% 넘는 고객 없음')); box.appendChild(h);
     box.appendChild(el('div','vcMoreN','보고서가 "10% 이상 고객은 없다"고 적었다 — 고객이 고루 퍼져 한 곳에 덜 휘둘린다')); R.appendChild(box); }
@@ -8647,6 +8644,29 @@ function vcRipple(d,V,c){
   w.appendChild(g); return w;
 }
 
+// 판매경로 상자 — 긴 꼴(경로마다 한 줄 · 막대)과 가로형(행마다 경로가 쌓인 막대 + 색 범례: LS ELECTRIC '전력 · 국내 = 직판 19.8 + 특약점 80.2')
+const VC_CH_COL=['var(--syn-1)','var(--syn-2)','var(--syn-3)','var(--gal-mod)','var(--gal-tbl)','var(--reg-con)','var(--syn-other)'];
+function vcChanBox(chs,V){
+  const box=el('div','vcGrp ch'); box.dataset.wire='down'; box.dataset.k='c0'; box.dataset.w=V.groups.length?'2':'4';
+  const wide=chs.some(x=>(x.parts||[]).length);
+  const h=el('div','vcGrpH'); h.appendChild(el('b',null,wide?'판매경로 — 어디로 파나':'판매경로 · 거래처 유형'));
+  h.appendChild(el('span','vcBasis',wide?(chs.some(x=>x.share==='행 안')?'줄마다 100%':'보고서 비중 그대로'):'회사 매출 대비')); box.appendChild(h);
+  if(wide){
+    const names=[]; chs.forEach(x=>(x.parts||[]).forEach(p=>{ if(!names.includes(p.ch)) names.push(p.ch); }));
+    const col=ch=>VC_CH_COL[names.indexOf(ch)%VC_CH_COL.length];
+    chs.slice(0,8).forEach(x=>{ const r=el('div','vcRow2 st'); const l1=el('div','l1'); l1.appendChild(el('span','nm',x.name));
+      const tot=(x.parts||[]).reduce((a,p)=>a+p.pct,0); l1.appendChild(el('b','pc',tot>0&&Math.abs(tot-100)>1.5?vcPct(tot):'')); r.appendChild(l1);
+      const bar=el('div','vcStack'); (x.parts||[]).forEach(p=>{ const s=el('i'); s.style.width=Math.max(0.6,p.pct)+'%'; s.style.background=col(p.ch); s.title=p.ch+' '+vcPct(p.pct); if(p.pct>=12) s.textContent=Math.round(p.pct)+'%'; bar.appendChild(s); });
+      r.appendChild(bar); r.title=x.name+' — '+(x.parts||[]).map(p=>p.ch+' '+vcPct(p.pct)).join(' · '); box.appendChild(r); });
+    const lg=el('div','vcStackKey'); names.forEach(n=>{ const s=el('span'); const dot=el('i'); dot.style.background=col(n); s.appendChild(dot); s.appendChild(document.createTextNode(n)); lg.appendChild(s); });
+    box.appendChild(lg);
+  } else {
+    const mx=Math.max(1,...chs.map(x=>x.pct||0));
+    chs.slice(0,8).forEach(x=>{ const r=el('div','vcRow2'); const l1=el('div','l1'); l1.appendChild(el('span','nm',x.name)); l1.appendChild(el('b','pc',vcPct(x.pct))); r.appendChild(l1);
+      const l2=el('div','l2'); const b=el('span','bar'); const f=el('i'); f.style.width=Math.max(3,(x.pct||0)/mx*100)+'%'; b.appendChild(f); l2.appendChild(b); if(x.desc) l2.appendChild(el('span','tr',x.desc)); r.appendChild(l2); box.appendChild(r); });
+  }
+  return box;
+}
 function vcRevBtn(key,kind,label,name){
   const b=el('a','vcRev',label); b.href='#'; b.title=(kind==='supp'?name+'에서 사는':name+'에 파는')+' 상장사 전부와 해마다의 비중';
   b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); vcBuyerPop(key,kind,name); }; return b;

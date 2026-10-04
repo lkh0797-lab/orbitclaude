@@ -8344,7 +8344,7 @@ try:
 except Exception as _e:
     VCM = None
     print("밸류체인 모듈 로드 실패:", _e)
-VC_V = 13            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
+VC_V = 16            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
 VC_DIR = os.path.join(CACHE_DIR, "밸류체인")
 VC_LOCK = threading.Lock()
 _VC_PEER = {"at": 0, "cust": {}, "supp": {}, "n": 0}
