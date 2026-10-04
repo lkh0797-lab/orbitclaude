@@ -284,7 +284,7 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 /* ---------- 리포트 (증권사 텔레그램 채널) ---------- */
 .repBar{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--dim);margin:-2px 0 10px}
 .repSetup{border:1px solid var(--line2);border-left:3px solid var(--accent);border-radius:10px;background:var(--panel);padding:14px 18px;max-width:900px}
-.repSetup b{font-size:14px}.repSetup ol{margin:10px 0 0 18px;padding:0;font-size:13px;line-height:1.8;color:var(--ink)}
+.repSetup b{font-size:14px}.repSetup .repWay{font-size:12.5px;font-weight:700;color:var(--accent);margin:12px 0 0}.repSetup ol{margin:10px 0 0 18px;padding:0;font-size:13px;line-height:1.8;color:var(--ink)}
 .repSetup li.done{color:var(--faint);text-decoration:line-through}.repSetup code{font:12px var(--mono);background:var(--line2);padding:1px 5px;border-radius:4px}
 .repChartW{margin:6px 0 18px}.repChart{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--line2);border-radius:12px}
 .repChart .gl{stroke:var(--line2)}.repChart .ax{font:10.5px var(--sans);fill:var(--faint)}.repChart .px{fill:none;stroke:var(--ink);stroke-width:1.4;opacity:.75}
@@ -8814,7 +8814,14 @@ async function viewReports(p){
     '목표주가 · 의견은 글에 적힌 대로 읽는다. 하루치 요약 글은 종목마다 나눈다. 글 꼴이 달라 못 읽은 항목은 다음 규칙 손질 때 다시 읽는다.'));
 }
 function repSetup(st){
-  const b=el('div','repSetup'); b.appendChild(el('b',null,'텔레그램 연결이 아직 안 돼 있다 — 한 번만 하면 된다'));
+  const b=el('div','repSetup'); b.appendChild(el('b',null,'리포트 채널이 아직 없다 — 둘 중 하나만 하면 된다'));
+  b.appendChild(el('div','repWay','가. 로그인 없이(쉬움) — 공개 채널을 웹 미리보기(t.me/s/이름)로 읽는다'));
+  const ol0=el('ol'); const s0=(html)=>{ const li=el('li'); li.innerHTML=html; ol0.appendChild(li); };
+  s0('텔레그램 앱에서 증권사 · 리서치 채널 정보를 열어 링크(<code>t.me/채널이름</code>)의 이름을 모은다');
+  s0('이 폴더 <code>리포트_채널.txt</code> 에 한 줄에 하나씩 적는다(또는 <code>.env</code> 에 <code>TELEGRAM_CHANNELS=이름1,이름2</code>)');
+  s0('끝. 뷰어가 2시간마다 읽는다. 바로 받으려면 <code>python 도구/리포트_수집.py</code> — 공개 채널 · 미리보기가 켜진 채널만 된다');
+  b.appendChild(ol0);
+  b.appendChild(el('div','repWay','나. 로그인(구독한 채널 전부, 비공개 채널도) — my.telegram.org 가 막혀 있으면 나중에'));
   const ol=el('ol');
   const step=(done,html)=>{ const li=el('li',done?'done':null); li.innerHTML=html; ol.appendChild(li); };
   step(st.creds,'<a href="https://my.telegram.org" target="_blank" rel="noopener">my.telegram.org</a> → API development tools 에서 앱을 만들고 받은 <code>api_id</code> · <code>api_hash</code> 를 이 폴더 <code>.env</code> 에 <code>TELEGRAM_API_ID=</code> · <code>TELEGRAM_API_HASH=</code> 로 적는다(git 에 안 올라간다)');

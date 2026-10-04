@@ -8842,8 +8842,8 @@ def reports_status():
         return {"ready": False, "why": "리포트 모듈이 없습니다"}
     import 설정 as _cfg
     st = REP._load_state()
-    return {"ready": REP.session_exists(), "creds": bool(_cfg.get("TELEGRAM_API_ID") and _cfg.get("TELEGRAM_API_HASH")),
-            "session": REP.session_exists(), "channels": [v.get("title") for v in st.get("channels", {}).values()],
+    return {"ready": REP.can_collect(), "creds": bool(_cfg.get("TELEGRAM_API_ID") and _cfg.get("TELEGRAM_API_HASH")),
+            "session": REP.session_exists(), "web": REP.web_channels(), "channels": [v.get("title") for v in st.get("channels", {}).values()],
             "last": st.get("at") or 0, "running": REP_RUN["running"], "msg": REP_RUN["msg"]}
 
 
@@ -8898,7 +8898,7 @@ def reports_recent(kind="", days=14):
 
 def _rep_collect():
     """도구/리포트_수집.py 를 따로 띄워 새 글만 받는다(Telethon 은 자기 이벤트 루프를 쓴다 — 뷰어 실과 떼어 둔다)."""
-    if REP is None or not REP.session_exists() or REP_RUN["running"]:
+    if REP is None or not REP.can_collect() or REP_RUN["running"]:
         return
     REP_RUN["running"] = True
     try:
@@ -8923,7 +8923,7 @@ def _rep_auto_loop():
     while True:
         try:
             h = dt.datetime.now().hour
-            if REP is not None and REP.session_exists() and (7 <= h <= 22 or not REP_RUN["at"]):
+            if REP is not None and REP.can_collect() and (7 <= h <= 22 or not REP_RUN["at"]):
                 _rep_collect()
         except Exception as e:
             print("리포트 자동 수집: %s" % e, flush=True)

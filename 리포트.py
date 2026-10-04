@@ -258,6 +258,113 @@ def session_exists():
     return os.path.exists(SESSION + ".session")
 
 
+def web_channels():
+    """웹 미리보기로 읽을 공개 채널 이름 — .env TELEGRAM_CHANNELS('@이름' · 't.me/이름' · '이름', 쉼표) 또는 이 폴더의 리포트_채널.txt(한 줄에 하나)."""
+    import 설정
+    raw = (설정.get("TELEGRAM_CHANNELS") or "").replace("\n", ",").split(",")
+    p = os.path.join(BASE, "리포트_채널.txt")
+    if os.path.exists(p):
+        with open(p, "r", encoding="utf-8-sig") as fh:
+            raw += [l.split("#")[0] for l in fh]
+    out = []
+    for x in raw:
+        x = re.sub(r"^(?:https?://)?(?:t\.me|telegram\.me)/(?:s/)?", "", x.strip()).lstrip("@").split("/")[0].split("?")[0]
+        if re.fullmatch(r"[A-Za-z0-9_]{4,64}", x) and x not in out:
+            out.append(x)
+    return out
+
+
+def can_collect():
+    """로그인 세션(Telethon)이 있거나, 웹 미리보기로 읽을 공개 채널 이름이 적혀 있으면 받을 수 있다."""
+    return session_exists() or bool(web_channels())
+
+
+# ---------------------------------------------------------------- 웹 미리보기 — 로그인 · API 키 없이 공개 채널을 t.me/s/이름 으로 읽는다
+WEB = "https://t.me/s/%s"
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept-Language": "ko,en;q=0.8"}
+
+
+def _html_text(h):
+    import html as _h
+    h = re.sub(r"<br\s*/?>", "\n", h or "")
+    h = re.sub(r"</(?:p|div)>", "\n", h)
+    return _h.unescape(re.sub(r"<[^>]+>", "", h)).strip()
+
+
+def _web_parse(page, name):
+    """t.me/s/이름 한 쪽 → [{id, date, text, links, doc}] (오래된 것부터). 채널 제목도."""
+    import html as _h
+    mt = re.search(r'<meta property="og:title" content="([^"]*)"', page)
+    title = _h.unescape(mt.group(1)) if mt else name
+    out = []
+    for blk in page.split('data-post="')[1:]:
+        mi = re.match(r"([^\"/]+)/(\d+)\"", blk)
+        if not mi:
+            continue
+        body = blk.split('class="tgme_widget_message_wrap')[0]
+        md = re.search(r'<time[^>]*datetime="([^"]+)"', body)
+        mx = re.search(r'tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>', body, re.S)
+        mdoc = re.search(r'tgme_widget_message_document_title[^>]*>(.*?)</div>', body, re.S)
+        links = re.findall(r'href="(https?://[^"]+)"', mx.group(1) if mx else "")
+        out.append({"id": int(mi.group(2)), "date": md.group(1) if md else None, "text": _html_text(mx.group(1)) if mx else "",
+                    "doc": _html_text(mdoc.group(1)) if mdoc else None, "links": links})
+    return title, sorted(out, key=lambda m: m["id"])
+
+
+def _collect_web(days=180, log=print, max_pages=80):
+    """공개 채널마다 지난번 뒤의 새 글 — 최신 쪽부터 '?before=' 로 거슬러 올라간다(처음이면 days 일 전까지). 요청 사이 1초."""
+    import requests
+    st = _load_state()
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)).isoformat()
+    got = 0
+    names = web_channels()
+    log("웹 미리보기 채널 %d곳: %s" % (len(names), ", ".join(names)))
+    for name in names:
+        key = "web:" + name.lower()
+        last = int(st["channels"].get(key, {}).get("last", 0))
+        before, msgs, title, pages = None, {}, name, 0
+        while pages < max_pages:
+            try:
+                r = requests.get(WEB % name, params={"before": before} if before else None, headers=UA, timeout=25)
+            except Exception as e:
+                log("  %s — 못 읽음: %s" % (name, e))
+                break
+            pages += 1
+            if r.status_code != 200 or "tgme_widget_message" not in r.text:
+                if pages == 1:
+                    log("  %s — 공개 채널 미리보기가 없다(비공개 · 이름 틀림 · 미리보기 막힘)" % name)
+                break
+            title, ms = _web_parse(r.text, name)
+            if not ms:
+                break
+            for m in ms:
+                if m["id"] > last and (last or not m["date"] or m["date"] >= since):
+                    msgs[m["id"]] = m
+            oldest = ms[0]
+            if oldest["id"] <= last or (not last and oldest["date"] and oldest["date"] < since) or oldest["id"] <= 1:
+                break
+            before = oldest["id"]
+            time.sleep(1.0)
+        rows = []
+        for i in sorted(msgs):
+            m = msgs[i]
+            txt = (m["text"] + ("\n" + m["doc"] if m.get("doc") else "") + ("\n" + "\n".join(m["links"]) if m["links"] else "")).strip()
+            if len(txt) < 12:
+                continue
+            d = dt.datetime.fromisoformat(m["date"].replace("Z", "+00:00")).astimezone() if m["date"] else dt.datetime.now()
+            rows.append({"id": "%s:%d" % (key, i), "date": d.strftime("%Y-%m-%d %H:%M"), "channel": name, "channel_title": title,
+                         "url": "https://t.me/%s/%d" % (name, i), "text": txt[:4000]})
+        if rows:
+            append(rows)
+            got += len(rows)
+        st["channels"][key] = {"title": title, "last": max([last] + list(msgs)), "at": time.time(), "via": "web"}
+        log("  %s(%s) — 새 글 %d, %d쪽" % (title[:24], name, len(rows), pages))
+        time.sleep(1.0)
+    st["at"] = time.time()
+    _save_state(st)
+    return got
+
+
 def _wanted(entity, explicit):
     title = getattr(entity, "title", "") or ""
     uname = (getattr(entity, "username", "") or "").lower()
@@ -318,5 +425,11 @@ async def _collect(days=180, per_channel=3000, list_only=False, log=print):
 
 
 def collect(days=180, per_channel=3000, list_only=False, log=print):
+    """로그인 세션이 있으면 Telethon(구독 채널 전부), 없으면 웹 미리보기(적어 둔 공개 채널)."""
+    if not session_exists():
+        if list_only:
+            log("웹 미리보기 채널: %s" % (", ".join(web_channels()) or "(없음 — .env TELEGRAM_CHANNELS 또는 리포트_채널.txt 에 적는다)"))
+            return 0
+        return _collect_web(days, log)
     import asyncio
     return asyncio.run(_collect(days, per_channel, list_only, log))

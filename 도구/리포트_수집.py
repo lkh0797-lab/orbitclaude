@@ -6,7 +6,7 @@
   python 도구/리포트_수집.py --list     # 읽을 채널 목록만
   python 도구/리포트_수집.py --days 365 # 처음 받을 때 더 오래 전까지
 
-로그인(도구/텔레그램_로그인.py)이 먼저다. 받은 글은 .cache/리포트/YYYY-MM.jsonl.
+로그인(도구/텔레그램_로그인.py)했으면 구독 채널 전부, 안 했으면 적어 둔 공개 채널을 웹 미리보기(t.me/s/이름)로. 받은 글은 .cache/리포트/YYYY-MM.jsonl.
 """
 import os
 import sys
@@ -20,8 +20,8 @@ def main(argv):
     days = 180
     if "--days" in argv:
         days = int(argv[argv.index("--days") + 1])
-    if not R.session_exists():
-        print("텔레그램 로그인 세션이 없습니다 — 터미널에서 python 도구/텔레그램_로그인.py 를 먼저 한 번 돌리세요.")
+    if not R.can_collect():
+        print("받을 곳이 없습니다 — 로그인(python 도구/텔레그램_로그인.py)하거나, .env TELEGRAM_CHANNELS · 리포트_채널.txt 에 공개 채널 이름을 적으세요.")
         return 2
     t0 = time.time()
     n = R.collect(days=days, list_only="--list" in argv)
