@@ -8857,8 +8857,8 @@ def reports_view(code):
     today = dt.date.today()
     recent = [r for r in rows if r["date"][:10] >= (today - dt.timedelta(days=180)).isoformat()]
     latest = {}
-    for r in rows:                               # 최근 것부터 — 증권사마다 첫 목표가가 최신
-        b = r.get("broker") or r.get("channel") or "?"
+    for r in rows:                               # 최근 것부터 — 증권사마다 첫 목표가가 최신(증권사를 안 적은 요약 채널 글은 리포트마다 따로)
+        b = r.get("broker") or ("미표기 · %s %s" % (r["date"][5:10], (r.get("title") or "")[:14]))
         if r.get("tp") and b not in latest:
             latest[b] = r
     tps = [r["tp"] for b, r in latest.items() if r["date"][:10] >= (today - dt.timedelta(days=180)).isoformat()]
@@ -8879,7 +8879,7 @@ def reports_view(code):
         if r.get("opinion"):
             ops[r["opinion"]] = ops.get(r["opinion"], 0) + 1
     avg = sum(tps) / len(tps) if tps else None
-    return {"code": code, "name": c["name"], "rows": rows[:200], "n180": len(recent), "brokers": len({r.get("broker") for r in recent if r.get("broker")}),
+    return {"code": code, "name": c["name"], "rows": rows[:200], "n180": len(recent), "brokers": len({r.get("broker") for r in recent if r.get("broker")}), "no_broker": sum(1 for r in recent if not r.get("broker")),
             "tp_avg": avg, "tp_max": max(tps) if tps else None, "tp_min": min(tps) if tps else None, "price": price,
             "upside": (avg / price - 1) * 100 if avg and price else None, "opinions": ops,
             "latest": sorted(({"broker": b, "tp": r["tp"], "tp_prev": r.get("tp_prev"), "date": r["date"], "opinion": r.get("opinion")} for b, r in latest.items()),

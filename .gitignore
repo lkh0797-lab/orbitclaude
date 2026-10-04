@@ -27,3 +27,6 @@ venv/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# 리포트 채널 목록(개인 구독)
+리포트_채널.txt

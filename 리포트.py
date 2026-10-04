@@ -25,11 +25,11 @@ STORE_DIR = os.path.join(BASE, ".cache", "리포트")
 STATE_PATH = os.path.join(STORE_DIR, "_state.json")
 SESSION_DIR = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "기업추적")
 SESSION = os.path.join(SESSION_DIR, "telegram")          # Telethon 이 .session 을 붙인다
-RULE_V = 1                                                # 읽는 규칙이 바뀌면 올린다 — 쌓아 둔 원문을 다시 읽는다
+RULE_V = 6                                               # 읽는 규칙이 바뀌면 올린다 — 쌓아 둔 원문을 다시 읽는다
 
 BROKERS = [
     ("미래에셋증권", r"미래에셋"), ("삼성증권", r"삼성증권|SAMSUNG\s*SEC|삼성\s*리서치|\[SAMSUNG\]"), ("한국투자증권", r"한국투자|한투증권|KIS\b"),
-    ("NH투자증권", r"NH투자|NH\s*리서치|NH증권"), ("KB증권", r"KB증권|KB\s*리서치"), ("키움증권", r"키움"), ("신한투자증권", r"신한투자|신한금융투자|신한\s*리서치"),
+    ("NH투자증권", r"NH투자|NH\s*리서치|NH증권"), ("KB증권", r"KB증권|KB\s*리서치"), ("키움증권", r"키움"), ("신한투자증권", r"신한투자|신한금융투자|신한\s*리서치|신한생각"),
     ("하나증권", r"하나증권|하나금융투자|하나\s*리서치"), ("메리츠증권", r"메리츠"), ("대신증권", r"대신증권|대신\s*리서치"), ("유안타증권", r"유안타"),
     ("교보증권", r"교보증권"), ("IBK투자증권", r"IBK투자|IBK\s*리서치"), ("iM증권", r"iM증권|하이투자"), ("DB증권", r"DB금융투자|DB증권"),
     ("SK증권", r"SK증권"), ("유진투자증권", r"유진투자"), ("LS증권", r"LS증권|이베스트"), ("한화투자증권", r"한화투자"), ("현대차증권", r"현대차증권"),
@@ -97,11 +97,119 @@ def _name_index(names):
     return dict(pairs), (re.compile(r"(?<![가-힣A-Za-z0-9])(" + alt + r")(?![가-힣A-Za-z0-9])") if alt else None)
 
 
+CARD_SKIP = re.compile(r"^\s*\[(?:단독|속보|특징주|공시|주식뉴스!?|리포트|뉴스|일정)\]")
+CARD_STOCK = re.compile(r"([^\n|:：]{1,40}?)\s*\(\s*A?(\d{6}(?:\.K[SQ])?|[0-9A-Z]{3,8}\.[A-Z]{1,3}|[A-Z]{1,6})\s*\)\s*\|\s*([^|\n]*?)\s*\|\s*현재가\s*([\d,.]+|-)\s*(원|[A-Z]{3})?[^|\n]{0,30}\|\s*"
+                        r"목표\s*주?가\s*([\d,.]+|-|미정|미제시|없음)\s*(원|[A-Z]{3})?")       # '현재가 274,000원(보통주 기준, 9월21일) | 목표주가 미제시'
+CARD_PICK = re.compile(r"([^\n|:：]{1,40}?)\s*\(\s*A?(\d{6})(?:\.K[SQ])?\s*\)\s*\|\s*([^|\n]*?)\s*\|\s*기준가\s*([\d,]+)\s*원?")    # 투자유망 포트폴리오 줄
+CARD_SEC = re.compile(r"^\s*\[?\s*(?:📌|📊|📈|💡|🔗|⚠️|🎯)?\s*\[?\s*(종목\s*(?:정보|및\s*투자\s*의견)?|핵심\s*투자\s*(?:포인트|전략)|실적\s*전망|결론|원문\s*보기|주요\s*리스크\s*요인|투자\s*포인트)\s*\]?\s*[:：]?", re.M)
+
+
+def _parse_card(text, codes, names=None):
+    """정형 카드 글 — 텔레그램 '[주식] 증권사 리포트'(t.me/companyreport, stockinfo7) 꼴.
+      [기업][켐트로스] 반도체 소재 매출 비중 50% 상회
+      📌 종목: 코스메카코리아 (241710) | BUY | 현재가 127,300원 | 목표주가 150,000원
+      📊 핵심 투자포인트 / - … · 📈 실적 전망 / 2026년 매출액 … · 💡 결론 / … · 🔗 원문보기 링크
+    [시장][중국 반도체] … 는 산업 · 시장 리포트(종목 줄에 우리 종목이 있으면 기업 항목도). [단독] · [속보] · [특징주] · [공시] 는 뉴스 묶음이라 버린다.
+    → 항목 목록, 카드 꼴이 아니면 None."""
+    t = (text or "").replace("\r", "")
+    if CARD_SKIP.match(t):
+        return []
+    mh = re.match(r"\s*\[(기업|시장|산업|전략|투자|채권|경제)\]\s*(?:\[([^\]]{1,40})\])?\s*([^\n]*)", t)
+    if not mh:
+        return None
+    names = names or {}
+    plain = not (CARD_STOCK.search(t) or CARD_PICK.search(t) or "📌" in t or "핵심 투자" in t or "[핵심" in t)
+    if plain and not (mh.group(1) == "기업" and mh.group(2) and (mh.group(2).strip() in names)):
+        return None
+    tag, tag2, title = mh.group(1), (mh.group(2) or "").strip(), mh.group(3).strip()
+    # 구역 나누기
+    secs, cur = {}, "head"
+    for line in t.split("\n"):
+        ms = CARD_SEC.match(line)
+        if ms:
+            k = re.sub(r"\s+", "", ms.group(1))
+            cur = "종목" if k.startswith("종목") else ("핵심" if "핵심" in k or "투자포인트" in k else ("실적" if "실적" in k else ("결론" if "결론" in k else ("링크" if "원문" in k else "기타"))))
+            rest = line[ms.end():].strip()
+            secs.setdefault(cur, [])
+            if rest:
+                secs[cur].append(rest)
+            continue
+        if line.strip():
+            secs.setdefault(cur, []).append(line.strip())
+    bullets = [re.sub(r"^[-•·*▶]\s*", "", l) for l in secs.get("핵심", []) if len(l) >= 6][:5]
+    est = [l for l in secs.get("실적", []) if re.search(r"\d", l)][:4]
+    concl = " ".join(secs.get("결론", []))[:400]
+    urls = [u for u in URL_RX.findall(t) if "stockinfo7.com/" in u and not u.rstrip("/").endswith("stockinfo7.com")][:2] or URL_RX.findall(t)[:1]
+    broker = broker_of(t[:600], "") or broker_of(tag2, "")
+    out = []
+    # 제목 속 의견 — '[웹젠/매수]' · 'KT&G(033780.KS/매수):'
+    mto = re.search(r"/\s*(매수|중립|매도|보유|Buy|BUY|Hold|HOLD|Sell|Trading\s*Buy|Outperform|Marketperform)\s*[\])]", title)
+    title = re.sub(r"^\[[^\]/]{1,30}/[^\]]{1,20}\]\s*", "", title)                       # 앞의 '[웹젠/매수]'
+    title = re.sub(r"\(\s*A?\d{6}(?:\.K[SQ])?(?:\s*/[^)]*)?\)\s*[:：]?\s*", " ", title).strip()  # 'KT&G(033780.KS/매수):'
+    for m in CARD_STOCK.finditer(t):
+        code = m.group(2).split(".")[0] if re.match(r"\d{6}", m.group(2)) else m.group(2)
+        if code not in codes:
+            continue                      # 해외 종목('002371.CH') · 수집 밖 종목
+        op_raw = m.group(3)
+        if not re.search(r"[A-Za-z]{2,}|매수|매도|중립|보유|비중", op_raw) and mto:
+            op_raw = (op_raw + " " + mto.group(1)).strip()      # 의견 칸에 '유지' 만 — 제목의 '/매수' 를 쓴다
+        tp = _num(m.group(6)) if re.fullmatch(r"[\d,]+", m.group(6) or "") else None
+        px = _num(m.group(4)) if re.fullmatch(r"[\d,]+", m.group(4) or "") else None
+        opm = OPINION.search(op_raw) or re.search(r"(강력\s*매수|보유|비중\s*확대|비중\s*축소)", op_raw)
+        opv = (opm.group(1) or (opm.group(2) if opm.lastindex and opm.lastindex >= 2 else None)) if opm else op_raw
+        opn = "Buy" if re.search(r"강력\s*매수|비중\s*확대", op_raw) else ("Hold" if re.search(r"보유", op_raw) else ("Sell" if re.search(r"비중\s*축소", op_raw) else _norm_op(opv)))
+        ch = re.search(r"상향|하향|유지|신규", op_raw + " " + title)
+        mv = re.search(r"목표\s*주?가[^\n.]{0,20}?" + NUM + r"\s*원?\s*(?:→|->|에서)\s*" + NUM, t)
+        tp_prev = _num(mv.group(1)) if mv and _num(mv.group(2)) == tp else None
+        change = ("상향" if tp_prev and tp and tp > tp_prev else "하향" if tp_prev and tp and tp < tp_prev else (ch.group(0) if ch else None))
+        out.append({"kind": "기업", "code": code, "name": codes[code], "broker": broker, "opinion": ("NR" if opn and re.fullmatch(r"N\.?\s*R\.?", opn.strip(), re.I) else opn) if opn and (opn in ("Buy", "Hold", "Sell", "NR", "Trading Buy") or re.fullmatch(r"N\.?\s*R\.?", opn.strip(), re.I)) else None,
+                    "tp": tp, "tp_prev": tp_prev, "change": change, "price_at": px, "title": title[:120], "lines": bullets,
+                    "est": est, "concl": concl, "urls": urls, "sector": None})
+    # 투자유망 포트폴리오 — '삼성전자 (005930.KS) | 신규 | 기준가 276,000원' + 아래 '-' 줄
+    for m in CARD_PICK.finditer(t):
+        code = m.group(2)
+        if code not in codes or any(o["code"] == code for o in out):
+            continue
+        after = t[m.end():m.end() + 600].split("\n\n")[0]
+        why = [re.sub(r"^[-•·*]\s*", "", l.strip()) for l in after.split("\n") if l.strip().startswith(("-", "•", "·"))][:3]
+        out.append({"kind": "기업", "code": code, "name": codes[code], "broker": broker, "opinion": "Buy", "tp": None, "tp_prev": None,
+                    "change": (m.group(3).strip() or None), "price_at": _num(m.group(4)), "title": "[%s] %s" % (title[:60], m.group(3).strip() or "편입"),
+                    "lines": why, "est": [], "concl": "", "urls": urls, "sector": None, "pick": True})
+    # 신한 꼴 — '[기업][대한항공] 대한항공; 난기류를 헤치고 27년으로' + '신한생각: …' 소제목 · 문단(종목 줄 없음)
+    if tag == "기업" and not out and tag2 and tag2 in names and names[tag2] in codes:
+        code = names[tag2]
+        body = [l.strip() for l in t.split("\n")[1:] if l.strip() and not URL_RX.search(l) and "원문" not in l]
+        heads = list(dict.fromkeys(l for l in body if len(l) <= 60 and re.search(r"[:：]", l)))[:4]
+        tps = [_num(x) for x in TP_RX.findall(t)]
+        mv = TP_MOVE.search(t)
+        tp_prev, tp = (_num(mv.group(1)), _num(mv.group(2))) if mv else (None, tps[0] if tps else None)
+        op = OPINION.search(t)
+        chm = re.search(r"목표\s*주?가\s*(상향|하향|유지)|(상향|하향)\s*조정", t)
+        if re.search(r"신한생각", t):
+            broker = broker or "신한투자증권"
+        out.append({"kind": "기업", "code": code, "name": codes[code], "broker": broker, "opinion": _norm_op(op.group(1) or op.group(2)) if op else None,
+                    "tp": tp, "tp_prev": tp_prev, "change": (chm.group(1) or chm.group(2)) if chm else None, "price_at": None,
+                    "title": re.sub(r"^\s*" + re.escape(tag2) + r"\s*[;:：]\s*", "", title)[:120], "lines": heads or body[:3],
+                    "est": [], "concl": "", "urls": urls, "sector": None})
+    if tag in ("시장", "산업", "전략", "투자", "채권", "경제") or not out:
+        if tag == "기업" and not out:
+            return []                     # 우리 수집 밖 종목의 기업 리포트
+        ind = INDUSTRY.search(tag2 + " " + title)
+        out.append({"kind": "산업", "code": None, "name": None, "broker": broker, "opinion": None, "tp": None, "tp_prev": None, "change": None,
+                    "price_at": None, "title": (("[" + tag2 + "] ") if tag2 else "") + title[:110], "lines": bullets, "est": est, "concl": concl,
+                    "urls": urls, "sector": ind.group(0) if ind else (tag2 or tag)})
+    return out
+
+
 def parse(text, channel_title="", names=None, codes=None):
     """글 하나 → 리포트 항목들. names: {회사 이름: 코드}, codes: {코드: 회사 이름}(수집한 회사).
-    → [{kind('기업'|'산업'), code, name, broker, opinion, tp, tp_prev, change, title, lines, urls}]"""
+    → [{kind('기업'|'산업'), code, name, broker, opinion, tp, tp_prev, change, title, lines, urls}]
+    정형 카드 글(_parse_card)이면 그 규칙으로, 아니면 아래 일반 규칙으로."""
     names = names or {}
     codes = codes or {}
+    card = _parse_card(text, codes, names)
+    if card is not None:
+        return card
     nmap, nrx = _name_index(names) if names else ({}, None)
     out = []
     broker0 = broker_of(text, channel_title)
@@ -121,16 +229,23 @@ def parse(text, channel_title="", names=None, codes=None):
             if m:
                 name = m.group(1)
                 code = nmap.get(name)
+                # 증권사가 곧 상장사인 이름('키움증권 리서치센터')은 리포트 대상이 아니다. 두 글자 이름('대상')은 괄호 · 코드와 붙어 있을 때만
+                if any(rx.search(name) for _, rx in BROKER_RX) or (len(name) <= 2 and not re.search(r"[\[(]\s*" + re.escape(name) + r"\s*[\])/]|" + re.escape(name) + r"\s*\(\s*A?\d{6}", head)):
+                    code = name = None
         tps = [_num(x) for x in TP_RX.findall(it)]
         mv = TP_MOVE.search(it)
         tp_prev = tp = None
-        if mv:
+        # '이전 → 새' 는 바로 앞에 '목표' 낱말이 있을 때만 — '달러-원 환율은 1,386원에서 1,380원' 같은 숫자를 목표가로 읽지 않게
+        if mv and re.search(r"목표|TP|Target", it[max(0, mv.start() - 40):mv.start()], re.I):
             a, b = _num(mv.group(1)), _num(mv.group(2))
             if a and b and 0.3 < b / a < 3:
                 tp_prev, tp = a, b
         if tp is None and tps:
             tp = tps[0]
         op = OPINION.search(it)
+        # 한글 의견(매수 · 매도)은 '투자의견' · '(매수' · '/매수' 꼴일 때만 — 시황 글의 '매도 물량' · '매수 복귀' 는 의견이 아니다
+        if op and op.group(2) and not re.search(r"(?:의견\s*[:：]?\s*|[(/\[]\s*)$", it[max(0, op.start() - 12):op.start()]):
+            op = None
         broker = broker_of(it, "") or broker0
         # 상향 · 하향 — 목표가가 '이전 → 새' 로 적혔으면 숫자로, 아니면 '목표' 낱말 가까이의 말로
         if tp_prev and tp:
@@ -159,8 +274,10 @@ def parse(text, channel_title="", names=None, codes=None):
             kind = "산업"
         else:
             continue
-        if kind == "기업" and not (tp or op or re.search(r"리포트|Report|보고서|코멘트|Comment|프리뷰|Preview|리뷰|Review|실적|분석", it, re.I)):
-            continue                      # 종목 이름만 스친 글(시황 · 뉴스 링크)은 리포트가 아니다
+        if kind == "기업" and not (tp or re.search(r"리포트|Report|보고서|코멘트|Comment|프리뷰|Preview|리뷰|Review", lines[0] if lines else "", re.I)):
+            continue                      # 종목 이름만 스친 글(시황 · 뉴스 · 일정)은 리포트가 아니다 — 목표가 · 의견이 있거나 첫 줄이 리포트 낱말일 때만
+        if not title.strip():
+            continue
         out.append({"kind": kind, "code": code, "name": name, "broker": broker, "opinion": _norm_op(op.group(1) or op.group(2)) if op else None,
                     "tp": tp, "tp_prev": tp_prev, "change": change, "title": title,
                     "lines": body, "urls": urls,
@@ -311,8 +428,9 @@ def _web_parse(page, name):
     return title, sorted(out, key=lambda m: m["id"])
 
 
-def _collect_web(days=180, log=print, max_pages=80):
-    """공개 채널마다 지난번 뒤의 새 글 — 최신 쪽부터 '?before=' 로 거슬러 올라간다(처음이면 days 일 전까지). 요청 사이 1초."""
+def _collect_web(days=180, log=print, max_pages=120):
+    """공개 채널마다 (1) 지난번 뒤의 새 글 — 최신 쪽부터 '?before=' 로 마지막 글 번호까지,
+    (2) 남은 쪽수로 거슬러 채우기 — 받아 둔 가장 오래된 글 앞쪽을 days 일 전까지(한 번에 다 못 받으면 다음 수집 때 이어서). 요청 사이 1초."""
     import requests
     st = _load_state()
     since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)).isoformat()
@@ -321,30 +439,51 @@ def _collect_web(days=180, log=print, max_pages=80):
     log("웹 미리보기 채널 %d곳: %s" % (len(names), ", ".join(names)))
     for name in names:
         key = "web:" + name.lower()
-        last = int(st["channels"].get(key, {}).get("last", 0))
-        before, msgs, title, pages = None, {}, name, 0
-        while pages < max_pages:
-            try:
-                r = requests.get(WEB % name, params={"before": before} if before else None, headers=UA, timeout=25)
-            except Exception as e:
-                log("  %s — 못 읽음: %s" % (name, e))
-                break
-            pages += 1
-            if r.status_code != 200 or "tgme_widget_message" not in r.text:
-                if pages == 1:
-                    log("  %s — 공개 채널 미리보기가 없다(비공개 · 이름 틀림 · 미리보기 막힘)" % name)
-                break
-            title, ms = _web_parse(r.text, name)
-            if not ms:
-                break
-            for m in ms:
-                if m["id"] > last and (last or not m["date"] or m["date"] >= since):
-                    msgs[m["id"]] = m
-            oldest = ms[0]
-            if oldest["id"] <= last or (not last and oldest["date"] and oldest["date"] < since) or oldest["id"] <= 1:
-                break
-            before = oldest["id"]
-            time.sleep(1.0)
+        cs = st["channels"].get(key, {})
+        last, oldest_id, oldest_dt = int(cs.get("last", 0)), int(cs.get("oldest", 0)), cs.get("oldest_date")
+        if last and not oldest_id:        # 예전 상태(가장 오래된 글을 적기 전) — 쌓인 글에서 찾는다
+            mine = [m for m in raw_messages() if str(m.get("id", "")).startswith(key + ":")]
+            if mine:
+                oldest_id = min(int(m["id"].rsplit(":", 1)[1]) for m in mine)
+                oldest_dt = min(m["date"] for m in mine)
+        msgs, title, pages = {}, cs.get("title") or name, 0
+
+        def walk(before, stop_id, until):
+            """before 앞쪽을 거슬러 — stop_id 이하 · until 이전에 닿으면 멈춤. 닿았으면 True."""
+            nonlocal pages, title
+            while pages < max_pages:
+                try:
+                    r = requests.get(WEB % name, params={"before": before} if before else None, headers=UA, timeout=25)
+                except Exception as e:
+                    log("  %s — 못 읽음: %s" % (name, e))
+                    return False
+                pages += 1
+                if r.status_code != 200 or "tgme_widget_message" not in r.text:
+                    if pages == 1:
+                        log("  %s — 공개 채널 미리보기가 없다(비공개 · 이름 틀림 · 미리보기 막힘)" % name)
+                    return True
+                title, ms = _web_parse(r.text, name)
+                if not ms:
+                    return True
+                for m in ms:
+                    if m["id"] > stop_id and (not m["date"] or m["date"] >= until):
+                        msgs[m["id"]] = m
+                first = ms[0]
+                if first["id"] <= stop_id or (first["date"] and first["date"] < until) or first["id"] <= 1:
+                    return True
+                before = first["id"]
+                time.sleep(1.0)
+            return False
+        # (1) 새 글 — 처음이면 since 까지
+        walk(None, last, since if not last else "")
+        # (2) 거슬러 채우기 — 받아 둔 가장 오래된 글이 since 보다 뒤면 그 앞쪽을
+        lo = min([i for i in msgs] + ([oldest_id] if oldest_id else []), default=0)
+        lo_dt = min([m["date"] for m in msgs.values() if m.get("date")] + ([oldest_dt] if oldest_dt else []), default=None)
+        done = cs.get("backfill_done", False)
+        if lo and lo_dt and lo_dt > since and not done and pages < max_pages:
+            done = walk(lo, 0, since)
+            lo = min([i for i in msgs] + [lo])
+            lo_dt = min([m["date"] for m in msgs.values() if m.get("date")] + [lo_dt])
         rows = []
         for i in sorted(msgs):
             m = msgs[i]
@@ -357,8 +496,10 @@ def _collect_web(days=180, log=print, max_pages=80):
         if rows:
             append(rows)
             got += len(rows)
-        st["channels"][key] = {"title": title, "last": max([last] + list(msgs)), "at": time.time(), "via": "web"}
-        log("  %s(%s) — 새 글 %d, %d쪽" % (title[:24], name, len(rows), pages))
+        st["channels"][key] = {"title": title, "last": max([last] + list(msgs)), "oldest": lo, "oldest_date": lo_dt,
+                               "backfill_done": bool(done or (lo_dt and lo_dt <= since)), "at": time.time(), "via": "web"}
+        log("  %s(%s) — 새 글 %d, %d쪽, 가장 오래된 글 %s%s" % (title[:24], name, len(rows), pages, (lo_dt or "")[:10],
+                                                     "" if st["channels"][key]["backfill_done"] else " — 다음 수집 때 더 거슬러 받는다"))
         time.sleep(1.0)
     st["at"] = time.time()
     _save_state(st)
