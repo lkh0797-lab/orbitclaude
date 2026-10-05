@@ -3747,6 +3747,70 @@ def _mseries(m, row):
     return {lab: row["values"][i]["v"] for i, lab in enumerate(labs) if i < len(row["values"])}
 
 
+def _mfill(m, *rows):
+    """여러 줄을 우선순위대로 — 분기마다 앞 줄이 비었으면 다음 줄 값(2026-10-05 감사: 줄이 있으면 전부 비어도 그 줄만 쓰던 것 —
+    지배 순이익 줄의 빈 분기 때문에 '지금' 값이 몇 년 전 분기로 계산되거나 회사가 후보에서 조용히 빠졌다)."""
+    out = {}
+    for row in rows:
+        if not row:
+            continue
+        for lab, v in _mseries(m, row).items():
+            if v is not None and out.get(lab) is None:
+                out[lab] = v
+    return out
+
+
+_SHEV = {"mt": None, "d": None}
+SHEV_ADJ = re.compile(r"무상증자결정|유무상증자결정|주식분할결정|주식병합결정|감자결정")     # 주가 자료(수정주가)도 같이 보정되는 사건
+SHEV_MIX = re.compile(r"회사합병결정|유상증자결정|주식교환|분할합병")                      # 주가 보정 없이 주식 수만 바뀌는 사건
+
+
+def _share_events(code):
+    """그 회사의 주식 수 사건 공시 [(YYYYMMDD, 제목)] — .cache/공시목록(B · I) 에서 한 번 모아 둔다(DART 호출 없음).
+    종속회사 · 자회사 사건은 뺀다. 공시목록은 도구/공시목록_수집.py 가 분기마다 채운다."""
+    base = os.path.join(CACHE_DIR, "공시목록")
+    idx = os.path.join(base, "_주식수사건.json")
+    try:
+        files = [f for f in os.listdir(base) if f.endswith(".jsonl") and f[:2] in ("B_", "I_")]
+    except OSError:
+        return []
+    mt = max((os.path.getmtime(os.path.join(base, f)) for f in files), default=0)
+    if _SHEV["mt"] != mt:
+        d = None
+        try:
+            if os.path.exists(idx) and os.path.getmtime(idx) >= mt:
+                with open(idx, "r", encoding="utf-8") as fh:
+                    d = json.load(fh)
+        except Exception:
+            d = None
+        if d is None:
+            d = {}
+            for f in files:
+                with open(os.path.join(base, f), "r", encoding="utf-8") as fh:
+                    for line in fh:
+                        if not any(w in line for w in ("증자결정", "분할결정", "병합결정", "감자결정", "합병결정", "주식교환")):
+                            continue
+                        try:
+                            x = json.loads(line)
+                        except Exception:
+                            continue
+                        nm = re.sub(r"\[[^\]]*\]", "", x.get("report_nm") or "").strip()
+                        sc = (x.get("stock_code") or "").strip()
+                        if not sc or "종속회사" in nm or "자회사" in nm:
+                            continue
+                        if SHEV_ADJ.search(nm) or SHEV_MIX.search(nm):
+                            d.setdefault(sc, []).append([x.get("rcept_dt"), nm])
+            for v in d.values():
+                v.sort()
+            try:
+                with open(idx, "w", encoding="utf-8") as fh:
+                    json.dump(d, fh, ensure_ascii=False)
+            except Exception:
+                pass
+        _SHEV.update(mt=mt, d=d)
+    return [tuple(x) for x in (_SHEV["d"] or {}).get(code, [])]
+
+
 def _qshift(lab, k):
     y, q = int(lab[:4]), int(lab[5]) - k
     while q <= 0:
@@ -4058,20 +4122,40 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
     labs = [p["label"] for p in mi.get("periods", [])]
     if not labs:
         return None
-    rev = _mseries(mi, _mrow(mi, ("t:Revenue",), r"^(매출액|수익\(매출액\)|영업수익|매출)$"))
+    # 매출 — 회사가 태그를 바꿔 적는다(칩스앤미디어 2025.4Q~ '영업수익'을 GrossProfit 태그로). 분기마다 빈 곳을 이름 줄로 채운다
+    rev = _mfill(mi, _mrow(mi, ("t:Revenue",), None),
+                 *[r for r in mi.get("rows", []) if re.search(r"^(매출액|수익\(매출액\)|영업수익|매출)$", r["name"])])
     op = _mseries(mi, _mrow(mi, ("t:OperatingIncomeLoss",), r"^영업(이익|손익|손실)"))
-    ni = _mseries(mi, _mrow(mi, ("t:ProfitLossAttributableToOwnersOfParent",), None)) or \
-        _mseries(mi, _mrow(mi, ("t:ProfitLoss",), r"^당기순(이익|손익|손실)"))
+    # 지배주주 순이익 — 분기마다: 지배 줄 → 없으면 (당기순이익 − 비지배 몫) (비츠로셀: 지배 줄이 2022Q3 뒤 비어 '지금'이 2022Q2 였다)
+    ni = dict(_mseries(mi, _mrow(mi, ("t:ProfitLossAttributableToOwnersOfParent",), None)))
+    tot_ = _mseries(mi, _mrow(mi, ("t:ProfitLoss",), r"^당기순(이익|손익|손실)"))
+    nci_ = _mseries(mi, _mrow(mi, (), r"비지배", ("t:ProfitLossAttributableToNoncontrollingInterest",)))
+    for lab_ in labs:
+        if ni.get(lab_) is None and tot_.get(lab_) is not None:
+            ni[lab_] = tot_[lab_] - (nci_.get(lab_) or 0)
     # EPS — 회사가 해마다 줄 이름을 바꿔 적는다(LS일렉트릭: '계속영업 기본 및 희석주당이익' · '계속영업과 중단영업 …').
     # 같은 뜻의 줄을 우선순위대로 훑어 분기마다 처음 나온 값을 쓴다(중단영업 줄은 뺀다)
     eps = {}
     cand = sorted([r for r in mi.get("rows", []) if (r["key"].startswith("t:BasicEarningsLossPerShare")
                    or re.search(r"기본.*주당.*(이익|손익|손실)", r["name"])) and "중단영업" not in r["name"]],
                   key=lambda r: (r["key"] != "t:BasicEarningsLossPerShare", "계속영업과" not in r["name"] and "계속영업" in r["name"]))
+    cont = {}
     for r in cand:
         for lab, v in _mseries(mi, r).items():
             if v is not None and eps.get(lab) is None:
                 eps[lab] = v
+                cont[lab] = "계속영업" in r["name"] and "계속영업과" not in r["name"]
+    # 계속영업 EPS 만 적힌 분기에 중단영업 EPS 가 있으면 더한다 — 순이익(중단영업 포함)과 기준을 맞춘다
+    # (카카오 2026Q2: 계속영업 EPS 390원 × 순이익 163억(중단 −1,560억 포함)로 주식 수가 0.11배 → '9:1 병합'으로 오판, PER 4.3배 · 실제 약 42배)
+    disc = {}
+    for r in mi.get("rows", []):
+        if "중단영업" in r["name"] and "계속영업" not in r["name"] and re.search(r"기본.*주당|주당.*기본", r["name"]):
+            for lab, v in _mseries(mi, r).items():
+                if v is not None:
+                    disc.setdefault(lab, v)
+    for lab, v in disc.items():
+        if cont.get(lab) and eps.get(lab) is not None:
+            eps[lab] += v
     # 액면분할 · 병합 — 분기마다 주식 수(지배주주 순이익 ÷ EPS)를 거꾸로 구해, 한 분기에 1.8배 넘게 뛰거나 0.56배 밑으로 줄면
     # 분할 · 병합으로 보고 그 전 EPS 를 지금 주식 수 기준으로 나눈다(LS일렉트릭 2026.2분기 5:1 — 주가 자료는 이미 지금 기준이라
     # EPS 만 옛 기준으로 남아 PER 이 5배 작게 나왔다). 빈 분기(4분기 단독을 못 뗀 해 등)는 순이익 ÷ 가까운 분기 주식 수로 채운다.
@@ -4085,9 +4169,25 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
             sh.pop(ks[i], None)
     ks = [k for k in ks if k in sh]
 
+    sev = _share_events(c["code"])
+
+    def qend(lab):
+        return int("%s%s" % (lab[:4], {1: "0331", 2: "0630", 3: "0930", 4: "1231"}[int(lab[5])]))
+
+    def events_between(after, at):
+        """after 분기 말 90일 전 ~ at 분기 말 사이의 주식 수 사건 공시 — (주가 보정 사건, 주가 보정 없는 사건)"""
+        lo = int((dt.datetime.strptime(str(qend(after)), "%Y%m%d") - dt.timedelta(days=90)).strftime("%Y%m%d"))
+        hi = qend(at)
+        ev = [nm for d_, nm in sev if d_ and lo <= int(d_) <= hi]
+        return [x for x in ev if SHEV_ADJ.search(x)], [x for x in ev if SHEV_MIX.search(x)]
+
     def split_like(after, at, r_):
         """주식 수가 크게 바뀐 게 분할 · 병합 · 무상증자(주가 자료도 같이 보정됨)인가, 유상증자(주가는 그대로)인가.
-        회사의 개요(자본금 변동 표)에 분할 · 병합 · 무상증자 낱말이 직전 보고서보다 늘었거나, 비율이 5배 · 10배 같은 정수면 분할로 본다."""
+        먼저 공시 목록(무상증자 · 주식분할 · 병합 · 감자 결정)으로 정하고(2026-10-05 — 1:1 · 1:2 무상증자 · 16:1 감자를 '증자 등'으로 잘못 보던 것),
+        공시가 없을 때만 회사의 개요(자본금 변동 표) 낱말 · 정수 비율로 본다."""
+        adj_, _mix = events_between(after, at)
+        if adj_:
+            return True
         rx = re.compile(r"액면\s*분할|주식\s*분할|액면\s*병합|주식\s*병합|무상\s*증자")
 
         def cnt(lab):
@@ -4107,12 +4207,24 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
         return k >= 4.5 and abs(k - round(k)) <= 0.15
     fac = {k: 1.0 for k in ks}             # 이 분기 뒤에 일어난 분할 비율의 곱
     splits = []
+    cut = None                              # 분할과 합병 신주가 겹친 곳 — 그 앞 PER 기록은 지금 기준으로 맞출 수 없어 자기 역사에서 뺀다
     for a, b in zip(ks, ks[1:]):
         r_ = sh[b] / sh[a]
-        if (r_ >= 1.8 or r_ <= 0.56):
-            kind = "분할·병합" if split_like(a, b, r_) else "증자 등(주가 보정 없음)"
+        adj_, mix_ = events_between(a, b) if (r_ >= 1.25 or r_ <= 0.8) else ([], [])
+        # 공시로 확인된 분할 · 무상증자는 1.25배(0.8배)부터 — 1:0.5 무상증자(헥토) · 두 분기에 걸친 100% 무상증자(노바렉스)
+        if (r_ >= 1.8 or r_ <= 0.56) or adj_:
+            kk = r_ if r_ >= 1 else 1 / r_
+            if adj_:
+                kind = "분할·병합"
+                if mix_ and abs(kk - round(kk)) > 0.15:
+                    # 분할 · 감자와 합병 신주 · 유상증자가 한 창에 겹쳤다(동원산업 5:1 분할 + 합병 = 10.6배, 미래산업 16:1 감자 + 증자) —
+                    # 전체 비율로 보정하되, 그 앞 PER 기록은 정확히 맞출 수 없어 자기 역사에서 뺀다
+                    kind = "분할·병합(증자 섞임 — 앞 기록 제외)"
+                    cut = qn(a) if cut is None else max(cut, qn(a))
+            else:
+                kind = "분할·병합" if split_like(a, b, r_) else "증자 등(주가 보정 없음)"
             splits.append({"after": a, "at": b, "ratio": round(r_, 2), "kind": kind})
-            if kind == "분할·병합":
+            if kind.startswith("분할·병합"):
                 for k in ks:
                     if qn(k) <= qn(a):
                         fac[k] *= r_
@@ -4137,7 +4249,8 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
         liab = {k: v for k, v in _mseries(mb, _mrow(mb, (), r"^선수금$")).items() if v is not None}
     inv = _mseries(mb, _mrow(mb, ("t:Inventories",), r"^재고자산$"))
     # ROE 의 분모 — 지배기업 소유주 자본(없으면 자본총계)
-    eq = _mseries(mb, _mrow(mb, ("t:EquityAttributableToOwnersOfParent",), r"지배기업.*(소유주|귀속)")) or         _mseries(mb, _mrow(mb, ("t:Equity",), r"^자본\s*총계$"))
+    eq = _mfill(mb, _mrow(mb, ("t:EquityAttributableToOwnersOfParent",), r"지배기업.*(소유주|귀속)"),
+                _mrow(mb, ("t:Equity",), r"^자본\s*총계$"))
     ca = {}
     for r in mb.get("rows", []):
         if "ContractAsset" in r["key"] or re.match(r"^(유동|비유동|장기)?\s*계약자산$|미청구공사", r["name"]):
@@ -4267,8 +4380,14 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
         opm = r["op_ttm"] / r["rev_ttm"] * 100 if r.get("op_ttm") is not None and r.get("rev_ttm") else None
         r["opm_ttm"] = opm
         per = r.get("per") if (r.get("per") or 0) > 0 else None
-        if per:
-            hist_per.append(per)
+        if per is not None and cut is not None and qn(lab) <= cut:
+            r["per"], per = None, None
+        if per is not None:
+            med_ = sorted(hist_per[-8:])[len(hist_per[-8:]) // 2] if len(hist_per) >= 4 else None
+            ok_ = per >= 1 and (med_ is None or 0.2 <= per / med_ <= 5)
+            r["per_ok"] = ok_
+            if ok_:
+                hist_per.append(per)
         w = hist_per[-40:]
         r["per_pct"] = (sum(1 for v in w if v <= per) / len(w) * 100) if per and len(w) >= 8 else None
         r["per_med"] = sorted(w)[len(w) // 2] if len(w) >= 8 else None
@@ -7979,6 +8098,11 @@ VAL_DD = -25          # 52주 고점 대비 이만큼 빠져야 후보
 VAL_NI = -5           # 순이익(최근 4분기) 1년 변화가 이 위면 '가치는 지켰다'
 VAL_MIN = 50          # 저평가 = 빨간불 없음 + 점수 50↑
 VAL_PER_MAX = 200     # PER 200배 넘으면 이익이 거의 0 — 값의 기준이 못 된다(엘브이엠씨 15,067배)
+# 금융업 — 예수금 · 차입이 사업 자체라 부채비율 200% 잣대와 매출 계정이 맞지 않고, 과거 후보 표본에 1.6%뿐이라 검증 근거가 없다(2026-10-05 감사)
+VAL_FIN = re.compile(r"은행|증권|보험|생명|화재|카드|캐피탈|기타금융|창업투자|신탁")
+# 업종 수출물가가 이 회사 제품과 맞지 않는 곳 — 업종코드로 붙인 반도체 지수(메모리 비중 큼)가 IP · 태양광 · LED · 파운드리 회사에도 붙었다
+VAL_MP_SKIP = {"094360": "반도체 IP(라이선스)", "322000": "태양광", "017900": "광센서 · LED", "092190": "UV LED",
+               "000990": "파운드리(비메모리)", "200710": "반도체 설계 서비스"}
 VAL = {"running": False, "done": 0, "total": 0, "phase": "", "at": 0, "rows": [], "n_fell": 0, "n_univ": 0}
 VAL_LOCK = threading.Lock()
 _VAL_SC = {"mt": None, "d": None}
@@ -8061,9 +8185,10 @@ def _val_one(c):
     if not pr:
         return {"fell": True}
     R = pr["rows"]
-    lab = next((l for l in reversed(pr["labs"]) if R[l].get("ni_ttm") is not None and R[l].get("eps_ttm") is not None), None)
+    # 기준 분기 = 마지막으로 보고된 분기(또는 그 앞 하나) — 더 옛 분기로 물러나 '지금' 값을 계산하지 않는다(2026-10-05 감사)
+    lab = next((l for l in reversed(pr["labs"][-2:]) if R[l].get("ni_ttm") is not None and R[l].get("eps_ttm") is not None), None)
     if not lab:
-        return {"fell": True}
+        return {"fell": True, "stale": pr["labs"][-1]}
     x = R[lab]
     et, ni, ry = x.get("eps_ttm"), x.get("ni_ttm"), x.get("rev_yoy")
     per = now / et if et and et > 0 else None
@@ -8072,9 +8197,12 @@ def _val_one(c):
     rev, op, cfo, eqt, debt = x.get("rev_ttm"), x.get("op_ttm"), x.get("cfo_ttm"), x.get("eq_total"), x.get("debt")
     pyoy = back(365)
     nyoy = x.get("ni_yoy")
-    # 1년 전 4분기 합 순이익이 0 이하면 'PER 이 몇 % 바뀌었다'가 성립하지 않는다(적자 → 흑자를 +339% 로 읽으면 PER −83% 같은 엉터리) — comp · per_then 을 비운다
+    eyoy = x.get("eps_yoy")
+    # 1년 전 4분기 합 순이익(· 주당순이익)이 0 이하면 'PER 이 몇 % 바뀌었다'가 성립하지 않는다(적자 → 흑자를 +339% 로 읽으면 PER −83% 같은 엉터리) — comp · per_then 을 비운다
     ni_ly = (R.get(_qshift(lab, 4)) or {}).get("ni_ttm")
-    base_ok = not (ni_ly is not None and ni_ly <= 0)
+    et_ly = x.get("eps_ttm_ly")
+    base_ok = not (ni_ly is not None and ni_ly <= 0) and not (et_ly is not None and et_ly <= 0)
+    mp_skip = VAL_MP_SKIP.get(code)
     r = {"fell": True, "code": code, "name": c["name"], "lab": lab, "price": now, "price_d": str(d[-1]),
          "hi": p[hi_i], "hi_d": str(d[hi_i]), "dd": dd, "px_yoy": pyoy, "ret3m": back(91), "ret1m": back(30),
          "per": per, "per_pct": (sum(1 for v in w if v <= per) / len(w) * 100) if per and len(w) >= 8 else None,
@@ -8085,15 +8213,18 @@ def _val_one(c):
          "roe": x.get("roe"), "roe_chg": x.get("roe_chg"),
          "debt_eq": debt / eqt * 100 if (debt is not None and eqt and eqt > 0) else None,
          "cfo_ni": cfo / ni if (cfo is not None and ni and ni > 0) else None,
-         "mp_yoy": x.get("mp_yoy"), "cyc": x.get("cyc"), "bgap": g("blog_yoy"), "lgap": g("liab_yoy"), "wgap": g("wip_yoy"),
+         "mp_yoy": None if mp_skip else x.get("mp_yoy"), "cyc": None if mp_skip else x.get("cyc"), "mp_skip": mp_skip,
+         "bgap": g("blog_yoy"), "lgap": g("liab_yoy"), "wgap": g("wip_yoy"),
          "capex_yoy": x.get("capex_yoy"),
          "ni_ly": ni_ly,
-         "comp": ((1 + pyoy / 100) / (1 + nyoy / 100) - 1) * 100 if (base_ok and pyoy is not None and nyoy is not None and nyoy > -100) else None}
+         # PER 변화 = (1 + 주가 1년) ÷ (1 + 주당순이익 1년) − 1 — PER 이 주가 ÷ EPS 라 주당 기준이 맞다(예전엔 순이익 기준이라 주식 수가 바뀐 회사에서
+         # 가위 그림 · 문장(주당 기준)과 판정 알약이 반대 말을 했다 — 미래산업 · 코오롱인더)
+         "comp": ((1 + pyoy / 100) / (1 + eyoy / 100) - 1) * 100 if (base_ok and pyoy is not None and eyoy is not None and eyoy > -100) else None}
     r["cand"] = bool(per and per <= VAL_PER_MAX and nyoy is not None and nyoy >= VAL_NI)
     if r["cand"]:
         # 그림 재료(점수에는 안 쓴다) — 분기별 PER 최근 10년(per_pct 와 같은 창) · 최근 9분기 EPS(4분기 합) · 최근 1년 주가(주 단위)
         labs = pr["labs"]
-        r["per_hist"] = [[l, round(R[l]["per"], 2)] for l in labs if R[l].get("per") and R[l]["per"] > 0][-40:]
+        r["per_hist"] = [[l, round(R[l]["per"], 2)] for l in labs if R[l].get("per") and R[l]["per"] > 0 and R[l].get("per_ok")][-40:]
         r["eps_q"] = [[l, R[l]["eps_ttm"]] for l in labs[-9:] if R[l].get("eps_ttm") is not None]
         t0 = int((dt.datetime.strptime(str(d[-1]), "%Y%m%d") - dt.timedelta(days=372)).strftime("%Y%m%d"))
         k0 = max(0, bisect.bisect_left(d, t0) - 1)
@@ -8111,8 +8242,8 @@ def _val_red(r):
         out.append("업종 제품 가격(수출물가) %+.0f%%" % r["mp_yoy"])
     if r.get("cyc") is not None and r.get("rev_yoy") is not None and r["cyc"] <= -10 and r["rev_yoy"] > 5:
         out.append("업종에 재고가 쌓이는데(재고 순환 %+.0f%%p) 회사 매출은 아직 %+.0f%%" % (r["cyc"], r["rev_yoy"]))
-    # 빚 — 과거 후보 안에서 부채비율 200%↑는 12개월 초과수익 −6.7%p [−11.5, −0.2], 앞뒤 모두 음(도구/저평가_백테스트.py)
-    if r.get("debt_eq") is not None and r["debt_eq"] >= 200:
+    # 빚 — 과거 후보 안에서 부채비율 200%↑는 12개월 초과수익 −6.7%p [−11.5, −0.2], 앞뒤 모두 음(도구/저평가_백테스트.py). 금융업은 이 잣대가 맞지 않아 뺀다
+    if r.get("debt_eq") is not None and r["debt_eq"] >= 200 and not r.get("fin"):
         out.append("부채비율 %.0f%% — 200%% 넘는 빚" % r["debt_eq"])
     return out
 
@@ -8120,8 +8251,11 @@ def _val_red(r):
 def _val_rank(r, spec):
     import bisect
     parts, tot, wsum = [], 0.0, 0.0
+    r["fin"] = bool(VAL_FIN.search(r.get("industry") or ""))
     for wt in (spec or {}).get("weights") or []:
         k = wt["key"]
+        if r["fin"] and k in ("debt_eq", "rev_yoy"):
+            continue
         sv, v = spec["dist"].get(k) or [], VAL_FX[k](r) if k in VAL_FX else None
         if v is None or not sv:
             continue
@@ -8137,10 +8271,14 @@ def _val_rank(r, spec):
     r["score_parts"] = parts
     r["red"] = _val_red(r)
     why = list("빨간불: " + x for x in r["red"])
+    if r["fin"]:
+        why.append("금융업 — 부채비율 · 매출 잣대가 맞지 않고 과거 검증 표본에 거의 없어 등급을 내지 않는다")
     if r["score"] is None:
         why.append("점수를 낼 항목이 모자란다")
     elif r["score"] < VAL_MIN:
         why.append("점수 %.1f — %d 미만" % (r["score"], VAL_MIN))
+    if r.get("per_pct") is None and r.get("px_yoy") is None:
+        why.append("값을 잴 항목(PER 자기 역사 · 주가 1년)이 없다 — 상장 1년 미만 등")
     r["tier"] = "관찰" if why else "저평가"
     r["tier_why"] = why
     # PER 고점 → 지금 — 1년 전 PER = 지금 PER ÷ (1 + PER 변화)
@@ -8175,10 +8313,10 @@ def _run_value():
         univ, _ = _universe_info()
         smap = (sector_map() or {}).get("stocks", {})
         for r in rows:
-            _val_rank(r, spec)
             u = univ.get(r["code"], {})
             r.update(cap_rank=u.get("rank"), market=u.get("market"),
                      industry=(smap.get(r["code"].upper(), {}) or {}).get("industry"))
+            _val_rank(r, spec)          # 업종을 먼저 — 금융업 판정에 쓴다
         rows.sort(key=lambda r: (r["tier"] != "저평가", -(r.get("score") or -1)))
         with VAL_LOCK:
             VAL.update(rows=rows, n_fell=fell, n_univ=len(cos), at=time.time(), phase="")
@@ -8213,6 +8351,14 @@ def value_view(force=False):
     spec = _val_score_spec()
     if spec:
         out["bt"] = {k: spec.get(k) for k in ("eval", "n_cand", "firms", "dates", "weights", "groups")}
+        # 점수 항목마다 지금 표본의 근거(위⅓ − 아래⅓) — 화면 '과거엔 이랬다'가 옛 숫자에 묶이지 않게
+        try:
+            with open(os.path.join(VAL_DIR, "bt_report.json"), "r", encoding="utf-8") as fh:
+                fac_ = json.load(fh).get("factors") or {}
+            out["bt"]["factors"] = {w["key"]: {k: fac_.get(w["key"], {}).get(k) for k in ("spread", "ci", "early", "late", "n")}
+                                    for w in spec.get("weights") or [] if w["key"] in fac_}
+        except Exception:
+            pass
     out["rules"] = {"dd": VAL_DD, "ni": VAL_NI, "min": VAL_MIN}
     return out
 

@@ -2941,7 +2941,7 @@ function qtrPipe(pp){
   });
   t.innerHTML=h;
   const tw=el('div','pipeWrap'); tw.appendChild(t); box.appendChild(tw);
-  const sp=(pp.splits||[]).filter(x=>x.kind==='분할·병합');
+  const sp=(pp.splits||[]).filter(x=>(x.kind||'').startsWith('분할·병합'));
   if(sp.length) box.appendChild(el('p','pipeNote','주식 수 변화: '+sp.map(x=>x.at.slice(0,4)+'년 '+x.at.slice(5)+'분기 '+(x.ratio>=1?x.ratio.toFixed(1)+':1 분할':'1:'+(1/x.ratio).toFixed(1)+' 병합')).join(', ')+
     ' — 그 전 EPS 를 지금 주식 수 기준으로 나눠 PER · EPS 증가율을 맞췄다(주가 자료는 이미 지금 기준).'));
   box.appendChild(el('p','pipeNote','시차 = 앞단 지표의 전년 대비가 몇 분기 뒤 매출(최근 4분기 합)의 전년 대비와 가장 같이 움직였나 — 이 회사의 지난 6년(겹치는 분기 8개 이상, 상관 0.4 미만은 "뚜렷하지 않음"). '+
@@ -4106,11 +4106,12 @@ const dipD=s=>s?s.slice(0,4)+'.'+s.slice(4,6)+'.'+s.slice(6,8):'—';
 // ---------------------------------------------------------- 저평가 — 가치는 지켰는데 주가가 빠진 회사(/api/value · 서버 value_view)
 // 전 종목에서 ① 흑자 ② 순이익 1년 −5% 이내 ③ 52주 고점 −25%↓ 를 넘은 곳을 과거 검증으로 고른 점수로 줄 세운다(도구/저평가_백테스트.py).
 const VAL_GATES=[
-  ['① 흑자','이익이 있다',['최근 4분기 순이익이 플러스 — PER을 잴 수 있다'],'적자 회사는 값의 기준(이익)이 없다. 싼지 비싼지부터 말할 수 없다.'],
+  ['① 흑자','이익이 있다',['최근 4분기 순이익이 플러스 — PER을 잴 수 있다(PER 200배 이하)'],'적자 회사는 값의 기준(이익)이 없다. 싼지 비싼지부터 말할 수 없다.'],
   ['② 가치','이익은 지켰다',['최근 4분기 순이익이 1년 전보다 5% 넘게 줄지 않았다'],'이익이 줄어 빠진 주가는 싸진 게 아니다 — 과거 표본에서 이익이 줄어든 하락은 시장보다 못 했다(−2%). 다만 이익을 지킨 하락도 그것만으론 시장 수준(+1%) — 가르는 건 ④다.'],
-  ['③ 주가','값은 빠졌다',['52주 고점 대비 −25%↓'],'같은 이익에 시장이 덜 쳐주고 있다. 그 할인이 정당한지는 ④가 가른다.'],
+  ['③ 주가','값은 빠졌다',['52주 고점 대비 −25%↓(고점 = 수정 종가 기준 — HTS 장중 최고가와 다를 수 있다)'],'같은 이익에 시장이 덜 쳐주고 있다. 그 할인이 정당한지는 ④가 가른다.'],
   ['④ 등급','되돌아올 쪽인가',['(저평가) 빨간불이 없고 점수 50↑ — 점수 = 과거 후보 안에서 되돌아온 쪽을 가른 항목의 백분위 가중평균',
-    '(빨간불) 잔고·선수금이 매출보다 −15%p↓ 느림 · 업종 제품 가격(수출물가) −10%↓ · 업종에 재고가 쌓이는데 회사 매출은 아직 +5%↑ · 부채비율 200%↑'],
+    '(빨간불) 잔고·선수금이 매출보다 −15%p↓ 느림 · 업종 제품 가격(수출물가) −10%↓ · 업종에 재고가 쌓이는데 회사 매출은 아직 +5%↑ · 부채비율 200%↑',
+    '(등급 없음) 금융업(은행·증권·보험·카드·캐피탈·창투) — 부채비율·매출 잣대가 맞지 않고 과거 표본에 거의 없다 · 값을 잴 항목(PER 자기 역사·주가 1년)이 없는 회사'],
    '싸 보이는 함정(값이 싼 데는 이유가 있는 회사)을 걸러 내는 단계. 항목과 가중치는 아래 과거 검증 상자에 있다.']];
 
 async function viewValue(p, force){
@@ -4411,7 +4412,7 @@ function valEvidence(bt){
   ul.appendChild(el('li',null,'점수 항목: '+(bt.weights||[]).map(w=>w.name+(w.dir>0?'↑':'↓')+(w.w!==1?' ×'+w.w:'')).join(' · ')+' — 과거 후보 안에서 앞뒤 기간 같은 방향이었던 것만. 가중치는 맞추지 않고 단순하게 정했다.'));
   const rec=C['추천 묶음'];
   if(rec) ul.appendChild(el('li',null,'저평가 묶음 12개월 초과수익 중앙 '+f(rec.median)+', 이긴 비율 '+Math.round(rec.hit)+'%, −30% 넘게 진 비율 '+Math.round(rec.crash)+'% (~2019 '+f(rec.early)+' · 2020~ '+f(rec.late)+').'));
-  ul.appendChild(el('li',null,'자기 역사로 PER이 싼(하위 30%) 후보는 오히려 덜 돌아왔다(−3.8%p) — 싼 데 이유가 있었다. 그래서 PER 자기 역사는 "너무 싸면 감점"으로 들어간다. 1년 동안 더 빠진 쪽 · 빚이 적은 쪽 · 업종 제품 가격이 오르는 쪽이 앞뒤 기간 모두 더 돌아왔다.'));
+  ul.appendChild(el('li',null,'PER 자기 역사는 처음 고를 때(2026-10-03 표본) "자기 역사로 너무 싼 후보가 덜 돌아왔다(−3.8%p)"는 근거로 넣었다. 계산을 고친 표본(2026-10-06)에서는 그 차이가 보이지 않는다(하위 30% −0.9%p, 구간이 0을 포함) — 부채비율 · 매출 · 최근 1개월도 약해졌다. 업종 제품 가격과 주가 1년(더 빠진 쪽)만 뚜렷하다. 점수 구성은 다시 볼 대상이다.'));
   ul.appendChild(el('li',null,'요인을 고른 표본과 잰 표본이 같다 — 실제보다 좋아 보인다. 생존 편향(지금 상장된 회사만)도 있다.'));
   det.appendChild(ul);
   det.appendChild(el('div','finnote','다시 재기: python 도구/저평가_백테스트.py (표본) → --score. 결과 .cache/value/score.json 을 이 화면과 점수가 바로 읽는다.'));
@@ -4422,7 +4423,7 @@ function valEvidence(bt){
 // 점수 풀이(과거 후보 100곳 중 몇 등, 과거엔 왜 그 쪽이 좋았나). 시안 셋을 실제 화면에 찍어 견주고 합쳤다(README 저평가 펼침).
 // ---------- 도우미 ----------
 const valPct = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(Math.round(v)) + '%';
-const valMul = v => v == null ? '—' : v >= 10 ? Math.round(v).toLocaleString('ko-KR') : v.toFixed(1);          // PER 배수 · 이익 1원 값
+const valMul = v => v == null ? '—' : v >= 100 ? Math.round(v).toLocaleString('ko-KR') : v.toFixed(1);   // 100배 아래는 소수 한 자리 — 두 PER 로 다시 셈한 변화와 꼬리표 % 가 어긋나지 않게          // PER 배수 · 이익 1원 값
 const valWon = v => (v < 0 ? '−' : '') + Math.abs(Math.round(v)).toLocaleString('ko-KR');
 const valChg = c => c >= 100 ? (1 + c / 100).toFixed(1) + '배' : Math.round(c) + '%';                          // 비싸진 폭
 const valT = s => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8));
@@ -4490,19 +4491,24 @@ function valVerdict(r, B) {
 function valInflate(r, B, V) {
   if (V.cls !== 'c') return null;
   const hiThen = r.per_then != null && r.per_med != null && r.per_then > 2 * r.per_med;
-  const dip = B.e2 > 0 && B.e0 > 0 && B.e0 < B.e2 * 0.6;
+  const dipA = B.e2 > 0 && B.e0 > 0 && B.e0 < B.e2 * 0.6;                         // 1년 전 이익이 그 1년 전보다 크게 꺼짐
+  const dipB = !(B.e2 > 0) && B.e0 > 0 && B.e1 > 0 && B.e0 < B.e1 * 0.5;           // 2년 전 적자 → 1년 전 막 흑자(작은 이익) → 지금 큰 이익
+  const dip = dipA || dipB;
   if (!hiThen && !dip) return null;
   const pill = dip ? '1년 전이 이익 바닥 — 싸진 폭이 부풀었다' : '1년 전이 비쌌던 때 — 싸진 폭이 부풀었다';
-  const why = dip ? '이익이 꺼졌던 때(주당 ' + valWon(B.e0) + '원, 그 1년 전 ' + valWon(B.e2) + '원)라' : '출발점이 비쌌던 때라';
+  const why = dipA ? '이익이 꺼졌던 때(주당 ' + valWon(B.e0) + '원, 그 1년 전 ' + valWon(B.e2) + '원)라' : dipB ? '이익이 막 흑자로 돌아선 작은 값(주당 ' + valWon(B.e0) + '원)일 때라' : '출발점이 비쌌던 때라';
   const text = hiThen
     ? ['1년 전 PER ' + valMul(r.per_then) + '배는 자기 보통(' + valMul(r.per_med) + '배)의 ', (r.per_then / r.per_med).toFixed(1) + '배', '였다 — ' + why + ' 1년 비교는 싸진 폭을 부풀린다. 자기 역사 그림을 함께 본다.']
-    : ['1년 전 이익이 그 1년 전보다 크게 꺼져 있었다(주당 ' + valWon(B.e2) + ' → ' + valWon(B.e0) + '원) — 1년 비교는 싸진 폭을 부풀린다.'];
+    : dipA ? ['1년 전 이익이 그 1년 전보다 크게 꺼져 있었다(주당 ' + valWon(B.e2) + ' → ' + valWon(B.e0) + '원) — 1년 비교는 싸진 폭을 부풀린다.']
+    : ['1년 전 이익은 막 흑자로 돌아선 작은 값이었다(주당 ' + valWon(B.e0) + '원 → 지금 ' + valWon(B.e1) + '원) — 1년 비교는 싸진 폭을 부풀린다.'];
   return { pill, text };
 }
 // 등급 결론 문장
 function valTierWhy(r) {
   const red = r.red || [];
+  if (r.fin) return '금융업 — 등급 없음 → ' + r.tier;
   if (r.score == null) return '점수 없음 → ' + r.tier;
+  if (r.score >= 50 && r.per_pct == null && r.px_yoy == null) return '값을 잴 항목 없음 → ' + r.tier;
   if (r.score >= 50) return red.length ? '50 넘었지만 빨간불 → ' + r.tier : '50 넘음 · 빨간불 없음 → ' + r.tier;
   return '50 못 미침 → ' + r.tier;
 }
@@ -4510,7 +4516,9 @@ function valTierWhy(r) {
 function valBtNums() {
   const bt = (typeof S !== 'undefined' && S.valBt) || {};
   const ev = (bt.eval || {})['후보'] || {}, sc = ev['점수'] || {}, tr = ev['빨간불 · 부채 200%↑ 없음 · 점수 50↑'] || {};
-  return { n: sc.n || 1966, firms: sc.firms || 498, spread: sc.spread != null ? sc.spread : 13.6, ci: sc.ci || [9.3, 17.7], tier: tr.diff != null ? tr.diff : 10.0 };
+  const ds = bt.dates || [];
+  return { n: sc.n || 1966, firms: sc.firms || 498, spread: sc.spread != null ? sc.spread : 13.6, ci: sc.ci || [9.3, 17.7], tier: tr.diff != null ? tr.diff : 10.0,
+           yrs: ds.length ? String(ds[0]).slice(0, 4) + '~' + String(ds[ds.length - 1]).slice(0, 4) : '2016~2025' };
 }
 
 // ---------- 1) 판정 ----------
@@ -4692,10 +4700,12 @@ function valYearPane(r, B, V, D) {
   }
   const px = r.px_yoy, e = r.eps_yoy;
   let t;
-  if (px < 0 && e >= 0) t = '주당순이익은 ' + valPct(e) + ' 늘었는데 주가는 ' + valPct(px) + ' — 벌어진 틈만큼 싸졌다.';
-  else if (px < 0 && e < 0) t = e > px ? '주당순이익도 ' + valPct(e) + ' 줄었지만 주가가 ' + valPct(px) + '로 더 빠졌다.' : '주가(' + valPct(px) + ')보다 주당순이익(' + valPct(e) + ')이 더 줄었다 — 싸진 게 아니다.';
-  else if (e >= px) t = '주가도 ' + valPct(px) + ' 올랐지만 주당순이익이 ' + valPct(e) + '로 더 늘었다.';
-  else t = '주가가 ' + valPct(px) + ' 오르는 동안 주당순이익은 ' + valPct(e) + ' — 주가가 이익을 크게 앞질렀다.';
+  if (V.cls === 'n') t = '주가(' + valPct(px) + ')와 주당순이익(' + valPct(e) + ')이 비슷하게 움직였다 — 값은 1년 전과 비슷하다.';
+  else if (V.cls === 'c') t = (px < 0 && e >= 0) ? '주당순이익은 ' + valPct(e) + ' 늘었는데 주가는 ' + valPct(px) + ' — 벌어진 틈만큼 싸졌다.'
+    : (px < 0) ? '주당순이익도 ' + valPct(e) + ' 줄었지만 주가가 ' + valPct(px) + '로 더 빠졌다.'
+    : '주가도 ' + valPct(px) + ' 올랐지만 주당순이익이 ' + valPct(e) + '로 더 늘었다.';
+  else t = (px < 0) ? '주가(' + valPct(px) + ')보다 주당순이익(' + valPct(e) + ')이 더 줄었다 — 싸진 게 아니다.'
+    : '주가가 ' + valPct(px) + ' 오르는 동안 주당순이익은 ' + valPct(e) + ' — 주가가 이익을 앞질렀다.';
   const leg = el('div', 'vdLeg');
   const a = el('span'); a.appendChild(el('i')); a.appendChild(document.createTextNode('주가')); leg.appendChild(a);
   const b = el('span'); b.appendChild(el('i', 'e')); b.appendChild(document.createTextNode('주당순이익(4분기 합)')); leg.appendChild(b);
@@ -4831,7 +4841,7 @@ function valGates(r, B) {
   gate(B.neg || (r.ni_yoy != null && r.ni_yoy >= -5), '이익 지킴', '순이익 1년 ' + (B.neg ? '적자→흑자' : valPct(r.ni_yoy)), '순이익(최근 4분기) 1년 변화 −5% 이내');
   gate(r.dd != null && r.dd <= -25, '주가 빠짐', '고점 ' + won(r.hi) + '원(' + r.hi_d.slice(2, 4) + '.' + r.hi_d.slice(4, 6) + ') 대비 ' + valPct(r.dd), '52주 고점 대비 −25%↓');
   gate(!red.length, red.length ? '빨간불' : '빨간불 없음', red.length ? red.join(' · ') : '', '앞단 약함 · 업종 제품 가격 하락 · 업종 재고 쌓임 · 부채비율 200%↑');
-  gate(r.score != null && r.score >= 50, '점수 50↑', r.score != null ? r.score.toFixed(0) + '점' : '항목 모자람');
+  gate(r.score != null && r.score >= 50, '점수 50↑', r.score != null ? r.score.toFixed(1) + '점' : '항목 모자람');
   const ti = el('span', 'vdTier ' + (r.tier === '저평가' ? 'ok' : 'no'), '= ' + r.tier); gt.appendChild(ti);
   gt.appendChild(el('span', 'vdRef', '(참고) 부채비율 ' + (r.debt_eq != null ? Math.round(r.debt_eq) + '%' : '—') + (r.cfo_ni != null ? ' · 영업현금 ÷ 순이익 ' + r.cfo_ni.toFixed(1) + '배' : '')));
   return gt;
@@ -4861,11 +4871,11 @@ function valScore(r) {
   const parts = r.score_parts || []; if (!parts.length) return null;
   const sec = el('div', 'vdScore'), N = valBtNums();
   const sh = el('div', 'vdSH');
-  const b = el('b'); b.appendChild(document.createTextNode('점수 ')); b.appendChild(el('span', null, r.score != null ? r.score.toFixed(0) : '—')); b.appendChild(document.createTextNode('점'));
+  const b = el('b'); b.appendChild(document.createTextNode('점수 ')); b.appendChild(el('span', null, r.score != null ? r.score.toFixed(1) : '—')); b.appendChild(document.createTextNode('점'));
   sh.appendChild(b); sh.appendChild(el('span', null, '얼마나 싼가가 아니라, 과거에 되돌아온 쪽을 얼마나 닮았나'));
   sec.appendChild(sh);
   const p = el('p', 'vdSP');
-  p.appendChild(document.createTextNode('같은 관문을 넘은 과거 후보 ' + N.n.toLocaleString('ko-KR') + '건(' + N.firms + '곳, 2014~2025)을 항목마다 100곳으로 줄 세운 등수다. 검증: '));
+  p.appendChild(document.createTextNode('같은 관문을 넘은 과거 후보 ' + N.n.toLocaleString('ko-KR') + '건(' + N.firms + '곳, ' + N.yrs + ' 공시)을 항목마다 100곳으로 줄 세운 등수다. 검증: '));
   p.appendChild(el('b', null, '점수 위⅓이 아래⅓보다 1년 뒤 +' + N.spread.toFixed(1) + '%p'));
   p.appendChild(document.createTextNode(' 더 올랐다'));
   p.appendChild(el('span', null, ' (90% 구간 ' + N.ci[0].toFixed(1) + '~' + N.ci[1].toFixed(1) + '%p)'));
@@ -4889,12 +4899,17 @@ function valScore(r) {
     g.appendChild(el('div', 'rk', Math.max(1, Math.round(100 - x.good)) + '등'));
     const pt = el('div', 'pt ' + (x.pts >= 0 ? 'c' : 'x')); const bar = el('i'); bar.style.width = Math.max(2, Math.min(1, Math.abs(x.pts) / 16) * 34) + 'px';
     pt.appendChild(bar); pt.appendChild(el('span', null, (x.pts >= 0 ? '+' : '−') + Math.abs(x.pts).toFixed(1))); g.appendChild(pt);
-    g.appendChild(el('div', 'why' + (x.pts < 0 ? ' x' : ''), valWhy(x, r)));
+    const wy = el('div', 'why' + (x.pts < 0 ? ' x' : ''), valWhy(x, r));
+    const fe = ((S.valBt || {}).factors || {})[x.key];        // 지금 표본의 근거 — 구간이 0을 넘지 못하면 그렇다고 적는다
+    if (fe && fe.ci && fe.ci[0] != null && fe.ci[0] < 0 && fe.ci[1] > 0)
+      wy.appendChild(el('small', null, ' · 다시 잰 표본(2026-10-06)에선 이 항목만으로는 뚜렷하지 않다(위⅓−아래⅓ ' + (fe.spread >= 0 ? '+' : '') + fe.spread.toFixed(1) + '%p, 구간 ' + fe.ci[0].toFixed(1) + '~' + fe.ci[1].toFixed(1) + ')'));
+    g.appendChild(wy);
     tot += x.pts;
   });
   const sm = el('div', 'vdSum'); sm.appendChild(el('span', null, '보통 50'));
-  sm.appendChild(el('span', null, (tot >= 0 ? '+ ' : '− ') + Math.abs(tot).toFixed(1)));
-  const z = el('span'); z.appendChild(document.createTextNode('= ')); z.appendChild(el('b', null, (r.score != null ? r.score.toFixed(0) : '—') + '점')); sm.appendChild(z);
+  const dlt = r.score != null ? r.score - 50 : tot;      // 항목 점수는 반올림해 보이므로 합은 실제 점수에서 — '50 + 16.4 = 67' 같은 1점 어긋남이 없게
+  sm.appendChild(el('span', null, (dlt >= 0 ? '+ ' : '− ') + Math.abs(dlt).toFixed(1)));
+  const z = el('span'); z.appendChild(document.createTextNode('= ')); z.appendChild(el('b', null, (r.score != null ? r.score.toFixed(1) : '—') + '점')); sm.appendChild(z);
   const tw = el('span', 'vdTier ' + (r.tier === '저평가' ? 'ok' : 'no'), valTierWhy(r)); tw.title = '과거에 저평가 묶음이 관찰 묶음보다 1년 뒤 +' + N.tier.toFixed(1) + '%p 더 올랐다'; sm.appendChild(tw);
   g.appendChild(sm);
   sec.appendChild(g);
@@ -4927,7 +4942,7 @@ function valTable(rows, title, sub) {
   const t = el('table', 'tbl dipTbl');
   t.innerHTML = '<tr><th>종목</th><th class="r">고점 대비</th><th class="r">주가 1년</th><th class="r">순이익 1년</th>' +
     '<th class="r" title="같은 이익 1원에 시장이 쳐준 값. 1년 전 PER → 지금 PER">PER 1년 전→지금</th><th class="r" title="최근 10년 분기 말 PER 가운데 지금 자리. 쌌던 때 = 지금보다 PER 이 낮았던 분기 수">PER 자기 역사</th><th class="r">ROE</th><th class="r">영업이익률</th><th class="r">점수</th><th></th></tr>';
-  const X = v => v >= 200 ? '200↑' : v >= 10 ? Math.round(v) : v.toFixed(1);
+  const X = v => v >= 200 ? '200↑' : v >= 100 ? Math.round(v) : v.toFixed(1);
   S.valOpen = S.valOpen || new Set();
   const LIM = 30, t2 = rows.length > LIM ? el('table', 'tbl dipTbl') : null;
   if (t2) t2.innerHTML = t.innerHTML;
@@ -4965,7 +4980,7 @@ function valTable(rows, title, sub) {
     tr.appendChild(hc);
     tr.appendChild(n(r.roe != null ? r.roe.toFixed(1) + '%' : '—', r.roe >= 15 ? 'pos' : ''));
     tr.appendChild(n(r.opm != null ? r.opm.toFixed(1) + '%' : '—'));
-    tr.appendChild(n(r.score != null ? r.score.toFixed(0) : '—', 'strong'));
+    tr.appendChild(n(r.score != null ? r.score.toFixed(1) : '—', 'strong'));
     tr.appendChild(el('td', 'caret', '▾'));
     const dt = el('tr', 'dipDet'); dt.hidden = !S.valOpen.has(r.code); const dd = el('td'); dd.colSpan = 10; dt.appendChild(dd);
     const fill = () => { if (!dd.firstChild) dd.appendChild(valDetail(r)); };      // 펼침은 처음 열 때 그린다
