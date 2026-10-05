@@ -1976,6 +1976,13 @@ details.infclockwrap{margin-top:12px}details.infclockwrap>summary{cursor:pointer
 .vdGates{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;padding:8px 0 0;border-top:1px solid var(--line2)}
 .vdGates>em{font:600 11px var(--sans);font-style:normal;color:var(--faint)}
 .vdGate{display:inline-flex;gap:5px;align-items:baseline;white-space:nowrap}
+.vdRiskP{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font:600 10.5px var(--sans);vertical-align:1px;white-space:nowrap;cursor:help}
+.vdRiskP.r{background:var(--del-bg);color:var(--del)}.vdRiskP.o{background:var(--warn-bg);color:var(--warn)}.vdRiskP.g{background:var(--line2);color:var(--dim)}
+.vdRisk{margin-top:10px;padding:10px 12px;border:1px solid var(--line2);border-left:3px solid var(--warn);border-radius:6px;font-size:12.5px;line-height:1.65}
+.vdRisk.r{border-left-color:var(--del)}.vdRisk.g{border-left-color:var(--line)}
+.vdRisk h5{margin:0 0 4px;font-size:13px}.vdRisk h5 span{font-weight:500;color:var(--dim);font-size:12px;margin-left:6px}
+.vdRisk ul{margin:4px 0 0;padding-left:18px}.vdRisk li{margin:1px 0}.vdRisk li small{color:var(--dim)}
+.vdRisk a{color:var(--accent)}.vdRisk .ft{color:var(--faint);font-size:11.5px;margin-top:4px}
 .vdGate i{font-style:normal;font-weight:700}.vdGate.ok i{color:var(--add)}.vdGate.no i{color:var(--del)}
 .vdGate b{font-weight:600}.vdGate span{color:var(--dim);font-variant-numeric:tabular-nums}
 .vdGate.no{white-space:normal}.vdGate.no span{color:var(--del)}
@@ -4111,6 +4118,7 @@ const VAL_GATES=[
   ['③ 주가','값은 빠졌다',['52주 고점 대비 −25%↓(고점 = 수정 종가 기준 — HTS 장중 최고가와 다를 수 있다)'],'같은 이익에 시장이 덜 쳐주고 있다. 그 할인이 정당한지는 ④가 가른다.'],
   ['④ 등급','되돌아올 쪽인가',['(저평가) 빨간불이 없고 점수 50↑ — 점수 = 과거 후보 안에서 되돌아온 쪽을 가른 항목의 백분위 가중평균',
     '(빨간불) 잔고·선수금이 매출보다 −15%p↓ 느림 · 업종 제품 가격(수출물가) −10%↓ · 업종에 재고가 쌓이는데 회사 매출은 아직 +5%↑ · 부채비율 200%↑',
+    '(공시 위험) 상폐 절차 중 · 13개월 안 사업보고서 없음 · 작전주 꼴(24개월 안 CB·BW·유상증자·제3자배정 3날↑, 최대주주 변경 3날↑, 경영권 양수도 2날↑, 금전대여·사채 조기상환 3날↑ 가운데 하나 + 배당 없음)',
     '(등급 없음) 금융업(은행·증권·보험·카드·캐피탈·창투) — 부채비율·매출 잣대가 맞지 않고 과거 표본에 거의 없다 · 값을 잴 항목(PER 자기 역사·주가 1년)이 없는 회사'],
    '싸 보이는 함정(값이 싼 데는 이유가 있는 회사)을 걸러 내는 단계. 항목과 가중치는 아래 과거 검증 상자에 있다.']];
 
@@ -4833,6 +4841,38 @@ function valHistPane(r, B, V, Hs) {
 }
 
 // ---------- 3) 관문 한 줄(옛 ①②③④) ----------
+// ---------- 공시 위험(도구/공시위험.py · 서버 _val_apply_risk) — 과거 상장폐지로 이어진 공시 꼴만 말한다. 걸리지 않은 종목에 '안전' 표지는 달지 않는다
+const VAL_RISK = {
+  '상폐 절차': ['r', '거래소 상장폐지 사유 · 결정 · 정리매매 · 가처분 사슬이 해소 공시 없이 남아 있다. 과거 이 상태가 공시로 보이던 회사의 56%가 상장폐지되었거나 2년 안에 다시 절차에 들어갔다.'],
+  '보고서 없음': ['r', '13개월 안에 사업보고서가 없다. 과거 이런 회사 30관측 가운데 5곳이 2년 안에 상장폐지 절차에 들어갔다.'],
+  '작전주 꼴': ['o', '지난 2년 자금조달 · 지배구조 공시가 잦고 배당이 없다. 과거(2019~2024, 표본 밖) 이 꼴의 14%가 2년 안에 상장폐지 절차에 들어갔다(유가 · 코스닥 전체 1.8%).'],
+  '자금조달 잦음': ['g', '자금조달 · 지배구조 공시가 잦지만 2년 안에 현금배당을 했다. 과거 이 묶음은 상장사 평균 수준(1.4%)이었다 — 참고만.'],
+};
+function valRiskPill(rk) {
+  const lv = rk && rk.level; const m = lv && VAL_RISK[lv];
+  if (!m) { if (rk && (rk.group === '코넥스' || rk.group === '외국')) { const p = el('span', 'vdRiskP g', rk.group); p.title = rk.group + ' — 공시 위험 규칙은 유가 · 코스닥 영업회사로만 쟀다'; return p; } return null; }
+  const p = el('span', 'vdRiskP ' + m[0], lv);
+  p.title = m[1] + ((rk.hits || []).length ? '\n지난 2년: ' + rk.hits.map(h => h.name + ' ' + h.days + '날').join(' · ') : '');
+  return p;
+}
+function valRiskBox(r) {
+  const rk = r.risk; if (!rk) return null;
+  const lv = rk.level, m = lv && VAL_RISK[lv], ref = rk.ref || [];
+  if (!m && !ref.length) return null;
+  const b = el('div', 'vdRisk ' + (m ? m[0] : 'g'));
+  const h = el('h5', null, '공시로 본 상장폐지 위험'); h.appendChild(el('span', null, lv ? '— ' + lv : '— 규칙에는 걸리지 않음(참고 공시만)')); b.appendChild(h);
+  if (m) b.appendChild(el('div', null, m[1]));
+  if (rk.proc) b.appendChild(el('div', null, '절차 시작: ' + rk.proc.slice(0, 4) + '-' + rk.proc.slice(4, 6) + '-' + rk.proc.slice(6, 8)));
+  const lk = x => { const a = el('a', null, x[0].slice(2, 4) + '.' + x[0].slice(4, 6) + '.' + x[0].slice(6, 8)); a.href = 'https://dart.fss.or.kr/dsaf001/main.do?rcpNo=' + x[2]; a.target = '_blank'; a.rel = 'noopener'; a.title = x[1]; return a; };
+  const list = (title, items, need) => { if (!items.length) return; const ul = el('ul'); items.forEach(it => { const li = el('li');
+    li.appendChild(document.createTextNode((it.name || it.cat) + ' ' + it.days + '날' + (it.need ? ' (문턱 ' + it.need + '날)' : '') + ' — '));
+    (it.rows || []).forEach((x, i) => { if (i) li.appendChild(document.createTextNode(' · ')); li.appendChild(lk(x)); }); ul.appendChild(li); });
+    const t = el('div', null, title); t.style.marginTop = '4px'; b.appendChild(t); b.appendChild(ul); };
+  list('걸린 조건(지난 24개월, 서로 다른 날 수 · 날짜를 누르면 DART 원문)', rk.hits || []);
+  list('참고 — 부실 · 거래소 조치 공시(24개월)', ref);
+  b.appendChild(el('div', 'ft', '규칙은 2015~2018로 정하고 2019~2024에 표본 밖으로 쟀다. 주가(우하향)는 재지 않았고, 걸리지 않은 종목도 2년 안 0.7%가 상장폐지 절차에 들어갔다 — 앞날을 약속하지 않는다.'));
+  return b;
+}
 function valGates(r, B) {
   const red = r.red || [];
   const gt = el('div', 'vdGates'); gt.appendChild(el('em', null, '관문'));
@@ -4842,6 +4882,8 @@ function valGates(r, B) {
   gate(r.dd != null && r.dd <= -25, '주가 빠짐', '고점 ' + won(r.hi) + '원(' + r.hi_d.slice(2, 4) + '.' + r.hi_d.slice(4, 6) + ') 대비 ' + valPct(r.dd), '52주 고점 대비 −25%↓');
   gate(!red.length, red.length ? '빨간불' : '빨간불 없음', red.length ? red.join(' · ') : '', '앞단 약함 · 업종 제품 가격 하락 · 업종 재고 쌓임 · 부채비율 200%↑');
   gate(r.score != null && r.score >= 50, '점수 50↑', r.score != null ? r.score.toFixed(1) + '점' : '항목 모자람');
+  const rl = r.risk && r.risk.level, rbad = ['상폐 절차', '보고서 없음', '작전주 꼴'].includes(rl);
+  gate(!rbad, rbad ? '공시 위험' : '공시 위험 없음', rbad ? rl : '', '상폐 절차 · 보고서 없음 · 작전주 꼴(공시 목록으로 매일 센다)');
   const ti = el('span', 'vdTier ' + (r.tier === '저평가' ? 'ok' : 'no'), '= ' + r.tier); gt.appendChild(ti);
   gt.appendChild(el('span', 'vdRef', '(참고) 부채비율 ' + (r.debt_eq != null ? Math.round(r.debt_eq) + '%' : '—') + (r.cfo_ni != null ? ' · 영업현금 ÷ 순이익 ' + r.cfo_ni.toFixed(1) + '배' : '')));
   return gt;
@@ -4879,6 +4921,7 @@ function valScore(r) {
   p.appendChild(el('b', null, '점수 위⅓이 아래⅓보다 1년 뒤 +' + N.spread.toFixed(1) + '%p'));
   p.appendChild(document.createTextNode(' 더 올랐다'));
   p.appendChild(el('span', null, ' (90% 구간 ' + N.ci[0].toFixed(1) + '~' + N.ci[1].toFixed(1) + '%p)'));
+  p.appendChild(el('span', null, ' · 다만 점수 항목을 고른 표본과 잰 표본이 같다 — 앞 기간(2016~19)만으로 고른 항목은 뒤 기간에 맞지 않아, 표본 밖으로 검증된 점수는 아니다. 2026-10-06부터 매일 목록을 남겨 실제 성적을 쌓는다.'));
   sec.appendChild(p);
   const g = el('div', 'vdRows');
   [['항목', ''], ['이 회사', 'r'], ['', 'tr'], ['100곳 중', 'r'], ['점수', 'r'], ['과거엔 이랬다', 'w']].forEach(([t, c]) => {
@@ -4926,6 +4969,7 @@ function valDetail(r) {
   grid.appendChild(valHistPane(r, B, V, Hs));
   box.appendChild(grid);
   box.appendChild(valGates(r, B));
+  const rk = valRiskBox(r); if (rk) box.appendChild(rk);
   const ss = valScore(r); if (ss) box.appendChild(ss);
   const bt = el('div', 'vcAct');
   [['이 회사 풍경 보기', 'land'], ['분기 변화 보기', 'qtr'], ['전문검색(주가에 닿을 줄)', 'find']].forEach(([t, tab]) => { const b = el('button', null, t);
@@ -4951,6 +4995,7 @@ function valTable(rows, title, sub) {
     const tr = el('tr', 'dipRow');
     const td = el('td'); const a = el('a', null, r.name); a.href = '#'; a.onclick = e => { e.preventDefault(); e.stopPropagation(); pick(r.code); }; td.appendChild(a);
     td.appendChild(el('small', null, ' ' + r.code + ' · ' + (r.industry || '') + (r.cap_rank ? ' · 시총 ' + r.cap_rank + '위' : '')));
+    const rp = valRiskPill(r.risk); if (rp) td.appendChild(rp);
     td.appendChild(el('div', 'dipFwd', '고점 ' + won(r.hi) + '(' + r.hi_d.slice(2, 4) + '.' + r.hi_d.slice(4, 6) + ') → 지금 ' + won(r.price) + ' · 최근 3개월 ' + valPct(r.ret3m) +
       (r.mp_yoy != null ? ' · 업종 가격 ' + valPct(r.mp_yoy) : '') + (r.cyc != null ? ' · 재고 순환 ' + (r.cyc >= 0 ? '+' : '') + Math.round(r.cyc) + '%p' : '')));
     (r.tier_why || []).forEach(x => td.appendChild(el('div', 'dipWhy', x)));

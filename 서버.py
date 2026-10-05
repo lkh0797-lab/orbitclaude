@@ -8323,6 +8323,17 @@ def _run_value():
         os.makedirs(VAL_DIR, exist_ok=True)
         with open(os.path.join(VAL_DIR, "_result.json"), "w", encoding="utf-8") as fh:
             json.dump({"v": VAL_V, "at": VAL["at"], "rows": rows, "n_fell": fell, "n_univ": len(cos)}, fh, ensure_ascii=False)
+        # 실전 기록(2026-10-06~) — 그날의 저평가 · 관찰 목록을 남겨 두고 나중에 실제 수익률로 잰다(백테스트가 아닌 앞으로의 검증).
+        # 같은 날은 덮어쓴다. 공시 위험으로 내린 등급까지 그대로(_val_apply_risk).
+        try:
+            fdir = os.path.join(VAL_DIR, "forward")
+            os.makedirs(fdir, exist_ok=True)
+            snap = [{k: r.get(k) for k in ("code", "name", "tier", "score", "price", "price_d", "per", "per_pct", "comp", "dd", "lab")} |
+                    {"risk": (r.get("risk") or {}).get("level")} for r in _val_apply_risk(rows)]
+            with open(os.path.join(fdir, dt.date.today().strftime("%Y%m%d") + ".json"), "w", encoding="utf-8") as fh:
+                json.dump({"at": VAL["at"], "score_spec": "score.json weights (2026-10-03, 6항목)", "rows": snap}, fh, ensure_ascii=False)
+        except Exception as e:
+            print("실전 기록 실패: %s" % e, flush=True)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -8331,6 +8342,64 @@ def _run_value():
     finally:
         with VAL_LOCK:
             VAL["running"] = False
+
+
+# ---------------------------------------------------------------- 공시 위험(2026-10-06) — 도구/공시위험.py 가 공시 목록 캐시로 매일 센다(DART 호출 없음)
+# 상폐 절차 · 보고서 없음 · 작전주 꼴(CB · BW · 유상증자 · 제3자배정 · 최대주주변경 잦음, 배당 없음)이면 저평가 등급을 주지 않는다.
+# 근거: 2015~2018 로 고른 규칙을 2019~2024 표본 밖으로 — 상장사 8% 를 거르고 24개월 안 상장폐지 사슬의 64% 를 피함(README '공시 위험').
+_DRISK = {"mt": None, "d": None}
+DRISK_RED = ("상폐 절차", "보고서 없음", "작전주 꼴")
+
+
+def _disc_risk():
+    p = os.path.join(CACHE_DIR, "공시목록", "공시위험.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return None
+    if _DRISK["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                _DRISK.update(d=json.load(fh), mt=mt)
+        except Exception:
+            return _DRISK["d"]
+    return _DRISK["d"]
+
+
+def _disc_refresh():
+    """공시 목록(이번 해 분기만 — 끝난 분기는 건너뛴다) → 공시위험.json. 저평가 매일 계산 앞에 돈다."""
+    import subprocess
+    log = os.path.join(BASE, "공시위험_auto.log")
+    y = dt.date.today().year
+    with open(log, "a", encoding="utf-8") as fh:
+        fh.write("\n== %s\n" % dt.datetime.now().strftime("%Y-%m-%d %H:%M"))
+        fh.flush()
+        for cmd in ([sys.executable, os.path.join(BASE, "도구", "공시목록_수집.py"), "--from", str(y), "--max-calls", "3000"],
+                    [sys.executable, os.path.join(BASE, "도구", "공시위험.py")]):
+            try:
+                subprocess.run(cmd, cwd=BASE, stdout=fh, stderr=subprocess.STDOUT, timeout=3 * 3600,
+                               env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+            except Exception as e:
+                fh.write("실패: %s\n" % e)
+
+
+def _val_apply_risk(rows):
+    """행 복사본에 공시 위험을 붙이고, 빨강 · 주황이면 저평가 → 관찰. 보는 때마다 최신 공시위험.json 으로(계산 결과는 그대로 둔다)."""
+    d = _disc_risk() or {}
+    codes = d.get("codes") or {}
+    out = []
+    for r in rows:
+        r = dict(r)
+        rk = codes.get(r.get("code"))
+        if rk:
+            r["risk"] = {k: rk.get(k) for k in ("level", "group", "market", "proc", "last_a", "div", "hits", "ref")}
+            if rk.get("level") in DRISK_RED and r.get("tier") == "저평가":
+                r["tier"] = "관찰"
+                what = " · ".join("%s %d날" % (h["name"], h["days"]) for h in rk.get("hits") or [])
+                r["tier_why"] = list(r.get("tier_why") or []) + ["공시 위험: " + rk["level"] + ((" — " + what) if what else "")]
+        out.append(r)
+    out.sort(key=lambda r: (r.get("tier") != "저평가", -(r.get("score") or -1)))
+    return out
 
 
 def value_view(force=False):
@@ -8348,6 +8417,9 @@ def value_view(force=False):
             VAL["running"] = True
             threading.Thread(target=_run_value, daemon=True).start()
         out = {k: VAL.get(k) for k in ("running", "done", "total", "phase", "at", "rows", "n_fell", "n_univ")}
+    out["rows"] = _val_apply_risk(out.get("rows") or [])
+    dr = _disc_risk() or {}
+    out["risk_meta"] = {k: dr.get(k) for k in ("기준일", "evidence", "수", "규칙")} if dr else None
     spec = _val_score_spec()
     if spec:
         out["bt"] = {k: spec.get(k) for k in ("eval", "n_cand", "firms", "dates", "weights", "groups")}
@@ -8462,6 +8534,7 @@ def _val_auto_loop():
             p = os.path.join(VAL_DIR, "_result.json")
             old = (time.time() - os.path.getmtime(p)) if os.path.exists(p) else 1e9
             if not first or old > 20 * 3600:
+                _disc_refresh()                   # 공시 목록 → 공시 위험 먼저(저평가 등급이 읽는다)
                 value_view(True)
                 while True:                       # 저평가가 끝나야 V2 를 센다
                     time.sleep(30)
