@@ -1316,7 +1316,8 @@ def inflect(code, force=False):
     corp = corp_code_of(code)
     if not corp or FIN is None:
         return {"error": "DART 고유번호를 찾지 못했습니다."}
-    sig = (c["reports"][-1]["rcept"] if c["reports"] else "") + "_v%d" % INF.VERSION
+    # 하루에 한 번 다시 — 카드의 '지금' 값(PSR · PEG · 경고)이 캐시 만든 날 가격에 묶이지 않게
+    sig = (c["reports"][-1]["rcept"] if c["reports"] else "") + "_v%d_%s" % (INF.VERSION, dt.date.today().strftime("%Y%m%d"))
     cache = os.path.join(CACHE_DIR, "inflect", code + ".json")
     if not force and os.path.exists(cache):
         try:
@@ -1370,55 +1371,66 @@ def inflect(code, force=False):
         rcept_of[y] = (prev, annual[y]["rcept"])
         prev = annual[y]["rcept"]
 
-    # 가격 — 버핏의 유보이익 1원 테스트, 린치의 PEG
+    # 가격 — 주가는 네이버 수정주가(오늘 주식 수 기준)라, 연말 주식 수도 분할 · 무상증자를 오늘 기준으로 맞춘 값(_land_shares)을 곱한다.
+    # 예전엔 그해 실제 주식 수를 곱해 분할한 회사의 시가총액 · PSR 이 몇 배씩 틀렸다(엘에스일렉트릭 카드 1.08배 대 요약 5.51배, 2026-10-05 감사).
     price_info = {}
+    lv = {}
     try:
         prices = FIN.fetch_prices(code)
-        F = [d for d in funds if d.get("re") is not None]
-        if len(F) >= 6:
-            a, b = F[-6], F[-1]
-            sa = FIN.fetch_shares(corp, a["year"], "11011").get("shares")
-            sb = FIN.fetch_shares(corp, b["year"], "11011").get("shares")
-            pa, _ = FIN.price_on(prices, "%d1230" % a["year"])
-            pb, _ = FIN.price_on(prices, "%d1230" % b["year"])
-            dre = b["re"] - a["re"]
-            if sa and sb and pa and pb and dre > 0:
-                dcap = pb * sb - pa * sa
-                price_info["retained_test"] = {
-                    "ratio": dcap / dre,
-                    "note": "%d~%d년 유보이익 %s 늘 때 시가총액 %s 변했다 → 1원당 %.1f원" % (
-                        a["year"], b["year"], _won_txt(dre), _won_txt(dcap), dcap / dre)}
-        lastq = next((q for q in reversed(quarters) if q.get("PER_TTM")), None)
-        eg = INF._cagr(funds, "eps", 3)
-        if lastq and lastq["PER_TTM"] > 0 and eg and eg > 0:
-            price_info["peg"] = lastq["PER_TTM"] / eg
-        # 켄 피셔 — 해마다 연말 시가총액(그날 실제 종가 × 그해 말 유통주식수)과 PSR·PRR
+        rc_of = {"03": "11013", "06": "11012", "09": "11014", "12": "11011"}
+        lrep = max((r for r in c["reports"] if r["stamp"][5:7] in rc_of), key=lambda r: r["stamp"], default=None)
+        latest = (int(lrep["stamp"][:4]), rc_of[lrep["stamp"][5:7]]) if lrep else None
+        S_adj, _spl, _raw = _land_shares([d for d in funds if d.get("rev") is not None or d.get("ni") is not None], corp, latest)
         rnd = {f["year"]: f.get("rnd_pct") for f in feats}
         for d in funds:
             y = d["year"]
-            sh = FIN.fetch_shares(corp, y, "11011").get("shares")
+            sh = S_adj.get(y)
             px, _ = FIN.price_on(prices, "%d1230" % y)
             d["mcap"] = sh * px if (sh and px) else None
             d["psr"] = d["mcap"] / d["rev"] if (d["mcap"] and d.get("rev") and d["rev"] > 0) else None
             d["rnd_pct"] = rnd.get(y)
             d["rnd"] = d["rev"] * d["rnd_pct"] / 100 if (d.get("rev") and d["rnd_pct"]) else None
             d["prr"] = d["mcap"] / d["rnd"] if (d["mcap"] and d["rnd"]) else None
-        # 지금 — 오늘 주가 × 최근 유통주식수 ÷ 최근 4분기 매출
-        lastT = next((q for q in reversed(quarters) if q.get("매출_TTM")), None)
-        shn = next((FIN.fetch_shares(corp, d["year"], "11011").get("shares") for d in reversed(funds)
-                    if FIN.fetch_shares(corp, d["year"], "11011").get("shares")), None)
-        if prices and shn and lastT:
-            dlast = max(prices)
-            mc = prices[dlast] * shn
-            price_info["psr_now"] = {"psr": mc / lastT["매출_TTM"], "mcap": mc, "date": dlast,
-                                     "sales": lastT["매출_TTM"], "label": lastT.get("label")}
+        # 버핏의 유보이익 1원 테스트 — 시작 · 끝 PSR 도 같이(시가총액 증가가 사업에서 왔나, 값의 재평가에서 왔나)
+        F = [d for d in funds if d.get("re") is not None]
+        if len(F) >= 6:
+            a, b = F[-6], F[-1]
+            dre = b["re"] - a["re"]
+            if a.get("mcap") and b.get("mcap") and dre > 0:
+                dcap = b["mcap"] - a["mcap"]
+                rerate = (" · PSR %.2f배 → %.2f배" % (a["psr"], b["psr"]) + (" — 늘어난 시가총액의 상당 부분은 값의 재평가다" if b["psr"] >= a["psr"] * 2 else "")) \
+                    if a.get("psr") and b.get("psr") else ""
+                price_info["retained_test"] = {
+                    "ratio": dcap / dre,
+                    "note": "%d~%d년 유보이익 %s 늘 때 시가총액 %s 변했다 → 1원당 %.1f원%s" % (
+                        a["year"], b["year"], _won_txt(dre), _won_txt(dcap), dcap / dre, rerate)}
+        # 지금 — PSR · PEG 는 값 판단 요약(lens_value)과 같은 계산 하나로(최근 분기 주식 수 · 최근 4분기 매출 · 오늘 종가)
+        lv = lens_value(code) or {}
+        if lv.get("psr") and lv.get("mcap"):
+            price_info["psr_now"] = {"psr": lv["psr"], "mcap": lv["mcap"], "date": lv.get("date"),
+                                     "sales": lv.get("rev_ttm"), "label": lv.get("quarter")}
             lr = next((d for d in reversed(funds) if d.get("rnd")), None)
             if lr:
-                price_info["prr_now"] = {"prr": mc / lr["rnd"], "year": lr["year"], "rnd": lr["rnd"]}
+                price_info["prr_now"] = {"prr": lv["mcap"] / lr["rnd"], "year": lr["year"], "rnd": lr["rnd"], "rnd_pct": lr.get("rnd_pct")}
+            elif any(d.get("rnd_pct") for d in funds):
+                price_info["prr_now"] = {"rnd_pct": next(d["rnd_pct"] for d in reversed(funds) if d.get("rnd_pct"))}
+        if lv.get("peg") is not None:
+            price_info["peg"] = lv["peg"]
     except Exception as e:
         print("변곡점 가격 %s: %s" % (code, e), flush=True)
 
     ev = INF.events(funds, quarters, feats, came, gone, rcept_of)
+    # 지금 값의 경고 — 연말 PSR 만 보는 사건 규칙은 오늘의 PSR 3배↑를 놓친다('경고 0'으로 읽히던 것). 큰 표본에서 가장 단단했던 피할 신호.
+    pn_ = price_info.get("psr_now") or {}
+    if pn_.get("psr") and pn_["psr"] >= 3:
+        e_ = _lens_ev("피셔 · PSR 3배↑(절대)") or {}
+        dd_ = str(pn_.get("date") or "")
+        ev.insert(0, {"year": int(dd_[:4]) if dd_[:4].isdigit() else dt.date.today().year, "stamp": "%s-%s" % (dd_[:4], dd_[4:6]) if len(dd_) >= 6 else None,
+                      "lane": "경고", "guru": "피셔 1984", "tone": "warn", "title": "지금 PSR %.1f배 — 매출의 3배를 넘는 값" % pn_["psr"],
+                      "detail": "시가총액이 최근 4분기 매출의 %.1f배(%s 종가)." % (pn_["psr"], dd_) +
+                                (" 과거 같은 자리: 12개월 시장 대비 %+.1f%%p, 1년에 −30%% 넘게 빠진 비율 %.0f%% — 표본 편향이 있어 크기는 참고만." % (e_["diff"], e_["trap"])
+                                 if e_.get("diff") is not None and e_.get("trap") is not None else ""),
+                      "rcept": None, "prev_rcept": None})
     lens = INF.lenses(funds, quarters, price_info)
     lanes = {}
     for e in ev:
@@ -4632,7 +4644,7 @@ def lens_value(code):
     acc = (last["rev_yoy"] - prev["rev_yoy"]) if last.get("rev_yoy") is not None and prev.get("rev_yoy") is not None else None
     psr_pct, per_pct = pct(psr, ph), pct(per, eh)
     out.update(date=str(px["d"][-1]), psr=psr, psr_pct=psr_pct, per=per, per_pct=per_pct, peg=peg, acc=acc,
-               rev_yoy=last.get("rev_yoy"), quarter=labs[-1])
+               rev_yoy=last.get("rev_yoy"), quarter=labs[-1], mcap=(p * sh) if p and sh else None, rev_ttm=rt)
     calls = []
     cheap = (psr_pct is not None and psr_pct <= 30) or (per_pct is not None and per_pct <= 30)
     dear = (psr_pct is not None and psr_pct >= 70)
