@@ -4313,17 +4313,17 @@ async function viewGrowth(p, force){
     ' · 생산(KOSIS) '+ym(A.kosis)+' · 가격(한국은행) '+ym(A.ecos)+' · 수출(관세청) '+ym(A.customs)+' · 외부 숫자 확인 '+(A.ext||'—')+
     (d.at?' · 계산 '+new Date(d.at*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'')));
   if((d.macro||[]).length){ const m=el('div','grMacro'); d.macro.slice(0,6).forEach(x=>{ const s=el('span',null,x.metric+' '+(x.year||'')+' '+grVal(x.value,x.unit)+(x.growth_pct!=null&&!/^%/.test(x.unit||'')?' ('+grP(x.growth_pct)+')':'')); s.title=(x.source||'')+(x.published?' · '+x.published:''); m.appendChild(s); }); body.appendChild(m); }
-  // 정렬
-  S.grSort=S.grSort||'cap'; S.grOpen=S.grOpen||new Set();
+  // 정렬 — 위 단추(자주 쓰는 넷)와 표 머리글이 같은 상태(S.grSort = {k, dir})를 쓴다
+  if(!S.grSort||typeof S.grSort!=='object') S.grSort={k:'cap',dir:'desc'};
+  S.grOpen=S.grOpen||new Set();
   const bar=el('div','grBar'); const sg=el('div','seg');
-  [['cap','시가총액순'],['rev','매출 성장순'],['op','이익 성장순'],['exp','수출 성장순']].forEach(([k,t])=>{ const b=el('button',S.grSort===k?'on':'',t); b.onclick=()=>{ S.grSort=k; draw(); [...sg.children].forEach(x=>x.classList.toggle('on',x===b)); }; sg.appendChild(b); });
+  [['cap','시가총액순'],['revg','매출 성장순'],['opg','이익 성장순'],['exp','수출 성장순']].forEach(([k,t])=>{ const b=el('button','',t); b.dataset.k=k; b.onclick=()=>{ S.grSort={k,dir:'desc'}; draw(); }; sg.appendChild(b); });
   bar.appendChild(sg); bar.appendChild(el('span',null,'')); bar.lastChild.style.cssText='font-size:11.5px;color:var(--faint)';
-  bar.lastChild.textContent='행을 누르면 그 섹터의 연도별 성장률 표 · 분기 차트 · 생산 · 수출 · 주축 기업 · 세계 시장과 전망';
+  bar.lastChild.textContent='머리글을 누르면 그 칸으로 정렬(큰 값부터 ▼ → 작은 값부터 ▲ → 시가총액순) · 행을 누르면 그 섹터의 연도별 성장률 표 · 분기 차트 · 생산 · 수출 · 주축 기업 · 세계 시장과 전망';
   body.appendChild(bar);
   const tw=el('div','grWrap'); body.appendChild(tw);
-  const opRank=T=>T.op_turn==='흑자 전환'?1e8:T.op_turn==='적자 축소'?-1e5:T.op_turn==='적자 확대'||T.op_turn==='적자 전환'?-1e7:(T.op_g??-1e9);
-  const sortKey={cap:s=>-((s.cap||{}).adj||0), rev:s=>-((s.ttm||{}).rev_g??-1e9), op:s=>-opRank(s.ttm||{}), exp:s=>-(((s.exports||{}).m3_g)??-1e9)};
-  const draw=()=>{ tw.innerHTML=''; tw.appendChild(grSummary([...secs].sort((a,b)=>sortKey[S.grSort](a)-sortKey[S.grSort](b)), d)); };
+  const draw=()=>{ tw.innerHTML=''; tw.appendChild(grSummary(grSorted(secs,S.grSort), d, draw));
+    [...sg.children].forEach(b=>b.classList.toggle('on',S.grSort.k===b.dataset.k&&S.grSort.dir==='desc')); };
   draw();
   // 제외 · 방법
   const ex=d.excluded||{};
@@ -4341,13 +4341,45 @@ async function viewGrowth(p, force){
   body.appendChild(det);
   body.appendChild(el('div','finnote','주가 · 시가총액 · 컨센서스는 네이버 자료라 개인 열람용이다(상용 서비스 전에 계약 자료로 바꿔야 한다). 기관 전망은 발표 시점이 다르다 — 표의 날짜를 보라. 이 표는 산업의 방향을 읽는 도구이지 종목을 사고팔 근거가 아니다.'));
 }
-function grSummary(rows, d){
+// 요약표 정렬 키 — [머리글, 값, 설명]. 값이 없는 섹터는 늘 맨 뒤
+const grOpRank=T=>T.op_turn==='흑자 전환'?1e8:T.op_turn==='적자 축소'?-1e5:T.op_turn==='적자 확대'||T.op_turn==='적자 전환'?-1e7:T.op_g;
+const grSig=(s,k)=>{ const x=(s.signals||[]).find(z=>z.k===k); return x?x.v:null; };
+const GR_SORT={
+  cap:['시가총액',s=>(s.cap||{}).adj,'자회사 지분 가치를 뺀 시가총액 합 · 1년 주가 변화(시총 가중)'],
+  rev:['매출 4분기',s=>(s.ttm||{}).rev,'최근 4분기 상장사 매출 합 · 같은 표본 전년 대비 — 머리글은 매출 크기로, 증가율 순은 위 \'매출 성장순\''],
+  revg:['매출 성장',s=>(s.ttm||{}).rev_g,''],
+  op:['영업이익 4분기',s=>(s.ttm||{}).op,'최근 4분기 영업이익 합 · 같은 표본 전년 대비 — 머리글은 이익 크기로, 증가율 순은 위 \'이익 성장순\''],
+  opg:['이익 성장',s=>grOpRank(s.ttm||{}),''],
+  opm:['이익률',s=>(s.ttm||{}).opm,'최근 4분기 영업이익률'],
+  ytd:['올해 매출',s=>(s.ytd||{}).rev_g,'올해 들어 나온 분기 합의 전년 대비(같은 표본)'],
+  prod:['생산',s=>grSig(s,'생산'),'광공업생산지수, 최근 3개월 평균 전년 대비'],
+  exp:['수출',s=>(s.exports||{}).m3_g,'관세청 통관 수출, 최근 3개월 합 전년 대비 · 아래 = 최근 12개월 수출'],
+  xp:['수출물가',s=>grSig(s,'수출물가'),'한국은행 수출물가지수(원화), 3개월 평균 전년 대비'],
+  world:['세계 시장',s=>(s.world_now||{}).growth_pct,'세계 시장 규모(가장 최근 실제·추정, 출처는 펼쳐서) — 단위가 섹터마다 달라(달러 · 대수 · GWh) 정렬은 아래 작은 숫자(증가율)로'],
+  fc:['전망',s=>(s.fc_main||{}).g,'올해 전망 — 세계 시장 기관 전망, 없으면 산업연구원 한국 수출 전망'],
+  qtr:['분기 추이',s=>{ const q=(s.quarters||[]).filter(x=>x.rev_yoy!=null); return q.length?q[q.length-1].rev_yoy:null; },'분기 매출 증가율(같은 표본), 최근 12분기 — 정렬은 가장 최근 분기 증가율로'],
+};
+const GR_COLS=['cap','rev','op','opm','ytd','prod','exp','xp','world','fc','qtr'];
+function grSorted(rows,st){
+  const f=(GR_SORT[st&&st.k]||GR_SORT.cap)[1], dir=st&&st.dir==='asc'?1:-1;
+  return rows.map((r,i)=>[r,f(r),i]).sort((a,b)=>{ const x=a[1], y=b[1];
+    if(x==null||!isFinite(x)) return y==null||!isFinite(y)?a[2]-b[2]:1;
+    if(y==null||!isFinite(y)) return -1;
+    return (x-y)*dir||a[2]-b[2]; }).map(z=>z[0]);
+}
+function grSummary(rows, d, resort){
   const t=el('table','tbl dipTbl grSum');
-  t.innerHTML='<tr><th>섹터 · 업황</th><th class="r" title="자회사 지분 가치를 뺀 시가총액 합 · 1년 주가 변화(시총 가중)">시가총액</th><th class="r" title="최근 4분기 상장사 매출 합 · 같은 표본 전년 대비">매출 4분기</th>'+
-    '<th class="r" title="최근 4분기 영업이익 합 · 같은 표본 전년 대비">영업이익 4분기</th><th class="r">이익률</th><th class="r" title="올해 들어 나온 분기 합의 전년 대비(같은 표본)">올해 매출</th>'+
-    '<th class="r" title="광공업생산지수, 최근 3개월 평균 전년 대비">생산</th><th class="r" title="관세청 통관 수출, 최근 3개월 합 전년 대비 · 아래 = 최근 12개월 수출">수출</th>'+
-    '<th class="r" title="한국은행 수출물가지수(원화), 3개월 평균 전년 대비">수출물가</th><th class="r" title="세계 시장 규모(가장 최근 실제·추정, 출처는 펼쳐서)">세계 시장</th>'+
-    '<th class="r" title="올해 · 내년 전망 — 세계 시장 기관 전망, 없으면 산업연구원 한국 수출 전망">전망</th><th title="분기 매출 증가율(같은 표본), 최근 12분기">분기 추이</th><th></th></tr>';
+  const st=S.grSort||{};
+  const hr=el('tr'); hr.appendChild(el('th',null,'섹터 · 업황'));
+  GR_COLS.forEach(k=>{ const [nm,,tip]=GR_SORT[k];
+    const th=el('th',(k==='qtr'?'':'r')+' vSort'+(st.k===k?' on':''));
+    th.appendChild(document.createTextNode(nm)); th.appendChild(el('i',null,st.k===k?(st.dir==='asc'?' ▲':' ▼'):' ↕'));
+    th.title=tip+' · 누르면 정렬 — 큰 값부터(▼) → 작은 값부터(▲) → 시가총액순';
+    th.onclick=e=>{ e.stopPropagation(); const cur=S.grSort||{};
+      S.grSort=cur.k!==k?{k,dir:'desc'}:cur.dir==='desc'?{k,dir:'asc'}:{k:'cap',dir:'desc'};
+      if(resort) resort(); };
+    hr.appendChild(th); });
+  hr.appendChild(el('th')); t.appendChild(hr);
   rows.forEach(s=>{
     const tr=el('tr','dipRow'+(S.grOpen.has(s.key)?' open':'')); const T=s.ttm||{}, sg={}; (s.signals||[]).forEach(x=>sg[x.k]=x);
     const nm=el('td','nm'); nm.appendChild(el('b',null,s.key));
