@@ -2577,6 +2577,24 @@ table.grSum td.num small,table.grTrend td.num small{display:block;font-size:10.5
 .grPh{display:inline-block;font:600 10.5px/1.5 var(--sans);border-radius:999px;padding:0 7px;margin-left:6px;vertical-align:1px}
 .grPh.pos{background:var(--add-bg);color:var(--add)}.grPh.warn{background:var(--warn-bg);color:var(--warn)}
 .grPh.acc{background:var(--accent-soft);color:var(--accent)}.grPh.neg{background:var(--del-bg);color:var(--del)}
+.grPh.pos2{background:var(--add);color:var(--bg)}.grPh.neg2{background:var(--del);color:var(--bg)}.grPh.flat{background:var(--line2);color:var(--dim)}
+.grClock .pt.flat{fill:var(--faint)}
+table.grSum td.nm small.grPhWhy{display:block;color:var(--dim);font-size:10.5px;margin-top:1px;cursor:help}
+details.grClockBox{border:1px solid var(--line);border-radius:8px;padding:6px 12px 8px;margin:0 0 10px;background:var(--panel)}
+details.grClockBox>summary{cursor:pointer;font:700 14px 'Noto Serif KR',serif;padding:2px 0}
+.grPhLeg{font-size:12px;color:var(--dim);line-height:1.6;margin:4px 0 6px}
+.grPhList{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px}.grPhList .grPh{margin-left:0}
+svg.grClock{display:block;width:100%;max-width:820px;height:auto}
+.grClock .qd{opacity:.5}.grClock .q1{fill:var(--add-bg)}.grClock .q4{fill:var(--warn-bg)}.grClock .q3{fill:var(--del-bg)}.grClock .q2{fill:var(--accent-soft)}
+.grClock .band{fill:var(--line2);opacity:.7}
+.grClock .ax0{stroke:var(--faint);stroke-width:1}
+.grClock .ql{font-size:11px;fill:var(--dim);font-weight:600}.grClock .tk{font-size:9.5px;fill:var(--faint)}.grClock .tl{font-size:10px;fill:var(--dim)}
+.grClock .pt{stroke:var(--panel);stroke-width:1.5;cursor:help}
+.grClock .pt.pos2{fill:var(--add)}.grClock .pt.pos{fill:var(--add);opacity:.75}.grClock .pt.warn{fill:var(--warn)}.grClock .pt.acc{fill:var(--accent)}
+.grClock .pt.neg{fill:var(--del);opacity:.75}.grClock .pt.neg2{fill:var(--del)}
+.grClock .pn{font-size:10.5px;fill:var(--ink)}.grClock .tq{font-size:9.5px;fill:var(--faint)}
+.grClock .trail{fill:none;stroke:var(--dim);stroke-width:1.2;stroke-dasharray:3 2}.grClock .tp{fill:var(--faint);cursor:help}
+.grClock .band2{fill:var(--line);opacity:.6}.grClock .pt.out{stroke:var(--ink);stroke-width:1.5}.grClock .pn.out{font-weight:700}
 .grSpark{display:block}.grSpark .p{fill:var(--add)}.grSpark .n{fill:var(--del)}.grSpark .z{stroke:var(--line);stroke-width:1}
 .grDet{padding:10px 6px 16px}
 .grDet h4{font:700 14px 'Noto Serif KR',serif;margin:16px 0 6px}
@@ -4224,8 +4242,75 @@ async function viewValue(p, force){
 // ---------------------------------------------------------- 산업 성장률 — 섹터별 성장률 추이 · 시장 규모 · 시가총액 · 전망(/api/industry · 산업.py)
 // 상장사 실적은 같은 회사 · 같은 자회사 구조로 잰 증가율(두 기간 모두 숫자가 있는 회사만). 생산 · 가동률 · 수출물가는 KOSIS · 한국은행,
 // 수출은 관세청 통관, 세계 시장 · 기관 전망은 산업_외부자료.json(출처 · 날짜를 단 숫자만).
-const GR_PHASE={'확장':['pos','최근 분기 매출 증가율이 플러스이고 앞 두 분기보다 빨라졌다'],'둔화':['warn','플러스지만 앞 두 분기보다 느려졌다'],
-  '회복':['acc','아직 마이너스지만 앞 두 분기보다 나아졌다'],'수축':['neg','마이너스이고 앞 두 분기보다 나빠졌다']};
+// 업황 단계(업황 시계) — 속도 = 최근 2분기 매출 증가율(같은 표본) 평균, 가속 = 속도 − 그 앞 2분기 평균. ±3%p 안은 '유지'
+const GR_PHASE={
+  '확장 가속':['pos2','매출이 늘고, 늘어나는 속도도 빨라졌다(가속 +3%p 이상)'],
+  '확장 유지':['pos','매출이 늘고, 속도는 비슷하다(가속 ±3%p 안)'],
+  '둔화':['warn','매출은 아직 늘지만, 늘어나는 속도가 느려졌다(가속 −3%p 이하)'],
+  '정체':['flat','매출이 거의 그대로다(속도 ±2% 안, 가속 ±3%p 안)'],
+  '회복':['acc','매출은 아직 줄지만, 덜 줄고 있다(가속 +3%p 이상)'],
+  '부진 지속':['neg','매출이 줄고, 나아지지도 나빠지지도 않았다(가속 ±3%p 안)'],
+  '수축 심화':['neg2','매출이 줄고, 더 빨리 줄고 있다(가속 −3%p 이하)']};
+const grPhaseTip=p=>p?((GR_PHASE[p.label]||['',''])[1]+'\n속도 = 최근 2분기('+(p.qs||[]).map(qQs).join(' · ')+') 매출 증가율 평균 '+grP(p.speed)+
+  '\n앞 2분기('+(p.prev_qs||[]).map(qQs).join(' · ')+') 평균 '+grP(p.prev)+' → 가속 '+grPp(p.accel)+'\n(같은 회사 · 같은 구조 표본의 전년 같은 분기 대비)'):'';
+const qQs=q=>q?q.slice(2,4)+'.'+q.slice(5)+'Q':'';
+// 업황 시계 — 가로 = 속도(매출 증가율), 세로 = 가속(속도 변화).
+// 축은 대부분이 들어오는 범위(요약 시계는 85% 분위수 × 1.25, 한 섹터 궤적은 전부)로 잡고, 넘는 점은 가장자리에 놓고 이름 옆에 실제 값을 적는다.
+function grClock(pts, o){
+  o=o||{}; const W=o.W||760, H=o.H||320, L=50, R=16, T=18, B=32;
+  const all=pts.flatMap(p=>[[p.speed,p.accel],...(p.trail||[]).map(t=>[t.speed,t.accel])]).filter(v=>v[0]!=null&&v[1]!=null);
+  if(!all.length) return el('div');
+  const qt=(arr,f)=>{ const s=[...arr].sort((a,b)=>a-b); return s[Math.min(s.length-1,Math.floor(f*(s.length-1)))]; };
+  const nice=v=>{ for(const s of [10,15,20,25,30,40,50,60,80,100,150,200,300,500]) if(v<=s) return s; return Math.ceil(v/100)*100; };
+  const cov=all.length>12?0.85:1;
+  const xm=nice(Math.max(10,qt(all.map(v=>Math.abs(v[0])),cov)*1.25)), ym=nice(Math.max(10,qt(all.map(v=>Math.abs(v[1])),cov)*1.25));
+  const cl=(v,m)=>Math.max(-m,Math.min(m,v)), out=(x,y)=>Math.abs(x)>xm||Math.abs(y)>ym;
+  const X=v=>L+(cl(v,xm)+xm)/(2*xm)*(W-L-R), Y=v=>T+(ym-cl(v,ym))/(2*ym)*(H-T-B);
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'grClock'});
+  // 사분면 바탕과 이름(이름 자리는 섹터 이름이 피해 가도록 placed 에 넣는다)
+  const x0=X(0), y0=Y(0), placed=[];
+  const tw=s=>[...s].reduce((a,ch)=>a+(/[ㄱ-힣]/.test(ch)?10.2:5.8),0);
+  [[x0,T,W-R-x0,y0-T,'q1','확장 (늘고 · 빨라짐)','end',W-R-6,T+13],[x0,y0,W-R-x0,H-B-y0,'q4','둔화 (늘지만 · 느려짐)','end',W-R-6,H-B-6],
+   [L,y0,x0-L,H-B-y0,'q3','수축 (줄고 · 나빠짐)','start',L+6,H-B-6],[L,T,x0-L,y0-T,'q2','회복 (줄지만 · 나아짐)','start',L+6,T+13]].forEach(([x,y,w,h,c,t,a,tx,ty])=>{
+    svg.appendChild(svgEl('rect',{x,y,width:Math.max(0,w),height:Math.max(0,h),class:'qd '+c}));
+    const tt=svgEl('text',{x:tx,y:ty,'text-anchor':a,class:'ql'}); tt.textContent=t; svg.appendChild(tt);
+    const lw=tw(t); placed.push([a==='end'?tx-lw:tx,ty,lw]); });
+  // '유지' 띠(가속 ±3%p)와 '정체' 띠(속도 ±2%)
+  svg.appendChild(svgEl('rect',{x:L,y:Y(3),width:W-L-R,height:Math.max(1,Y(-3)-Y(3)),class:'band'}));
+  svg.appendChild(svgEl('rect',{x:X(-2),y:Y(3),width:Math.max(1,X(2)-X(-2)),height:Math.max(1,Y(-3)-Y(3)),class:'band2'}));
+  svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y0,y2:y0,class:'ax0'})); svg.appendChild(svgEl('line',{x1:x0,x2:x0,y1:T,y2:H-B,class:'ax0'}));
+  const pf=(v,u)=>(v>0?'+':v<0?'−':'')+Math.abs(v)+u;
+  [-xm,-xm/2,xm/2,xm].forEach(v=>{ const t=svgEl('text',{x:X(v),y:H-B+13,'text-anchor':v===-xm?'start':v===xm?'end':'middle',class:'tk'}); t.textContent=(v===xm?'≥':v===-xm?'≤':'')+pf(v,'%'); svg.appendChild(t); });
+  [ym,ym/2,3,-3,-ym/2,-ym].forEach(v=>{ const t=svgEl('text',{x:L-4,y:Y(v)+3,'text-anchor':'end',class:'tk'}); t.textContent=pf(v,'%p'); svg.appendChild(t); });
+  const xl=svgEl('text',{x:W-R,y:H-4,'text-anchor':'end',class:'tl'}); xl.textContent='속도 → 최근 2분기 매출 증가율(전년 대비)'; svg.appendChild(xl);
+  const yl=svgEl('text',{x:4,y:10,'text-anchor':'start',class:'tl'}); yl.textContent='↑ 가속 = 앞 2분기보다 빨라진 정도'; svg.appendChild(yl);
+  // 궤적(한 섹터)
+  pts.forEach(p=>{
+    if(!(p.trail&&p.trail.length>1)) return;
+    let d=''; p.trail.forEach((t,i)=>{ d+=(i?'L':'M')+X(t.speed).toFixed(1)+','+Y(t.accel).toFixed(1); });
+    svg.appendChild(svgEl('path',{d,class:'trail'}));
+    p.trail.slice(0,-1).forEach(t=>svg.appendChild(tip(svgEl('circle',{cx:X(t.speed),cy:Y(t.accel),r:2.8,class:'tp'}),qQs(t.q)+' 속도 '+grP(t.speed)+' · 가속 '+grPp(t.accel))));
+    p.trail.forEach((t,i)=>{ if(i%2&&i!==p.trail.length-1) return; const ft=svgEl('text',{x:X(t.speed)+4,y:Y(t.accel)-5,class:'tq'}); ft.textContent=qQs(t.q); svg.appendChild(ft); });
+  });
+  // 점과 이름 — 이름은 겹치지 않는 자리를 찾아 둔다(오른쪽 → 왼쪽 → 위 → 아래 …)
+  const fits=(x,y,w)=>x>=L-2&&x+w<=W-R+2&&y-10>=T-4&&y<=H-B+2&&!placed.some(b=>x<b[0]+b[2]&&x+w>b[0]&&y-10<b[1]&&y>b[1]-10);
+  [...pts].filter(p=>p.speed!=null&&p.accel!=null).sort((a,b)=>Math.abs(b.speed)-Math.abs(a.speed)).forEach(p=>{
+    const cx=X(p.speed), cy=Y(p.accel), o2=out(p.speed,p.accel);
+    const c=svgEl('circle',{cx,cy,r:p.trail?5.5:4.5,class:'pt '+((GR_PHASE[p.label]||[''])[0])+(o2?' out':'')});
+    tip(c,(p.name?p.name+' · ':'')+p.label+' — '+grPhaseTip(p)); svg.appendChild(c);
+    placed.push([cx-5,cy+5,10]);
+    if(!p.name) return;
+    const txt=p.name+(o2?' ▸ '+grP(p.speed,0)+' · '+grPp(p.accel):'');
+    const w=tw(txt);
+    const cand=[[7,4,0],[-7-w,4,0],[-w/2,-8,0],[-w/2,16,0],[7,-6,0],[7,14,0],[-7-w,-6,0],[-7-w,14,0],[7,-16,0],[-w/2,-18,0]];
+    for(let k=1;k<=10;k++) cand.push([cx>W/2?-7-w:7, 4+12*k], [cx>W/2?-7-w:7, 4-12*k]);   // 못 찾으면 위아래로 한 줄씩 비켜 본다
+    let pos=cand.find(([dx,dy])=>fits(cx+dx,cy+dy,w))||cand[o2&&cx>W/2?1:0];
+    const x=Math.max(L,Math.min(W-R-w,cx+pos[0])), y=cy+pos[1];
+    placed.push([x,y,w]);
+    const t=svgEl('text',{x,y,class:'pn'+(o2?' out':'')}); t.textContent=txt; svg.appendChild(t);
+  });
+  return svg;
+}
 const grJo=v=>v==null?'—':Math.abs(v)>=1e14?Math.round(v/1e12).toLocaleString('ko-KR')+'조':Math.abs(v)>=1e12?(v/1e12).toFixed(1)+'조':Math.round(v/1e8).toLocaleString('ko-KR')+'억';
 const grUsd=v=>v==null?'—':Math.abs(v)>=1e12?(v/1e12).toFixed(2)+'조$':Math.abs(v)>=1e8?Math.round(v/1e8).toLocaleString('ko-KR')+'억$':(v/1e6).toFixed(0)+'백만$';
 const grP=(v,d)=>v==null||!isFinite(v)?'—':(v>=0?'+':'−')+Math.abs(v).toFixed(d==null?1:d)+'%';
@@ -4313,6 +4398,16 @@ async function viewGrowth(p, force){
     ' · 생산(KOSIS) '+ym(A.kosis)+' · 가격(한국은행) '+ym(A.ecos)+' · 수출(관세청) '+ym(A.customs)+' · 외부 숫자 확인 '+(A.ext||'—')+
     (d.at?' · 계산 '+new Date(d.at*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'')));
   if((d.macro||[]).length){ const m=el('div','grMacro'); d.macro.slice(0,6).forEach(x=>{ const s=el('span',null,x.metric+' '+(x.year||'')+' '+grVal(x.value,x.unit)+(x.growth_pct!=null&&!/^%/.test(x.unit||'')?' ('+grP(x.growth_pct)+')':'')); s.title=(x.source||'')+(x.published?' · '+x.published:''); m.appendChild(s); }); body.appendChild(m); }
+  // 업황 시계 — 20개 섹터가 지금 어디에(가로 = 매출 속도, 세로 = 가속). 접어 둘 수 있다
+  const ck=el('details','grClockBox'); ck.open=!S.grClockClosed; ck.addEventListener('toggle',()=>{ S.grClockClosed=!ck.open; });
+  ck.appendChild(el('summary',null,'업황 시계 — 섹터가 지금 어디에 있나'));
+  const lg=el('div','grPhLeg');
+  lg.appendChild(el('div',null,'판정 기준 — 속도 = 최근 2분기 상장사 매출 증가율(같은 회사 · 같은 구조, 전년 같은 분기 대비)의 평균, 가속 = 그 속도 − 바로 앞 2분기 평균. 가속이 ±3%p 안이면 \'유지\'(속도도 ±2% 안이면 \'정체\')로 본다. 한 분기 출렁임에 라벨이 뒤집히지 않게 2분기씩 묶었다.'));
+  const lgl=el('div','grPhList'); Object.entries(GR_PHASE).forEach(([k,[c,t]])=>{ const x=el('span'); x.appendChild(el('span','grPh '+c,k)); x.appendChild(document.createTextNode(' '+t)); lgl.appendChild(x); }); lg.appendChild(lgl);
+  ck.appendChild(lg);
+  ck.appendChild(grClock(secs.filter(s=>s.phase).map(s=>Object.assign({name:s.key},s.phase,{trail:null}))));
+  ck.appendChild(el('div','grAsOf','점에 마우스를 올리면 그 섹터의 숫자. 오른쪽 위로 갈수록 빨리 크고 더 빨라지는 중, 오른쪽 아래는 크지만 느려지는 중(꼭지 신호), 왼쪽 위는 줄지만 바닥을 다지는 중. 축은 대부분의 섹터가 들어오는 범위로 잡았다 — 그 밖의 섹터(예: 반도체)는 가장자리에 굵은 테두리로 두고 이름 옆에 실제 값을 적었다. 가운데 회색 띠 = 가속 ±3%p(유지), 진한 칸 = 속도 ±2%(정체). 섹터를 펼치면 최근 8분기 궤적이 보인다.'));
+  body.appendChild(ck);
   // 정렬 — 위 단추(자주 쓰는 넷)와 표 머리글이 같은 상태(S.grSort = {k, dir})를 쓴다
   if(!S.grSort||typeof S.grSort!=='object') S.grSort={k:'cap',dir:'desc'};
   S.grOpen=S.grOpen||new Set();
@@ -4334,7 +4429,7 @@ async function viewGrowth(p, force){
     '섞인 회사는 부문으로 나눴다 — 삼성전자(DS → 반도체, SDC → 디스플레이, DX · Harman → 가전·IT기기), SK이노베이션(석유 · 화학 · 윤활유 → 정유 — 2024년부터 한 부문으로 공시, 배터리 → 2차전지), LG화학(석유화학 · 첨단소재(2021~) · 생명과학), 한화솔루션(케미칼 · 기초 · 가공소재), POSCO홀딩스(철강), HD현대(정유), 현대차(차량 — 금융 제외), KT(통신 — BC카드 금융 제외), 삼성물산(건설), 현대글로비스(해운), 풍산(방산), 현대로템(디펜스), LG생활건강(Beauty → 화장품, 음료 → 음식료), SKC(화학 · 2차전지 소재). 부문 매출은 부문 간 내부거래를 포함할 수 있다(삼성전자). 부문 시총은 자회사 지분 가치를 뺀 뒤 최근 4분기 부문 영업이익(플러스) 비중으로 나눈 근사다.',
     '값 매기기(PER · PSR) — 부문 회사(순이익을 부문으로 나눌 수 없다)와 자기 몫 시총이 0 인 지주는 빼고, 남은 회사의 시총 ÷ 최근 4분기 순이익(지분법 관계회사 몫은 뺌) · 매출로 낸다. 영업이익 PER = 시총 ÷ (영업이익 × 0.76) — 일회성 금융손익에 덜 흔들린다. 시가총액은 보통주만(우선주 제외).',
     '증가율은 같은 회사 · 같은 자회사 구조로 잰다 — 두 기간 모두 숫자가 있는 회사만 넣고, 분할 · 설립 첫해와 연결/별도가 바뀐 해는 뺀다. 그래서 수준(조 원)의 변화와 증가율이 다를 수 있다(새로 상장한 회사는 수준에만 들어간다). 매출 지수(2015=100)는 이 증가율을 이어 붙인 것.',
-    '업황 단계 — 최근 분기 매출 증가율(같은 표본)과 앞 두 분기 평균의 차: 확장(+, 빨라짐) · 둔화(+, 느려짐) · 회복(−, 나아짐) · 수축(−, 나빠짐).',
+    '업황 단계(업황 시계) — 속도 = 최근 2분기 매출 증가율(같은 표본) 평균, 가속 = 속도 − 그 앞 2분기 평균. 속도 + 이면서 가속 +3%p↑ 확장 가속 · ±3%p 안 확장 유지 · −3%p↓ 둔화, 속도 − 이면서 가속 +3%p↑ 회복 · ±3%p 안 부진 지속 · −3%p↓ 수축 심화. 속도가 ±2% 안이고 가속도 ±3%p 안이면 정체. 매출만 본다(이익 · 생산 · 수출은 옆 칸).',
     '생산 = 통계청 광공업생산지수(업종, 원지수) · 가동률지수, 수출물가 · 수출물량 = 한국은행(원화 기준), 수출 = 관세청 품목(HS)별 전국 통관(달러, 섹터 품목 합), BSI = 한국은행 기업경기조사 매출 전망. 세계 시장 · 한국 점유율 · 기관 전망은 출처 원문에서 숫자를 확인한 것만 실었다(산업_외부자료.json).',
     '상장사 매출 합은 시장 규모가 아니다 — 비상장사(삼성디스플레이는 삼성전자 SDC 부문으로 들어간다 · GS칼텍스 · SK온은 SK이노베이션 부문)와 해외 생산 · 매출이 섞이고 빠진다. 시장 규모는 세계 시장 · 한국 수출 · 산업연구원 생산액을 함께 본다.',
   ].forEach(t=>det.appendChild(el('p',null,t)));
@@ -4383,7 +4478,8 @@ function grSummary(rows, d, resort){
   rows.forEach(s=>{
     const tr=el('tr','dipRow'+(S.grOpen.has(s.key)?' open':'')); const T=s.ttm||{}, sg={}; (s.signals||[]).forEach(x=>sg[x.k]=x);
     const nm=el('td','nm'); nm.appendChild(el('b',null,s.key));
-    if(s.phase){ const ph=GR_PHASE[s.phase.label]||['','']; const c=el('span','grPh '+ph[0],s.phase.label); c.title=ph[1]+' — 최근 분기 '+grP(s.phase.g)+' · 앞 두 분기 대비 '+grPp(s.phase.dg); nm.appendChild(c); }
+    if(s.phase){ const ph=GR_PHASE[s.phase.label]||['','']; const c=el('span','grPh '+ph[0],s.phase.label); c.title=grPhaseTip(s.phase); nm.appendChild(c);
+      const why=el('small','grPhWhy','매출 속도 '+grP(s.phase.speed)+' ← 앞 '+grP(s.phase.prev)+' ('+grPp(s.phase.accel)+')'); why.title=c.title; nm.appendChild(why); }
     nm.appendChild(el('small',null,s.desc)); tr.appendChild(nm);
     const td=(main,sub,cls,tl)=>{ const c=el('td','num'+(cls?' '+cls:'')); c.appendChild(document.createTextNode(main)); if(sub!=null) c.appendChild(el('small',null,sub)); if(tl) c.title=tl; tr.appendChild(c); };
     const Cp=s.cap||{}; td(grJo(Cp.adj),Cp.ret1y!=null?'1년 '+grP(Cp.ret1y,0):'', '', '상장사 '+(Cp.n||0)+'곳 · 상위 3곳 '+(Cp.top3!=null?Math.round(Cp.top3)+'%':'—')+(s.val&&s.val.per?' · PER '+s.val.per:''));
@@ -4422,6 +4518,12 @@ function grDetail(s, d){
   const V=s.val||{}, Cp=s.cap||{}; card('시가총액(자회사 지분 뺌)',grJo(Cp.adj),'1년 '+grP(Cp.ret1y,0)+' · 상위 3곳 '+(Cp.top3!=null?Math.round(Cp.top3)+'%':'—')+(V.per?' · PER '+V.per+'배':'')+(V.per_op?' · 영업이익 PER '+V.per_op+'배':'')+(V.psr?' · PSR '+V.psr+'배':'')+(V.n?' (값 매기기 '+V.n+'곳, 시총의 '+V.cov+'%'+((V.seg_out||[]).length?' — 부문 회사 '+V.seg_out.join(' · ')+' 제외':'')+')':''));
   if(s.backlog) card('수주잔고(상장사)',grJo(s.backlog.value),(s.backlog.years!=null?'최근 4분기 매출의 '+s.backlog.years+'년치':'')+(s.backlog.yoy!=null?' · 1년 전보다 '+grP(s.backlog.yoy):'')+' · '+s.backlog.n+'곳');
   box.appendChild(cards);
+  // 1-2) 업황 시계 — 이 섹터의 최근 8분기 궤적
+  if(s.phase&&(s.phase.trail||[]).length){ const P=s.phase, ph=GR_PHASE[P.label]||['',''];
+    box.appendChild(el('h4',null,'업황 시계 — '+P.label)); box.lastChild.appendChild(el('span',null,ph[1]));
+    box.appendChild(el('div','grDrv','지금 속도 '+grP(P.speed)+'(최근 2분기 '+(P.qs||[]).map(qQs).join(' · ')+' 매출 증가율 평균) ← 앞 2분기 '+grP(P.prev)+'('+(P.prev_qs||[]).map(qQs).join(' · ')+') → 가속 '+grPp(P.accel)+
+      '. 가속이 ±3%p 안이면 유지, 그 밖이면 가속 · 둔화로 본다. 아래 선은 분기마다 같은 계산을 이어 그린 궤적(옅은 점 = 지난 분기, 진한 점 = 지금).'));
+    box.appendChild(grClock([Object.assign({},P,{name:null})],{H:240})); }
   // 2) 성장률 추이와 전망 표
   box.appendChild(el('h4',null,'성장률 추이와 전망')); box.lastChild.appendChild(el('span',null,'증가율 = 같은 회사 · 같은 구조 표본. 회색 = 최근, 초록 = 전망(출처는 칸에 마우스)'));
   box.appendChild(grTrendTable(s,d));

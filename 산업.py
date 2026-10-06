@@ -459,6 +459,43 @@ def _q_of_month(k):
     return "%sQ%d" % (k[:4], (int(k[4:]) - 1) // 3 + 1)
 
 
+# ---------------------------------------------------------------- 업황 시계
+PHASE_BAND = 3.0      # %p — 속도 변화가 이 안이면 '유지'
+PHASE_FLAT = 2.0      # % — 속도가 이 안이고 가속도 '유지'면 '정체'(늘지도 줄지도 않음)
+# 라벨 — (속도 > 0 여부, 가속 구간) → 이름. 화면 범례와 같다
+PHASE_NAME = {(True, 1): "확장 가속", (True, 0): "확장 유지", (True, -1): "둔화",
+              (False, 1): "회복", (False, 0): "부진 지속", (False, -1): "수축 심화"}
+
+
+def _phase(qrows):
+    """분기 행(rev_yoy = 같은 표본 전년 대비) → {label, speed, prev, accel, qs, prev_qs, trail}.
+    speed = 최근 2분기 증가율 평균, prev = 그 앞 2분기 평균, accel = speed − prev. trail = 분기마다 같은 계산(최근 8개)."""
+    ys = [(r["q"], r.get("rev_yoy")) for r in qrows]
+
+    def at(i):
+        if i < 3 or ys[i][1] is None or ys[i - 1][1] is None or ys[i - 2][1] is None or ys[i - 3][1] is None:
+            return None
+        sp = (ys[i][1] + ys[i - 1][1]) / 2
+        pv = (ys[i - 2][1] + ys[i - 3][1]) / 2
+        return sp, pv, sp - pv
+
+    trail = []
+    for i in range(max(0, len(ys) - 8), len(ys)):
+        v = at(i)
+        if v:
+            trail.append({"q": ys[i][0], "speed": _r1(v[0]), "accel": _r1(v[2])})
+    v = at(len(ys) - 1)
+    if not v:
+        return None
+    sp, pv, ac = v
+    band = 1 if ac >= PHASE_BAND else -1 if ac <= -PHASE_BAND else 0
+    n = len(ys)
+    label = "정체" if band == 0 and abs(sp) < PHASE_FLAT else PHASE_NAME[(sp > 0, band)]
+    return {"label": label, "speed": _r1(sp), "prev": _r1(pv), "accel": _r1(ac), "band": PHASE_BAND,
+            "qs": [ys[n - 2][0], ys[n - 1][0]], "prev_qs": [ys[n - 4][0], ys[n - 3][0]], "trail": trail,
+            "g": _r1(ys[-1][1]), "dg": _r1(ac)}
+
+
 # ---------------------------------------------------------------- 섹터 하나
 def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
     codes = sorted(mem.get(key) or [])
@@ -510,12 +547,9 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
     gh = _growth(P, codes, key, h_now, [_qprev(q) for q in h_now]) if h_now else None
     ytd = {"qs": h_now, "rev_g": _r1((gh or {}).get("rev_g")), "op_g": _r1((gh or {}).get("op_g")), "op_turn": (gh or {}).get("op_turn")}
 
-    # 업황 단계 — 최근 분기 매출 증가율(같은 표본)과 그 앞 두 분기 평균의 차
-    qq = [r["rev_yoy"] for r in qrows[-3:]]
-    phase = None
-    if qq and qq[-1] is not None and all(v is not None for v in qq[:-1]):
-        gq, dg = qq[-1], qq[-1] - sum(qq[:-1]) / len(qq[:-1])
-        phase = {"label": ("확장" if dg >= 0 else "둔화") if gq >= 0 else ("회복" if dg >= 0 else "수축"), "g": _r1(gq), "dg": _r1(dg)}
+    # 업황 단계(업황 시계) — 속도 = 최근 2분기 매출 증가율(같은 표본) 평균, 가속 = 그 속도 − 바로 앞 2분기 평균.
+    # 한 분기 출렁임에 라벨이 뒤집히지 않게 2분기씩 묶고, 가속이 ±PHASE_BAND %p 안이면 '유지'로 본다.
+    phase = _phase(qrows)
 
     # 2) 생산 · 가동 · 재고 · 가격 · 수출 · BSI · 부가가치
     kos = ST.get("kosis") or {}
