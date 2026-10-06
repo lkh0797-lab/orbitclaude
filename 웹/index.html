@@ -2172,18 +2172,68 @@ table.tbl td.num{font:12px/1.5 var(--mono);text-align:right}
 .askplate .spHead p{max-width:64em}
 .askplate .spHead p.spEn{margin-top:4px;font:italic 400 12.5px/1.5 var(--f-body);color:var(--p-faint)}
 .askSpot{margin-top:18px}
-.v2Chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-.v2Chip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);cursor:pointer;text-align:left}
-.v2Chip b{font:600 12px var(--sans);color:var(--ink)}.v2Chip span{font:500 10.5px var(--mono);color:var(--faint)}
-.v2Chip.good.ok{border-color:var(--add)}.v2Chip.good.ok span{color:var(--add)}
-.v2Chip.bad b{color:var(--del)}.v2Chip.on{background:var(--accent-soft);border-color:var(--accent)}
-.v2All{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--dim);margin:2px 0 10px}
-.v2Note{font-size:11.5px;color:var(--dim);margin-top:6px;line-height:1.55}
-.v2Sig{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-.v2Sig span{font:500 10.5px var(--sans);padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--dim)}
-.v2Sig span.g.ok{border-color:var(--add);color:var(--add)}.v2Sig span.b{border-color:var(--del);color:var(--del)}.v2Sig span.i{border-style:dashed;color:var(--faint)}
-.v2Lead{font-size:12.5px;color:var(--ink);line-height:1.6;padding:8px 12px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:4px;margin:6px 0}
-.v2Chip.info b{color:var(--dim)}
+/* ---------- 저평가V2 — 차트 셋업 스크리너 (2026-10-07) ---------- */
+.csHead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.csHead h3{margin:0 0 4px;font-size:19px;letter-spacing:-.01em}
+.csHead p{margin:0;font-size:12.5px;color:var(--dim);line-height:1.6;max-width:64em}
+.csMeta{display:flex;align-items:center;gap:10px;font:500 11.5px var(--mono);color:var(--faint);white-space:nowrap}
+.csRail{position:relative;margin:4px 0 14px}
+.csTrack{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x proximity;scroll-padding-inline:30px;padding:2px 30px 6px;scrollbar-width:none}
+.csTrack::-webkit-scrollbar{display:none}
+.csCard{flex:0 0 238px;scroll-snap-align:start;display:flex;flex-direction:column;gap:5px;text-align:left;cursor:pointer;
+  padding:11px 14px 10px;border-radius:11px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;
+  transition:border-color .15s,background .15s,transform .15s,box-shadow .15s}
+.csCard:hover{border-color:var(--accent);transform:translateY(-1px)}
+.csCard.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
+.csCard .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.csCard .t b{font-size:14px;font-weight:700}
+.csCard .t span{font:600 12px var(--mono);color:var(--ink);white-space:nowrap}
+.csCard.zero .t span{color:var(--faint)}
+.csCard .ds{font-size:11.8px;line-height:1.45;color:var(--dim);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.9em}
+.csCard .vd{font:500 10.5px var(--mono);color:var(--faint);border-top:1px dashed var(--line);padding-top:5px}
+.csCard .vd.ok{color:var(--add)}.csCard .vd.weak{color:var(--del)}
+.csNav{position:absolute;top:0;bottom:6px;width:26px;border:0;cursor:pointer;font-size:20px;line-height:1;color:var(--dim);z-index:1}
+.csNav.l{left:0;background:linear-gradient(90deg,var(--bg) 55%,transparent)}.csNav.r{right:0;background:linear-gradient(270deg,var(--bg) 55%,transparent)}
+.csNav:hover{color:var(--accent)}
+.csBar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 8px}
+.csBar .lt{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.csBar .lt b{font-size:14.5px}.csBar .lt .n{font:600 12.5px var(--mono);color:var(--ink)}
+.csBar .lt .src{font-size:11px;color:var(--faint);padding:1px 7px;border:1px solid var(--line);border-radius:99px}
+.csBar .lt .inf{font-size:11.5px;color:var(--accent);cursor:help}
+.csBar .rt{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.csSeg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.csSeg button{border:0;border-right:1px solid var(--line);background:var(--panel);color:var(--dim);font:500 12px var(--sans);padding:5px 11px;cursor:pointer}
+.csSeg button:last-child{border-right:0}.csSeg button.on{background:var(--accent);color:var(--accent-ink)}
+.csWarn{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--dim);cursor:pointer}
+table.csTbl th{cursor:pointer;white-space:normal;line-height:1.25;vertical-align:bottom;user-select:none;text-transform:none;letter-spacing:0;font-size:11.5px;min-width:44px}
+table.csTbl th.r{text-align:right}
+table.csTbl th .so{font-style:normal;margin-left:3px;color:var(--line);font-size:10.5px}
+table.csTbl th .so.on{color:var(--accent)}
+table.csTbl th:hover .so{color:var(--dim)}
+table.csTbl{word-break:keep-all}
+table.csTbl td{vertical-align:middle;padding:6px 7px}
+table.csTbl td.num{white-space:nowrap}
+table.csTbl th{padding:6px 7px}
+table.csTbl td.nm{min-width:150px}
+table.csTbl td.nm .l1{display:flex;align-items:center;gap:5px;white-space:nowrap}
+table.csTbl td.nm .wn{font-size:11px;color:var(--del);cursor:help}
+table.csTbl .v2Spark{width:112px;height:38px}
+table.csTbl td.nm a{font-weight:700;color:var(--ink);text-decoration:none}
+table.csTbl td.nm a:hover{color:var(--accent)}
+table.csTbl td.nm small{display:block;font:11px var(--mono);color:var(--faint)}
+table.csTbl td.ind{font-size:12px;color:var(--dim);max-width:104px}
+table.csTbl .tier{font:600 10px var(--sans);padding:0 5px;border-radius:4px}
+table.csTbl .tier.v{color:var(--add);background:var(--add-bg)}
+table.csTbl .tier.w{color:var(--dim);background:var(--line2)}
+table.csTbl .ot{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+table.csTbl .ot span{font-size:10px;color:var(--accent);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+table.csTbl td.num.hi{font-weight:700}
+table.csTbl td.num.up{color:#d24c43}table.csTbl td.num.dn{color:#3a6fd8}
+table.csTbl td.emptyRow{color:var(--faint);text-align:center;padding:26px 0}
+.csPage{display:flex;justify-content:center;align-items:center;gap:10px;margin:10px 0;font:12px var(--mono);color:var(--dim)}
+.csPage button{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:2px 10px;cursor:pointer;color:var(--ink)}
+.csPage button:disabled{opacity:.35;cursor:default}
+.csDefs{margin-top:10px;font-size:12px;line-height:1.6;color:var(--dim)}.csDefs p{margin:0 0 6px}.csDefs b{color:var(--ink);margin-right:2px}
 .v2Spark{width:150px;height:46px;display:block}
 .v2SpTd{cursor:zoom-in}.v2SpTd:hover .v2Spark{outline:1px solid var(--accent);outline-offset:2px;border-radius:3px}
 .expPop.v2Pop{width:min(940px,100%)}
@@ -2193,8 +2243,11 @@ table.tbl td.num{font:12px/1.5 var(--mono);text-align:right}
 .v2Big .gr{stroke:var(--line2);stroke-width:1}.v2Big .ax{font:10px var(--mono);fill:var(--faint)}
 .v2Big .wu{stroke:#d24c43;stroke-width:1}.v2Big .wd{stroke:#3a6fd8;stroke-width:1}.v2Big .cu{fill:#d24c43}.v2Big .cd{fill:#3a6fd8}
 .v2Big .vu{fill:rgba(210,76,67,.38)}.v2Big .vd{fill:rgba(58,111,216,.38)}.v2Big .spk{opacity:1;fill:#e09a2b}.v2Big .spd{fill:#e09a2b}
-.v2Big .m5{fill:none;stroke:#9a9a9a;stroke-width:1}.v2Big .m20{fill:none;stroke:#e09a2b;stroke-width:1.4}
-.v2Big .m60{fill:none;stroke:#2e9e6e;stroke-width:1.4}.v2Big .m120{fill:none;stroke:#8a5cd0;stroke-width:1.4}
+.v2Big .m20{fill:none;stroke:#e09a2b;stroke-width:1.2}.v2Big .m50{fill:none;stroke:#2e9e6e;stroke-width:1.5}
+.v2Big .m150{fill:none;stroke:#8a5cd0;stroke-width:1.5}.v2Big .m200{fill:none;stroke:#7a7a7a;stroke-width:1.5;stroke-dasharray:5 3}
+.v2Big .pv{stroke:#c08a1e;stroke-width:1.4;stroke-dasharray:6 3}.v2Big .pvt{font:700 10.5px var(--mono);fill:#c08a1e}
+.v2Big .pp{fill:#c08a1e;stroke:var(--panel);stroke-width:1.2}.v2Big .ppt{font:600 10.5px var(--sans);fill:#c08a1e;paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+.v2Big .zz{fill:none;stroke:#c08a1e;stroke-width:1.2;opacity:.75}
 .v2Big .hl{stroke:var(--faint);stroke-dasharray:4 3;stroke-width:1}.v2Big .hlt{font:10px var(--sans);fill:var(--faint)}
 .v2Big .gc{font-size:11px;fill:#d24c43}.v2Big .dc{font-size:11px;fill:#3a6fd8}
 .v2Big .now{stroke:var(--ink);stroke-dasharray:2 2;stroke-width:.8;opacity:.5}.v2Big .nowt{font:600 10.5px var(--mono);fill:var(--ink)}
@@ -2203,8 +2256,8 @@ table.tbl td.num{font:12px/1.5 var(--mono);text-align:right}
 .spTip.v2Tip div{display:grid;grid-template-columns:auto 1fr;gap:12px;line-height:1.6;margin:0}
 .spTip.v2Tip div span{display:inline;color:rgba(236,234,228,.62);font-size:11.5px}.spTip.v2Tip div em{display:inline;margin:0;text-align:right;font-style:normal;font-family:var(--mono);color:#eceae4;font-size:11.5px}
 .v2Key{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--dim);margin-top:6px}.v2Key i{display:inline-block;width:16px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
-.v2Key .k5{border-color:#9a9a9a}.v2Key .k20{border-color:#e09a2b}.v2Key .k60{border-color:#2e9e6e}.v2Key .k120{border-color:#8a5cd0}.v2Key .hl{border-top:1px dashed var(--faint)}
-.v2Key .sp{color:#e09a2b;margin-right:3px}.v2Key .gc{color:#d24c43;margin-right:3px}.v2Key .dc{color:#3a6fd8;margin-right:3px}.v2Spark .pl{fill:none;stroke:var(--accent);stroke-width:1.3}.v2Spark .vb{fill:var(--faint);opacity:.55}
+.v2Key .k20{border-color:#e09a2b}.v2Key .k50{border-color:#2e9e6e}.v2Key .k150{border-color:#8a5cd0}.v2Key .k200{border-color:#7a7a7a;border-top-style:dashed}.v2Key .pv{border-color:#c08a1e;border-top-style:dashed}.v2Key .pp{color:#c08a1e;margin-right:3px}.v2Key .hl{border-top:1px dashed var(--faint)}
+.v2Key .sp{color:#e09a2b;margin-right:3px}.v2Key .gc{color:#d24c43;margin-right:3px}.v2Key .dc{color:#3a6fd8;margin-right:3px}.v2Spark .pl{fill:none;stroke:var(--accent);stroke-width:1.3}.v2Spark.up .pl{stroke:#d24c43}.v2Spark.dn .pl{stroke:#3a6fd8}.v2Spark .vb{fill:var(--faint);opacity:.55}
 .askMatL{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .askMatI{display:grid;grid-template-columns:46px minmax(0,1fr);gap:12px;align-items:start;padding:10px 14px;border-radius:10px;cursor:pointer;
   border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);transition:background .15s,border-color .15s}
@@ -4657,180 +4710,341 @@ function grMembers(s){
   const w=el('div','grWrap'); w.appendChild(t); return w;
 }
 
-// ---------------------------------------------------------- 저평가V2 — 저평가 종목 가운데 차트로 유리한 자리(/api/value2 · 기술.py)
-const V2_DEF={
-  box_spike:'최근 20봉 안에 60봉 평균의 3배 넘는 양봉. 그 앞 60봉은 고저 30% 안 박스였고 박스 바닥이 52주 저점 15% 안. 지금 종가가 그 양봉 시가 위',
-  cap_tail:'최근 60봉 안, 거래량 3배 · 저가가 52주 저점 5% 안 · 종가가 그날 고저의 위 40% 안(아래꼬리) · 그 뒤 그 저가를 안 깼다',
-  dry_box:'20일 평균 거래량이 120일 평균의 60% 아래 · 최근 20봉 고저 15% 안 — 팔 사람이 말랐다',
-  ma20_back:'종가가 20일선 위 · 최근 5봉 안에 20일선 아래였던 날이 있다 · 20일선이 5봉 전보다 내려가지 않았다',
-  golden:'20일선이 60일선 위, 10봉 전엔 아래',
-  aligned:'종가 > 5일선 > 20일선 > 60일선',
-  higher_low:'최근 20봉 저점이 그 앞 60봉 저점보다 2%↑ 높고, 그 앞 저점은 52주 저점 10% 안',
-  above120:'종가가 120일선 위 · 120일선이 20봉 전보다 오르는 중',
-  top_dump:'최근 120봉 안, 거래량 3배 · 52주 고점 10% 안 · 음봉이거나 윗꼬리가 고저의 절반↑',
-  down_aligned:'종가 < 20일 < 60일 < 120일, 20일선이 내려가는 중',
-  thin:'최근 20일 평균 거래대금이 하루 3억 원 미만 — 참고(과거엔 오히려 더 올랐다. 드나들기 어려운 것은 사실)'};
+// ---------------------------------------------------------- 저평가V2 — 차트 셋업 스크리너(/api/value2 · 기술.py setup · PRESETS)
+// 셋업 카드(누르면 그 셋업 표) · 범위(전 종목 / 저평가 후보 / 저평가 등급) · 셋업마다 다른 열 · 머리 눌러 정렬 · 작은 차트 → 큰 차트(패턴 점 · 피봇 선).
+const V3_DEF={
+  cup:'앞선 상승 30%↑ → 왼쪽 고점 → 12~35% 조정(U자: 내려가고 올라오는 데 각 10봉↑, 바닥 근처 4봉↑) → 오른쪽이 왼쪽 고점의 85~115% 회복(컵 7~65주) → 손잡이 1~8주 · 깊이 15% 안 · 컵 위쪽 절반. 피봇 = 손잡이 고점, 지금 종가가 피봇 −10%~+5%.',
+  vcp:'최근 6달 안 고점에서 시작한 바닥에서 흔들림(5% 되돌림으로 나눈 고점→저점 폭) 2~6번, 앞보다 커지지 않고 첫 흔들림 8~40% · 마지막 10% 안 · 첫 흔들림의 60% 이하 · 저점은 높아짐 · 최근 10봉 거래량이 50봉 평균의 85% 이하. 추세 템플릿 통과 · RS 70↑. 피봇 = 마지막 흔들림이 시작한 고점, 종가가 피봇 −7%~+5%.',
+  pull:'3~30봉 전 52주 신고가(앞 60봉 저점보다 25%↑ 급등 뒤) · 지금 고점에서 4~15% 쉼 · 종가가 20일선이나 50일선 3% 안(50일선 −3% 아래로는 안 깸) · 고점 뒤 거래량이 그 전 50봉 평균의 90% 이하 · RS 80↑.',
+  brk:'최근 3봉 안 종가가 앞 60봉 고점을 넘고 그날 거래량이 50봉 평균의 1.5배↑. 박스는 고저 35% 안 · 박스 고점이 52주 고점의 85%↑. 지금 종가가 돌파가 −2%~+7% · RS 70↑.',
+  flat:'20% 넘게 오른 뒤 5~13주 동안 고저 15% 안에서 쉼 · 바닥 고점이 52주 고점의 85%↑ · 지금 종가가 바닥 고점(피봇) −5% 안.',
+  tt:'미너비니 추세 템플릿 — 종가 > 150·200일선 · 150일선 > 200일선 · 200일선 한 달 넘게 오름 · 50일선 > 150·200일선 · 종가 > 50일선 · 52주 저점 +30%↑ · 52주 고점 −25% 안 · RS 70↑.',
+  stage2:'와인스타인 1→2단계 — 최근 10봉 안 30주선(150일)을 위로 뚫고 지금도 위 · 그 앞 6달은 절반 넘게 30주선 아래 · 고저 60% 안 옆걸음 · 30주선이 20봉 전보다 1% 넘게 내려가지 않음 · 돌파 뒤 하루 거래량 50봉 평균 2배↑ · 종가가 그 앞 석 달 종가 고점 위.',
+  absorb:'최근 60봉 안, 거래량이 60봉 평균의 3배↑ · 그날 저가가 52주 저점 5% 안 · 종가가 그날 고저의 위 40% 안(긴 아래꼬리) · 그 뒤 그 저가를 안 깼다. 저평가V2 첫 판에서 6개월 검증을 통과한 신호.',
+  earn:'마지막 확정 분기 EPS 가 전년 같은 분기보다 25%↑(기준 EPS 흑자) · RS 80↑ · 종가 > 50일선. EPS 는 DART 분기보고서(4분기 = 연간 − 3분기 누적). 증권사 예상치는 쓰지 않는다.',
+  tp:'최근 30일 안 증권사가 목표가를 올린 리포트(텔레그램 리서치 채널) · 그 리포트 날부터 주가 +5% 이하 · 새 목표가까지 15%↑ 남음. 리포트가 2025-10 부터만 있어 과거 검증은 못 했다.',
+  accum:'최근 50봉 오른 날 거래량 ÷ 내린 날 거래량 1.3↑ · OBV 가 60봉 고점을 새로 씀 · 종가는 60봉 종가 고점보다 3%↑ 아래(거래량이 먼저) · 최근 20봉 고저 15% 안 · 종가 > 50일선. 기관·외국인 수급 자료가 없어 거래량 흔적만 본다.',
+  ipo:'상장 3년 안(시세 첫날이 2010-01 수집 시작보다 뒤) · 상장 20봉↑ · 상장 뒤 첫날 시가에서 15% 넘게 벌어졌다가 지금 그 시가 −10%~+5%.'};
+const v3P=(v,d=1)=>v==null?'—':(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d)+'%';
+const v3N=(v,d=1)=>v==null?'—':v.toFixed(d)+'%';
+const v3W=v=>v==null?'—':Math.round(v).toLocaleString('ko-KR');
+const v3X=v=>v==null?'—':v.toFixed(v>=10?0:1)+'배';
+const v3Pp=v=>v==null?'—':(v>=0?'+':'−')+Math.abs(v).toFixed(1)+'%p';
+// 셋업마다 표 열 — [머리, 보이는 값, 정렬 값, 풀이]
+const V3_COLS={
+  cup:[['컵 조정폭',x=>v3N(x.cup.depth,0),x=>x.cup.depth,'왼쪽 고점에서 컵 바닥까지 내려간 폭'],['컵 회복률',x=>v3N(x.cup.rec,0),x=>x.cup.rec,'오른쪽 고점 ÷ 왼쪽 고점'],
+       ['피봇(돌파가)',x=>v3W(x.cup.pivot),x=>x.cup.pivot,'손잡이 고점 — 이 값을 거래량 실어 넘으면 사는 자리'],['피봇 대비',x=>v3P(x.cup.gap),x=>x.cup.gap,'지금 종가 ÷ 피봇. +5% 넘으면 늦었다'],
+       ['핸들 깊이',x=>v3N(x.cup.hdepth),x=>x.cup.hdepth,'손잡이 고점에서 손잡이 저점까지'],['컵 길이',x=>x.cup.weeks.toFixed(0)+'주',x=>x.cup.weeks,'왼쪽 고점 → 손잡이 시작'],
+       ['손잡이 거래량',x=>v3X(x.cup.hvol),x=>x.cup.hvol,'손잡이 하루 거래량 ÷ 그 앞 50봉 평균 — 1 아래면 말랐다']],
+  vcp:[['흔들림',x=>x.vcp.deps.map(v=>Math.round(v)).join('→')+'%',x=>x.vcp.n,'고점→저점 폭이 매번 줄었다'],['마지막 흔들림',x=>v3N(x.vcp.last),x=>x.vcp.last,''],
+       ['거래량 10÷50일',x=>v3X(x.vcp.vr),x=>x.vcp.vr,'최근 10봉 거래량 ÷ 50봉 평균'],['바닥 길이',x=>x.vcp.weeks.toFixed(0)+'주',x=>x.vcp.weeks,''],
+       ['피봇',x=>v3W(x.vcp.pivot),x=>x.vcp.pivot,'마지막 흔들림이 시작한 고점'],['피봇 대비',x=>v3P(x.vcp.gap),x=>x.vcp.gap,'']],
+  pull:[['고점 대비',x=>v3P(-x.pull.pull),x=>-x.pull.pull,'52주 신고가에서 쉰 폭'],['닿은 선',x=>x.pull.line_n+'일선',x=>x.pull.line_n,'종가가 3% 안에 붙은 이동평균'],
+        ['신고가 뒤',x=>x.pull.age+'봉',x=>x.pull.age,''],['쉬는 동안 거래량',x=>v3X(x.pull.vr),x=>x.pull.vr,'신고가 뒤 거래량 ÷ 그 앞 50봉 평균'],['52주 신고가',x=>v3W(x.pull.pivot),x=>x.pull.pivot,'']],
+  brk:[['돌파',x=>x.brk.ago?x.brk.ago+'봉 전':'오늘',x=>-x.brk.ago,''],['돌파 거래량',x=>v3X(x.brk.vm),x=>x.brk.vm,'돌파한 날 거래량 ÷ 50봉 평균'],['박스 폭',x=>v3N(x.brk.box,0),x=>x.brk.box,'앞 60봉 고저 폭'],
+       ['돌파가',x=>v3W(x.brk.pivot),x=>x.brk.pivot,'앞 60봉 고점'],['돌파가 대비',x=>v3P(x.brk.gap),x=>x.brk.gap,'']],
+  flat:[['바닥 길이',x=>x.flat.weeks.toFixed(0)+'주',x=>x.flat.weeks,''],['바닥 폭',x=>v3N(x.flat.depth),x=>x.flat.depth,'바닥 고저 폭(15% 안)'],
+        ['피봇',x=>v3W(x.flat.pivot),x=>x.flat.pivot,'바닥 고점'],['피봇 대비',x=>v3P(x.flat.gap),x=>x.flat.gap,'']],
+  tt:[['52주 저점 대비',x=>v3P(x.lo52,0),x=>x.lo52,''],['52주 고점 대비',x=>v3P(x.hi52,0),x=>x.hi52,''],['50일선 대비',x=>v3P(x.ma50),x=>x.ma50,''],['200일선 대비',x=>v3P(x.ma200,0),x=>x.ma200,'']],
+  stage2:[['30주선 대비',x=>v3P(x.stage2.ma150),x=>x.stage2.ma150,'종가 ÷ 150일선'],['30주선 기울기',x=>v3P(x.stage2.slope),x=>x.stage2.slope,'150일선의 20봉 변화'],
+          ['앞 6달 30주선 아래',x=>v3N(x.stage2.below,0),x=>x.stage2.below,'1단계 바닥이었나'],['돌파 거래량',x=>v3X(x.stage2.vm),x=>x.stage2.vm,''],['돌파',x=>x.stage2.ago?x.stage2.ago+'봉 전':'오늘',x=>-x.stage2.ago,'']],
+  absorb:[['꼬리',x=>x.absorb.ago?x.absorb.ago+'봉 전':'오늘',x=>-x.absorb.ago,''],['그날 거래량',x=>v3X(x.absorb.vm),x=>x.absorb.vm,'60봉 평균 대비'],
+          ['꼬리 저가',x=>v3W(x.absorb.pivot),x=>x.absorb.pivot,'지켜야 하는 값'],['꼬리 저가 대비',x=>v3P(x.absorb.tail),x=>x.absorb.tail,'']],
+  earn:[['PER',x=>x.per!=null?x.per.toFixed(1):'—',x=>x.per,'종가 ÷ 확정 EPS 4분기 합'],['분기 EPS YoY',x=>v3P((x.fund||{}).eps_yoy),x=>(x.fund||{}).eps_yoy,'마지막 확정 분기 — 전년 같은 분기 대비'],
+        ['앞 분기 EPS YoY',x=>v3P((x.fund||{}).eps_yoy_prev),x=>(x.fund||{}).eps_yoy_prev,'커지면 가속'],['EPS 4분기 합 YoY',x=>v3P((x.fund||{}).ttm_yoy),x=>(x.fund||{}).ttm_yoy,''],
+        ['분기 매출 YoY',x=>v3P((x.fund||{}).rev_yoy),x=>(x.fund||{}).rev_yoy,''],['분기',x=>(x.fund||{}).q||'—',x=>(x.fund||{}).q,'']],
+  tp:[['증권사',x=>(x.rep||{}).broker||'—',x=>(x.rep||{}).broker,''],['목표가',x=>(x.rep&&x.rep.tp_prev?v3W(x.rep.tp_prev)+'→':'')+v3W((x.rep||{}).tp),x=>(x.rep||{}).tp,'이전 → 새'],
+      ['상향 폭',x=>x.rep&&x.rep.tp_prev?v3P((x.rep.tp/x.rep.tp_prev-1)*100,0):'—',x=>x.rep&&x.rep.tp_prev?x.rep.tp/x.rep.tp_prev:null,''],['리포트 날',x=>((x.rep||{}).date||'').slice(5),x=>(x.rep||{}).date,''],
+      ['그 뒤 주가',x=>v3P((x.rep||{}).move),x=>(x.rep||{}).move,'리포트 날 종가 → 지금'],['목표가 여력',x=>v3P((x.rep||{}).room,0),x=>(x.rep||{}).room,''],['30일 상향·하향',x=>(x.rep||{}).up+' · '+(x.rep||{}).dn,x=>(x.rep||{}).up,'']],
+  accum:[['오른 날÷내린 날 거래량',x=>v3X((x.accum||{}).ud).replace('배',''),x=>(x.accum||{}).ud,'최근 50봉'],['60봉 고점 대비',x=>v3P((x.accum||{}).gap),x=>(x.accum||{}).gap,'OBV 는 고점인데 주가는 아직'],
+         ['20봉 폭',x=>v3N((x.accum||{}).rng),x=>(x.accum||{}).rng,'조용한가'],['50일선 대비',x=>v3P(x.ma50),x=>x.ma50,'']],
+  ipo:[['상장일',x=>{const s=x.ipo.listed; return s.slice(2,4)+'.'+s.slice(4,6)+'.'+s.slice(6,8);},x=>x.ipo.listed,''],['상장 뒤',x=>x.ipo.days+'봉',x=>x.ipo.days,''],
+       ['첫날 시가',x=>v3W(x.ipo.open0),x=>x.ipo.open0,''],['시가 대비',x=>v3P(x.ipo.gap),x=>x.ipo.gap,''],['상장 뒤 최고',x=>v3P(x.ipo.hi,0),x=>x.ipo.hi,'첫날 시가 대비']]};
+const V3_SORT0={cup:['cup:3',-1],vcp:['vcp:5',-1],pull:['rs',-1],brk:['brk:1',-1],flat:['flat:3',-1],tt:['rs',-1],stage2:['stage2:3',-1],absorb:['absorb:0',-1],
+  earn:['rs',-1],tp:['tp:5',-1],accum:['accum:0',-1],ipo:['ipo:3',-1]};
+const V3_SCOPE=[['all','전 종목'],['cand','저평가 후보'],['tier','저평가 등급']];
 
 async function viewValue2(p, force){
   p.innerHTML='';
-  const box=el('div','valBox'); p.appendChild(box);
-  const hd=el('div','dipHead');
-  hd.appendChild(el('b',null,'저평가V2'));
-  hd.appendChild(el('span',null,'저평가 종목 가운데 차트로 유리한 자리 — 바닥 횡보 뒤 대량 양봉 · 투매 받아낸 아래꼬리 · 거래 말라붙은 횡보 · 20일선 회복 같은 슈퍼개미식 지침을 숫자로 고정해 붙였다'));
-  const rf=el('button','ghost','다시 계산'); rf.style.marginLeft='auto'; rf.onclick=()=>viewValue2(p,true); hd.appendChild(rf);
+  const box=el('div','valBox csBox'); p.appendChild(box);
+  const hd=el('div','csHead');
+  const ht=el('div'); ht.appendChild(el('h3',null,'저평가V2 — 차트 셋업'));
+  ht.appendChild(el('p',null,'오닐 · 미너비니 · 와인스타인이 책에 적은 차트 셋업을 숫자 그대로 옮겨 전 종목에 돌린다. 범위를 저평가로 좁히면 "싼데 차트도 좋은 자리". 셋업마다 2012년부터 매달 다시 재 본 과거 성과를 카드에 붙였다.'));
+  hd.appendChild(ht);
+  const meta=el('div','csMeta'); hd.appendChild(meta);
   box.appendChild(hd);
   const body=el('div'); box.appendChild(body);
   let d;
   try{ d=await (await fetch('/api/value2'+(force?'?force=1':''))).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
   if(!box.isConnected) return;
   if(d.error){ body.appendChild(el('div','err',d.error)); return; }
-  if(d.running || d.base_running){
-    const msg=d.running?'저평가 종목 시세 읽는 중 '+(d.done||0)+'/'+(d.total||0)
-      :(d.rows||[]).length?'저평가 목록을 다시 세는 중 — 끝나면 V2도 다시 센다. 아래는 이전 결과':'저평가 목록을 먼저 만드는 중(1시간 가까이)';
-    const pr=el('div','prog'); pr.appendChild(el('span',null,msg));
-    const b=el('div','bar'); const i=el('i'); i.style.width=(d.running&&d.total?Math.round(d.done/d.total*100):5)+'%'; b.appendChild(i); pr.appendChild(b);
+  const bd=d.bar_d?d.bar_d.slice(2,4)+'.'+d.bar_d.slice(4,6)+'.'+d.bar_d.slice(6,8):'—';
+  const at=d.at?new Date(d.at*1000):null;
+  meta.appendChild(el('span',null,'기준: '+bd+' 장 마감 봉'+(at?' · 계산 '+String(at.getMonth()+1).padStart(2,'0')+'.'+String(at.getDate()).padStart(2,'0')+' '+String(at.getHours()).padStart(2,'0')+':'+String(at.getMinutes()).padStart(2,'0'):'')));
+  const rf=el('button','ghost','다시 계산'); rf.onclick=()=>viewValue2(p,true); meta.appendChild(rf);
+  if(d.running){
+    const pr=el('div','prog'); pr.appendChild(el('span',null,'전 종목 일봉 · 확정 실적 읽는 중 '+(d.done||0)+'/'+(d.total||0)+((d.rows||[]).length?' — 아래는 이전 결과':' — 처음 한 번은 10분 남짓')));
+    const b=el('div','bar'); const i=el('i'); i.style.width=(d.total?Math.round(d.done/d.total*100):5)+'%'; b.appendChild(i); pr.appendChild(b);
     body.appendChild(pr);
-    setTimeout(()=>{ if(box.isConnected && S.tab==='val2') viewValue2(p,false); }, 4000);
+    setTimeout(()=>{ if(box.isConnected && S.tab==='val2') viewValue2(p,false); }, 5000);
     if(!(d.rows||[]).length) return;
   }
-  const rows=d.rows||[], SG=d.sigs||{};
-  S.v2req=S.v2req||new Set(); S.v2all=!!S.v2all;
-  // 신호 칩 — 누르면 그 신호가 있는 종목만. 칩 아래 숫자 = 과거 저평가 등급 안에서 켜짐 − 꺼짐 12개월 초과수익
-  const f=v=>v==null?'—':(v>=0?'+':'')+Math.round(v)+'%p';
-  const chips=el('div','v2Chips');
+  const rows=d.rows||[], PS=d.presets||[], WN=d.warn_names||{};
+  S.v3P=Object.fromEntries(PS.map(x=>[x.key,x.name])); S.v3W=WN;
+  // 추격 위험(50일선 +25%↑)은 과거 셋업 안에서 6개월 −4.7%p — 경고 가운데 해로움이 확인된 하나라 기본으로 뺀다
+  S.v3=S.v3||{k:'cup',scope:'all',hideExt:true,sort:{},page:0};
+  const st=S.v3;
+  const inScope=r=>st.scope==='all'?true:st.scope==='cand'?!!r.tier:r.tier==='저평가';
+  const pool=()=>rows.filter(r=>inScope(r)&&(!st.hideExt||!(r.warn||[]).includes('ext')));
+  // ── 셋업 카드
+  const rail=el('div','csRail'); const track=el('div','csTrack'); rail.appendChild(track);
+  const nav=(dir)=>{ const b=el('button','csNav '+(dir<0?'l':'r'),dir<0?'‹':'›'); b.onclick=()=>track.scrollBy({left:dir*track.clientWidth*.8,behavior:'smooth'}); return b; };
+  const nl=nav(-1), nr=nav(1); rail.appendChild(nl); rail.appendChild(nr);
+  const navUpd=()=>{ nl.hidden=track.scrollLeft<=4; nr.hidden=track.scrollLeft+track.clientWidth>=track.scrollWidth-4; };
+  track.addEventListener('scroll',navUpd,{passive:true}); setTimeout(navUpd,50);
+  body.appendChild(rail);
+  // ── 도구 줄
+  const bar=el('div','csBar'); body.appendChild(bar);
+  const tbw=el('div','csTblWrap'); body.appendChild(tbw);
+  const ev=el('div'); body.appendChild(ev);
   const draw=()=>{
-    const list=rows.filter(r=>(S.v2all||r.v2) && [...S.v2req].every(k=>r[k]));
-    tb.innerHTML='';
-    tb.appendChild(el('div','dipBH',''));
-    tb.firstChild.appendChild(el('b',null,(S.v2all?'저평가 전체 ':'저평가V2 ')+list.length+'곳'));
-    tb.firstChild.appendChild(el('span',null,S.v2all?'저평가 등급 전부 — 신호 칩으로 좁혀 보라':'검증된 좋은 자리 신호(✓)가 하나 이상이고 검증된 나쁜 자리(⚠)가 없는 저평가 종목. ✓가 많은 순, 같으면 저평가 점수 순'));
-    tb.appendChild(v2Table(list,SG));
-    [...chips.querySelectorAll('.v2Chip')].forEach(c=>c.classList.toggle('on',S.v2req.has(c.dataset.k)));
+    const P0=pool();
+    track.innerHTML='';
+    PS.forEach(ps=>{
+      const n=P0.filter(r=>(r.sets||[]).includes(ps.key)).length;
+      const c=el('button','csCard'+(ps.key===st.k?' on':'')+(n?'':' zero'));
+      const t=el('div','t'); t.appendChild(el('b',null,ps.name)); t.appendChild(el('span',null,n+'종목')); c.appendChild(t);
+      c.appendChild(el('div','ds',ps.desc));
+      // 카드 아래 줄 = 지금 범위에서 잰 과거 성과(저평가 범위는 그 범위 전체보다 나았나)
+      const sx=st.scope==='all'?ps:((ps.scopes||{})[st.scope]||{}), tested=sx.ex6m!=null, scl=V3_SCOPE.find(z=>z[0]===st.scope)[1];
+      const vd=el('div','vd '+(tested&&sx.ok?'ok':tested&&sx.weak?'weak':''));
+      vd.textContent=tested?('과거 6개월 '+v3Pp(sx.ex6m)+(st.scope!=='all'&&sx.base6!=null?' (범위 '+v3Pp(sx.base6)+')':'')+' · 이긴 '+Math.round(sx.hit_ex6m||0)+'%'+(sx.ok?' ✓':sx.weak?' · 부진':' · 검증 약함'))
+        :(ps.key==='tp'?'과거 검증 못 함(리포트 1년치)':sx.n!=null?'과거 '+scl+' 안 표본 '+sx.n+'건 — 못 잼':'검증 전');
+      c.appendChild(vd);
+      c.title=(V3_DEF[ps.key]||'')+(tested?'\n\n과거(2012~, 매달 · '+scl+') 다음 날부터 초과수익 중앙값 — 1개월 '+v3Pp(sx.ex1m)+' · 3개월 '+v3Pp(sx.ex3m)+' · 6개월 '+v3Pp(sx.ex6m)+
+        (sx.ci_ex6m&&sx.ci_ex6m[0]!=null?' [90% '+v3Pp(sx.ci_ex6m[0])+' ~ '+v3Pp(sx.ci_ex6m[1])+']':'')+' · 12개월 '+v3Pp(sx.ex12m)+'\n~2019 '+v3Pp(sx.early_ex6m)+' · 2020~ '+v3Pp(sx.late_ex6m)+' · 표본 '+(sx.n||0).toLocaleString('ko-KR')+'건 · '+(sx.firms||0)+'곳'+
+        (st.scope!=='all'&&sx.base6!=null?'\n'+scl+' 전체 6개월 '+v3Pp(sx.base6)+' — 이보다 나아야 셋업 몫':''):'');
+      c.onclick=()=>{ st.k=ps.key; st.page=0; draw(); };
+      track.appendChild(c);
+    });
+    const on=track.querySelector('.csCard.on'); if(on&&!draw.done){ draw.done=true; setTimeout(()=>on.scrollIntoView({block:'nearest',inline:'nearest'}),0); }
+    // 도구 줄
+    bar.innerHTML='';
+    const ps=PS.find(x=>x.key===st.k)||PS[0];
+    const list=P0.filter(r=>(r.sets||[]).includes(ps.key));
+    const lt=el('div','lt');
+    lt.appendChild(el('b',null,ps.name)); lt.appendChild(el('span','n',list.length+'종목 통과'));
+    lt.appendChild(el('span','src',ps.src));
+    const inf=el('span','inf','정의 ⓘ'); inf.title=V3_DEF[ps.key]||''; lt.appendChild(inf);
+    bar.appendChild(lt);
+    const rt=el('div','rt');
+    const seg=el('div','csSeg');
+    V3_SCOPE.forEach(([k,lab])=>{ const b=el('button',k===st.scope?'on':null,lab+(k==='all'?'':' '+(k==='cand'?rows.filter(r=>r.tier).length:rows.filter(r=>r.tier==='저평가').length)));
+      b.title=k==='all'?'색인 회사 '+(d.n_all||'')+'곳 전부':k==='cand'?'저평가 화면의 후보(저평가 + 관찰)':'저평가 화면의 저평가 등급만';
+      b.onclick=()=>{ st.scope=k; st.page=0; draw(); }; seg.appendChild(b); });
+    rt.appendChild(seg);
+    const we=((d.bt||{}).warn||{}).ext||{};
+    const wl=el('label','csWarn'); const cb=el('input'); cb.type='checkbox'; cb.checked=st.hideExt; cb.onchange=()=>{ st.hideExt=cb.checked; st.page=0; draw(); };
+    wl.appendChild(cb); wl.appendChild(document.createTextNode(' 추격 위험 빼기'));
+    wl.title='종가가 50일선보다 25% 넘게 위인 종목을 뺀다(미너비니 · 오닐: 바닥에서 너무 멀어진 자리). 과거 셋업에 걸린 종목-달 안에서 이 표시가 켜진 쪽이 6개월 '+v3Pp(we.d6)+' · 12개월 '+v3Pp(we.d12)+'. 다른 경고(고점 대량 음봉 · 역배열 · 거래대금 적음)는 과거에 해롭지 않아 표시만 한다.';
+    rt.appendChild(wl);
+    bar.appendChild(rt);
+    tbw.innerHTML=''; tbw.appendChild(v3Table(list, ps, WN, draw));
   };
-  Object.entries(SG).forEach(([k,s])=>{
-    const n=rows.filter(r=>r[k]).length;
-    const c=el('button','v2Chip '+(s.dir>0?'good':s.dir<0?'bad':'info')+(s.ok?' ok':'')); c.dataset.k=k;
-    c.appendChild(el('b',null,(s.dir<0&&s.ok?'⚠ ':'')+s.name));
-    c.appendChild(el('span',null,n+'곳 · 6개월 '+f(s.diff)+(s.ok?' ✓':s.dir===0?' · 참고':s.diff==null?' (표본 모자람)':' · 검증 안 됨')));
-    c.title=(V2_DEF[k]||'')+'\n과거 저평가 등급 안 켜짐 − 꺼짐 초과수익 — 1개월 '+f(s.d1)+' · 3개월 '+f(s.d3)+' · 6개월 '+f(s.diff)+
-      (s.ci&&s.ci[0]!=null?' [90% '+f(s.ci[0])+' ~ '+f(s.ci[1])+']':'')+' (~2019 '+f(s.early)+' · 2020~ '+f(s.late)+') · 12개월 '+f(s.d12)+(s.ok?'\n6개월 기준 앞뒤 기간 같은 방향 — 검증됨':'');
-    if(s.dir>0) c.onclick=()=>{ S.v2req.has(k)?S.v2req.delete(k):S.v2req.add(k); draw(); };
-    else c.style.cursor='default';
-    chips.appendChild(c);
-  });
-  const all=el('label','v2All'); const cb=el('input'); cb.type='checkbox'; cb.checked=S.v2all; cb.onchange=()=>{ S.v2all=cb.checked; draw(); };
-  all.appendChild(cb); all.appendChild(document.createTextNode(' 저평가 '+(d.n_tier||rows.length)+'곳 전부 보기(나쁜 자리 포함)'));
-  const vr=((d.bt||{}).v2_rule||{}).eval||{};
-  if(vr.ex3m&&vr.ex3m.diff!=null) body.appendChild(el('div','v2Lead','과거 검증 — V2(검증된 좋은 자리 · 나쁜 자리 없음)는 나머지 저평가보다 3개월 '+f(vr.ex3m.diff)+' · 6개월 '+f((vr.ex6m||{}).diff)+
-    ' (2019년 이전·이후 모두 +). 그러나 12개월은 '+f((vr.ex12m||{}).diff)+' — 아직 안 움직인 저평가가 1년 뒤엔 더 따라잡았다. 차트 신호는 3~6개월 타이밍 도구로만 쓴다.'));
-  body.appendChild(el('div','v2Note','칩을 누르면 그 신호가 있는 종목만 남는다(여러 개 = 모두). ✓ = 과거 저평가 등급 안에서 6개월 초과수익이 1%p↑ 좋았고 2019년 이전·이후 같은 방향이었던 신호. ⚠ = 같은 기준의 나쁜 자리 — V2에서 뺀다. 칩에 마우스를 올리면 정의와 1·3·6·12개월 숫자.'));
-  body.appendChild(chips); body.appendChild(all);
-  const tb=el('div'); body.appendChild(tb);
   draw();
-  // 신호 정의와 검증
-  const det=el('details','dipEvd'); det.appendChild(el('summary',null,'신호 정의와 과거 검증 — 저평가 등급 안에서 신호 켜짐 − 꺼짐(1 · 3 · 6 · 12개월 초과수익)'));
-  det.appendChild(el('p',null,'2014~2025 보고서가 공시된 날마다, 그날까지의 봉(시가·고가·저가·종가·거래량)만으로 신호를 다시 매기고 그 뒤 수익률을 전 종목 중앙값과 견줬다(저평가 등급 623건 · 280곳). 신호는 맞추지 않고 흔히 쓰는 정의 그대로 숫자로 고정했다. 판정은 6개월 기준(차이 1%p↑ · 2019년 이전·이후 같은 방향). 회사 단위 재표본 90% 구간.'));
+  ev.appendChild(v3Evidence(d, PS, WN));
+  body.appendChild(el('div','finnote','시세 = 네이버 일봉(수정주가). 셋업은 마지막 장 마감 봉까지로 잰다. RS = 최근 3개월에 두 배 무게를 둔 1년 수익률의 전 종목(색인 '+(d.n_all||'')+'곳) 순위(1~99, IBD 식). 차트 셋업은 3~6개월 타이밍 참고 — 단독으로 사고팔 근거가 아니다.'));
+}
+
+function v3Table(list, ps, WN, redraw){
+  const st=S.v3, k=ps.key, cols=V3_COLS[k]||[];
+  const key=st.sort[k]||V3_SORT0[k]||['rs',-1];
+  const sv=(r,c)=>{ if(c==='rs') return r.rs; if(c==='rs1') return r.rs1; if(c==='cap') return r.cap; if(c==='c') return r.c; if(c==='chg') return r.chg; if(c==='name') return r.name; if(c==='ind') return r.industry;
+    const [p,j]=c.split(':'); try{ return cols[+j][2](r); }catch(e){ return null; } };
+  const rows=list.slice().sort((a,b)=>{ const x=sv(a,key[0]), y=sv(b,key[0]);
+    if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
+    return (typeof x==='string'?x.localeCompare(y,'ko'):x-y)*key[1]; });
+  const wrap=el('div');
+  const t=el('table','tbl csTbl');
+  const head=el('tr');
+  const th=(lab,c,cls,title)=>{ const h=el('th',cls||null); const on=key[0]===c;
+    h.appendChild(document.createTextNode(lab)); h.appendChild(el('i','so'+(on?' on':''),on?(key[1]<0?'↓':'↑'):'↕'));
+    if(title) h.title=title;
+    h.onclick=()=>{ st.sort[k]=[c, on?-key[1]:(c==='name'||c==='ind'?1:-1)]; st.page=0; redraw(); }; head.appendChild(h); };
+  th('종목명','name'); th('중분류','ind'); th('시가총액','cap','r'); th('RS','rs','r','1년 수익률(최근 3개월 두 배 무게)의 전 종목 순위 1~99'); th('RS(1M)','rs1','r','최근 1개월 수익률 순위');
+  cols.forEach((c,j)=>th(c[0],k+':'+j,'r',c[3]));
+  th('현재가','c','r'); th('등락률','chg','r'); head.appendChild(el('th','r','최근 6달'));
+  t.appendChild(head);
+  const PER=50, pages=Math.max(1,Math.ceil(rows.length/PER)); if(st.page>=pages) st.page=pages-1;
+  rows.slice(st.page*PER,(st.page+1)*PER).forEach(r=>{
+    const tr=el('tr');
+    const td=el('td','nm'); const l1=el('div','l1');
+    const a=el('a',null,r.name); a.href='#'; a.title=r.name+' — 눌러서 회사 화면으로'; a.onclick=e=>{ e.preventDefault(); pick(r.code); }; l1.appendChild(a);
+    if(r.tier) l1.appendChild(el('span','tier '+(r.tier==='저평가'?'v':'w'),r.tier));
+    if((r.warn||[]).length){ const w=el('span','wn','⚠'+(r.warn.length>1?r.warn.length:'')); w.title=r.warn.map(x=>'⚠ '+(WN[x]||x)).join('\n'); l1.appendChild(w); }
+    td.appendChild(l1);
+    td.appendChild(el('small',null,r.code+(r.market?' · '+r.market:'')));
+    const others=(r.sets||[]).filter(x=>x!==k);
+    if(others.length){ const o=el('div','ot'); others.slice(0,3).forEach(x=>o.appendChild(el('span',null,((S.v3P||{})[x])||x))); if(others.length>3) o.appendChild(el('span',null,'+'+(others.length-3))); o.title='이 종목이 같이 걸린 다른 셋업'; td.appendChild(o); }
+    tr.appendChild(td);
+    tr.appendChild(el('td','ind',r.industry||'—'));
+    const n=(v,cls)=>el('td','num'+(cls?' '+cls:''),v);
+    tr.appendChild(n(r.cap!=null?qWon(r.cap):'—'));
+    tr.appendChild(n(r.rs!=null?String(r.rs):'—',r.rs>=80?'hi':''));
+    tr.appendChild(n(r.rs1!=null?String(r.rs1):'—'));
+    cols.forEach(c=>{ let v; try{ v=c[1](r); }catch(e){ v='—'; } const cell=n(v); if(/^[+−]/.test(v)&&(c[0].includes('대비')||c[0].includes('YoY')||c[0].includes('주가'))) cell.classList.add(v[0]==='+'?'up':'dn'); tr.appendChild(cell); });
+    tr.appendChild(n(v3W(r.c)));
+    tr.appendChild(n(v3P(r.chg,2),r.chg>0?'up':r.chg<0?'dn':''));
+    const sp=el('td','v2SpTd'); sp.appendChild(v2Spark(r.spark||{})); sp.title='누르면 크게 — 캔들 · 거래량 · 20·50·150·200일선 · 셋업 자리'; sp.onclick=()=>v2Pop(r, k); tr.appendChild(sp);
+    t.appendChild(tr);
+  });
+  if(!rows.length){ const tr=el('tr'); const td=el('td','emptyRow','이 범위에서 지금 '+ps.name+' 셋업에 맞는 종목이 없다'+(S.v3.scope!=='all'?' — 범위를 "전 종목"으로 넓혀 보라':'')); td.colSpan=8+cols.length; tr.appendChild(td); t.appendChild(tr); }
+  wrap.appendChild(el('div','tblwrap')).appendChild(t);
+  if(rows.length>PER){
+    const pg=el('div','csPage');
+    const pb=el('button',null,'‹'); pb.disabled=st.page===0; pb.onclick=()=>{ st.page--; redraw(); };
+    const nb=el('button',null,'›'); nb.disabled=st.page>=pages-1; nb.onclick=()=>{ st.page++; redraw(); };
+    pg.appendChild(pb); pg.appendChild(el('span',null,(st.page*PER+1)+'-'+Math.min(rows.length,(st.page+1)*PER)+' / '+rows.length)); pg.appendChild(nb);
+    wrap.appendChild(pg);
+  }
+  return wrap;
+}
+
+function v3Evidence(d, PS, WN){
+  const bt=d.bt||{};
+  const det=el('details','dipEvd');
+  det.appendChild(el('summary',null,'셋업별 과거 검증 — '+(bt.dates?bt.dates[0].slice(0,4)+'~'+bt.dates[1].slice(0,4)+' 매달 전 종목':'아직 안 잼')+' · 다음 날부터 초과수익(전 종목 중앙값 대비)'));
+  if(!bt.n){ det.appendChild(el('p',null,'과거 검증 결과가 없다. python 도구/차트셋업_백테스트.py 로 잰다.')); return det; }
+  det.appendChild(el('p',null,'매달 말 그날까지의 봉만으로 셋업을 다시 재고(미래 봉 안 씀), RS 는 그날 전 종목 순위, 실적은 그날까지 공시된 분기만. '+
+    '표본 '+bt.n.toLocaleString('ko-KR')+' 종목-달 · '+bt.firms+'곳. 판정 = 6개월 중앙값 +1%p↑ · 회사 단위 90% 구간 아래끝 > 0 · ~2019 · 2020~ 모두 +. '+
+    '지금 상장된 회사만이라 수준은 부풀어 있다 — 셋업끼리, 그리고 "RS 70↑ 전체"(패턴 없이 강한 종목)와 견줘 읽는다.'));
   const t=el('table','tbl dipTbl');
-  t.innerHTML='<tr><th>신호</th><th>정의</th><th class="r">켜진 비율</th><th class="r">1개월</th><th class="r">3개월</th><th class="r">6개월</th><th class="r">6개월 90% 구간</th><th class="r">6개월 ~2019 · 2020~</th><th class="r">12개월</th><th class="r">판정</th></tr>';
-  Object.entries(SG).forEach(([k,s])=>{ const tr=el('tr'); tr.appendChild(el('td',null,(s.dir<0?'⚠ ':'')+s.name));
-    const dd=el('td',null,V2_DEF[k]||''); dd.style.cssText='font-size:11px;color:var(--dim);max-width:340px;white-space:normal'; tr.appendChild(dd);
-    [s.share!=null?Math.round(s.share)+'%':'—',f(s.d1),f(s.d3),f(s.diff),(s.ci&&s.ci[0]!=null)?f(s.ci[0])+' ~ '+f(s.ci[1]):'—',f(s.early)+' · '+f(s.late),f(s.d12),
-     s.ok?(s.dir>0?'✓ 좋은 자리':'⚠ 나쁜 자리'):s.dir===0?'참고':s.diff==null?'표본 모자람':'검증 안 됨']
-      .forEach((v,i)=>tr.appendChild(el('td','num'+(i==3?' strong':''),v)));
-    t.appendChild(tr); });
+  t.innerHTML='<tr><th>셋업</th><th class="r">표본</th><th class="r">회사</th><th class="r">1개월</th><th class="r">3개월</th><th class="r">6개월</th><th class="r">6개월 90% 구간</th><th class="r">이긴 비율</th><th class="r">~2019 · 2020~</th><th class="r">12개월</th><th class="r">판정</th></tr>';
+  const row=(name,s,verdict)=>{ const tr=el('tr'); tr.appendChild(el('td',null,name));
+    [s.n!=null?s.n.toLocaleString('ko-KR'):'—',s.firms!=null?String(s.firms):'—',v3Pp(s.ex1m),v3Pp(s.ex3m),v3Pp(s.ex6m),
+     s.ci_ex6m&&s.ci_ex6m[0]!=null?v3Pp(s.ci_ex6m[0])+' ~ '+v3Pp(s.ci_ex6m[1]):'—',s.hit_ex6m!=null?Math.round(s.hit_ex6m)+'%':'—',
+     v3Pp(s.early_ex6m)+' · '+v3Pp(s.late_ex6m),v3Pp(s.ex12m),verdict].forEach((v,i)=>tr.appendChild(el('td','num'+(i===4?' strong':''),v)));
+    t.appendChild(tr); };
+  PS.forEach(ps=>row(ps.name,ps,ps.tested?(ps.ok?'✓ 검증':ps.weak?'✕ 부진':'약함'):(ps.key==='tp'?'못 잼':'표본 부족')));
+  Object.entries(bt.ref||{}).forEach(([k,s])=>row('참고 · '+k,s,''));
   det.appendChild(t);
-  const ta=(d.bt||{}).tier_all;
-  if(ta) det.appendChild(el('p',null,'비교 기준 — 저평가 등급 전체 12개월 초과수익 중앙 '+f(ta.median).replace('p','')+', 이긴 비율 '+Math.round(ta.hit)+'%. 차트 신호는 이 위에 더해지는 몫만 본다. 다시 재기: python 도구/저평가V2_백테스트.py'));
-  body.appendChild(det);
-  body.appendChild(el('div','finnote','시세 = 네이버 일봉(수정주가). 신호는 오늘 봉까지로 매긴다(장중이면 어제까지). 차트 신호는 저평가(가치) 위에 얹는 타이밍 참고다 — 단독으로 사고팔 근거가 아니다.'));
+  // 저평가 범위 안 — 저평가V2 의 본뜻('싼데 차트도 좋은 자리')
+  [['cand','저평가 후보'],['tier','저평가 등급']].forEach(([sc,lab])=>{
+    const base=(bt.scope_base||{})[sc];
+    if(!base) return;
+    det.appendChild(el('p',null,lab+' 안에서 — 그달 말 기준 120일 안 마지막 공시일의 등급(저평가 화면과 같은 규칙). '+lab+' 전체 6개월 '+v3Pp(base.ex6m)+' · 12개월 '+v3Pp(base.ex12m)+
+      ' (표본 '+(base.n||0).toLocaleString('ko-KR')+'건). 판정은 이 전체보다 나았나로 본다.'));
+    const t2=el('table','tbl dipTbl'); t2.innerHTML=t.rows[0].outerHTML;
+    PS.forEach(ps=>{ const x=(ps.scopes||{})[sc]; if(!x) return;
+      const tr=el('tr'); tr.appendChild(el('td',null,ps.name));
+      if(x.ex6m==null){ const td=el('td','num','표본 '+(x.n||0)+'건 — 못 잼'); td.colSpan=10; tr.appendChild(td); t2.appendChild(tr); return; }
+      [x.n!=null?x.n.toLocaleString('ko-KR'):'—',x.firms!=null?String(x.firms):'—',v3Pp(x.ex1m),v3Pp(x.ex3m),v3Pp(x.ex6m),
+       x.ci_ex6m&&x.ci_ex6m[0]!=null?v3Pp(x.ci_ex6m[0])+' ~ '+v3Pp(x.ci_ex6m[1]):'—',x.hit_ex6m!=null?Math.round(x.hit_ex6m)+'%':'—',
+       v3Pp(x.early_ex6m)+' · '+v3Pp(x.late_ex6m),v3Pp(x.ex12m),x.ok?'✓ 검증':x.weak?'✕ 부진':'약함'].forEach((v,i)=>tr.appendChild(el('td','num'+(i===4?' strong':''),v)));
+      t2.appendChild(tr); });
+    det.appendChild(t2);
+  });
+  const ul=el('ul','dipEvdL');
+  Object.entries(bt.warn||{}).forEach(([k,w])=>ul.appendChild(el('li',null,'경고 "'+(WN[k]||k)+'" — 셋업에 걸린 종목-달 안에서 켜짐 − 꺼짐: 6개월 '+v3Pp(w.d6)+' · 12개월 '+v3Pp(w.d12)+' (켜짐 '+(w.n||0).toLocaleString('ko-KR')+'건)')));
+  ul.appendChild(el('li',null,'정의는 기술.py 한 곳 — 서버(이 화면)와 도구/차트셋업_백테스트.py 가 같은 함수를 부른다. 문턱은 책에 적힌 값 그대로 두고 결과에 맞춰 고치지 않았다.'));
+  det.appendChild(ul);
+  const dl=el('div','csDefs');
+  PS.forEach(ps=>{ const x=el('p'); x.appendChild(el('b',null,ps.name+' · '+ps.src)); x.appendChild(document.createTextNode(' — '+(V3_DEF[ps.key]||''))); dl.appendChild(x); });
+  det.appendChild(dl);
+  if(bt.made) det.appendChild(el('div','finnote','검증 '+bt.made+' · 다시 재기: python 도구/차트셋업_백테스트.py'));
+  return det;
 }
 
 function v2Spark(s){
   const W=150,H=46, c=s.c||[], v=s.v||[]; if(c.length<5) return el('span');
   const mn=Math.min(...c), mx=Math.max(...c), vm=Math.max(...v,1);
   const x=i=>i/(c.length-1)*W, y=p=>3+(mx-p)/(mx-mn||1)*(H-16);
-  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'v2Spark'});
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'v2Spark'+(c[c.length-1]>=c[0]?' up':' dn')});
   v.forEach((q,i)=>{ const h=q/vm*11; svg.appendChild(svgEl('rect',{x:x(i)-0.6,y:H-h,width:1.2,height:h,class:'vb'})); });
   svg.appendChild(svgEl('path',{d:'M'+c.map((p,i)=>x(i).toFixed(1)+','+y(p).toFixed(1)).join('L'),class:'pl'}));
   return svg;
 }
 
-// 큰 차트 — 미니 차트를 누르면. 캔들 + 거래량 + 5·20·60·120일선, 대량거래일(60일 평균 3배) · 골든크로스(20>60) 표시
-async function v2Pop(r, SG){
+// 큰 차트 — 미니 차트를 누르면. 캔들 + 거래량 + 20·50·150·200일선, 대량거래일(50일 평균 2배) · 셋업 자리(점 · 피봇 선)
+async function v2Pop(r, key){
   const old=document.querySelector('.expPopBg'); if(old) old.remove();
   const bg=el('div','expPopBg'), pop=el('div','expPop v2Pop'); bg.appendChild(pop);
   const esc=e=>{ if(e.key==='Escape') close(); };
   const close=()=>{ bg.remove(); document.removeEventListener('keydown',esc); };
   bg.addEventListener('click',e=>{ if(e.target===bg) close(); }); document.addEventListener('keydown',esc);
-  const hd=el('div','h'); hd.appendChild(el('b',null,r.name)); hd.appendChild(el('span','sub',r.code+' · '+(r.industry||'')+(r.score!=null?' · 저평가 점수 '+Math.round(r.score):'')));
+  const pat=key&&r[key]&&typeof r[key]==='object'?r[key]:null;
+  const ps=((S.v3P||{})[key])||key||'';
+  const hd=el('div','h'); hd.appendChild(el('b',null,r.name));
+  hd.appendChild(el('span','sub',r.code+' · '+(r.industry||'')+(r.rs!=null?' · RS '+r.rs:'')+(r.tier?' · '+r.tier:'')+(pat&&pat.pivot?' · '+ps+' 피봇 '+v3W(pat.pivot):'')));
   const rg=el('div','v2Rng'); hd.appendChild(rg);
   const cb=el('button','x','✕'); cb.title='닫기 (Esc)'; cb.onclick=close; hd.appendChild(cb);
   pop.appendChild(hd);
   const cs=el('div','v2Sig');
-  (r.good||[]).forEach(k=>{ const x=el('span','g'+((SG[k]||{}).ok?' ok':''),(SG[k]||{}).name||k); x.title=V2_DEF[k]||''; cs.appendChild(x); });
-  (r.bad||[]).forEach(k=>{ const x=el('span','b','⚠ '+((SG[k]||{}).name||k)); x.title=V2_DEF[k]||''; cs.appendChild(x); });
-  (r.bad_info||[]).forEach(k=>{ const x=el('span','i',(SG[k]||{}).name||k); x.title=V2_DEF[k]||''; cs.appendChild(x); });
+  (r.sets||[]).forEach(k=>cs.appendChild(el('span','g ok',((S.v3P||{})[k])||k)));
+  (r.warn||[]).forEach(k=>cs.appendChild(el('span','b','⚠ '+((S.v3W||{})[k]||k))));
   pop.appendChild(cs);
   const fig=el('div','v2Fig'); fig.appendChild(el('div','loading','일봉 불러오는 중…')); pop.appendChild(fig);
-  const key=el('div','v2Key');
-  key.innerHTML='<span><i class="k5"></i>5일</span><span><i class="k20"></i>20일</span><span><i class="k60"></i>60일</span><span><i class="k120"></i>120일</span>'+
-    '<span><b class="sp">●</b>대량거래(60일 평균 3배↑)</span><span><b class="gc">▲</b>골든크로스(20일이 60일 위로)</span><span><b class="dc">▼</b>데드크로스</span><span><i class="hl"></i>52주 고점·저점</span>';
-  pop.appendChild(key);
+  const keyb=el('div','v2Key');
+  keyb.innerHTML='<span><i class="k20"></i>20일</span><span><i class="k50"></i>50일</span><span><i class="k150"></i>150일(30주)</span><span><i class="k200"></i>200일</span>'+
+    '<span><b class="sp">●</b>대량거래(50일 평균 2배↑)</span><span><i class="pv"></i>피봇 · 셋업 기준선</span><span><b class="pp">◆</b>셋업 자리</span><span><i class="hl"></i>52주 고점·저점</span>';
+  pop.appendChild(keyb);
   document.body.appendChild(bg); cb.focus();
   let d;
   try{ d=await (await fetch('/api/ohlcv?code='+r.code+'&n=500')).json(); }catch(e){ d=null; }
   if(!bg.isConnected) return;
   if(!d||!(d.c||[]).length){ fig.innerHTML=''; fig.appendChild(el('div','err','시세를 불러오지 못했습니다')); return; }
-  const ma=(n)=>d.c.map((_,i)=>i+1>=n?d.c.slice(i-n+1,i+1).reduce((a,b)=>a+b,0)/n:null);
-  const M={5:ma(5),20:ma(20),60:ma(60),120:ma(120)};
-  const vavg=d.v.map((_,i)=>i>=60?d.v.slice(i-60,i).reduce((a,b)=>a+b,0)/60:null);
-  S.v2rng=S.v2rng||120;
+  const ma=(n)=>{ const o=[]; let s=0; d.c.forEach((v,i)=>{ s+=v; if(i>=n) s-=d.c[i-n]; o.push(i+1>=n?s/n:null); }); return o; };
+  const M={20:ma(20),50:ma(50),150:ma(150),200:ma(200)};
+  const vavg=d.v.map((_,i)=>i>=50?d.v.slice(i-50,i).reduce((a,b)=>a+b,0)/50:null);
+  const at=new Map(d.d.map((s,i)=>[s,i]));
+  // 셋업이 1년 넘게 걸친 것(컵 · 바닥 탈출 · IPO)은 처음부터 넓게
+  const span=pat&&pat.pts&&pat.pts.length?d.c.length-(at.get(pat.pts[0][0])??d.c.length):0;
+  const want=span>0?[60,120,250,500].find(n=>n>=span+20)||500:(S.v2rng||120);
   const draw=(N)=>{
     S.v2rng=N; [...rg.children].forEach(b=>b.classList.toggle('on',+b.dataset.n===N));
     fig.innerHTML='';
     const T0=Math.max(0,d.c.length-N), idx=[]; for(let i=T0;i<d.c.length;i++) idx.push(i);
-    const W=880,L=8,R=62,T=10,H1=300,G=8,H2=80,B=22,H=T+H1+G+H2+B;
+    const W=880,L=8,R=66,T=10,H1=300,G=8,H2=80,B=22,H=T+H1+G+H2+B;
     const lo52i=Math.max(0,d.c.length-250);
     const hi52=Math.max(...d.h.slice(lo52i)), lo52=Math.min(...d.l.slice(lo52i));
     let mx=Math.max(...idx.map(i=>d.h[i])), mn=Math.min(...idx.map(i=>d.l[i]));
-    [5,20,60,120].forEach(n=>idx.forEach(i=>{ const v=M[n][i]; if(v!=null){ if(v>mx) mx=v; if(v<mn) mn=v; } }));
+    [20,50,150,200].forEach(n=>idx.forEach(i=>{ const v=M[n][i]; if(v!=null){ if(v>mx) mx=v; if(v<mn) mn=v; } }));
+    if(pat&&pat.line){ mx=Math.max(mx,pat.line); mn=Math.min(mn,pat.line); }
     const pad=(mx-mn)*.04||1; mx+=pad; mn-=pad;
     const cw=(W-L-R)/idx.length, X=k=>L+k*cw+cw/2, Y=v=>T+(mx-v)/(mx-mn)*H1;
     const vmx=Math.max(...idx.map(i=>d.v[i]),1), YV=v=>T+H1+G+H2-v/vmx*H2;
     const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'v2Big'});
-    // 가격 눈금
     for(let g=0;g<=4;g++){ const v=mn+(mx-mn)*g/4, y=Y(v); svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y,y2:y,class:'gr'}));
       const t=svgEl('text',{x:W-R+4,y:y+3,class:'ax'}); t.textContent=won(Math.round(v)); svg.appendChild(t); }
-    // 52주 고점 · 저점
     [[hi52,'52주 고점'],[lo52,'52주 저점']].forEach(([v,lab])=>{ if(v>mx||v<mn) return; const y=Y(v);
       svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y,y2:y,class:'hl'})); const t=svgEl('text',{x:L+4,y:y-3,class:'hlt'}); t.textContent=lab+' '+won(v); svg.appendChild(t); });
-    // 캔들 · 거래량
     idx.forEach((i,k)=>{ const up=d.c[i]>=d.o[i], x=X(k), bw=Math.max(1,cw*.66);
       svg.appendChild(svgEl('line',{x1:x,x2:x,y1:Y(d.h[i]),y2:Y(d.l[i]),class:up?'wu':'wd'}));
       const y1=Y(Math.max(d.o[i],d.c[i])), y2=Y(Math.min(d.o[i],d.c[i]));
       svg.appendChild(svgEl('rect',{x:x-bw/2,y:y1,width:bw,height:Math.max(1,y2-y1),class:up?'cu':'cd'}));
-      const sp=vavg[i]&&d.v[i]>=3*vavg[i];
+      const sp=vavg[i]&&d.v[i]>=2*vavg[i];
       svg.appendChild(svgEl('rect',{x:x-bw/2,y:YV(d.v[i]),width:bw,height:Math.max(0,T+H1+G+H2-YV(d.v[i])),class:(up?'vu':'vd')+(sp?' spk':'')}));
-      if(sp) svg.appendChild(svgEl('circle',{cx:x,cy:YV(d.v[i])-4,r:2.6,class:'spd'}));
-      // 골든 · 데드크로스(20일선이 60일선을 뚫은 날)
-      const a=M[20][i],b=M[60][i],a0=M[20][i-1],b0=M[60][i-1];
-      if(a!=null&&b!=null&&a0!=null&&b0!=null){
-        if(a>b&&a0<=b0){ const t=svgEl('text',{x:x,y:Y(d.l[i])+13,'text-anchor':'middle',class:'gc'}); t.textContent='▲'; svg.appendChild(t); }
-        if(a<b&&a0>=b0){ const t=svgEl('text',{x:x,y:Y(d.h[i])-5,'text-anchor':'middle',class:'dc'}); t.textContent='▼'; svg.appendChild(t); }
-      }
+      if(sp) svg.appendChild(svgEl('circle',{cx:x,cy:YV(d.v[i])-4,r:2.4,class:'spd'}));
     });
-    // 이동평균선
-    [5,20,60,120].forEach(n=>{ let p=''; idx.forEach((i,k)=>{ const v=M[n][i]; if(v==null) return; p+=(p?'L':'M')+X(k).toFixed(1)+','+Y(v).toFixed(1); });
+    [20,50,150,200].forEach(n=>{ let p=''; idx.forEach((i,k)=>{ const v=M[n][i]; if(v==null) return; p+=(p?'L':'M')+X(k).toFixed(1)+','+Y(v).toFixed(1); });
       if(p) svg.appendChild(svgEl('path',{d:p,class:'m'+n})); });
-    // 거래량 축 · 날짜 눈금
+    // 셋업 자리 — 피봇(기준) 선 · 점(컵의 왼쪽 고점 · 바닥 · 손잡이 시작, VCP 흔들림 마디 …)
+    if(pat){
+      const pts=(pat.pts||[]).map(([s,v,lab])=>[at.get(s),v,lab]).filter(q=>q[0]!=null&&q[0]>=T0);
+      if(key==='vcp'&&pts.length>1){ svg.appendChild(svgEl('path',{d:'M'+pts.map(q=>X(q[0]-T0).toFixed(1)+','+Y(q[1]).toFixed(1)).join('L'),class:'zz'})); }
+      if(pat.line){ const y=Y(pat.line), x0=pts.length?X(pts[0][0]-T0):L;
+        svg.appendChild(svgEl('line',{x1:x0,x2:W-R,y1:y,y2:y,class:'pv'}));
+        const t=svgEl('text',{x:W-R+4,y:y+3,class:'pvt'}); t.textContent=won(Math.round(pat.line)); svg.appendChild(t); }
+      pts.forEach(([i,v,lab],j)=>{ const x=X(i-T0), y=Y(v);
+        svg.appendChild(svgEl('path',{d:'M'+x+','+(y-5)+'l4,5l-4,5l-4,-5z',class:'pp'}));
+        if(key!=='vcp'||j===0||j===pts.length-1){ const t=svgEl('text',{x:x,y:v>=(mx+mn)/2?y-9:y+17,'text-anchor':'middle',class:'ppt'}); t.textContent=lab; svg.appendChild(t); } });
+    }
     const tv=svgEl('text',{x:W-R+4,y:T+H1+G+10,class:'ax'}); tv.textContent='거래량'; svg.appendChild(tv);
     const step=Math.max(1,Math.round(idx.length/8));
     idx.forEach((i,k)=>{ if(k%step) return; const t=svgEl('text',{x:X(k),y:H-6,'text-anchor':'middle',class:'ax'}); const s=d.d[i]; t.textContent=s.slice(2,4)+'.'+s.slice(4,6)+'.'+s.slice(6,8); svg.appendChild(t); });
-    // 지금 가격
     const li=idx[idx.length-1], yl=Y(d.c[li]);
     svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:yl,y2:yl,class:'now'}));
     const nt=svgEl('text',{x:W-R+4,y:yl+3,class:'nowt'}); nt.textContent=won(d.c[li]); svg.appendChild(nt);
-    // 따라가는 선
     const guide=svgEl('line',{y1:T,y2:T+H1+G+H2,class:'gd'}); guide.style.display='none'; svg.appendChild(guide);
     const tip=el('div','spTip v2Tip'); tip.hidden=true;
     const hit=svgEl('rect',{x:L,y:T,width:W-L-R,height:H1+G+H2,fill:'transparent'}); svg.appendChild(hit);
@@ -4842,9 +5056,9 @@ async function v2Pop(r, SG){
       tip.innerHTML='';
       tip.appendChild(el('b',null,s.slice(0,4)+'.'+s.slice(4,6)+'.'+s.slice(6,8)));
       [['시가',won(d.o[i])],['고가',won(d.h[i])],['저가',won(d.l[i])],['종가',won(d.c[i])+(chg!=null?' ('+(chg>=0?'+':'')+chg.toFixed(1)+'%)':'')],
-       ['거래량',Math.round(d.v[i]).toLocaleString('ko-KR')+(vavg[i]?' · 60일 평균의 '+(d.v[i]/vavg[i]).toFixed(1)+'배':'')],
-       ['20일선',M[20][i]?won(Math.round(M[20][i]))+' ('+((d.c[i]/M[20][i]-1)*100>=0?'+':'')+((d.c[i]/M[20][i]-1)*100).toFixed(1)+'%)':'—'],
-       ['60일선',M[60][i]?won(Math.round(M[60][i])):'—']].forEach(([a,b])=>{ const q=el('div'); q.appendChild(el('span',null,a)); q.appendChild(el('em',null,b)); tip.appendChild(q); });
+       ['거래량',Math.round(d.v[i]).toLocaleString('ko-KR')+(vavg[i]?' · 50일 평균의 '+(d.v[i]/vavg[i]).toFixed(1)+'배':'')],
+       ['50일선',M[50][i]?won(Math.round(M[50][i]))+' ('+((d.c[i]/M[50][i]-1)*100>=0?'+':'')+((d.c[i]/M[50][i]-1)*100).toFixed(1)+'%)':'—'],
+       ['200일선',M[200][i]?won(Math.round(M[200][i])):'—']].forEach(([a,b])=>{ const q=el('div'); q.appendChild(el('span',null,a)); q.appendChild(el('em',null,b)); tip.appendChild(q); });
       tip.hidden=false;
       const fb=fig.getBoundingClientRect(); let lx=x*sc+14; if(lx+tip.offsetWidth>fb.width-4) lx=x*sc-tip.offsetWidth-14;
       tip.style.left=Math.max(4,lx)+'px'; tip.style.top='8px';
@@ -4853,35 +5067,7 @@ async function v2Pop(r, SG){
     fig.appendChild(svg); fig.appendChild(tip);
   };
   [[60,'3개월'],[120,'6개월'],[250,'1년'],[500,'2년']].forEach(([n,t])=>{ const b=el('button',null,t); b.dataset.n=n; b.onclick=()=>draw(n); rg.appendChild(b); });
-  draw(Math.min(S.v2rng, d.c.length));
-}
-
-function v2Table(rows, SG){
-  const t=el('table','tbl dipTbl v2Tbl');
-  t.innerHTML='<tr><th>종목 · 신호</th><th>최근 120일</th><th class="r">고점 대비</th><th class="r">52주 저점 대비</th><th class="r">거래량 20일÷120일</th><th class="r">하루 거래대금</th><th class="r">PER 1년 전→지금</th><th class="r">저평가 점수</th></tr>';
-  const P=v=>v==null?'—':(v>=0?'+':'')+Math.round(v)+'%';
-  const X=v=>v>=200?'200↑':v>=10?Math.round(v):v.toFixed(1);
-  rows.forEach(r=>{
-    const tr=el('tr');
-    const td=el('td'); const a=el('a',null,r.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); pick(r.code); }; td.appendChild(a);
-    td.appendChild(el('small',null,' '+r.code+' · '+(r.industry||'')+(r.cap_rank?' · 시총 '+r.cap_rank+'위':'')));
-    const cs=el('div','v2Sig');
-    (r.good||[]).forEach(k=>{ const x=el('span','g'+((SG[k]||{}).ok?' ok':''),(SG[k]||{}).name||k); x.title=V2_DEF[k]||''; cs.appendChild(x); });
-    (r.bad||[]).forEach(k=>{ const x=el('span','b','⚠ '+((SG[k]||{}).name||k)); x.title=V2_DEF[k]||''; cs.appendChild(x); });
-    (r.bad_info||[]).forEach(k=>{ const x=el('span','i',((SG[k]||{}).name||k)); x.title=(V2_DEF[k]||'')+' — 검증 안 된 표시(참고)'; cs.appendChild(x); });
-    td.appendChild(cs); tr.appendChild(td);
-    const sp=el('td','v2SpTd'); sp.appendChild(v2Spark(r.spark||{})); sp.title='누르면 크게 — 캔들 · 거래량 · 이동평균'; sp.onclick=()=>v2Pop(r,SG); tr.appendChild(sp);
-    const n=(v,cls)=>el('td','num'+(cls?' '+cls:''),v);
-    tr.appendChild(n(P(r.dd),'neg'));
-    tr.appendChild(n(P(r._from_lo),'pos'));
-    tr.appendChild(n(r._v20_120!=null?r._v20_120.toFixed(2)+'배':'—',r._v20_120!=null&&r._v20_120<=0.6?'pos':''));
-    tr.appendChild(n(r._tv20!=null?qWon(r._tv20):'—',r.thin?'neg':''));
-    tr.appendChild(n(r.per_then!=null&&r.per!=null?X(r.per_then)+'→'+X(r.per)+'배':(r.per!=null?X(r.per)+'배':'—')));
-    tr.appendChild(n(r.score!=null?r.score.toFixed(0):'—','strong'));
-    t.appendChild(tr);
-  });
-  if(!rows.length){ const tr=el('tr'); const td=el('td',null,'조건에 맞는 종목이 없다'); td.colSpan=8; tr.appendChild(td); t.appendChild(tr); }
-  return t;
+  draw(Math.min(want, d.c.length));
 }
 
 function valEvidence(bt){

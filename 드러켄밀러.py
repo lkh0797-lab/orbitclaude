@@ -143,8 +143,8 @@ def series(corp_code, stock_code, years, prices=None):
             ann, cum9 = raw.get(k), q3.get(k + "_누적")
             p[k] = (ann - cum9) if (ann is not None and cum9 is not None) else None
         eps_a, eps_c = raw.get("EPS"), q3.get("EPS_누적")
-        p["EPS"] = (eps_a - eps_c) if (eps_a is not None and eps_c is not None) \
-            else raw.get("EPS")
+        # 3분기 누적 EPS 가 없으면 4분기 단독은 모른다 — 연간 EPS 를 대신 넣으면 4분기 합 · 전년 대비가 연간과 분기를 섞어 부푼다(2026-10-07)
+        p["EPS"] = (eps_a - eps_c) if (eps_a is not None and eps_c is not None) else None
     for p in pts:
         for k in ("재고자산", "매출채권", "유형자산", "자본총계", "CAPEX"):
             p[k] = p["raw"].get(k)
