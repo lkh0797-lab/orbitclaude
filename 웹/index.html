@@ -631,32 +631,57 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .drkStackWrap{margin-top:20px}
 .drkGrid{stroke:var(--p-line)}
 .drkGrid.z{stroke:var(--p-line2);stroke-width:1.2}
-.drkRib{opacity:.9}
+.drkRib{opacity:.92}
 .drkRib.none{fill:none;stroke:var(--p-line2);stroke-dasharray:2 2}
-.drkQBar{fill:rgba(154,164,176,.26)}
-.drkQBar.clip{fill:rgba(154,164,176,.4)}
-.drkQBar.ttm{fill:rgba(241,217,160,.34)}
-.drkQBar.ttm.neg{fill:rgba(143,184,240,.38)}
-.drkGLine.thin{stroke-width:1.4;opacity:.75}
+.drkRib.now{opacity:1;stroke:#fff;stroke-width:1.6}
+.drkSSvg .orbTick{fill:#7d8896}
+.drkSSvg .orbYear{fill:#8a95a3}
+.drkCap .k{font:700 13px var(--f-body);fill:var(--p-hi)}
+.drkCap .d{font:400 11.5px var(--f-body);fill:var(--p-dim)}
+.drkLeg{font:500 11px var(--f-body);fill:var(--p-ink)}
+.drkSwL{stroke-width:2.4;stroke-linecap:round}
+.drkSwL.dash{stroke-width:2;stroke-dasharray:4 3;stroke-linecap:butt}
+.drkSep{stroke:rgba(255,255,255,.08)}
+.drkYSep{stroke:rgba(255,255,255,.05)}
+.drkYearT{font:500 10px var(--f-num);fill:#7d8896;letter-spacing:.04em}
+.drkCol{fill:rgba(241,217,160,.08)}
+.drkHov{stroke:var(--p-bg);stroke-width:1.8;pointer-events:none}
+.drkHovG{pointer-events:none}
+.drkEndDot{stroke:var(--p-bg);stroke-width:1.6}
+.drkQBar{fill:rgba(170,180,192,.36)}
+.drkQBar.neg{fill:rgba(143,184,240,.34)}
+.drkQBar.clip{fill:rgba(170,180,192,.55)}
+.drkQBar.ttm{fill:rgba(241,217,160,.5)}
+.drkQBar.ttm.neg{fill:rgba(143,184,240,.58)}
+.drkClip{stroke:var(--p-bg);stroke-width:2.6}
+.drkGLine.thin{stroke-width:1.3;opacity:.6}
+.drkMArea{fill:rgba(247,243,233,.07)}
+.drkNegZ{fill:rgba(217,89,38,.07)}
+.drkWarnTop{fill:rgba(217,89,38,.75)}
+.drkVoid{fill:rgba(255,255,255,.018)}
+.drkVoidT{font:400 11.5px var(--f-body);fill:#7d8896}
 .drkRevTg{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 4px}
 .drkRevTg>span{font-size:11.5px;color:var(--p-dim);margin-right:4px}
 .drkGLine{fill:none;stroke:var(--p-gold2);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+.drkTurn{stroke:var(--p-bg);stroke-width:1.5;stroke-linejoin:round}
 .drkTurn.up{fill:#3987e5}
 .drkTurn.down{fill:#d95926}
-.drkQDot{fill:rgba(154,164,176,.55)}
-.drkMLine{fill:none;stroke:var(--p-hi);stroke-width:2;stroke-linejoin:round}
-.drkWarn{fill:rgba(217,89,38,.13)}
-.drkInv{fill:none;stroke:var(--p-hi);stroke-width:1.8;stroke-linejoin:round}
-.drkAr{fill:none;stroke:var(--p-dim);stroke-width:1.6;stroke-dasharray:5 4;stroke-linejoin:round}
+.drkQDot{fill:rgba(170,180,192,.7)}
+.drkMLine{fill:none;stroke:var(--p-hi);stroke-width:2.2;stroke-linejoin:round}
+.drkWarn{fill:rgba(217,89,38,.14)}
+.drkInv{fill:none;stroke:var(--p-hi);stroke-width:2;stroke-linejoin:round}
+.drkAr{fill:none;stroke:#9fb1c4;stroke-width:1.8;stroke-dasharray:5 4;stroke-linejoin:round}
 .drkPx{fill:none;stroke:var(--p-hi);stroke-width:1.8;stroke-linejoin:round}
 .drkEps{fill:none;stroke:var(--p-gold2);stroke-width:2.4;stroke-linejoin:round}
 .drkEndL{font:600 11px var(--f-num);fill:var(--p-hi)}
 .drkEndL.gold{fill:var(--p-gold2)}
 .drkEndL.dim{fill:var(--p-dim)}
+.drkEndL.ar{fill:#9fb1c4}
 .drkNA{font:500 12px var(--f-body);fill:var(--p-faint)}
 .drkHit{fill:transparent;cursor:crosshair}
 .drkplate.anim .drkGLine,.drkplate.anim .drkMLine,.drkplate.anim .drkEps,.drkplate.anim .drkPx{
   stroke-dasharray:4000;stroke-dashoffset:4000;animation:spDraw 1.6s .2s cubic-bezier(.3,.7,.2,1) forwards}
+.drkplate.anim .drkMArea,.drkplate.anim .drkEndDot{animation:spFade .8s 1.2s both}
 /* 변곡 성적표 */
 .drkTurns{margin-top:22px}
 .drkSum{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.4fr);gap:10px;margin:8px 0 12px}
@@ -7739,85 +7764,132 @@ function drkStack(R, plate){
     tg.appendChild(b); });
   wrap.appendChild(tg);
   const fig=el('div','orbFig'); wrap.appendChild(fig);
-  const N=R.length, W=1000, L=56, Rr=112, T=18;
-  const RIB=12, HA=150, HB=96, HC=110, HD=120, GAP=34;
-  const ribY=T, aT=ribY+RIB+GAP, bT=aT+HA+GAP, cT=bT+HB+GAP, dT=cT+HC+GAP, bot=dT+HD, H=bot+40;
-  const step=(W-L-Rr)/N, X=i=>L+i*step+step/2, bw=Math.max(3,Math.min(18,step*.55));
+  const N=R.length, W=1000, L=56, Rr=112, T=24, ttm=revMode==='ttm';
+  const RIB=16, YRH=22, HA=160, HB=100, HC=104, HD=112, GAP=46;
+  const ribY=T, yTop=ribY+RIB+YRH-4, aT=ribY+RIB+YRH+GAP-10, bT=aT+HA+GAP, cT=bT+HB+GAP, dT=cT+HC+GAP, bot=dT+HD, H=bot+34;
+  const step=(W-L-Rr)/N, X=i=>L+i*step+step/2, bw=Math.max(3,Math.min(18,step*.62));
   const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'orbSvg drkSSvg',role:'img','aria-label':'분기별 성장률·마진·선행지표·주가'});
-  // 연도 띠
+  const put=(tag,at)=>svg.appendChild(svgEl(tag,at));
+  const GOLD='var(--p-gold2)', HI='var(--p-hi)', AR='#9fb1c4';
+  // 연도 — 띠 · 구분선 · 위(국면 띠 바로 밑)와 맨 아래 두 줄에 이름
   const yrs=[]; R.forEach((r,i)=>{ const y=String(r.year), l=yrs[yrs.length-1]; if(l&&l.y===y) l.e=i; else yrs.push({y,s:i,e:i}); });
-  yrs.forEach((g,k)=>{ const x0=L+g.s*step, w=(g.e-g.s+1)*step;
-    if(k%2===0) svg.appendChild(svgEl('rect',{x:x0,y:aT-8,width:w,height:bot-aT+8,class:'orbBand'}));
-    const t=svgEl('text',{x:x0+w/2,y:bot+22,'text-anchor':'middle',class:'orbYear'}); t.textContent=w<40?"'"+g.y.slice(2):g.y; svg.appendChild(t);
-    if(k) svg.appendChild(svgEl('line',{x1:x0,x2:x0,y1:bot,y2:bot+7,class:'orbYearTick'})); });
-  const cap=(y,a,b)=>{ const t=svgEl('text',{x:L,y,class:'trjCap'}); t.innerHTML='<tspan class="k"></tspan><tspan class="e" dx="8"></tspan>';
-    t.querySelector('.k').textContent=a; t.querySelector('.e').textContent=b; svg.appendChild(t); };
+  yrs.forEach((g,k)=>{ const x0=L+g.s*step, w=(g.e-g.s+1)*step, lab=w<40?"'"+g.y.slice(2):g.y;
+    if(k%2===0) put('rect',{x:x0,y:yTop,width:w,height:bot-yTop,class:'orbBand'});
+    if(k){ put('line',{x1:x0,x2:x0,y1:yTop,y2:bot,class:'drkYSep'}); put('line',{x1:x0,x2:x0,y1:bot,y2:bot+7,class:'orbYearTick'}); }
+    [[ribY+RIB+14,'drkYearT'],[bot+22,'orbYear']].forEach(([y,c])=>{ put('text',{x:x0+w/2,y,'text-anchor':'middle',class:c}).textContent=lab; }); });
+  // 판 사이 구분선
+  [bT,cT,dT].forEach(t=>put('line',{x1:0,x2:W,y1:t-30,y2:t-30,class:'drkSep'}));
+  // 마우스를 올린 분기의 세로 칸(선 밑에 깔린다)
+  const col=put('rect',{y:yTop,width:step,height:bot-yTop,class:'drkCol'}); col.style.display='none';
+  // 판 이름 + 설명, 오른쪽 끝에 범례
+  const tw=(s,px)=>[...s].reduce((w,ch)=>w+(/[ㄱ-힣]/.test(ch)?px:/[ ·.,()]/.test(ch)?px*.36:px*.62),0);
+  const cap=(y,a,b)=>{ const t=put('text',{x:L,y,class:'drkCap'}); t.innerHTML='<tspan class="k"></tspan><tspan class="d" dx="10"></tspan>';
+    t.querySelector('.k').textContent=a; t.querySelector('.d').textContent=b; };
+  // 범례 항목 = [모양, 이름, 색]. 모양: line · dash · bar · dot · up · down · band
+  const legend=(y,items)=>{ let x=W-Rr;
+    [...items].reverse().forEach(([k,lab,c])=>{
+      put('text',{x,y,'text-anchor':'end',class:'drkLeg'}).textContent=lab;
+      const sx=x-tw(lab,11)-20, sy=y-4;
+      const sw = k==='line'||k==='dash' ? svgEl('line',{x1:sx,x2:sx+14,y1:sy,y2:sy,class:'drkSwL'+(k==='dash'?' dash':'')})
+        : k==='dot' ? svgEl('circle',{cx:sx+7,cy:sy,r:3})
+        : k==='up' ? svgEl('path',{d:'M'+(sx+7)+','+(sy-5)+'l-5.5,9.5h11z'})
+        : k==='down' ? svgEl('path',{d:'M'+(sx+7)+','+(sy+5)+'l-5.5,-9.5h11z'})
+        : svgEl('rect',{x:sx+(k==='bar'?4:0),y:sy-5,width:k==='bar'?6:14,height:10,rx:k==='bar'?1:2.5});
+      if(k==='line'||k==='dash') sw.style.stroke=c; else sw.style.fill=c;
+      svg.appendChild(sw); x=sx-16; }); };
   const grid=(top,h,lo,hi,fmtv,n)=>{ const Y=v=>top+h-(v-lo)/((hi-lo)||1)*h;
     const s=(hi-lo)/(n||3), p=Math.pow(10,Math.floor(Math.log10(s||1))), m=[1,2,2.5,5,10].find(k=>k*p>=s)*p;
     for(let v=Math.ceil(lo/m)*m; v<=hi+1e-9; v+=m){ const vv=+v.toFixed(6);
-      svg.appendChild(svgEl('line',{x1:L,x2:W-Rr,y1:Y(vv),y2:Y(vv),class:'drkGrid'+(Math.abs(vv)<1e-9?' z':'')}));
-      const t=svgEl('text',{x:L-8,y:Y(vv)+4,'text-anchor':'end',class:'orbTick'}); t.textContent=fmtv(vv); svg.appendChild(t); }
+      put('line',{x1:L,x2:W-Rr,y1:Y(vv),y2:Y(vv),class:'drkGrid'+(Math.abs(vv)<1e-9?' z':'')});
+      put('text',{x:L-8,y:Y(vv)+4,'text-anchor':'end',class:'orbTick'}).textContent=fmtv(vv); }
     return Y; };
   const pathOf=(vals,Y)=>{ let d='', pen=false; vals.forEach((v,i)=>{ if(!dNum(v)){ pen=false; return; }
     d+=(pen?'L':'M')+X(i).toFixed(1)+','+Y(v).toFixed(1); pen=true; }); return d; };
+  const areaOf=(vals,Y,base)=>{ let d='', seg=[];
+    const flush=()=>{ if(seg.length>1) d+='M'+X(seg[0]).toFixed(1)+','+Y(base).toFixed(1)+seg.map(i=>'L'+X(i).toFixed(1)+','+Y(vals[i]).toFixed(1)).join('')+
+      'L'+X(seg[seg.length-1]).toFixed(1)+','+Y(base).toFixed(1)+'Z'; seg=[]; };
+    vals.forEach((v,i)=>{ if(dNum(v)) seg.push(i); else flush(); }); flush(); return d; };
+  // 마우스를 올리면 그 분기의 각 선 위에 점을 찍는다
+  const marks=R.map(()=>[]), mk=(i,y,c)=>marks[i].push([y,c]);
+  const lastOf=vals=>{ for(let i=vals.length-1;i>=0;i--) if(dNum(vals[i])) return i; return -1; };
+  const endDot=(i,y,c)=>{ put('circle',{cx:X(i),cy:y,r:3.6,class:'drkEndDot'}).style.fill=c; };
+  const endLab=(y,txt,cls)=>{ put('text',{x:W-Rr+12,y,class:'drkEndL'+(cls?' '+cls:'')}).textContent=txt; };
+  const apart=(a,b)=>{ if(a!==null&&b!==null&&Math.abs(a-b)<14){ if(a<b){ a-=7; b+=7; } else { a+=7; b-=7; } } return [a,b]; };
 
   // 국면 띠
-  cap(ribY-6,'국면','REGIME');
-  R.forEach((r,i)=>{ const q=svgEl('rect',{x:X(i)-step/2+1,y:ribY,width:Math.max(1,step-2),height:RIB,rx:2,class:'drkRib'+(r.reg?'':' none')});
-    if(r.reg) q.setAttribute('fill',DRK_RC[r.reg].c); svg.appendChild(q); });
+  cap(ribY-8,'국면','성장률 부호 × 가속 부호');
+  legend(ribY-8, DRK_REG.map(g=>['band',g.k,g.c]));
+  R.forEach((r,i)=>{ const q=put('rect',{x:X(i)-step/2+1,y:ribY,width:Math.max(1,step-2),height:RIB,rx:2.5,
+      class:'drkRib'+(r.reg?'':' none')+(r.reg&&i===N-1?' now':'')});
+    if(r.reg) q.setAttribute('fill',DRK_RC[r.reg].c); });
 
-  // A. 성장률 — 막대(분기 YoY 또는 4분기 합) + TTM 굵은 선
-  cap(aT-12,'매출 성장률',revMode==='ttm'?'막대 = 최근 4분기 합 전년 대비(TTM) · 분기 쏠림을 지운 추세 · ▲▼ 변곡':'막대 = 분기 YoY · 선 = TTM · ▲▼ 변곡');
+  // A. 성장률 — 막대(분기 YoY 또는 4분기 합) + TTM 선
+  cap(aT-14,'매출 성장률',ttm?'최근 4분기 합(TTM)의 전년 대비 — 분기 쏠림을 지운 추세':'막대 = 분기 하나의 전년 대비 · 선 = 최근 4분기 합(TTM)');
+  legend(aT-14,(ttm?[['bar','증가','rgba(241,217,160,.8)'],['bar','감소','rgba(143,184,240,.85)'],['line','TTM',GOLD]]
+                   :[['bar','분기 YoY','rgba(170,180,192,.7)'],['line','TTM',GOLD]])
+    .concat([['up','가속 전환','#3987e5'],['down','감속 전환','#d95926']]));
   const gv=R.map(r=>r.g).filter(dNum), qv=R.map(r=>r['매출YoY']).filter(dNum);
   let lo=Math.min(0,...gv), hi=Math.max(0,...gv); const sp=Math.max(10,hi-lo);
-  if(revMode==='q'){ lo=Math.min(lo, Math.max(Math.min(...qv,0), lo-sp*.6)); hi=Math.max(hi, Math.min(Math.max(...qv,0), hi+sp*.6)); }
+  if(!ttm){ lo=Math.min(lo, Math.max(Math.min(...qv,0), lo-sp*.6)); hi=Math.max(hi, Math.min(Math.max(...qv,0), hi+sp*.6)); }
   lo-=sp*.08; hi+=sp*.08;
-  const YA=grid(aT,HA,lo,hi,v=>(v>0?'+':'')+v+'%',4);
-  R.forEach((r,i)=>{ const v=revMode==='ttm'?r.g:r['매출YoY']; if(!dNum(v)) return;
+  const YA=grid(aT,HA,lo,hi,v=>(v>0?'+':'')+v+'%',5);
+  R.forEach((r,i)=>{ const v=ttm?r.g:r['매출YoY']; if(!dNum(v)) return;
     const vc=Math.max(lo,Math.min(hi,v)), y=YA(vc), y0=YA(0);
-    svg.appendChild(svgEl('rect',{x:X(i)-bw/2,y:Math.min(y,y0),width:bw,height:Math.max(1,Math.abs(y-y0)),rx:2,class:'drkQBar'+(revMode==='ttm'?' ttm'+(v<0?' neg':''):'')+(v!==vc?' clip':'')})); });
-  svg.appendChild(svgEl('path',{d:pathOf(R.map(r=>r.g),YA),class:'drkGLine'+(revMode==='ttm'?' thin':'')}));
+    put('rect',{x:X(i)-bw/2,y:Math.min(y,y0),width:bw,height:Math.max(1,Math.abs(y-y0)),rx:1.5,
+      class:'drkQBar'+(ttm?' ttm':'')+(v<0?' neg':'')+(v!==vc?' clip':'')});
+    // 눈금 밖으로 나간 막대는 끝을 끊어 보인다 — 실제 값은 마우스를 올리면 나온다
+    if(v!==vc) put('line',{x1:X(i)-bw/2-1,x2:X(i)+bw/2+1,y1:v>0?y+5:y-5,y2:v>0?y+2:y-8,class:'drkClip'}); });
+  put('path',{d:pathOf(R.map(r=>r.g),YA),class:'drkGLine'+(ttm?' thin':'')});
+  R.forEach((r,i)=>{ if(dNum(r.g)) mk(i,YA(r.g),GOLD); });
   R.forEach((r,i)=>{ if(!r.turn||!dNum(r.g)) return;
     const y=YA(r.g), up=r.turn==='up';
-    const m=svgEl('path',{d:up?'M'+X(i)+','+(y+7)+'l-6,10h12z':'M'+X(i)+','+(y-7)+'l-6,-10h12z',class:'drkTurn '+(up?'up':'down')});
-    svg.appendChild(m); });
-  // 선 끝 라벨
-  const lastG=[...R].reverse().find(r=>dNum(r.g));
-  if(lastG){ const t=svgEl('text',{x:W-Rr+10,y:YA(lastG.g)+4,class:'drkEndL gold'}); t.textContent='TTM '+dPct(lastG.g,0); svg.appendChild(t); }
+    put('path',{d:up?'M'+X(i)+','+(y+6)+'l-6.5,11h13z':'M'+X(i)+','+(y-6)+'l-6.5,-11h13z',class:'drkTurn '+(up?'up':'down')}); });
+  const iG=lastOf(R.map(r=>r.g));
+  if(iG>=0){ endDot(iG,YA(R[iG].g),GOLD); endLab(YA(R[iG].g)+4,'TTM '+dPct(R[iG].g,0),'gold'); }
 
   // B. 마진
-  cap(bT-12,'영업이익률','선 = TTM · 점 = 분기');
+  cap(bT-14,'영업이익률','최근 4분기 합(TTM) 기준 · 점은 분기 하나');
+  legend(bT-14,[['line','TTM',HI],['dot','분기','rgba(170,180,192,.85)']]);
   const mv=R.map(r=>r.m).filter(dNum), qm=R.map(r=>r['영업이익률']).filter(dNum);
   let mlo=Math.min(...mv,...qm.filter(v=>v>-60)), mhi=Math.max(...mv,...qm.filter(v=>v<80));
   if(!isFinite(mlo)){ mlo=0; mhi=10; } const msp=Math.max(4,mhi-mlo); mlo=Math.min(mlo-msp*.1,mlo<0?mlo:0); mhi+=msp*.12;
+  if(mlo<0) put('rect',{x:L,y:bT+HB-(0-mlo)/((mhi-mlo)||1)*HB,width:W-L-Rr,height:(0-mlo)/((mhi-mlo)||1)*HB,class:'drkNegZ'});
   const YB=grid(bT,HB,mlo,mhi,v=>v+'%',3);
+  put('path',{d:areaOf(R.map(r=>r.m),YB,0),class:'drkMArea'});
   R.forEach((r,i)=>{ const v=r['영업이익률']; if(!dNum(v)||v<mlo||v>mhi) return;
-    svg.appendChild(svgEl('circle',{cx:X(i),cy:YB(v),r:2.2,class:'drkQDot'})); });
-  svg.appendChild(svgEl('path',{d:pathOf(R.map(r=>r.m),YB),class:'drkMLine'}));
-  const lastM=[...R].reverse().find(r=>dNum(r.m));
-  if(lastM){ const t=svgEl('text',{x:W-Rr+10,y:YB(lastM.m)+4,class:'drkEndL'}); t.textContent='TTM '+lastM.m.toFixed(1)+'%'; svg.appendChild(t); }
+    put('circle',{cx:X(i),cy:YB(v),r:2.5,class:'drkQDot'}); });
+  put('path',{d:pathOf(R.map(r=>r.m),YB),class:'drkMLine'});
+  R.forEach((r,i)=>{ if(dNum(r.m)) mk(i,YB(r.m),HI); });
+  const iM=lastOf(R.map(r=>r.m));
+  if(iM>=0){ endDot(iM,YB(R[iM].m),HI); endLab(YB(R[iM].m)+4,'TTM '+R[iM].m.toFixed(1)+'%'); }
 
   // C. 선행지표 — 재고일수 · 채권일수. 재고↑(1년 10%+)·성장 둔화 분기는 경고로 칠한다
-  cap(cT-12,'선행지표','재고일수 · 매출채권일수 · 주황 = 재고 쌓이며 감속');
-  R.forEach((r,i)=>{ if(dNum(r.invD4)&&r.invD4>=10&&dNum(r.a)&&r.a<=0)
-    svg.appendChild(svgEl('rect',{x:X(i)-step/2,y:cT,width:step,height:HC,class:'drkWarn'})); });
-  const dv=[].concat(R.map(r=>r['재고일수']),R.map(r=>r['매출채권일수'])).filter(v=>dNum(v)&&v>=0&&v<1500);
+  cap(cT-14,'선행지표','재고·채권이 매출보다 빨리 쌓이면 다음 분기 경고');
+  legend(cT-14,[['line','재고일수',HI],['dash','매출채권일수',AR],['band','재고↑ · 감속','rgba(217,89,38,.55)']]);
+  R.forEach((r,i)=>{ if(dNum(r.invD4)&&r.invD4>=10&&dNum(r.a)&&r.a<=0){
+    put('rect',{x:X(i)-step/2,y:cT,width:step,height:HC,class:'drkWarn'});
+    put('rect',{x:X(i)-step/2,y:cT,width:step,height:3,class:'drkWarnTop'}); } });
+  const dv=[].concat(R.map(r=>r['재고일수']),R.map(r=>r['매출채권일수'])).filter(v=>dNum(v)&&v>0&&v<1500);
   const dhi=dv.length?Math.max(...dv)*1.12:100;
   const YC=grid(cT,HC,0,dhi,v=>Math.round(v)+'일',3);
-  const clampD=v=>dNum(v)&&v>=0&&v<1500?v:null;
-  svg.appendChild(svgEl('path',{d:pathOf(R.map(r=>clampD(r['재고일수'])),YC),class:'drkInv'}));
-  svg.appendChild(svgEl('path',{d:pathOf(R.map(r=>clampD(r['매출채권일수'])),YC),class:'drkAr'}));
-  const lastI=[...R].reverse().find(r=>clampD(r['재고일수'])!==null), lastA=[...R].reverse().find(r=>clampD(r['매출채권일수'])!==null);
-  let yi=lastI?YC(lastI['재고일수'])+4:null, ya=lastA?YC(lastA['매출채권일수'])+4:null;
-  if(yi!==null&&ya!==null&&Math.abs(yi-ya)<14){ if(yi<ya){ yi-=7; ya+=7; } else { yi+=7; ya-=7; } }
-  if(lastI){ const t=svgEl('text',{x:W-Rr+10,y:yi,class:'drkEndL'}); t.textContent='재고 '+Math.round(lastI['재고일수'])+'일'; svg.appendChild(t); }
-  if(lastA){ const t=svgEl('text',{x:W-Rr+10,y:ya,class:'drkEndL dim'}); t.textContent='채권 '+Math.round(lastA['매출채권일수'])+'일'; svg.appendChild(t); }
+  // 0일은 값이 없는 분기(원장에 매출채권·재고가 안 잡힘) — 0으로 그리면 선이 바닥에 붙는다
+  const clampD=v=>dNum(v)&&v>0&&v<1500?v:null;
+  const inv=R.map(r=>clampD(r['재고일수'])), ar=R.map(r=>clampD(r['매출채권일수']));
+  put('path',{d:pathOf(ar,YC),class:'drkAr'});
+  put('path',{d:pathOf(inv,YC),class:'drkInv'});
+  R.forEach((r,i)=>{ if(inv[i]!==null) mk(i,YC(inv[i]),HI); if(ar[i]!==null) mk(i,YC(ar[i]),AR); });
+  const iI=lastOf(inv), iA=lastOf(ar);
+  if(iI>=0) endDot(iI,YC(inv[iI]),HI); if(iA>=0) endDot(iA,YC(ar[iA]),AR);
+  const [yi,ya]=apart(iI>=0?YC(inv[iI])+4:null, iA>=0?YC(ar[iA])+4:null);
+  if(iI>=0) endLab(yi,'재고 '+Math.round(inv[iI])+'일');
+  if(iA>=0) endLab(ya,'채권 '+Math.round(ar[iA])+'일','ar');
 
   // D. 주가 vs 이익 — 3년 전(=100)에 맞춘 로그 눈금. 이익이 0 근처인 해를 기준으로 잡으면 지수가 수천으로 부푼다.
   const okPE=r=>dNum(r['주가'])&&r['주가']>0&&dNum(r['EPS_TTM'])&&r['EPS_TTM']>0;
   let bi=R.findIndex((r,i)=>i>=R.length-13&&okPE(r));
   if(bi<0) bi=R.findIndex(okPE);
-  cap(dT-12,'주가 vs 이익','주가 · EPS(TTM) · '+(bi>=0?R[bi].label:'')+' = 100 · 로그 눈금');
+  cap(dT-14,'주가 vs 이익',bi>=0?R[bi].label+' = 100 · 로그 눈금 · 주가는 보고서 접수일 종가':'');
+  legend(dT-14,[['line','주가',HI],['line','이익(EPS TTM)',GOLD]]);
   if(bi>=0){
     const p0=R[bi]['주가'], e0=R[bi]['EPS_TTM'];
     const pi=R.map((r,i)=>i>=bi&&dNum(r['주가'])&&r['주가']>0?r['주가']/p0*100:null);
@@ -7825,34 +7897,42 @@ function drkStack(R, plate){
     const allv=pi.concat(ei).filter(dNum);
     const llo=Math.log10(Math.min(...allv)*.85), lhi=Math.log10(Math.max(...allv)*1.15);
     const YD=v=>dT+HD-(Math.log10(v)-llo)/((lhi-llo)||1)*HD;
+    // 기준 분기 앞은 비워 두되, 비운 까닭을 적는다
+    const bx=X(bi)-step/2;
+    if(bx-L>150){
+      put('rect',{x:L,y:dT,width:bx-L,height:HD,class:'drkVoid'});
+      put('text',{x:(L+bx)/2,y:dT+HD/2+4,'text-anchor':'middle',class:'drkVoidT'}).textContent=
+        (bi>=R.length-13?'최근 3년만 견준다 — ':'흑자 분기부터 견준다 — ')+R[bi].label+' = 100';
+    }
     [25,50,100,200,400,800,1600,3200].filter(v=>Math.log10(v)>=llo&&Math.log10(v)<=lhi).forEach(v=>{
-      svg.appendChild(svgEl('line',{x1:L,x2:W-Rr,y1:YD(v),y2:YD(v),class:'drkGrid'+(v===100?' z':'')}));
-      const t=svgEl('text',{x:L-8,y:YD(v)+4,'text-anchor':'end',class:'orbTick'}); t.textContent=v; svg.appendChild(t); });
-    svg.appendChild(svgEl('path',{d:pathOf(ei,YD),class:'drkEps'}));
-    svg.appendChild(svgEl('path',{d:pathOf(pi,YD),class:'drkPx'}));
-    const lp=[...pi].reverse().find(dNum), le=[...ei].reverse().find(dNum);
-    let yp=lp?YD(lp)+4:null, ye=le?YD(le)+4:null;
-    if(yp!==null&&ye!==null&&Math.abs(yp-ye)<14){ if(yp<ye){ yp-=7; ye+=7; } else { yp+=7; ye-=7; } }
-    if(lp){ const t=svgEl('text',{x:W-Rr+10,y:yp,class:'drkEndL'}); t.textContent='주가 '+Math.round(lp); svg.appendChild(t); }
-    if(le){ const t=svgEl('text',{x:W-Rr+10,y:ye,class:'drkEndL gold'}); t.textContent='이익 '+Math.round(le); svg.appendChild(t); }
+      put('line',{x1:L,x2:W-Rr,y1:YD(v),y2:YD(v),class:'drkGrid'+(v===100?' z':'')});
+      put('text',{x:L-8,y:YD(v)+4,'text-anchor':'end',class:'orbTick'}).textContent=v; });
+    put('path',{d:pathOf(ei,YD),class:'drkEps'});
+    put('path',{d:pathOf(pi,YD),class:'drkPx'});
+    R.forEach((r,i)=>{ if(dNum(pi[i])) mk(i,YD(pi[i]),HI); if(dNum(ei[i])) mk(i,YD(ei[i]),GOLD); });
+    const iP=lastOf(pi), iE=lastOf(ei);
+    if(iP>=0) endDot(iP,YD(pi[iP]),HI); if(iE>=0) endDot(iE,YD(ei[iE]),GOLD);
+    const [yp,ye]=apart(iP>=0?YD(pi[iP])+4:null, iE>=0?YD(ei[iE])+4:null);
+    if(iP>=0) endLab(yp,'주가 '+Math.round(pi[iP]));
+    if(iE>=0) endLab(ye,'이익 '+Math.round(ei[iE]),'gold');
   } else {
-    const t=svgEl('text',{x:L,y:dT+HD/2,class:'drkNA'}); t.textContent='흑자 분기의 주가·EPS 가 모자라 그리지 않았다'; svg.appendChild(t);
+    put('text',{x:L,y:dT+HD/2,class:'drkNA'}).textContent='흑자 분기의 주가·EPS 가 모자라 그리지 않았다';
   }
 
-  // 십자선
-  const guide=svgEl('line',{class:'orbGuide',y1:ribY,y2:bot}); guide.style.display='none'; svg.appendChild(guide);
+  // 마우스 — 분기 칸을 밝히고 각 선 위에 점, 옆에 그 분기 숫자
+  const hov=put('g',{class:'drkHovG'});
   const tip=el('div','spTip drkTip'); tip.hidden=true;
   R.forEach((r,i)=>{
-    const h=svgEl('rect',{x:L+i*step,y:ribY,width:step,height:bot-ribY,class:'hit drkHit'});
+    const h=put('rect',{x:L+i*step,y:ribY,width:step,height:bot-ribY,class:'hit drkHit'});
     h.addEventListener('pointerenter',()=>{
-      guide.style.display=''; guide.setAttribute('x1',X(i)); guide.setAttribute('x2',X(i));
+      col.style.display=''; col.setAttribute('x',L+i*step);
+      hov.innerHTML=''; marks[i].forEach(([y,c])=>{ const d=svgEl('circle',{cx:X(i),cy:y,r:4.2,class:'drkHov'}); d.style.fill=c; hov.appendChild(d); });
       tip.innerHTML=''; tip.appendChild(drkTipBody(r)); tip.hidden=false;
       const box=fig.getBoundingClientRect(), sc=box.width/W;
-      let lx=X(i)*sc+16; if(lx+tip.offsetWidth>box.width-4) lx=X(i)*sc-tip.offsetWidth-16;
-      tip.style.left=Math.max(4,lx)+'px'; tip.style.top=Math.max(4,(aT)*sc)+'px';
+      let lx=X(i)*sc+18; if(lx+tip.offsetWidth>box.width-4) lx=X(i)*sc-tip.offsetWidth-18;
+      tip.style.left=Math.max(4,lx)+'px'; tip.style.top=Math.max(4,aT*sc)+'px';
     });
-    h.addEventListener('pointerleave',()=>{ guide.style.display='none'; tip.hidden=true; });
-    svg.appendChild(h);
+    h.addEventListener('pointerleave',()=>{ col.style.display='none'; hov.innerHTML=''; tip.hidden=true; });
   });
   fig.appendChild(svg); fig.appendChild(tip);
   return wrap;
