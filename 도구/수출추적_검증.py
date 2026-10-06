@@ -11,7 +11,7 @@
 맞힐 것
   (1) 그 분기 매출 증가율(공시) — 같은 분기 순위상관(분기마다 회사들끼리)
   (2) 매출 증가율의 변화(이번 분기 − 직전 분기) — 시장이 아직 모르는 '가속 · 둔화' — 통관 변화와 순위상관
-  (3) 주가 — 판단 시점 다음 날부터 90일 초과수익(전 종목 중앙값 대비) — 통관 변화(이번 − 직전 분기)와 순위상관
+  (3) 주가 — 판단 시점 다음 거래일 종가부터 90일 초과수익(2026-10-07 고침)(전 종목 중앙값 대비) — 통관 변화(이번 − 직전 분기)와 순위상관
 덩어리 수출(0인 달이 12개월 중 3번↑ 또는 한 달이 12개월 합의 40%↑)을 따로 떼어 본다.
 재무는 재무.py 캐시만(네트워크 없음), 주가는 억울_백테스트.py 의 캐시.
 
@@ -146,8 +146,8 @@ def main():
             t = "%d%s" % (y, {1: "0415", 2: "0715", 3: "1015", 4: "1231"}[n]) if n < 4 else "%d0115" % (y + 1)
             if filed.get(q) and filed[q] <= t:          # 공시가 먼저 나왔으면(드묾) 선행이 아니다
                 continue
-            t1 = W.shift(t, 1)
-            a, b = W.ret(x["code"], t1, W.shift(t1, 90)), W.grp_ret("__all__", t1, W.shift(t1, 90))
+            t1 = W.next_day(x["code"], t)      # 판단 시점 다음 거래일 종가(달력 +1일이면 t 가 금 · 토 · 휴장 전날일 때 t 또는 그 전 종가로 샀다)
+            a, b = (W.ret(x["code"], t1, W.shift(t1, 90)), W.grp_ret("__all__", t1, W.shift(t1, 90))) if t1 else (None, None)
             row = {"code": x["code"], "q": q, "grade": x.get("grade"), "r": r_q, "dr": (r_q - r_p) if r_p is not None else None,
                    "ex90": (a - b) if a is not None and b is not None else None, "lumpy": me["lumpy"]}
             for key in ("m3", "m6", "m12", "log"):

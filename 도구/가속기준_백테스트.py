@@ -9,7 +9,7 @@
 변곡(전환) = 가속의 부호가 바뀐 분기. 문턱은 화면과 같다 — A 1.5%p(가속도 칸), B 3%p(업황 시계 띠), C 3%p. 문턱 없이 부호만 본 것도 같이 낸다.
 
 결과
-  (1) 주가 — 그 분기 보고서 공시 다음 날부터 6 · 12개월 수익률 − 같은 기간 전 종목 수익률 중앙값(초과수익)
+  (1) 주가 — 그 분기 보고서 공시 다음 거래일 종가부터 6 · 12개월 수익률 − 같은 기간 전 종목 수익률 중앙값(초과수익, 2026-10-07 고침)
   (2) 매출 — 2 · 4분기 뒤 TTM 매출 증가율이 몇 %p 바뀌었나(신호가 실제 성장 변화를 앞섰나)
   (3) 앞섬 — 같은 회사의 같은 방향 전환을 B 가 A 보다 몇 분기 먼저 잡았나, 그리고 2분기 안에 거꾸로 뒤집힌 헛신호 비율
   (4) 상태 — 가속 + / − 두 묶음의 12개월 초과수익 차이, 연속값 순위상관(IC)
@@ -156,9 +156,11 @@ def panel(W, ser):
             t = filed.get(n)
             if not t or t < T0 or t > T1:
                 continue
-            t1 = W.shift(t, 1)
+            t1 = W.next_day(code, t)       # 공시 다음 거래일 종가(달력 +1일이면 금요일 공시가 그날 종가로 샀다)
 
             def ex(days):
+                if t1 is None:
+                    return None
                 a = W.ret(code, t1, W.shift(t1, days))
                 b = W.grp_ret("__all__", t1, W.shift(t1, days))
                 return a - b if a is not None and b is not None else None

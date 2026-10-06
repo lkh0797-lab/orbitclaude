@@ -4,7 +4,7 @@
 
 예전 검증(도구/반영속도_검증.py)은 14종목 · 515건이라 카드의 '우리 데이터 12개월' 숫자를 믿기 어렵다.
 분기변화_백테스트.py 와 같은 시점 재구성(공시일 t, 그때까지 나온 숫자, 재무는 캐시만)으로 렌즈 지표를 다시 세우고
-t 다음 날부터 12개월 초과수익(전 종목 중앙값 대비)과 '가치 함정'(12개월 −30% 이하) 비율을 본다.
+t 다음 거래일 종가부터 12개월 초과수익(전 종목 중앙값 대비, 2026-10-07 고침)과 '가치 함정'(12개월 −30% 이하) 비율을 본다.
   피셔   PSR(시총 ÷ 매출 4분기) 절대 0.75 · 3배, PSR 자기 역사 백분위, 슈퍼 컴퍼니(매출 5년 연 15%↑ · 순이익률 5년 평균 5%↑), 글리치
   드러켄밀러  매출 증가율 · 가속 · 설비투자 강도 · 재고일수
   버핏   ROE · ROE 10년 평균/최저 · 영업이익률 흔들림
@@ -106,9 +106,9 @@ def one(c):
               "debt": debt is not None and eq and eq > 0 and debt / eq > 2,
               "issue": any(qn(lab) - 12 < q <= qn(lab) for q in issue_q),
               "loss": losses >= 2}
-        t1 = W.shift(t, 1)
-        a = W.ret(code, t1, W.shift(t1, 365))
-        b = W.grp_ret("__all__", t1, W.shift(t1, 365))
+        t1 = W.next_day(code, t)           # 공시 다음 거래일 종가(달력 +1일이면 금요일 공시가 그날 종가로 샀다)
+        a = W.ret(code, t1, W.shift(t1, 365)) if t1 else None
+        b = W.grp_ret("__all__", t1, W.shift(t1, 365)) if t1 else None
         out.append({"code": code, "lab": lab, "t": t[:6] + "15", "date": t,
                     "psr": psr, "psr_pct": psr_pct, "per": per, "per_pct": per_pct, "peg": peg,
                     "g5": g5, "nim5": nim5, "glitch": glitch, "rev_yoy": r.get("rev_yoy"),

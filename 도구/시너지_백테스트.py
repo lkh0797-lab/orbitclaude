@@ -9,7 +9,7 @@
   확인   보고서 뒤 수주 공시 — 과거 공시 목록이 캐시에 없어 뺐다(가중치를 나머지로 다시 나눈다)
 점수는 시너지.py score() 를 그대로 부르고(그 날 신뢰할 수 있는 회사끼리 백분위 → 가중평균), 단계는 stage() 를 그대로 부른다.
 2026-09-29 이전 식(선행 = 잔고 증가 .6·북투빌 .4, 전환 = 매출 가속 .6·이익률 변화 .4, 가격 = 반영 갭 .6·PER .4)은 score_old 로 함께 잰다.
-그 뒤 6·12개월 수익률을 같은 기간 전 종목 중앙값과 비교한다.
+그 뒤 6·12개월 수익률을 같은 기간 전 종목 중앙값과 비교한다. 들어가는 날 = 그달 말 다음 거래일 종가(2026-10-07).
 
 한계 — 억울_백테스트.py 와 같다(지금 상장된 회사만, 표본 대부분이 2020년 뒤).
   PER = 종목.txt 시가총액 스냅샷 × (그 날 수정주가 ÷ 스냅샷 날 수정주가) ÷ 4분기 순이익. 그 사이 증자·자사주 소각은 반영 못 한다.
@@ -141,9 +141,10 @@ def row_at(P, t):
          "loss4": (op4 is not None and op4 <= 0) or (ni4 is not None and ni4 <= 0),
          "gap": (yoy_c - p1y) if (yoy_c is not None and p1y is not None) else None}
     r["stage"], _ = SYN.stage(r)
+    t0 = W.next_day(P["code"], t)          # 들어가는 날 = 그달 말 다음 거래일 종가(억울_백테스트.next_day)
     for h, days in W.H.items():
-        t1 = W.shift(t, days)
-        a, u = W.ret(P["code"], t, t1), W.grp_ret("__all__", t, t1)
+        t1 = W.shift(t0, days) if t0 else None
+        a, u = (W.ret(P["code"], t0, t1), W.grp_ret("__all__", t0, t1)) if t0 else (None, None)
         r["ex" + h] = (a - u) if (a is not None and u is not None) else None
     return r
 

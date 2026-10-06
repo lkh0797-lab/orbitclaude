@@ -2,7 +2,7 @@
 """
 구루 다섯 명의 카드 판정을 분기 보고서마다 다시 매겨, 그 말대로 샀다면(또는 피했다면) 누가 더 자주 맞혔는지 잰다 (2026-10-03)
 
-카드(변곡점.py lenses)의 배지를 그 보고서 공시일 시점 숫자(분기변화_백테스트.py 와 같은 시점 재구성 — 그때까지 나온 재무, 공시 다음 날 주가)로 다시 계산한다.
+카드(변곡점.py lenses)의 배지를 그 보고서 공시일 시점 숫자(분기변화_백테스트.py 와 같은 시점 재구성 — 그때까지 나온 재무, 공시 다음 거래일 종가)로 다시 계산한다.
   켄 피셔      배지 = PSR 1.5배↓ · 매출 5년 연 15%↑ · 순이익률 5년 평균 5%↑ 가운데 몇 개(카드의 PRR 은 연구개발비 시점 자료가 없어 뺐다 — 분모는 카드처럼 4)
   드러켄밀러   배지 = 분기 매출 가속 > 0 · 분기 영업이익률 직전 분기보다 ↑ · 재고일수 7분기 전보다 ↓ 가운데 몇 개(분모 3)
   버핏         배지 = ROE 10년 평균 12%↑ · 최저 5%↑ · 영업이익률 변동계수 0.35↓ · 유보이익 1원 테스트 1원↑ 가운데 몇 개(분모 4)
@@ -167,9 +167,11 @@ def one(c):
               "debt": le is not None and le >= 200, "issue": raises >= 2, "loss": losses >= 2}
         nfl = sum(1 for v in fl.values() if v)
         m_call = (1 if nfl == 0 else -1) if (cash_ok or le is not None) else None
-        t1 = W.shift(t, 1)
-        a12, b12 = W.ret(code, t1, W.shift(t1, 365)), W.grp_ret("__all__", t1, W.shift(t1, 365))
-        a3, b3 = W.ret(code, t1, W.shift(t1, 91)), W.grp_ret("__all__", t1, W.shift(t1, 91))
+        t1 = W.next_day(code, t)           # 공시 다음 거래일 종가(달력 +1일이면 금요일 공시가 그날 종가로 샀다)
+        a12 = b12 = a3 = b3 = None
+        if t1:
+            a12, b12 = W.ret(code, t1, W.shift(t1, 365)), W.grp_ret("__all__", t1, W.shift(t1, 365))
+            a3, b3 = W.ret(code, t1, W.shift(t1, 91)), W.grp_ret("__all__", t1, W.shift(t1, 91))
         out.append({"code": code, "lab": lab, "t": t[:6] + "15", "date": t,
                     "c": {"f": f_call, "d": d_call, "b": b_call, "l": l_call, "m": m_call},
                     "ok": {"f": f_ok, "d": d_ok, "b": b_ok, "m": nfl}, "kind": kind, "peg": peg, "psr": psr,

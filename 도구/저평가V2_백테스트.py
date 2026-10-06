@@ -8,7 +8,7 @@
   좋은 자리  바닥 횡보 뒤 대량 양봉 · 바닥 대량 아래꼬리(투매 받아냄) · 거래 말라붙은 횡보 · 20일선 회복 · 골든크로스(20>60) ·
              정배열 시작 · 저점 높이기(2차 바닥) · 120일선 위
   나쁜 자리  고점 대량 음봉(물량 넘김) · 역배열 하락 중 · 거래대금 부족(하루 3억 미만)
-잰다 — 공시 다음 날부터 12개월 초과수익(같은 기간 전 종목 중앙값 대비). 등급 '저평가' 안 / 후보 전체 안에서 필터 켜짐 − 꺼짐,
+잰다 — 공시 다음 거래일 종가부터 12개월 초과수익(같은 기간 전 종목 중앙값 대비, 2026-10-07 고침 — 6 · 12개월은 저평가 표본 값을 그대로 쓴다). 등급 '저평가' 안 / 후보 전체 안에서 필터 켜짐 − 꺼짐,
 회사 단위 부트스트랩 90% 구간, 앞(~2019) · 뒤(2020~). 결과 .cache/value/v2_report.json(서버 · 화면이 읽는다).
 
 실행: python 도구/저평가V2_백테스트.py --fetch   (전 종목 시세 받기, 20~30분)
@@ -91,10 +91,10 @@ def main():
             s = tech(B, i)
             if not s:
                 continue
-            t1 = W.shift(r["date"], 1)
+            t1 = W.next_day(code, r["date"])   # 공시 다음 거래일 종가(달력 +1일이면 금요일 공시가 그날 종가로 샀다)
             ex = {}
             for nm, days in (("ex1m", 30), ("ex3m", 91)):          # 차트 신호는 짧은 타이밍 도구 — 1 · 3개월도 잰다
-                a_, b_ = W.ret(code, t1, W.shift(t1, days)), W.grp_ret("__all__", t1, W.shift(t1, days))
+                a_, b_ = (W.ret(code, t1, W.shift(t1, days)), W.grp_ret("__all__", t1, W.shift(t1, days))) if t1 else (None, None)
                 ex[nm] = a_ - b_ if a_ is not None and b_ is not None else None
             rows.append(dict(r, tier=t, **s, **ex))
     T = [r for r in rows if r["tier"] == "저평가"]

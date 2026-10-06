@@ -3,7 +3,8 @@
 '분기 변화' 파이프라인 판정 규칙이 과거에 맞았나 (2026-10-01)
 
 보고서가 공시된 날(t)마다 그때까지 나온 숫자로 화면의 판정 규칙을 다시 세우고(서버._pipe_rows 를 그대로 부른다), 그 뒤를 잰다.
-  (1) 주가 — t 다음 날부터 6·12개월 수익률 − 같은 기간 전 종목 수익률 중앙값(초과수익)
+  (1) 주가 — t 다음 거래일 종가부터 6·12개월 수익률 − 같은 기간 전 종목 수익률 중앙값(초과수익)
+      (2026-10-07 전엔 t + 1일(달력)이라 금요일 · 휴장 전날 공시는 공시일 종가로 샀다)
   (2) 매출 — 매출(최근 4분기 합) 전년 대비가 2·4분기 뒤 몇 %p 빨라졌나. 앞단 규칙(잔고 · 선수금 · 생산 · 설비가 매출보다 빠르면
       매출이 따라온다)의 '물리적 시차' 가설을 주가와 따로 직접 잰다.
 규칙(화면과 같은 문턱)
@@ -122,9 +123,11 @@ def one(c):
         g = r.get("ni_yoy")
         peg = per / min(max(g, 1.0), 100.0) if per and g is not None and g > 0 else None
         px_yoy = W.ret(code, W.shift(t, -365), t)
-        t1 = W.shift(t, 1)
+        t1 = W.next_day(code, t)           # 공시 다음 거래일 종가(달력 +1일이면 금요일 공시가 그날 종가로 샀다)
 
         def ex(days):
+            if t1 is None:
+                return None
             a = W.ret(code, t1, W.shift(t1, days))
             b = W.grp_ret("__all__", t1, W.shift(t1, days))
             return a - b if a is not None and b is not None else None

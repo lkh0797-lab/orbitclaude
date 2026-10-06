@@ -7,7 +7,7 @@
   돈     4분기 영업이익·순이익 흑자 · 3년 누적 영업CF 흑자 · 순차입/자본 ≤ 100% · 매출 −5% 이내 · 이익률 −5%p 이내
   하락   52주 고점 대비 −20%↓
   이익   고점 무렵 대비 4분기 순이익 −5% 이내
-그 뒤 6·12개월 수익률을 같은 기간 전 종목 수익률 중앙값과 비교한다(초과수익).
+그 뒤 6·12개월 수익률을 같은 기간 전 종목 수익률 중앙값과 비교한다(초과수익). 들어가는 날 = 그달 말 다음 거래일 종가(next_day, 2026-10-07).
 항목마다 날짜별 순위상관(IC)을 구해 평균하고, 앞뒤 기간(2013~2019 / 2020~2025)에서 부호가 같은지 본다.
 
 한계
@@ -88,6 +88,18 @@ def ret(code, d0, d1):
     a, _ = px_at(code, d0)
     b, _ = px_at(code, d1)
     return (b / a - 1) * 100 if (a and b) else None
+
+
+def next_day(code, d):
+    """d 다음 거래일(그 종목 시세에서 d 뒤 첫 날). 신호 날 d 의 뒤 성적은 이 날 종가에서 잰다.
+    shift(d, 1)(달력 +1일)로 사면 d 가 금요일 · 휴장 전날 · 금/토 달 말일 때 px_at 이 d 종가를 돌려줘
+    신호 봉의 움직임이 수익에 섞인다(2026-10-07 고침 — 도구/차트셋업_백테스트.py 와 같은 규칙).
+    d 에 살아 있는 종가가 없으면(px_at 과 같은 10일 기준 — 상장 전 공시 등) None: 첫 상장일로 건너뛰어 사지 않는다."""
+    ks = PX.get(code, ((), ()))[0]
+    j = bisect.bisect_right(ks, d)
+    if j == 0 or j >= len(ks) or shift(ks[j - 1], 10) < d:
+        return None
+    return ks[j]
 
 
 SMAP = (S.sector_map() or {}).get("stocks", {})
@@ -240,12 +252,13 @@ def evaluate(P, t):
                 hist.append(px / p["ni4"])
         if len(hist) >= 8:
             pct = sum(1 for h in hist if h <= r_now) / len(hist) * 100
-    # 앞으로의 수익률(초과)
+    # 앞으로의 수익률(초과) — 들어가는 날 = 그달 말 다음 거래일 종가(달 말 종가는 신호 봉이고, 그날 낸 공시도 관문에 들어 있다)
     fw = {}
+    t0 = next_day(P["code"], t)
     for h, days in H.items():
-        t1 = shift(t, days)
-        r = ret(P["code"], t, t1)
-        u = grp_ret("__all__", t, t1)
+        t1 = shift(t0, days) if t0 else None
+        r = ret(P["code"], t0, t1) if t0 else None
+        u = grp_ret("__all__", t0, t1) if t0 else None
         fw["ret" + h] = r
         fw["ex" + h] = (r - u) if (r is not None and u is not None) else None
     return {"code": P["code"], "name": P["name"], "t": t, "ind": P["ind"],
