@@ -8581,6 +8581,111 @@ def value2_view(force=False):
     return out
 
 
+# ---------------------------------------------------------------- 산업 성장률 (2026-10-06)
+# 섹터별 매출 · 영업이익(상장사, 자회사 중복 제거) · 생산 · 가동률 · 수출 · 가격 · 시장 규모 · 시가총액 · 전망을 한 표로.
+# 계산은 산업.py → .cache/산업/_result.json. 재료는 산업_패널.py(회사 패널 · 연결 구조) · 산업_부문.py(섞인 회사의 부문) ·
+# 산업_통계.py(KOSIS · ECOS · 관세청) · 산업_외부자료.json(세계 시장 · 기관 전망, 출처 확인한 숫자만). 매일 07:40 재료부터 다시.
+IND_V = 1
+IND_DIR = os.path.join(CACHE_DIR, "산업")
+IND = {"running": False, "done": 0, "total": 0, "phase": "", "at": 0, "data": None}
+IND_LOCK = threading.Lock()
+IND_DAILY_AT = (7, 40)    # 저평가(06:30) 뒤 — 시세 캐시가 데워진 다음
+
+
+def _ind_mod():
+    spec = _ilu.spec_from_file_location("산업", os.path.join(BASE, "산업.py"))
+    m = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def _ind_refresh():
+    """재료 갱신 — 통계(최근 달) · 패널(새 보고서) · 부문. 하나가 실패해도 나머지는 돈다(기록 산업_auto.log)."""
+    import subprocess
+    log = os.path.join(BASE, "산업_auto.log")
+    with open(log, "a", encoding="utf-8") as fh:
+        fh.write("\n== %s\n" % dt.datetime.now().strftime("%Y-%m-%d %H:%M"))
+        fh.flush()
+        for cmd in (["산업_통계.py", "갱신"], ["산업_패널.py"], ["산업_부문.py"]):
+            try:
+                subprocess.run([sys.executable, os.path.join(BASE, cmd[0])] + cmd[1:], cwd=BASE, stdout=fh, stderr=subprocess.STDOUT,
+                               timeout=3 * 3600, env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+            except Exception as e:
+                fh.write("실패 %s: %s\n" % (cmd[0], e))
+
+
+def _run_industry(refresh=False):
+    try:
+        if refresh:
+            with IND_LOCK:
+                IND.update(phase="재료 갱신 중(통계 · 패널 · 부문)", done=0, total=0)
+            _ind_refresh()
+
+        def prog(msg, i=None, n=None):
+            with IND_LOCK:
+                IND.update(phase=msg, done=i or 0, total=n or 0)
+        res = _ind_mod().build(prog)
+        with IND_LOCK:
+            IND.update(data=res, at=res.get("at") or time.time(), phase="")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        with IND_LOCK:
+            IND["phase"] = "실패: %s" % e
+    finally:
+        with IND_LOCK:
+            IND["running"] = False
+
+
+def industry_view(force=False):
+    with IND_LOCK:
+        if IND["data"] is None:
+            try:
+                with open(os.path.join(IND_DIR, "_result.json"), "r", encoding="utf-8") as fh:
+                    old = json.load(fh)
+                if old.get("v") == IND_V:
+                    IND.update(data=old, at=old.get("at") or 0)
+            except Exception:
+                pass
+        stale = force or not IND["at"] or time.time() - IND["at"] > 26 * 3600     # 매일 07:40 _ind_auto_loop 가 미리 센다
+        if stale and not IND["running"]:
+            IND["running"] = True
+            threading.Thread(target=_run_industry, daemon=True).start()
+        out = {k: IND.get(k) for k in ("running", "done", "total", "phase", "at")}
+        d = IND["data"] or {}
+    for k, v in d.items():
+        if k not in out:
+            out[k] = v
+    for s in out.get("sectors") or []:
+        s.pop("quarters_all", None)
+    return out
+
+
+def _ind_auto_loop():
+    """산업 성장률 재료(통계 · 패널 · 부문) → 합산을 매일 07:40. 뷰어를 켰을 때 결과가 20시간 넘게 묵었으면 15분 뒤 한 번."""
+    time.sleep(900)
+    first = True
+    while True:
+        try:
+            p = os.path.join(IND_DIR, "_result.json")
+            old = (time.time() - os.path.getmtime(p)) if os.path.exists(p) else 1e9
+            if not first or old > 20 * 3600:
+                with IND_LOCK:
+                    busy = IND["running"]
+                    if not busy:
+                        IND["running"] = True
+                if not busy:
+                    _run_industry(refresh=True)
+        except Exception as e:
+            print("산업 성장률 자동 갱신: %s" % e, flush=True)
+        first = False
+        n = dt.datetime.now()
+        nxt = n.replace(hour=IND_DAILY_AT[0], minute=IND_DAILY_AT[1], second=0, microsecond=0)
+        if nxt <= n:
+            nxt += dt.timedelta(days=1)
+        time.sleep(max(60, (nxt - n).total_seconds()))
+
+
 # ---------------------------------------------------------------- 밸류체인: 누구에게 팔고 누구에게서 사나 (2026-10-04, 연혁 탭 자리)
 # 사업보고서(15년)마다 「사업의 내용」에서 매출처 · 비중, 종속회사별 최종 고객, 원재료 · 매입처, 수출 · 내수, 경쟁 서술을 뽑고(밸류체인.py),
 # 이름을 수집한 1,000곳 · 상장사 목록과 맞춰(_listed_names) 누르면 그 회사로 간다. 같은 고객 · 같은 매입처를 적은 다른 회사도 찾는다(그물망).
@@ -9419,6 +9524,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, value_view(q.get("force") == "1"))
             if path == "/api/value2":
                 return self._send(200, value2_view(q.get("force") == "1"))
+            if path == "/api/industry":
+                return self._send(200, industry_view(q.get("force") == "1"))
             if path == "/api/reports":
                 d = reports_view(q.get("code", ""))
                 return self._send(200 if d else 404, d or {"error": "회사 없음"})
@@ -9550,6 +9657,7 @@ def main():
         threading.Thread(target=_val_auto_loop, daemon=True).start()
         threading.Thread(target=_vc_auto_loop, daemon=True).start()
         threading.Thread(target=_rep_auto_loop, daemon=True).start()
+        threading.Thread(target=_ind_auto_loop, daemon=True).start()
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:

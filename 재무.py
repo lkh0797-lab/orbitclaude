@@ -187,7 +187,9 @@ def fetch_statement(corp_code, year, reprt_code, fs_div="CFS"):
     if os.path.exists(cache):
         try:
             with open(cache, "r", encoding="utf-8") as fh:
-                return _or_body(json.load(fh), corp_code, year, reprt_code, fs_div)
+                d = json.load(fh)
+            if not _stale_013(d, cache, year, reprt_code):
+                return _or_body(d, corp_code, year, reprt_code, fs_div)
         except Exception:
             pass
     r = requests.get(DART + "/fnlttSinglAcntAll.json", timeout=90, params={
@@ -203,6 +205,26 @@ def fetch_statement(corp_code, year, reprt_code, fs_div="CFS"):
             json.dump(data, fh, ensure_ascii=False)
     time.sleep(0.25)
     return _or_body(data, corp_code, year, reprt_code, fs_div)
+
+
+# '데이터 없음'(013)은 보고서가 아직 안 나온 기간에도 온다. 그 기간 끝 + 100일(사업보고서 90일 · 분기 45일 기한 + 여유)
+# 전에 받은 013 은, 기간이 끝나고 14일이 지난 뒤(보고서가 나올 수 있는 때)부터 하루에 한 번 다시 묻는다 —
+# 2026-09 에 미리 받아 둔 2026Q3 · 2026 연간 013 이 11월 · 3월에 나올 보고서를 영영 가리던 문제(2026-10-06).
+# 기한이 지난 뒤 받은 013 은 그대로 믿는다.
+_PERIOD_END = {"11013": (3, 31), "11012": (6, 30), "11014": (9, 30), "11011": (12, 31)}
+
+
+def _stale_013(d, path, year, reprt_code):
+    if d.get("status") != "013" or d.get("list"):
+        return False
+    try:
+        mo, dy = _PERIOD_END[str(reprt_code)]
+        end = time.mktime((int(year), mo, dy, 0, 0, 0, 0, 0, -1))
+        mt = os.path.getmtime(path)
+    except Exception:
+        return False
+    now = time.time()
+    return mt < end + 100 * 86400 and now > end + 14 * 86400 and now - mt > 86400
 
 
 def _or_body(data, corp_code, year, reprt_code, fs_div):

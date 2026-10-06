@@ -1,0 +1,6192 @@
+{
+ "as_of": "2026-10-06",
+ "about": "산업 성장률 탭의 외부 숫자 — 세계 시장 규모 · 한국 수출/생산/점유율 · 기관 전망 · 세계 주요 기업. 숫자마다 출처 · URL · 발표일. 2026-10-06 세션에서 원문(또는 공신력 있는 재인용)을 열어 확인한 것만(verified). 확인 못 한 것은 dropped. 다시 손볼 때는 출처를 다시 열어 확인하고 고친다.",
+ "meta": {
+  "tech_heavy": {
+   "generated": "2026-10-06",
+   "scope": "반도체·디스플레이·전자부품·2차전지·전력기기·가전·IT기기·자동차·부품·조선·방산·항공우주·기계",
+   "verification": "모든 world/korea 항목은 2026-10-06 세션에서 인용 URL 을 WebFetch 로 열어 확인했거나(원문 차단 시) 다른 공신력 있는 보도로 교차 확인함. '파생' 표기는 확인된 값으로 계산한 값.",
+   "korea_ytd_method": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치.",
+   "market_cap_note": "CompaniesMarketCap 시가총액은 2026-10-05~06 조회한 지연 시세로 매일 변한다."
+  },
+  "process_consumer": {
+   "built": "2026-10-06",
+   "scope": "외부 시장 데이터(검증본) — 철강·석유화학·정유·해운·건설·제약·바이오·화장품·음식료·인터넷·게임·통신 + KIET 13대 주력산업 + 한국 거시",
+   "verified_rule": "verified=true 는 이 세션에서 URL 원문(또는 공식 PDF)을 열어 숫자를 확인한 것만. 재인용 매체는 source 에 '(…보도/재인용)'으로 표기.",
+   "kind_values": {
+    "actual": "실적",
+    "estimate": "추정/잠정",
+    "forecast": "전망",
+    "derived": "검증된 공식 월별 수치의 합산(공식 누계 아님)",
+    "snapshot": "지수·가격 시점값(growth_pct 는 직전 관측 대비)",
+    "assumption": "전망의 전제"
+   },
+   "motir_basis_note": "산업통상부는 2026년부터 '20대 주요 품목' 체계. 철강제품은 범위가 좁아져(2025 연간 신 기준 24,798 vs MTI 61 기준 30,301 USD mn) 2025 연간·KIET 값과 2026 월간·1~9월 값을 직접 비교하면 안 됨. 바이오헬스도 2025 연간 16,268→신 기준 16,564.",
+   "market_cap_note": "시가총액은 CompaniesMarketCap 개별 페이지('As of October 2026') 2026-10-06 조회값 — 실시간 변동."
+  }
+ },
+ "sectors": {
+  "반도체": {
+   "definition": "세계 시장 = WSTS 집계 세계 반도체 매출(개별소자·광전자·센서·IC[아날로그·마이크로·로직·메모리] 합계, USD). Gartner 는 별도 집계라 같은 해라도 WSTS 와 수치가 다르다(2025년 Gartner 809억×10 vs WSTS 795.6bn). 한국 = 산업통상부 통관 기준 반도체 수출(메모리·시스템·개별소자 등), KIET 생산·내수는 원화 명목.",
+   "world": [
+    {
+     "metric": "세계 반도체 시장(WSTS)",
+     "year": "2024",
+     "value": 631,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 19.7,
+     "source": "WSTS Q2 2026 통계 발표",
+     "url": "https://www.wsts.org/esraCMS/extension/media/f/WST/7745/WSTS-Q2-Release-2026-08-06.pdf",
+     "published": "2026-08-06",
+     "note": "증감률은 Q2 발표 차트 기준(2023년 527bn). Spring 2026 차트는 2023년을 519bn 으로 표기해 21.5%.",
+     "verified": true
+    },
+    {
+     "metric": "세계 반도체 시장(WSTS)",
+     "year": "2025",
+     "value": 795.64,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 26.2,
+     "source": "WSTS Spring 2026 Forecast",
+     "url": "https://www.wsts.org/esraCMS/extension/media/f/WST/7618/WSTS_FC-Release-2026-May.pdf",
+     "published": "2026-06-02",
+     "note": "메모리 230.0bn(+39.0%), 로직 299.5bn(+38.8%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 반도체 매출 상반기(WSTS)",
+     "year": "2026 H1",
+     "value": 702,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 102,
+     "source": "WSTS Q2 2026 통계 발표",
+     "url": "https://www.wsts.org/esraCMS/extension/media/f/WST/7745/WSTS-Q2-Release-2026-08-06.pdf",
+     "published": "2026-08-06",
+     "note": "메모리 +305%, 로직 +45%(전년동기비). 2Q26 분기 403bn(+124%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 반도체 시장 전망(WSTS 춘계)",
+     "year": "2026",
+     "value": 1511.248,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 89.9,
+     "source": "WSTS Spring 2026 Forecast",
+     "url": "https://www.wsts.org/esraCMS/extension/media/f/WST/7618/WSTS_FC-Release-2026-May.pdf",
+     "published": "2026-06-02",
+     "note": "8월 Q2 실적 반영 재계산치는 1,655bn(+108.1%, 메모리 +302%) — WSTS 는 신규 전망이 아니라고 명시",
+     "verified": true
+    },
+    {
+     "metric": "세계 반도체 시장 전망(Gartner)",
+     "year": "2026",
+     "value": 1555.2,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 92.2,
+     "source": "Gartner (벤처스퀘어 보도)",
+     "url": "https://www.venturesquare.net/1108447",
+     "published": "2026-08-25",
+     "note": "증감률은 금액(2025년 809bn 기준)으로 계산. 메모리 837.3bn(+280.5%), D램 +246.6%, 낸드 +371.9%. 2027년 1,939.9bn(약 +24.7%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 반도체 시장 전망(WSTS 춘계)",
+     "year": "2027",
+     "value": 1913.683,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 26.6,
+     "source": "WSTS Spring 2026 Forecast",
+     "url": "https://www.wsts.org/esraCMS/extension/media/f/WST/7618/WSTS_FC-Release-2026-May.pdf",
+     "published": "2026-06-02",
+     "note": "Q2 실적 반영 재계산치 2,142bn(+29.4%). 2027 메모리 +32.1%, 로직 +27.1%",
+     "verified": true
+    },
+    {
+     "metric": "세계 메모리 반도체 시장 전망(WSTS 춘계)",
+     "year": "2026",
+     "value": 803.941,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 249.5,
+     "source": "WSTS Spring 2026 Forecast",
+     "url": "https://www.wsts.org/esraCMS/extension/media/f/WST/7618/WSTS_FC-Release-2026-May.pdf",
+     "published": "2026-06-02",
+     "note": "2025년 230.0bn → 2026년 803.9bn → 2027년 1,062.1bn(+32.1%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 반도체 장비 매출 전망(SEMI 연중 전망)",
+     "year": "2026",
+     "value": 165.9,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 23.2,
+     "source": "SEMI Mid-Year Total Equipment Forecast (Webull/PR Newswire 게재)",
+     "url": "https://www.webull.com/news/15226022544172032",
+     "published": "2026-07-14",
+     "note": "전공정(WFE) 143.9bn(+23.1%), 테스트 15.3bn(+31.0%), 패키징 6.7bn(+9.6%). WFE 2027년 +21.8%, 2028년 총 229.5bn",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "반도체 수출액",
+     "year": "2024",
+     "value": 141.92,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 43.9,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "verified": true
+    },
+    {
+     "metric": "반도체 수출액",
+     "year": "2025",
+     "value": 173.406,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 22.2,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료의 '25년 전체' 확정치(2026.1.1 잠정치와 소폭 다름). 메모리 1,190억$(+34.8%), 시스템 480억$(+0.2%) — 연간 보도자료 기준",
+     "verified": true
+    },
+    {
+     "metric": "반도체 수출액 상반기",
+     "year": "2026 H1",
+     "value": 192.376,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 162.6,
+     "source": "산업통상부 2026년 6월 및 상반기 수출입 동향",
+     "url": "https://www.motir.go.kr/attach/down/e258a4a9a6760923ac9cd310f7a71e4c/d5b2e9fe02007e29827d241b1d62ff41",
+     "published": "2026-07-01",
+     "note": "상반기만으로 2025년 연간 실적 초과",
+     "verified": true
+    },
+    {
+     "metric": "반도체 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 340.325,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 184.4,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치.",
+     "verified": true
+    },
+    {
+     "metric": "반도체 수출액 월간",
+     "year": "2026-09",
+     "value": 60.295,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 262.8,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "단일 품목 첫 월 600억$ 돌파. 메모리 540.7억$(+358.6%), 시스템 55.4억$(+28.8%). DDR5 16Gb 고정가 $48.0(+687.5%)",
+     "verified": true
+    },
+    {
+     "metric": "반도체 수출 전망(KIET)",
+     "year": "2026",
+     "value": 350.129,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 101.9,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "상반기 추정 171.0bn(+133.4%)은 실적(192.4bn)보다 낮았음. 하반기 179.2bn(+78.9%) 전망",
+     "verified": true
+    },
+    {
+     "metric": "반도체 생산 전망(KIET, 원화 명목)",
+     "year": "2026",
+     "value": 406.437,
+     "unit": "KRW tn",
+     "kind": "forecast",
+     "growth_pct": 103.9,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "2025년 199.3조 원(+33.7%)",
+     "verified": true
+    },
+    {
+     "metric": "반도체 내수 전망(KIET, 원화 명목)",
+     "year": "2026",
+     "value": 39.237,
+     "unit": "KRW tn",
+     "kind": "forecast",
+     "growth_pct": -35.3,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "2025년 60.6조 원(+10.5%). 재고조정 영향으로 통계상 감소",
+     "verified": true
+    },
+    {
+     "metric": "한국 D램 매출 점유율(삼성전자+SK하이닉스)",
+     "year": "2Q26",
+     "value": 64.3,
+     "unit": "% of global DRAM revenue",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "TrendForce (Evertiq 보도)",
+     "url": "https://evertiq.com/news/2026-09-07-dram-industry-revenue-surges-595-in-q2-as-supply-lags-demand",
+     "published": "2026-09-07",
+     "note": "삼성 39.4% + SK하이닉스 24.9% 합산(파생). 2Q26 D램 산업 매출 154.73bn(+59.5% QoQ), 마이크론 23.3%, CXMT 9.5%",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "NVIDIA",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 5768,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/semiconductors/largest-semiconductor-companies-by-market-cap/"
+    },
+    {
+     "name": "TSMC",
+     "country": "Taiwan",
+     "metric": "시가총액",
+     "value": 2519,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/semiconductors/largest-semiconductor-companies-by-market-cap/"
+    },
+    {
+     "name": "Broadcom",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 1730,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/semiconductors/largest-semiconductor-companies-by-market-cap/"
+    },
+    {
+     "name": "Samsung Electronics",
+     "country": "South Korea",
+     "metric": "시가총액(전사, DX 포함)",
+     "value": 1350,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/semiconductors/largest-semiconductor-companies-by-market-cap/"
+    },
+    {
+     "name": "Micron Technology",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 1201,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/semiconductors/largest-semiconductor-companies-by-market-cap/"
+    },
+    {
+     "name": "SK hynix",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 962.85,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/semiconductors/largest-semiconductor-companies-by-market-cap/"
+    }
+   ],
+   "drivers": "AI 데이터센터 투자로 HBM·서버 D램·기업용 SSD 수요가 공급을 크게 웃돌면서 메모리 가격이 폭등해, 2026년 세계 시장 성장의 대부분을 메모리 단가가 설명한다. 메모리 비중이 큰 한국은 수출이 물량보다 가격 효과로 2~3배 늘어 가격이 꺾이는 시점이 최대 변수다.",
+   "watch": [
+    "D램·낸드 고정거래가격(DDR5 16Gb, NAND 128Gb) 월간 추이",
+    "산업통상부 월간·순별 반도체 수출(메모리/시스템 구분)",
+    "WSTS 월간 세계 반도체 매출과 분기 발표",
+    "빅테크(하이퍼스케일러) 설비투자 가이던스",
+    "SEMI 장비 출하·전공정(WFE) 투자 전망",
+    "CXMT 등 중국 메모리 증설 속도"
+   ]
+  },
+  "디스플레이": {
+   "definition": "단일 공식 총액이 없어 Omdia AMOLED 매출(전 크기), 한국디스플레이산업협회(KDIA, Omdia 데이터)의 OLED·LCD·전체 시장 추정, Omdia 대형(9인치 이상) 패널 매출을 병기한다. 출처마다 범위가 달라 서로 더하거나 비교하면 안 된다. Omdia 기준 2025년 OLED 는 전체 디스플레이 매출의 약 39%. 한국 = 산업통상부 통관 기준 디스플레이(LCD·OLED·PDP) 수출, KDIA 국가별 점유율.",
+   "world": [
+    {
+     "metric": "세계 AMOLED 매출(Omdia)",
+     "year": "2024",
+     "value": 54,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "Omdia AMOLED 전망(Business Wire 배포, StockTitan 게재본으로 확인)",
+     "url": "https://stocktitan.net/news/TTGT/omdia-amoled-2h25-display-revenues-to-reach-29-billion-falling-short-9t2l0jgiwabb.html",
+     "published": "2025-10-20",
+     "note": "2H24 30bn",
+     "verified": true
+    },
+    {
+     "metric": "세계 AMOLED 매출(Omdia)",
+     "year": "2025",
+     "value": 53,
+     "unit": "USD bn",
+     "kind": "estimate",
+     "growth_pct": -1.9,
+     "source": "Omdia AMOLED 전망(Business Wire 배포, StockTitan 게재본으로 확인)",
+     "url": "https://stocktitan.net/news/TTGT/omdia-amoled-2h25-display-revenues-to-reach-29-billion-falling-short-9t2l0jgiwabb.html",
+     "published": "2025-10-20",
+     "note": "2025년 10월 시점 추정(2H25 29bn). 증감률은 금액으로 계산",
+     "verified": true
+    },
+    {
+     "metric": "세계 AMOLED 매출 전망(Omdia)",
+     "year": "2026",
+     "value": 56,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 5,
+     "source": "Omdia AMOLED 전망(Business Wire 배포, StockTitan 게재본으로 확인)",
+     "url": "https://stocktitan.net/news/TTGT/omdia-amoled-2h25-display-revenues-to-reach-29-billion-falling-short-9t2l0jgiwabb.html",
+     "published": "2025-10-20",
+     "note": "메모리 가격 급등 이전 전망. Omdia 는 2026년 4월 스마트폰용 AMOLED 출하를 778백만 장(-7%)으로 하향",
+     "verified": true
+    },
+    {
+     "metric": "세계 OLED 시장(KDIA·Omdia)",
+     "year": "2025",
+     "value": 52.3,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "한국디스플레이산업협회(Omdia 데이터) — 산업종합저널 보도",
+     "url": "https://industryjournal.co.kr/news/245857",
+     "published": "2026-04-29",
+     "verified": true
+    },
+    {
+     "metric": "세계 OLED 시장 전망(KDIA·Omdia)",
+     "year": "2026",
+     "value": 48.8,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": -6.7,
+     "source": "한국디스플레이산업협회(Omdia 데이터) — 산업종합저널 보도",
+     "url": "https://industryjournal.co.kr/news/245857",
+     "published": "2026-04-29",
+     "note": "스마트폰 출시 일정 조정 영향. AMOLED 전망(Omdia 2025.10, 56bn)과 판·범위가 달라 충돌",
+     "verified": true
+    },
+    {
+     "metric": "세계 디스플레이 시장 전망(KDIA·Omdia)",
+     "year": "2026",
+     "value": 128.8,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "한국디스플레이산업협회(Omdia 데이터) — 산업종합저널 보도",
+     "url": "https://industryjournal.co.kr/news/245857",
+     "published": "2026-04-29",
+     "note": "LCD 77.5bn 으로 축소 전망. 에너지·물류비, 반도체 단가 인상, 소비 위축 반영",
+     "verified": true
+    },
+    {
+     "metric": "세계 대형 디스플레이 매출 전망(Omdia)",
+     "year": "2026",
+     "value": 69.9,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": -1.7,
+     "source": "Omdia Large-area Display Market Tracker (Webull/Zhitong 보도)",
+     "url": "https://www.webull.com/news/15269378251973632",
+     "published": "2026-07-22",
+     "note": "9인치 이상(TV·모니터·노트북·태블릿 등). 원문 Omdia 페이지는 403, Zhitong/Webull·oled-info 로 교차 확인",
+     "verified": true
+    },
+    {
+     "metric": "세계 대형 OLED 패널 출하 전망(Omdia)",
+     "year": "2026",
+     "value": 38.8,
+     "unit": "million units",
+     "kind": "forecast",
+     "growth_pct": 18.8,
+     "source": "Omdia Large-area Display Market Tracker (Webull/Zhitong 보도)",
+     "url": "https://www.webull.com/news/15269378251973632",
+     "published": "2026-07-22",
+     "note": "노트북용 +66.0%, 모니터용 +34.0%. 대형 전체 출하 916.9백만 장(-2.3%, oled-info)",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "디스플레이 수출액",
+     "year": "2024",
+     "value": 18.747,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 0.9,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "verified": true
+    },
+    {
+     "metric": "디스플레이 수출액",
+     "year": "2025",
+     "value": 16.985,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -9.4,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "패널 단가 하락·전방 수요 부진",
+     "verified": true
+    },
+    {
+     "metric": "디스플레이 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 13.085,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 4.1,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치. 9월 단월 1.581bn(-9.5%): 모바일 OLED 단가인하 압박·신제품 출시 연기",
+     "verified": true
+    },
+    {
+     "metric": "OLED 수출액",
+     "year": "2025",
+     "value": 13.227,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -4.9,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "note": "2024년 13.902bn",
+     "verified": true
+    },
+    {
+     "metric": "OLED 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 9.845,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 1.9,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치.",
+     "verified": true
+    },
+    {
+     "metric": "디스플레이 수출 전망(KIET)",
+     "year": "2026",
+     "value": 16.933,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": -0.3,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "하반기 8.907bn(-5.0%)",
+     "verified": true
+    },
+    {
+     "metric": "디스플레이 생산 전망(KIET, 원화 명목)",
+     "year": "2026",
+     "value": 49.138,
+     "unit": "KRW tn",
+     "kind": "forecast",
+     "growth_pct": 0.5,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "2025년 48.9조 원(-0.9%)",
+     "verified": true
+    },
+    {
+     "metric": "한국 디스플레이 세계 점유율(전체)",
+     "year": "2025",
+     "value": 31.7,
+     "unit": "%",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "한국디스플레이산업협회(Omdia 데이터) — 산업종합저널 보도",
+     "url": "https://industryjournal.co.kr/news/245857",
+     "published": "2026-04-29",
+     "note": "전년비 -1.5%p(LCD 생산 축소). LCD 점유율 7.9%(2024년 10.2%)",
+     "verified": true
+    },
+    {
+     "metric": "한국 OLED 세계 점유율",
+     "year": "2025",
+     "value": 68.7,
+     "unit": "%",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "한국디스플레이산업협회(Omdia 데이터) — 산업종합저널 보도",
+     "url": "https://industryjournal.co.kr/news/245857",
+     "published": "2026-04-29",
+     "note": "2024년 67.2%에서 2015년 이후 처음 상승, 중국 31.2%(인더뉴스). 전자신문(2026-04-28)은 68.2%로 보도 — 같은 협회 자료 인용 간 불일치",
+     "verified": true
+    },
+    {
+     "metric": "한국 대형 디스플레이 매출 점유율(Omdia)",
+     "year": "2025",
+     "value": 18.0,
+     "unit": "%",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "Omdia Large-area Display Market Tracker 3Q25 (I-Connect007 게재)",
+     "url": "https://iconnect007.com/article/147169/omdia-forecasts-largearea-display-shipments-to-grow-28-yoy-in-2025-mobile-pc-displays-lead-the-growth/147166/design",
+     "published": "2025-10-03",
+     "note": "2025년 10월 시점 전망. 중국 63.5%, 대만 14.7%",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "BOE",
+     "country": "China",
+     "metric": "대형 디스플레이 매출 점유율(2025 전망)",
+     "value": 29.7,
+     "unit": "%",
+     "as_of": "2025(2025.10 전망)",
+     "source": "Omdia",
+     "url": "https://iconnect007.com/article/147169/omdia-forecasts-largearea-display-shipments-to-grow-28-yoy-in-2025-mobile-pc-displays-lead-the-growth/147166/design"
+    },
+    {
+     "name": "TCL CSOT",
+     "country": "China",
+     "metric": "대형 디스플레이 매출 점유율(2025 전망)",
+     "value": 20.2,
+     "unit": "%",
+     "as_of": "2025(2025.10 전망)",
+     "source": "Omdia",
+     "url": "https://iconnect007.com/article/147169/omdia-forecasts-largearea-display-shipments-to-grow-28-yoy-in-2025-mobile-pc-displays-lead-the-growth/147166/design"
+    },
+    {
+     "name": "LG Display",
+     "country": "South Korea",
+     "metric": "대형 디스플레이 매출 점유율(2025 전망)",
+     "value": 12.4,
+     "unit": "%",
+     "as_of": "2025(2025.10 전망)",
+     "source": "Omdia",
+     "url": "https://iconnect007.com/article/147169/omdia-forecasts-largearea-display-shipments-to-grow-28-yoy-in-2025-mobile-pc-displays-lead-the-growth/147166/design"
+    },
+    {
+     "name": "Samsung Display",
+     "country": "South Korea",
+     "metric": "대형 OLED 출하 점유율(2025 전망)",
+     "value": 54.3,
+     "unit": "%",
+     "as_of": "2025(2025.10 전망)",
+     "source": "Omdia",
+     "url": "https://iconnect007.com/article/147169/omdia-forecasts-largearea-display-shipments-to-grow-28-yoy-in-2025-mobile-pc-displays-lead-the-growth/147166/design"
+    },
+    {
+     "name": "LG Display",
+     "country": "South Korea",
+     "metric": "연간 매출(영업이익 0.517조 원, 4년 만에 흑자)",
+     "value": 25.8,
+     "unit": "KRW tn",
+     "as_of": "FY2025",
+     "source": "디지털데일리",
+     "url": "https://www.ddaily.co.kr/page/view/2026012914584246613"
+    },
+    {
+     "name": "Samsung Display",
+     "country": "South Korea",
+     "metric": "4분기 매출(영업이익 2조 원)",
+     "value": 9.5,
+     "unit": "KRW tn",
+     "as_of": "4Q25",
+     "source": "디지털데일리",
+     "url": "https://www.ddaily.co.kr/page/view/2026012914584246613"
+    }
+   ],
+   "drivers": "LCD 는 중국이 생산능력의 약 80%를 쥐고 있어 한국은 축소 중이고 가치의 중심이 OLED 로 옮겨가고 있다. 2026년에는 메모리값 급등에 따른 스마트폰 출하 감소가 모바일 OLED 를 누르는 반면, 노트북·모니터용 IT OLED(8.6세대)가 성장 축이다.",
+   "watch": [
+    "모바일 OLED 패널 단가와 아이폰·폴더블 신제품 출시 일정",
+    "8.6세대 IT OLED 라인 가동·수율(삼성디스플레이, BOE)",
+    "산업통상부 월간 디스플레이·OLED 수출",
+    "Omdia 대형 패널 출하·가격 발표",
+    "중국 업체 OLED 점유율과 증설 계획"
+   ]
+  },
+  "전자부품": {
+   "definition": "세계 = Prismark 집계 인쇄회로기판(PCB) 생산액(경성·다층·HDI·패키지기판·연성 포함, USD). MLCC·카메라모듈은 공신력 있는 공개 시장 총액이 없고 조사기관 추정치가 2배 가까이 엇갈려 시장규모 대신 가격·수요 지표를 수록했다. 한국 HS 8532(콘덴서)·8534(PCB) 수출은 앱의 관세청 모듈 데이터를 쓰는 것을 전제로 여기서는 제외.",
+   "world": [
+    {
+     "metric": "세계 PCB 생산액(Prismark)",
+     "year": "2024",
+     "value": 73.6,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "Prismark (TechNews 보도)",
+     "url": "https://technews.tw/2026/06/12/pcb-prismark-report-2025/",
+     "published": "2026-06-12",
+     "verified": true
+    },
+    {
+     "metric": "세계 PCB 생산액(Prismark)",
+     "year": "2025",
+     "value": 85.8,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 16.7,
+     "source": "Prismark (TechNews 보도)",
+     "url": "https://technews.tw/2026/06/12/pcb-prismark-report-2025/",
+     "published": "2026-06-12",
+     "note": "대만계 약 29.7%, 중국 약 36%. 18층 이상 고다층 +80% 이상",
+     "verified": true
+    },
+    {
+     "metric": "세계 PCB 생산액 전망(Prismark)",
+     "year": "2026",
+     "value": 95.6,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 12.5,
+     "source": "Prismark (Zhen Ding 2026 주총 자료, I-Connect007 보도)",
+     "url": "https://iconnect007.com/article/150204/zhen-ding-2026-agm-ai-demand-drives-pcb-growth-and-fiveyear-expansion-plan/150201/pcb",
+     "published": "2026-05-29",
+     "note": "Icape IR(2026-07-29)은 96bn(+12.5%, 물량 +5.9%)으로 인용. 85.8bn×1.125 와 차이는 기준연도 추정치 개정 때문으로 보임",
+     "verified": true
+    },
+    {
+     "metric": "세계 PCB 생산액 전망(Prismark)",
+     "year": "2030",
+     "value": 123.0,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 7.7,
+     "source": "Prismark (Zhen Ding 2026 주총 자료, I-Connect007 보도)",
+     "url": "https://iconnect007.com/article/150204/zhen-ding-2026-agm-ai-demand-drives-pcb-growth-and-fiveyear-expansion-plan/150201/pcb",
+     "published": "2026-05-29",
+     "note": "growth_pct = 2025~2030 연평균 성장률",
+     "verified": true
+    },
+    {
+     "metric": "세계 패키지기판(Substrate) 생산액 증가율(Prismark)",
+     "year": "2025",
+     "value": 18.2,
+     "unit": "% YoY",
+     "kind": "actual",
+     "growth_pct": 18.2,
+     "source": "Prismark (TechNews 보도)",
+     "url": "https://technews.tw/2026/06/12/pcb-prismark-report-2025/",
+     "published": "2026-06-12",
+     "note": "AI 가속기·고급 패키징 수요",
+     "verified": true
+    },
+    {
+     "metric": "세계 HDI 기판 생산액 증가율(Prismark)",
+     "year": "2025",
+     "value": 29.4,
+     "unit": "% YoY",
+     "kind": "actual",
+     "growth_pct": 29.4,
+     "source": "Prismark (TechNews 보도)",
+     "url": "https://technews.tw/2026/06/12/pcb-prismark-report-2025/",
+     "published": "2026-06-12",
+     "note": "다층기판(MLB) +19.3%",
+     "verified": true
+    },
+    {
+     "metric": "AI 서버 랙당 MLCC 사용량",
+     "year": "2026",
+     "value": 440000,
+     "unit": "개/랙(최대)",
+     "kind": "estimate",
+     "growth_pct": null,
+     "source": "TrendForce News",
+     "url": "https://www.trendforce.com/news/2026/08/04/news-across-the-board-30-price-hike-mlcc-price-surge-intensifies/",
+     "published": "2026-08-04",
+     "note": "일반 서버의 8~10배. 6월 주요사 월 출하 5년 내 최고, 범용 MLCC 유통재고 30일 미만",
+     "verified": true
+    },
+    {
+     "metric": "야교(Yageo) MLCC 가격 인상률",
+     "year": "2026-07",
+     "value": 50,
+     "unit": "% (전 제품 평균, 약)",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "TrendForce News",
+     "url": "https://www.trendforce.com/news/2026/08/04/news-across-the-board-30-price-hike-mlcc-price-surge-intensifies/",
+     "published": "2026-08-04",
+     "note": "다이요유덴 4월 차량용 10~30%·소비자용 6~13% 인상 후 9월 추가 인상, 월신 5~15%. 일부 모델 현물가 2~3배",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "삼성전기 MLCC 공급가 인상률",
+     "year": "2026-08",
+     "value": 30,
+     "unit": "% (전 제품 일괄)",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "TrendForce News",
+     "url": "https://www.trendforce.com/news/2026/08/04/news-across-the-board-30-price-hike-mlcc-price-surge-intensifies/",
+     "published": "2026-08-04",
+     "note": "2026-08-01 적용, 소비자·산업·차량·AI 서버용 전 제품",
+     "verified": true
+    },
+    {
+     "metric": "삼성전기 AI 서버용 MLCC 공급계약",
+     "year": "2026-09",
+     "value": 1.0722,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "머니투데이방송(MTN)",
+     "url": "https://news.mtn.co.kr/news-detail/2026090115524313116",
+     "published": "2026-09-01",
+     "note": "창사 최대 단일 계약, 전년 매출의 9.5%, 공급기간 2027.1~12. 장기공급계약(LTA) 약 10개사",
+     "verified": true
+    },
+    {
+     "metric": "삼성전기 AI 서버용 MLCC 점유율",
+     "year": "2026",
+     "value": 40,
+     "unit": "% (이상)",
+     "kind": "estimate",
+     "growth_pct": null,
+     "source": "머니투데이방송(MTN)",
+     "url": "https://news.mtn.co.kr/news-detail/2026090115524313116",
+     "published": "2026-09-01",
+     "note": "업계 추정(조사기관 미명시). 무라타와 양강",
+     "verified": true
+    },
+    {
+     "metric": "삼성전기 영업이익 증가율(2Q26)",
+     "year": "2Q26",
+     "value": 106.7,
+     "unit": "% YoY",
+     "kind": "actual",
+     "growth_pct": 106.7,
+     "source": "TrendForce News",
+     "url": "https://www.trendforce.com/news/2026/08/04/news-across-the-board-30-price-hike-mlcc-price-surge-intensifies/",
+     "published": "2026-08-04",
+     "note": "컴포넌트(MLCC) 부문 매출 +29% YoY",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Murata Manufacturing",
+     "country": "Japan",
+     "metric": "커패시터 매출(FY2025, 2026.3 결산, +12.6%)",
+     "value": 936.4,
+     "unit": "JPY bn",
+     "as_of": "FY2025(2026-03 결산)",
+     "source": "Envalith(무라타 사업보고 요약)",
+     "url": "https://envalith.com/en/companies/6981/segments"
+    },
+    {
+     "name": "Ibiden",
+     "country": "Japan",
+     "metric": "시가총액",
+     "value": 44.37,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/ibiden/marketcap/"
+    },
+    {
+     "name": "TDK",
+     "country": "Japan",
+     "metric": "시가총액",
+     "value": 41.94,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/tdk/marketcap/"
+    },
+    {
+     "name": "Samsung Electro-Mechanics",
+     "country": "South Korea",
+     "metric": "시가총액(사이트 표기 티커 009155.KS)",
+     "value": 30.43,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/samsung-electro-mechanics/marketcap/"
+    },
+    {
+     "name": "Zhen Ding Technology",
+     "country": "Taiwan",
+     "metric": "PCB 매출(Prismark 순위 1위)",
+     "value": 5.869,
+     "unit": "USD bn",
+     "as_of": "2025",
+     "source": "Prismark (TechNews 보도)",
+     "url": "https://technews.tw/2026/06/12/pcb-prismark-report-2025/"
+    },
+    {
+     "name": "LG Innotek",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 10.76,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/lg-innotek/marketcap/"
+    }
+   ],
+   "drivers": "AI 서버는 랙 하나에 일반 서버의 8~10배에 이르는 MLCC 를 쓰고 고다층 기판·패키지기판 수요도 늘려, 2026년 MLCC 업계는 공급 부족 속에 일제히 가격을 올리고 있다. 다만 메모리값 급등에 따른 스마트폰 출하 급감은 범용 부품과 카메라모듈 물량에 부담이다.",
+   "watch": [
+    "MLCC 가격 인상 동향(무라타·삼성전기·다이요유덴·야교)과 유통 재고일수",
+    "대만 PCB·기판 업체 월매출(Zhen Ding, Unimicron 등)",
+    "ABF 패키지기판 수급과 가격",
+    "AI 서버 출하와 GPU·ASIC 신제품 일정",
+    "스마트폰 출하 전망(카메라모듈 물량)",
+    "관세청 HS 8532·8534 월간 수출"
+   ]
+  },
+  "2차전지": {
+   "definition": "세계 = SNE리서치 전기차(BEV·PHEV·HEV) 탑재 배터리 사용량(GWh)과 ESS 용 리튬이온 배터리 출하량(GWh), BNEF 팩 평균가격. 달러 기준 공신력 있는 배터리 시장 총액은 없다. 한국 = 산업통상부 통관 기준 이차전지(리튬이온·납축 등) 수출로, 국내 업체의 해외 현지 생산분은 빠져 실제 사업 규모보다 훨씬 작다.",
+   "world": [
+    {
+     "metric": "세계 전기차 배터리 사용량(SNE)",
+     "year": "2024",
+     "value": 901.4,
+     "unit": "GWh",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "SNE Research (CnEVPost 보도)",
+     "url": "https://cnevpost.com/2026/02/04/global-ev-battery-market-share-2025/",
+     "published": "2026-02-04",
+     "verified": true
+    },
+    {
+     "metric": "세계 전기차 배터리 사용량(SNE)",
+     "year": "2025",
+     "value": 1187,
+     "unit": "GWh",
+     "kind": "actual",
+     "growth_pct": 31.7,
+     "source": "SNE Research (CnEVPost 보도)",
+     "url": "https://cnevpost.com/2026/02/04/global-ev-battery-market-share-2025/",
+     "published": "2026-02-04",
+     "note": "CATL+BYD 55.6%",
+     "verified": true
+    },
+    {
+     "metric": "세계 전기차 배터리 사용량 1~8월(SNE)",
+     "year": "2026 1~8월",
+     "value": 844.2,
+     "unit": "GWh",
+     "kind": "actual",
+     "growth_pct": 19.7,
+     "source": "SNE Research (테크월드 보도)",
+     "url": "https://www.epnc.co.kr/news/articleView.html?idxno=407735",
+     "published": "2026-10-02",
+     "note": "중국 7개사 73.3%(+3.6%p). 북미 사용량 25.2→14.6GWh(-23.7%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 ESS 리튬이온 배터리 출하(SNE)",
+     "year": "2025",
+     "value": 550,
+     "unit": "GWh",
+     "kind": "actual",
+     "growth_pct": 79,
+     "source": "SNE Research",
+     "url": "https://www.sneresearch.com/en/insight/release_view/583/page/0",
+     "published": "2026-01-28",
+     "note": "2024년 307GWh. 중국 352GWh(64%), 북미 88GWh. 상위 7개사 모두 중국(83.3%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 ESS 리튬이온 배터리 출하 상반기(SNE)",
+     "year": "2026 H1",
+     "value": 461.3,
+     "unit": "GWh",
+     "kind": "actual",
+     "growth_pct": 71,
+     "source": "SNE Research (CnEVPost 보도)",
+     "url": "https://cnevpost.com/2026/08/04/global-ess-battery-market-share-h1-2026/",
+     "published": "2026-08-04",
+     "note": "중국 외 지역 258.7GWh(56%)로 처음 중국 추월. 북미 75.9GWh(+83%)",
+     "verified": true
+    },
+    {
+     "metric": "리튬이온 배터리 팩 평균가격(BNEF)",
+     "year": "2025",
+     "value": 108,
+     "unit": "USD/kWh",
+     "kind": "actual",
+     "growth_pct": -8,
+     "source": "BloombergNEF Battery Price Survey (TaiyangNews 보도로 확인)",
+     "url": "https://taiyangnews.info/business/bloombergnef-battery-pack-prices-hit-new-low-in-2025",
+     "published": "2025-12-09",
+     "note": "ESS 용 70 USD/kWh(-45%), LFP 81, NMC 128, 중국 84. 원문 BNEF 페이지는 502 오류",
+     "verified": true
+    },
+    {
+     "metric": "세계 전기차 판매 전망(IEA)",
+     "year": "2026",
+     "value": 23,
+     "unit": "million units",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "IEA Global EV Outlook 2026 (GreenTechLead 보도)",
+     "url": "https://greentechlead.com/electric-vehicle/global-ev-sales-to-hit-23-mn-in-2026-as-china-dominates-electric-vehicle-boom-says-iea-53452",
+     "published": "2026-05-20",
+     "note": "신차 판매의 약 30%. 2025년 2천만 대 돌파(+20%, 점유율 25%), 1Q26 판매 -8%",
+     "verified": true
+    },
+    {
+     "metric": "세계 ESS(배터리 저장) 투자 전망(IEA WEI 2026)",
+     "year": "2026",
+     "value": 110,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 35,
+     "source": "IEA World Energy Investment 2026 (Industrial Info 보도)",
+     "url": "https://www.industrialinfo.com/news/article/iea-global-energy-capex-to-grow-5-to-us34-trillion-in-2026--358576",
+     "published": "2026-06-03",
+     "note": "증가율은 '35% 이상'",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "이차전지 수출액",
+     "year": "2024",
+     "value": 8.202,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -16.6,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "verified": true
+    },
+    {
+     "metric": "이차전지 수출액",
+     "year": "2025",
+     "value": 7.228,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -11.9,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료의 '25년 전체' 확정치(2026.1.1 잠정치와 소폭 다름). 해외 생산 이전 영향",
+     "verified": true
+    },
+    {
+     "metric": "이차전지 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 6.009,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 13.3,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치. 9월 0.724bn(+14.0%, 5개월 연속 증가). 9월 ESS 용 1.7억$(-7.1%), EV 용 0.6억$(-15.3%). 리튬 19.7$/kg(전년 9.3)",
+     "verified": true
+    },
+    {
+     "metric": "이차전지 수출 전망(KIET)",
+     "year": "2026",
+     "value": 7.717,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 6.8,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "하반기 3.901bn(+7.6%)",
+     "verified": true
+    },
+    {
+     "metric": "이차전지 생산 전망(KIET, 원화 명목)",
+     "year": "2026",
+     "value": 7.828,
+     "unit": "KRW tn",
+     "kind": "forecast",
+     "growth_pct": 6.9,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "2025년 7.3조 원(-8.8%)",
+     "verified": true
+    },
+    {
+     "metric": "한국 3사 전기차 배터리 점유율(SNE)",
+     "year": "2025",
+     "value": 15.3,
+     "unit": "% of global EV battery usage",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "SNE Research (CnEVPost 보도)",
+     "url": "https://cnevpost.com/2026/02/04/global-ev-battery-market-share-2025/",
+     "published": "2026-02-04",
+     "note": "LG에너지솔루션 9.2% + SK온 3.7% + 삼성SDI 2.4% 합산(파생)",
+     "verified": true
+    },
+    {
+     "metric": "한국 3사 전기차 배터리 점유율 1~8월(SNE)",
+     "year": "2026 1~8월",
+     "value": 12.7,
+     "unit": "% of global EV battery usage",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "SNE Research (테크월드 보도)",
+     "url": "https://www.epnc.co.kr/news/articleView.html?idxno=407735",
+     "published": "2026-10-02",
+     "note": "전년 동기 대비 -3.9%p. LG에너지솔루션 8.1%, SK온 2.9%",
+     "verified": true
+    },
+    {
+     "metric": "한국 2사 ESS 배터리 출하 점유율(SNE)",
+     "year": "2026 H1",
+     "value": 4.0,
+     "unit": "% of global ESS shipments",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "SNE Research (CnEVPost 보도)",
+     "url": "https://cnevpost.com/2026/08/04/global-ess-battery-market-share-h1-2026/",
+     "published": "2026-08-04",
+     "note": "LG에너지솔루션 2.6%(12.0GWh, 북미 13.6%) + 삼성SDI 1.4%(6.4GWh) 합산(파생). 2025년 연간 4%(22GWh)",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "CATL",
+     "country": "China",
+     "metric": "전기차 배터리 사용량(점유율 39.2%)",
+     "value": 464.7,
+     "unit": "GWh",
+     "as_of": "2025",
+     "source": "SNE Research (CnEVPost)",
+     "url": "https://cnevpost.com/2026/02/04/global-ev-battery-market-share-2025/"
+    },
+    {
+     "name": "BYD",
+     "country": "China",
+     "metric": "전기차 배터리 사용량(점유율 16.4%)",
+     "value": 194.8,
+     "unit": "GWh",
+     "as_of": "2025",
+     "source": "SNE Research (CnEVPost)",
+     "url": "https://cnevpost.com/2026/02/04/global-ev-battery-market-share-2025/"
+    },
+    {
+     "name": "LG Energy Solution",
+     "country": "South Korea",
+     "metric": "전기차 배터리 사용량(점유율 9.2%, 3위)",
+     "value": 108.8,
+     "unit": "GWh",
+     "as_of": "2025",
+     "source": "SNE Research (CnEVPost)",
+     "url": "https://cnevpost.com/2026/02/04/global-ev-battery-market-share-2025/"
+    },
+    {
+     "name": "CALB",
+     "country": "China",
+     "metric": "전기차 배터리 사용량(점유율 5.3%)",
+     "value": 62.8,
+     "unit": "GWh",
+     "as_of": "2025",
+     "source": "SNE Research (CnEVPost)",
+     "url": "https://cnevpost.com/2026/02/04/global-ev-battery-market-share-2025/"
+    },
+    {
+     "name": "SK On",
+     "country": "South Korea",
+     "metric": "전기차 배터리 사용량(점유율 3.7%)",
+     "value": 44.5,
+     "unit": "GWh",
+     "as_of": "2025",
+     "source": "SNE Research (CnEVPost)",
+     "url": "https://cnevpost.com/2026/02/04/global-ev-battery-market-share-2025/"
+    },
+    {
+     "name": "Samsung SDI",
+     "country": "South Korea",
+     "metric": "전기차 배터리 사용량(점유율 2.4%)",
+     "value": 28.9,
+     "unit": "GWh",
+     "as_of": "2025",
+     "source": "SNE Research (CnEVPost)",
+     "url": "https://cnevpost.com/2026/02/04/global-ev-battery-market-share-2025/"
+    }
+   ],
+   "drivers": "전기차 배터리 수요 증가율은 2025년 30%대에서 2026년 20% 안팎으로 둔화했고, 중국 LFP 업체가 70% 이상을 가져가고 있다. 성장은 데이터센터·전력망용 ESS 가 이끌며, 한국 업체는 북미 전기차 부진으로 점유율이 밀려 미국 공장을 ESS·LFP 로 돌리는 중이다.",
+   "watch": [
+    "SNE리서치 월간 전기차 배터리 사용량·업체별 점유율",
+    "ESS 수주와 북미 ESS 설치량",
+    "리튬·니켈 가격",
+    "미국 세액공제·관세 등 정책 변화",
+    "BNEF 팩 가격(매년 12월)",
+    "산업통상부 월간 이차전지 수출(ESS/EV 구분)"
+   ]
+  },
+  "전력기기": {
+   "definition": "공신력 있는 단일 시장 총액이 없어 IEA 세계에너지투자(WEI) 의 전력망·전력부문 투자를 수요 대리변수로 쓰고, 변압기 시장은 컨설팅사 추정치(기관별 범위·수치 차이 큼)로 표시했다. 한국 = 산업통상부 통관 기준 전기기기(발전기·변압기·접속기·차단기·배전제어기·전선 등) 수출과 관세청 1만kVA 초과 변압기 수출.",
+   "world": [
+    {
+     "metric": "세계 전력망 투자 전망(IEA WEI 2026)",
+     "year": "2026",
+     "value": 550,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 20,
+     "source": "IEA World Energy Investment 2026 (Industrial Info 보도)",
+     "url": "https://www.industrialinfo.com/news/article/iea-global-energy-capex-to-grow-5-to-us34-trillion-in-2026--358576",
+     "published": "2026-06-03",
+     "note": "'약 550bn, 20% 가까이 증가' — 근사치",
+     "verified": true
+    },
+    {
+     "metric": "세계 전력부문 투자 전망(IEA WEI 2026)",
+     "year": "2026",
+     "value": 2200,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "IEA World Energy Investment 2026 (Industrial Info 보도)",
+     "url": "https://www.industrialinfo.com/news/article/iea-global-energy-capex-to-grow-5-to-us34-trillion-in-2026--358576",
+     "published": "2026-06-03",
+     "note": "에너지 투자 총 3.4조$(+5%)의 약 59%",
+     "verified": true
+    },
+    {
+     "metric": "세계 원자력 투자 전망(IEA WEI 2026)",
+     "year": "2026",
+     "value": 80,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "IEA World Energy Investment 2026 (Industrial Info 보도)",
+     "url": "https://www.industrialinfo.com/news/article/iea-global-energy-capex-to-grow-5-to-us34-trillion-in-2026--358576",
+     "published": "2026-06-03",
+     "note": "'800억$ 초과'. 15개국 78GW 건설 중",
+     "verified": true
+    },
+    {
+     "metric": "세계 가스발전소 신규 주문(IEA)",
+     "year": "2025",
+     "value": 130,
+     "unit": "GW",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "IEA World Energy Investment 2026 (Industrial Info 보도)",
+     "url": "https://www.industrialinfo.com/news/article/iea-global-energy-capex-to-grow-5-to-us34-trillion-in-2026--358576",
+     "published": "2026-06-03",
+     "note": "데이터센터 전력수요가 주요인. 2026년 가스발전 투자 약 120bn$",
+     "verified": true
+    },
+    {
+     "metric": "세계 데이터센터 전력소비(IEA)",
+     "year": "2024",
+     "value": 415,
+     "unit": "TWh",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "IEA Energy and AI (Scientific American 보도로 확인)",
+     "url": "https://www.scientificamerican.com/article/ai-will-drive-doubling-of-data-center-energy-demand-by-2030/",
+     "published": "2025-04-10",
+     "note": "세계 전력소비의 약 1.5%. 미국 45%, 중국 25%",
+     "verified": true
+    },
+    {
+     "metric": "세계 데이터센터 전력소비 전망(IEA)",
+     "year": "2030",
+     "value": 945,
+     "unit": "TWh",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "IEA Energy and AI (Scientific American 보도로 확인)",
+     "url": "https://www.scientificamerican.com/article/ai-will-drive-doubling-of-data-center-energy-demand-by-2030/",
+     "published": "2025-04-10",
+     "note": "2024년 대비 2배 이상",
+     "verified": true
+    },
+    {
+     "metric": "미국 전력용 변압기 공급 부족률(Wood Mackenzie)",
+     "year": "2025",
+     "value": 30,
+     "unit": "% of demand",
+     "kind": "estimate",
+     "growth_pct": null,
+     "source": "Wood Mackenzie",
+     "url": "https://www.woodmac.com/press-releases/power-transformers-and-distribution-transformers-will-face-supply-deficits-of-30-and-10-in-2025/",
+     "published": "2025-08-14",
+     "note": "배전용 10% 부족. 전력용 수요 2019년 대비 +116%, 수입 의존 약 80%",
+     "verified": true
+    },
+    {
+     "metric": "세계 변압기 시장 전망(포춘비즈니스인사이트)",
+     "year": "2026",
+     "value": 80.8,
+     "unit": "USD bn",
+     "kind": "estimate",
+     "growth_pct": 8.78,
+     "source": "포춘비즈니스인사이트(헤럴드경제 보도)",
+     "url": "https://biz.heraldcorp.com/article/10811345",
+     "published": "2026-07-19",
+     "note": "growth_pct = 2026~2034 연평균, 2034년 158.47bn. 컨설팅 추정이라 다른 기관(약 65~78bn)과 범위 차이 큼",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "전기기기 수출액",
+     "year": "2024",
+     "value": 15.6,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "note": "연간 보도자료 역대 순위 표기값(156억$)",
+     "verified": true
+    },
+    {
+     "metric": "전기기기 수출액",
+     "year": "2025",
+     "value": 16.683,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 8.2,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료의 '25년 전체' 확정치(2026.1.1 잠정치와 소폭 다름). 2026.1.1 잠정치는 167억$(+7.2%). 2021년부터 매년 최대",
+     "verified": true
+    },
+    {
+     "metric": "전기기기 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 13.642,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 7.5,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치. 9월 1.826bn(+23.4%)으로 월 역대 최대, 전선·변압기·차단기 증가",
+     "verified": true
+    },
+    {
+     "metric": "초고압 변압기(1만kVA 초과) 대미 수출액(관세청)",
+     "year": "2025",
+     "value": 0.73828,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "관세청 자료(국민일보 보도)",
+     "url": "https://www.kmib.co.kr/article/view.asp?arcid=1768811387",
+     "published": "2026-01-20",
+     "note": "처음 1조 원 돌파. 2022년 1.0865억$ → 2024년 약 4억$",
+     "verified": true
+    },
+    {
+     "metric": "초고압 변압기(1만kVA 초과) 수출액 상반기(관세청)",
+     "year": "2026 H1",
+     "value": 0.70152,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 6.7,
+     "source": "관세청 자료(헤럴드경제 보도)",
+     "url": "https://biz.heraldcorp.com/article/10811345",
+     "published": "2026-07-19",
+     "note": "전 국가 합계, 반기 첫 1조 원 돌파(전년 동기 6.5749억$)",
+     "verified": true
+    },
+    {
+     "metric": "국내 전력기기 3사 수주잔고(효성중공업·HD현대일렉트릭·LS일렉트릭)",
+     "year": "1Q26",
+     "value": 32,
+     "unit": "KRW tn (이상)",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "머니투데이방송(MTN)",
+     "url": "https://news.mtn.co.kr/news-detail/2026070311081899237",
+     "published": "2026-07-03",
+     "note": "'32조 원 초과'. 미국 변압기 조달 리드타임 약 1년→3~4년, 미국 대형 변압기 관세 25%→15% 한시 인하",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "GE Vernova",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 263.67,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/ge-vernova/marketcap/"
+    },
+    {
+     "name": "ABB",
+     "country": "Switzerland",
+     "metric": "시가총액",
+     "value": 177.97,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/abb/marketcap/"
+    },
+    {
+     "name": "Schneider Electric",
+     "country": "France",
+     "metric": "시가총액",
+     "value": 172.48,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/schneider-electric/marketcap/"
+    },
+    {
+     "name": "Eaton",
+     "country": "Ireland/USA",
+     "metric": "시가총액",
+     "value": 167.97,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/eaton/marketcap/"
+    },
+    {
+     "name": "Hitachi (Hitachi Energy 모회사)",
+     "country": "Japan",
+     "metric": "시가총액(그룹 전체)",
+     "value": 161.27,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/hitachi/marketcap/"
+    },
+    {
+     "name": "Siemens Energy",
+     "country": "Germany",
+     "metric": "시가총액(ENR.F 기준)",
+     "value": 138.67,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/siemens-energy/marketcap/"
+    }
+   ],
+   "drivers": "AI 데이터센터 전력수요, 노후 전력망 교체, 재생에너지 연계로 세계 전력망 투자가 2026년 약 20% 늘고, 미국 대형 변압기는 수요의 약 30%가 공급 부족이라 납기가 수년으로 길어졌다. 가스발전소 주문 급증과 원전 투자 확대가 발전설비 수주도 떠받친다.",
+   "watch": [
+    "관세청 초고압 변압기(1만kVA 초과) 월간 수출과 대미 비중",
+    "국내 3사 분기 수주·수주잔고",
+    "미국 유틸리티·빅테크 설비투자",
+    "미국 232조 관세와 구리 가격",
+    "가스터빈·원전 신규 수주 발표",
+    "산업통상부 월간 전기기기 수출"
+   ]
+  },
+  "가전·IT기기": {
+   "definition": "세계 = IDC 스마트폰 출하(대수·금액)와 TrendForce TV 출하(대수). 한국 = 산업통상부 통관 기준 무선통신기기(휴대폰 완제품+부품)·가전 수출로, 해외 생산 비중이 높아 국내 수출은 실제 사업 규모보다 작다. KIET 는 가전만 단독 전망하고 휴대폰은 컴퓨터(SSD)와 합친 '정보통신기기'로만 전망해 여기서는 제외했다.",
+   "world": [
+    {
+     "metric": "세계 스마트폰 출하(IDC)",
+     "year": "2025",
+     "value": 1260.3,
+     "unit": "million units",
+     "kind": "actual",
+     "growth_pct": 1.9,
+     "source": "IDC Worldwide Quarterly Mobile Phone Tracker",
+     "url": "https://www.idc.com/resource-center/press-releases/q425mobilephonetop5/",
+     "published": "2026-01-13",
+     "note": "4Q25 336.3백만 대(+2.3%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 스마트폰 출하 증가율 전망(IDC)",
+     "year": "2026",
+     "value": -16.7,
+     "unit": "% YoY",
+     "kind": "forecast",
+     "growth_pct": -16.7,
+     "source": "IDC 스마트폰 전망(AppleWorld.Today 보도)",
+     "url": "https://appleworld.today/2026/08/foldables-are-the-only-silver-lining-in-smartphone-sales-forecasts-boosted-by-the-upcoming-foldable-iphone/",
+     "published": "2026-08-26",
+     "note": "출하 '10억 대 남짓', 직전 분기 전망 -13.9%에서 하향, 하반기 -27.2%. 안드로이드 -24.3%, iOS 점유율 23.6%",
+     "verified": true
+    },
+    {
+     "metric": "세계 스마트폰 시장 금액 전망(IDC)",
+     "year": "2026",
+     "value": 613,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 6.3,
+     "source": "IDC 스마트폰 전망(AppleWorld.Today 보도)",
+     "url": "https://appleworld.today/2026/08/foldables-are-the-only-silver-lining-in-smartphone-sales-forecasts-boosted-by-the-upcoming-foldable-iphone/",
+     "published": "2026-08-26",
+     "note": "평균판매가 581$(+27.6%) — 물량 감소·단가 상승",
+     "verified": true
+    },
+    {
+     "metric": "세계 폴더블폰 출하 전망(IDC)",
+     "year": "2026",
+     "value": 22.9,
+     "unit": "million units",
+     "kind": "forecast",
+     "growth_pct": 12.6,
+     "source": "IDC 스마트폰 전망(AppleWorld.Today 보도)",
+     "url": "https://appleworld.today/2026/08/foldables-are-the-only-silver-lining-in-smartphone-sales-forecasts-boosted-by-the-upcoming-foldable-iphone/",
+     "published": "2026-08-26",
+     "note": "2027년 약 27백만 대(+18%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 TV 출하(TrendForce)",
+     "year": "2025",
+     "value": 196.2,
+     "unit": "million units",
+     "kind": "actual",
+     "growth_pct": -0.8,
+     "source": "TrendForce",
+     "url": "https://www.trendforce.com/presscenter/news/20260129-12904.html",
+     "published": "2026-01-29",
+     "note": "같은 발표의 2026년 전망 194.81백만 대(-0.6%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 TV 출하 상반기(TrendForce)",
+     "year": "2026 H1",
+     "value": 93.74,
+     "unit": "million units",
+     "kind": "actual",
+     "growth_pct": 1.3,
+     "source": "TrendForce",
+     "url": "https://www.trendforce.com/presscenter/news/20260821-13193.html",
+     "published": "2026-08-21",
+     "note": "팬데믹 이후 상반기 최대",
+     "verified": true
+    },
+    {
+     "metric": "세계 TV 출하 전망(TrendForce)",
+     "year": "2026",
+     "value": 194.65,
+     "unit": "million units",
+     "kind": "forecast",
+     "growth_pct": -0.8,
+     "source": "TrendForce",
+     "url": "https://www.trendforce.com/presscenter/news/20260821-13193.html",
+     "published": "2026-08-21",
+     "note": "메모리·패널·귀금속 원가 상승, TV 원가 중 메모리 비중 2.5~3% → 6~7%(1월 발표)",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "무선통신기기 수출액",
+     "year": "2024",
+     "value": 17.187,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 11.1,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "verified": true
+    },
+    {
+     "metric": "무선통신기기 수출액",
+     "year": "2025",
+     "value": 17.256,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 0.4,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료의 '25년 전체' 확정치(2026.1.1 잠정치와 소폭 다름).",
+     "verified": true
+    },
+    {
+     "metric": "무선통신기기 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 15.737,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 30.9,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치. 9월 2.144bn(+23.4%, 11개월 연속 증가): 완제품 5.9억$(+40.1%), 부품 14.8억$(+21.8%)",
+     "verified": true
+    },
+    {
+     "metric": "가전 수출액",
+     "year": "2024",
+     "value": 7.974,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 0.4,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "verified": true
+    },
+    {
+     "metric": "가전 수출액",
+     "year": "2025",
+     "value": 7.269,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -8.8,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료의 '25년 전체' 확정치(2026.1.1 잠정치와 소폭 다름).",
+     "verified": true
+    },
+    {
+     "metric": "가전 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 4.969,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -10.5,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치. 9월 0.596bn(-13.2%)",
+     "verified": true
+    },
+    {
+     "metric": "가전 수출 전망(KIET)",
+     "year": "2026",
+     "value": 6.896,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": -5.1,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "하반기 3.621bn(+1.5%)",
+     "verified": true
+    },
+    {
+     "metric": "가전 생산 전망(KIET, 원화 명목)",
+     "year": "2026",
+     "value": 28.779,
+     "unit": "KRW tn",
+     "kind": "forecast",
+     "growth_pct": -1.0,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "2025년 29.1조 원(-6.0%)",
+     "verified": true
+    },
+    {
+     "metric": "삼성전자 세계 스마트폰 출하 점유율(IDC)",
+     "year": "2025",
+     "value": 19.1,
+     "unit": "%",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "IDC Worldwide Quarterly Mobile Phone Tracker",
+     "url": "https://www.idc.com/resource-center/press-releases/q425mobilephonetop5/",
+     "published": "2026-01-13",
+     "note": "241.2백만 대(+7.9%), 애플 19.7%에 이어 2위",
+     "verified": true
+    },
+    {
+     "metric": "한국 브랜드 세계 TV 출하 점유율(삼성+LG)",
+     "year": "2026 H1",
+     "value": 30.8,
+     "unit": "%",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "TrendForce",
+     "url": "https://www.trendforce.com/presscenter/news/20260821-13193.html",
+     "published": "2026-08-21",
+     "note": "삼성 17.6백만 대(+6.3%) + LG 11.3백만 대(+3.9%) ÷ 93.74백만 대(파생)",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Apple",
+     "country": "USA",
+     "metric": "스마트폰 출하(점유율 19.7%, 1위)",
+     "value": 247.8,
+     "unit": "million units",
+     "as_of": "2025",
+     "source": "IDC",
+     "url": "https://www.idc.com/resource-center/press-releases/q425mobilephonetop5/"
+    },
+    {
+     "name": "Samsung Electronics",
+     "country": "South Korea",
+     "metric": "스마트폰 출하(점유율 19.1%)",
+     "value": 241.2,
+     "unit": "million units",
+     "as_of": "2025",
+     "source": "IDC",
+     "url": "https://www.idc.com/resource-center/press-releases/q425mobilephonetop5/"
+    },
+    {
+     "name": "Xiaomi",
+     "country": "China",
+     "metric": "스마트폰 출하(점유율 13.1%)",
+     "value": 165.3,
+     "unit": "million units",
+     "as_of": "2025",
+     "source": "IDC",
+     "url": "https://www.idc.com/resource-center/press-releases/q425mobilephonetop5/"
+    },
+    {
+     "name": "TCL",
+     "country": "China",
+     "metric": "TV 출하(+7.1%, 2위)",
+     "value": 15.08,
+     "unit": "million units",
+     "as_of": "2026 H1",
+     "source": "TrendForce",
+     "url": "https://www.trendforce.com/presscenter/news/20260821-13193.html"
+    },
+    {
+     "name": "Hisense",
+     "country": "China",
+     "metric": "TV 출하(+3.0%)",
+     "value": 14.23,
+     "unit": "million units",
+     "as_of": "2026 H1",
+     "source": "TrendForce",
+     "url": "https://www.trendforce.com/presscenter/news/20260821-13193.html"
+    },
+    {
+     "name": "LG Electronics",
+     "country": "South Korea",
+     "metric": "TV 출하(+3.9%)",
+     "value": 11.3,
+     "unit": "million units",
+     "as_of": "2026 H1",
+     "source": "TrendForce",
+     "url": "https://www.trendforce.com/presscenter/news/20260821-13193.html"
+    }
+   ],
+   "drivers": "메모리값 급등으로 2026년 스마트폰 출하는 사상 최대 폭(약 -17%)으로 줄지만 평균판매가가 올라 시장 금액은 늘어나는 '물량 감소·단가 상승' 구조다. 프리미엄 비중이 큰 애플·삼성은 상대적으로 선방하고, TV·가전은 수요 정체 속 원가 상승과 미국 관세·주택경기 둔화가 부담이다.",
+   "watch": [
+    "IDC·카운터포인트 분기 스마트폰 출하와 전망 개정",
+    "D램·낸드 가격(스마트폰·TV 원가)",
+    "갤럭시·아이폰 신제품 출시 일정",
+    "TrendForce TV 출하와 패널 가격",
+    "미국 기존주택 거래(대형 가전 수요)",
+    "산업통상부 월간 무선통신기기·가전 수출"
+   ]
+  },
+  "자동차·부품": {
+   "definition": "세계 = OICA 전체 자동차(승용+상용) 생산·판매 대수, Mobility Global(구 S&P Global Mobility)·GlobalData 경량차(LV) 생산·판매 전망. 한국 = 산업통상부 통관 기준 자동차(완성차)·자동차부품 수출, KIET 수출 전망은 부품 포함(MTI 741·742), 생산·내수는 완성차 대수.",
+   "world": [
+    {
+     "metric": "세계 자동차 생산(OICA)",
+     "year": "2024",
+     "value": 92.7,
+     "unit": "million units",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "OICA",
+     "url": "https://oica.net/auto-industry-growth-shifted-east-in-2025-amid-global-repositioning/",
+     "published": "2026-04-23",
+     "verified": true
+    },
+    {
+     "metric": "세계 자동차 생산(OICA)",
+     "year": "2025",
+     "value": 96.4,
+     "unit": "million units",
+     "kind": "actual",
+     "growth_pct": 3.9,
+     "source": "OICA",
+     "url": "https://oica.net/auto-industry-growth-shifted-east-in-2025-amid-global-repositioning/",
+     "published": "2026-04-23",
+     "note": "아시아·태평양 59.2백만 대(61%), 중국 34.53, 미국 10.24, 일본 8.41, 인도 6.49",
+     "verified": true
+    },
+    {
+     "metric": "세계 자동차 판매(OICA)",
+     "year": "2025",
+     "value": 99.8,
+     "unit": "million units",
+     "kind": "actual",
+     "growth_pct": 4.7,
+     "source": "OICA",
+     "url": "https://oica.net/auto-industry-growth-shifted-east-in-2025-amid-global-repositioning/",
+     "published": "2026-04-23",
+     "note": "2024년 95.3백만 대",
+     "verified": true
+    },
+    {
+     "metric": "세계 경량차 생산 전망(Mobility Global)",
+     "year": "2026",
+     "value": 92.6,
+     "unit": "million units",
+     "kind": "forecast",
+     "growth_pct": -0.3,
+     "source": "Mobility Global(구 S&P Global Mobility) Light Vehicle Production Outlook 2026",
+     "url": "https://www.mobilityglobal.com/content/dam/mobility-global/en-us/marketing-campaing/new-year-s-briefing-2026/light-vehicle-production-outlook-2026.pdf",
+     "published": "2026-02",
+     "note": "2025년 92.9(+4%), 2024년 89.6. 증감률은 대수로 계산. 2026년 1월 집계 데이터",
+     "verified": true
+    },
+    {
+     "metric": "세계 경량차 판매 전망(Mobility Global)",
+     "year": "2026",
+     "value": 91.8,
+     "unit": "million units",
+     "kind": "forecast",
+     "growth_pct": 0.1,
+     "source": "Mobility Global(구 S&P Global Mobility) Light Vehicle Production Outlook 2026",
+     "url": "https://www.mobilityglobal.com/content/dam/mobility-global/en-us/marketing-campaing/new-year-s-briefing-2026/light-vehicle-production-outlook-2026.pdf",
+     "published": "2026-02",
+     "note": "2025년 91.7(+3%). 2026년 1월 시점이라 이후 전망보다 낙관적",
+     "verified": true
+    },
+    {
+     "metric": "세계 경량차 판매 전망(GlobalData, 9월 개정)",
+     "year": "2026",
+     "value": 88.3,
+     "unit": "million units",
+     "kind": "forecast",
+     "growth_pct": -4.3,
+     "source": "GlobalData (The Shop 매거진 KPI 보도)",
+     "url": "https://theshopmag.com/features/kpi-september-2026-state-of-business-automotive-industry/",
+     "published": "2026-09-25",
+     "note": "한 달 전 89.7백만 대에서 하향. 중국 정책 지원 축소, 중동 정세, 미국 생활비 부담",
+     "verified": true
+    },
+    {
+     "metric": "세계 경량차 판매 전망(S&P Global Mobility, 2026~28 연평균)",
+     "year": "2026-2028",
+     "value": 90,
+     "unit": "million units/yr",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "S&P Global Mobility (Dealership Guy 보도)",
+     "url": "https://news.dealershipguy.com/p/s-p-cuts-global-auto-volume-forecast-citing-double-whammy-of-industry-headwinds",
+     "published": "2026-05-21",
+     "note": "2025년 약 92백만 대. 2026년 -1~-3%, 2027년 +1~+3% 범위 전망",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "자동차(완성차) 수출액",
+     "year": "2024",
+     "value": 70.782,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -0.1,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "verified": true
+    },
+    {
+     "metric": "자동차(완성차) 수출액",
+     "year": "2025",
+     "value": 71.975,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 1.7,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료의 '25년 전체' 확정치(2026.1.1 잠정치와 소폭 다름). 연간 역대 최대. 하이브리드 +30.0%, 전기차 -13.6%, 내연 -3.9%(연간 보도자료)",
+     "verified": true
+    },
+    {
+     "metric": "자동차(완성차) 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 52.041,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -3.7,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치. 9월 6.052bn(-5.5%, 추석 이동): 내연 31.6억$(-13.9%), 하이브리드 18.4억$(+8.8%), 전기 10.6억$(+1.1%)",
+     "verified": true
+    },
+    {
+     "metric": "자동차부품 수출액",
+     "year": "2024",
+     "value": 22.533,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -1.8,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "verified": true
+    },
+    {
+     "metric": "자동차부품 수출액",
+     "year": "2025",
+     "value": 21.075,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -6.0,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료의 '25년 전체' 확정치(2026.1.1 잠정치와 소폭 다름).",
+     "verified": true
+    },
+    {
+     "metric": "자동차부품 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 15.234,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -5.9,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치. 9월 1.773bn(-7.2%): 완성차 현지생산 확대",
+     "verified": true
+    },
+    {
+     "metric": "자동차·부품 수출 전망(KIET)",
+     "year": "2026",
+     "value": 91.586,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": -1.7,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "부품 포함. 2025년 93.175bn(-0.2%)",
+     "verified": true
+    },
+    {
+     "metric": "자동차 생산 전망(KIET, 완성차)",
+     "year": "2026",
+     "value": 4.137,
+     "unit": "million units",
+     "kind": "forecast",
+     "growth_pct": 0.8,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "2025년 4.102백만 대(-0.6%)",
+     "verified": true
+    },
+    {
+     "metric": "자동차 내수 전망(KIET, 완성차)",
+     "year": "2026",
+     "value": 1.715,
+     "unit": "million units",
+     "kind": "forecast",
+     "growth_pct": 1.0,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "하반기 -1.5%(개소세 인하 종료)",
+     "verified": true
+    },
+    {
+     "metric": "한국계 OEM 세계 경량차 생산 점유율(Mobility Global)",
+     "year": "2026",
+     "value": 8,
+     "unit": "% of global LV production",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "Mobility Global(구 S&P Global Mobility) Light Vehicle Production Outlook 2026",
+     "url": "https://www.mobilityglobal.com/content/dam/mobility-global/en-us/marketing-campaing/new-year-s-briefing-2026/light-vehicle-production-outlook-2026.pdf",
+     "published": "2026-02",
+     "note": "중국계 28%가 일본계 26%를 추월, 미국 3사 15%, 독일 3사 14%",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Tesla",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 1495,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/automakers/largest-automakers-by-market-cap/"
+    },
+    {
+     "name": "Toyota",
+     "country": "Japan",
+     "metric": "시가총액",
+     "value": 218.03,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/automakers/largest-automakers-by-market-cap/"
+    },
+    {
+     "name": "BYD",
+     "country": "China",
+     "metric": "시가총액",
+     "value": 113.29,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/automakers/largest-automakers-by-market-cap/"
+    },
+    {
+     "name": "General Motors",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 70.39,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/automakers/largest-automakers-by-market-cap/"
+    },
+    {
+     "name": "Hyundai Motor",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 67.97,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/automakers/largest-automakers-by-market-cap/"
+    },
+    {
+     "name": "Volkswagen",
+     "country": "Germany",
+     "metric": "시가총액",
+     "value": 38.56,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/automakers/largest-automakers-by-market-cap/"
+    }
+   ],
+   "drivers": "2026년 세계 자동차 판매는 중국 보조금 축소와 중동 정세발 에너지비용 상승으로 감소 전망이 우세하고, 중국계 완성차가 생산 점유율에서 일본계를 앞지르는 구조 변화가 진행 중이다. 한국은 하이브리드 수출이 금액을 받치지만 미국 관세와 현지 생산 확대로 내연차·부품 수출이 줄고 있다.",
+   "watch": [
+    "산업통상부 월간 자동차·부품 수출(차종별)",
+    "미국 연환산 판매(SAAR)와 관세율",
+    "중국 월간 소매판매와 신에너지차 침투율",
+    "GlobalData·S&P 월간 판매 전망 개정",
+    "노사협상·파업 일정",
+    "원/달러 환율"
+   ]
+  },
+  "조선": {
+   "definition": "세계 = 클락슨리서치 신조선 발주량(CGT, 표준선 환산톤수)·발주금액·인도량·수주잔량·신조선가지수(1988.1=100). 클락슨 통계는 사후 상향 수정이 잦다. 한국 = 클락슨 기준 한국 수주량·점유율·잔량, 산업통상부 통관 기준 선박 수출(해양플랜트 포함, 인도 시점 인식), KIET 건조량(CGT).",
+   "world": [
+    {
+     "metric": "세계 신조선 발주량(클락슨)",
+     "year": "2024",
+     "value": 76.78,
+     "unit": "million CGT",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "클락슨리서치 (아주경제 보도)",
+     "url": "https://www.ajunews.com/view/20260107090649146",
+     "published": "2026-01-07",
+     "note": "3,235척",
+     "verified": true
+    },
+    {
+     "metric": "세계 신조선 발주량(클락슨)",
+     "year": "2025",
+     "value": 56.43,
+     "unit": "million CGT",
+     "kind": "actual",
+     "growth_pct": -27,
+     "source": "클락슨리서치 (아주경제 보도)",
+     "url": "https://www.ajunews.com/view/20260107090649146",
+     "published": "2026-01-07",
+     "note": "2,036척. 중국 35.37M CGT(63%, -35%). Clarkson PLC 3월 보고서는 58m CGT 로 상향 집계",
+     "verified": true
+    },
+    {
+     "metric": "세계 신조선 발주금액(Clarkson PLC)",
+     "year": "2025",
+     "value": 186,
+     "unit": "USD bn",
+     "kind": "estimate",
+     "growth_pct": null,
+     "source": "Clarkson PLC 2025 Preliminary Results",
+     "url": "https://www.clarksons.com/media/cmrn05br/2025-clarksons-preliminary-results-web.pdf",
+     "published": "2026-03-09",
+     "note": "10년 평균 대비 톤수 30% 상회, 컨테이너선 4.8m TEU 역대 최대. 수주잔량 CGT +8%",
+     "verified": true
+    },
+    {
+     "metric": "세계 신조선 인도량(Clarkson PLC)",
+     "year": "2025",
+     "value": 43.8,
+     "unit": "million CGT",
+     "kind": "actual",
+     "growth_pct": 6,
+     "source": "Clarkson PLC 2025 Preliminary Results",
+     "url": "https://www.clarksons.com/media/cmrn05br/2025-clarksons-preliminary-results-web.pdf",
+     "published": "2026-03-09",
+     "note": "세계 선대 +3.5%",
+     "verified": true
+    },
+    {
+     "metric": "세계 신조선 발주량 1~8월(클락슨)",
+     "year": "2026 1~8월",
+     "value": 59.72,
+     "unit": "million CGT",
+     "kind": "actual",
+     "growth_pct": 61,
+     "source": "클락슨리서치 (SBS Biz 보도)",
+     "url": "https://biz.sbs.co.kr/amp/article/20000332755",
+     "published": "2026-09-04",
+     "note": "2,128척. 중국 45.39M CGT(76%, +95%). 8월 단월 4.2M CGT(-24%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 수주잔량(클락슨, 8월말)",
+     "year": "2026-08",
+     "value": 216.43,
+     "unit": "million CGT",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "클락슨리서치 (SBS Biz 보도)",
+     "url": "https://biz.sbs.co.kr/amp/article/20000332755",
+     "published": "2026-09-04",
+     "note": "중국 145.39M CGT(67%). 2025년말 173.91M CGT(중국 60%)",
+     "verified": true
+    },
+    {
+     "metric": "클락슨 신조선가지수",
+     "year": "2026-08",
+     "value": 186.34,
+     "unit": "index(1988.1=100)",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "클락슨리서치 (SBS Biz 보도)",
+     "url": "https://biz.sbs.co.kr/amp/article/20000332755",
+     "published": "2026-09-04",
+     "note": "전월비 +0.85p. 2025년 12월말 184.65. 초대형 컨테이너선 2억5,400만$, LNG선 2억4,850만$",
+     "verified": true
+    },
+    {
+     "metric": "세계 신조선 발주량 전망(KB증권)",
+     "year": "2026",
+     "value": 72.1,
+     "unit": "million CGT",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "KB증권 (허프포스트코리아 보도)",
+     "url": "https://www.huffingtonpost.kr/article/260159",
+     "published": "2026-08-20",
+     "note": "증권사 전망(2026-08-20 상향). 하반기 발주 둔화 불가피 판단. 클락슨 공식 수치 전망은 미확보",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "한국 신조선 수주량(클락슨)",
+     "year": "2025",
+     "value": 11.6,
+     "unit": "million CGT",
+     "kind": "actual",
+     "growth_pct": 8,
+     "source": "클락슨리서치 (아주경제 보도)",
+     "url": "https://www.ajunews.com/view/20260107090649146",
+     "published": "2026-01-07",
+     "note": "점유율 21%. 척당 6.4만 CGT 로 중국(2.6만)의 2배 이상 — 고부가 선종 집중",
+     "verified": true
+    },
+    {
+     "metric": "한국 신조선 수주량 1~8월(클락슨)",
+     "year": "2026 1~8월",
+     "value": 9.38,
+     "unit": "million CGT",
+     "kind": "actual",
+     "growth_pct": 55,
+     "source": "클락슨리서치 (SBS Biz 보도)",
+     "url": "https://biz.sbs.co.kr/amp/article/20000332755",
+     "published": "2026-09-04",
+     "note": "243척, 점유율 16%. 8월 단월 0.31M CGT(점유율 7%)",
+     "verified": true
+    },
+    {
+     "metric": "한국 수주잔량(클락슨, 연말)",
+     "year": "2025",
+     "value": 35.12,
+     "unit": "million CGT",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "클락슨리서치 (아주경제 보도)",
+     "url": "https://www.ajunews.com/view/20260107090649146",
+     "published": "2026-01-07",
+     "note": "세계 점유율 20%",
+     "verified": true
+    },
+    {
+     "metric": "한국 수주잔량(클락슨, 8월말)",
+     "year": "2026-08",
+     "value": 37.96,
+     "unit": "million CGT",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "클락슨리서치 (SBS Biz 보도)",
+     "url": "https://biz.sbs.co.kr/amp/article/20000332755",
+     "published": "2026-09-04",
+     "note": "세계 점유율 18%",
+     "verified": true
+    },
+    {
+     "metric": "선박 수출액",
+     "year": "2024",
+     "value": 25.636,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 17.6,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "verified": true
+    },
+    {
+     "metric": "선박 수출액",
+     "year": "2025",
+     "value": 31.816,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 24.1,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료의 '25년 전체' 확정치(2026.1.1 잠정치와 소폭 다름). 2026.1.1 잠정치 32.031bn(+24.9%). '22~'23년 고선가 수주 LNG선 인도",
+     "verified": true
+    },
+    {
+     "metric": "선박 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 25.283,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 13.7,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치. 9월 3.757bn(+29.9%), 8월 1.692bn(-45.9%) 등 월별 변동 큼",
+     "verified": true
+    },
+    {
+     "metric": "선박 수출 전망(KIET)",
+     "year": "2026",
+     "value": 33.229,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 4.4,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "하반기 17.187bn(-3.6%, 고가 해양플랜트 인도 감소)",
+     "verified": true
+    },
+    {
+     "metric": "선박 건조량 전망(KIET)",
+     "year": "2026",
+     "value": 11.8,
+     "unit": "million CGT",
+     "kind": "forecast",
+     "growth_pct": -3.4,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "2025년 12.22M CGT(+6.1%). 컨테이너선 물량 감소",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "China State Shipbuilding Corporation(CSSC)",
+     "country": "China",
+     "metric": "시가총액",
+     "value": 43.89,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/defense-contractors/largest-companies-by-market-cap/"
+    },
+    {
+     "name": "HD Hyundai Heavy Industries",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 33.07,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/hd-hyundai-heavy-industries/marketcap/"
+    },
+    {
+     "name": "Hanwha Ocean",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 17.85,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/daewoo-dsme/marketcap/"
+    },
+    {
+     "name": "Samsung Heavy Industries",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 12.67,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/samsung-heavy-industries/marketcap/"
+    }
+   ],
+   "drivers": "2026년 발주는 탱커·컨테이너선 중심으로 활발하지만 물량의 약 3/4 을 중국이 가져가고, 한국은 LNG선 등 고부가 선종을 골라 받아 점유율이 낮아졌다. 한국 조선사 실적과 선박 수출은 2~3년 전 높은 선가로 받은 물량이 인도되며 좋아지는 중이라 수주와 매출 사이의 시차가 핵심이다.",
+   "watch": [
+    "클락슨 월간 발주량·국가별 점유율(매월 초 발표)",
+    "신조선가지수와 LNG선·VLCC 선가",
+    "LNG 프로젝트 최종투자결정(FID)",
+    "미·중 항만수수료 등 미국 무역대표부(USTR) 조치",
+    "수주잔량/선대 비율과 인도 일정",
+    "산업통상부 월간 선박 수출"
+   ]
+  },
+  "방산·항공우주": {
+   "definition": "세계 = SIPRI 세계 군사비(당해 달러, 증가율은 실질), SIPRI Top100 방산기업 무기 매출, NATO 국방비 추정, 에어버스·보잉 상업용 항공기 인도 대수. 한국 = 방위사업청·산업연구원 방산 수출 '수주(계약)액'(통관 수출과 다름), 방산 빅4(한화에어로스페이스·현대로템·LIG넥스원·KAI) 합산 실적, 방위력개선비 예산.",
+   "world": [
+    {
+     "metric": "세계 군사비(SIPRI)",
+     "year": "2024",
+     "value": 2718,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 9.4,
+     "source": "SIPRI",
+     "url": "https://www.sipri.org/media/press-release/2025/unprecedented-rise-global-military-expenditure-european-and-middle-east-spending-surges",
+     "published": "2025-04-28",
+     "note": "실질 증가율, 냉전 종식 이후 최대 폭. GDP 대비 2.5%",
+     "verified": true
+    },
+    {
+     "metric": "세계 군사비(SIPRI)",
+     "year": "2025",
+     "value": 2887,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 2.9,
+     "source": "SIPRI",
+     "url": "https://www.sipri.org/media/press-release/2026/global-military-spending-surges-2025",
+     "published": "2026-04-27",
+     "note": "실질 증가율, 11년 연속 증가, GDP 대비 2.5%. 미국 제외 시 +9.2%, 미국 954bn(-7.5%), 중국 336bn(+7.4%)",
+     "verified": true
+    },
+    {
+     "metric": "유럽 군사비(SIPRI)",
+     "year": "2025",
+     "value": 864,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 14,
+     "source": "SIPRI",
+     "url": "https://www.sipri.org/media/press-release/2026/global-military-spending-surges-2025",
+     "published": "2026-04-27",
+     "note": "아시아·오세아니아 681bn(+8.1%)",
+     "verified": true
+    },
+    {
+     "metric": "SIPRI Top100 방산기업 무기 매출",
+     "year": "2024",
+     "value": 679,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 5.9,
+     "source": "SIPRI Fact Sheet: Top 100 Arms-producing Companies 2024",
+     "url": "https://www.sipri.org/sites/default/files/2025-11/fs_2512_top_100_2024.pdf",
+     "published": "2025-12",
+     "note": "사상 최대. 아시아·오세아니아만 -1.2%(130bn)",
+     "verified": true
+    },
+    {
+     "metric": "NATO 회원국 국방비 추정",
+     "year": "2026",
+     "value": 1800,
+     "unit": "USD bn",
+     "kind": "estimate",
+     "growth_pct": 11,
+     "source": "NATO 추정치(Anadolu Agency 보도)",
+     "url": "https://aa.com.tr/en/world/nato-defense-spending-projected-to-top-18t-in-2026/3989627",
+     "published": "2026-07-07",
+     "note": "'1.8조$ 초과', 2025년 1.63조$(증가율은 약 11%). 미국 1.03조$, 유럽+캐나다 약 6,970억$. 2035년 GDP 5% 목표",
+     "verified": true
+    },
+    {
+     "metric": "에어버스 상업용 항공기 인도",
+     "year": "2025",
+     "value": 793,
+     "unit": "aircraft",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "Airbus 2025 실적 (Air Cargo Week 보도)",
+     "url": "https://aircargoweek.com/airbus-lifts-2026-targets/",
+     "published": "2026-02-20",
+     "note": "매출 €73.4bn(+6%), 수주잔고 8,754대",
+     "verified": true
+    },
+    {
+     "metric": "에어버스 상업용 항공기 인도 목표",
+     "year": "2026",
+     "value": 870,
+     "unit": "aircraft",
+     "kind": "forecast",
+     "growth_pct": 9.7,
+     "source": "Airbus 2026 가이던스 (Air Cargo Week 보도)",
+     "url": "https://aircargoweek.com/airbus-lifts-2026-targets/",
+     "published": "2026-02-20",
+     "note": "'약 870대'. 증감률은 대수로 계산. P&W 엔진 공급 부족이 제약",
+     "verified": true
+    },
+    {
+     "metric": "보잉 상업용 항공기 인도",
+     "year": "2025",
+     "value": 600,
+     "unit": "aircraft",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "Boeing (Engineering News 보도)",
+     "url": "https://www.engineeringnews.co.za/article/boeing-releases-its-delivery-figures-for-2025-including-airliner-deliveries-of-600-2026-01-14",
+     "published": "2026-01-14",
+     "note": "737 447대, 787 88대, 777 35대, 767 30대",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "방산 수출 수주액",
+     "year": "2024",
+     "value": 9.5,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "방위사업청 (서울경제 보도)",
+     "url": "https://www.sedaily.com/article/20023489",
+     "published": "2026-03-25",
+     "note": "2022년 173억$, 2023년 135억$",
+     "verified": true
+    },
+    {
+     "metric": "방산 수출 수주액",
+     "year": "2025",
+     "value": 15.44,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 62.5,
+     "source": "산업연구원·방위사업청 (파이낸셜뉴스 보도)",
+     "url": "https://www.fnnews.com/news/202604211415463252",
+     "published": "2026-04-21",
+     "note": "수출 대상국 16개국, 폴란드 비중 약 40%. 서울경제는 154억$(+60.4%)로 표기",
+     "verified": true
+    },
+    {
+     "metric": "방산 수출 수주 전망(한국수출입은행)",
+     "year": "2026",
+     "value": 27,
+     "unit": "USD bn (이상)",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "한국수출입은행 (서울경제 보도)",
+     "url": "https://www.sedaily.com/article/20023489",
+     "published": "2026-03-25",
+     "note": "'270억$ 이상'",
+     "verified": true
+    },
+    {
+     "metric": "방산 빅4 합산 매출",
+     "year": "2025",
+     "value": 40.4526,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "메트로신문(에프앤가이드 컨센서스 포함)",
+     "url": "https://www.metroseoul.co.kr/article/20260224500455",
+     "published": "2026-02-24",
+     "note": "처음 40조 원 돌파. 한화에어로스페이스 26.61조, 현대로템 5.84조, LIG넥스원 4.31조, KAI 3.70조",
+     "verified": true
+    },
+    {
+     "metric": "방산 빅4 합산 영업이익",
+     "year": "2025",
+     "value": 4.6324,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": 74,
+     "source": "메트로신문(에프앤가이드 컨센서스 포함)",
+     "url": "https://www.metroseoul.co.kr/article/20260224500455",
+     "published": "2026-02-24",
+     "note": "증가율은 기사상 '약 74%'",
+     "verified": true
+    },
+    {
+     "metric": "방산 빅4 합산 매출 컨센서스(에프앤가이드)",
+     "year": "2026",
+     "value": 48.0184,
+     "unit": "KRW tn",
+     "kind": "forecast",
+     "growth_pct": 18.7,
+     "source": "메트로신문(에프앤가이드 컨센서스 포함)",
+     "url": "https://www.metroseoul.co.kr/article/20260224500455",
+     "published": "2026-02-24",
+     "note": "영업이익 6.5359조 원. 증감률은 금액으로 계산",
+     "verified": true
+    },
+    {
+     "metric": "방산 빅4 합산 수주잔고(연말)",
+     "year": "2025",
+     "value": 120,
+     "unit": "KRW tn (이상)",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "메트로신문(에프앤가이드 컨센서스 포함)",
+     "url": "https://www.metroseoul.co.kr/article/20260224500455",
+     "published": "2026-02-24",
+     "note": "'120조 원 돌파' — 4~5년치 물량",
+     "verified": true
+    },
+    {
+     "metric": "SIPRI Top100 내 한국 4개사 무기 매출",
+     "year": "2024",
+     "value": 14.1,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 31,
+     "source": "SIPRI Fact Sheet: Top 100 Arms-producing Companies 2024",
+     "url": "https://www.sipri.org/sites/default/files/2025-11/fs_2512_top_100_2024.pdf",
+     "published": "2025-12",
+     "note": "한화그룹 7.97bn(21위, +42%), LIG넥스원 2.40bn(60위), KAI 2.01bn(70위, -11%), 현대로템 1.73bn(80위)",
+     "verified": true
+    },
+    {
+     "metric": "방위력개선비 예산",
+     "year": "2026",
+     "value": 19.9653,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "방위사업청 2026 업무보고 (쿠키뉴스 보도)",
+     "url": "https://www.kukinews.com/article/view/kuk202603170169",
+     "published": "2026-03-17",
+     "note": "방사청 총 집행 24.9111조 원(국방예산의 37.8%), 국방 R&D 5.8396조 원",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Lockheed Martin",
+     "country": "USA",
+     "metric": "무기 매출(SIPRI 1위)",
+     "value": 64.65,
+     "unit": "USD bn",
+     "as_of": "2024",
+     "source": "SIPRI Top 100",
+     "url": "https://www.sipri.org/sites/default/files/2025-11/fs_2512_top_100_2024.pdf"
+    },
+    {
+     "name": "RTX",
+     "country": "USA",
+     "metric": "무기 매출(SIPRI 2위)",
+     "value": 43.6,
+     "unit": "USD bn",
+     "as_of": "2024",
+     "source": "SIPRI Top 100",
+     "url": "https://www.sipri.org/sites/default/files/2025-11/fs_2512_top_100_2024.pdf"
+    },
+    {
+     "name": "Northrop Grumman",
+     "country": "USA",
+     "metric": "무기 매출(SIPRI 3위)",
+     "value": 37.85,
+     "unit": "USD bn",
+     "as_of": "2024",
+     "source": "SIPRI Top 100",
+     "url": "https://www.sipri.org/sites/default/files/2025-11/fs_2512_top_100_2024.pdf"
+    },
+    {
+     "name": "BAE Systems",
+     "country": "United Kingdom",
+     "metric": "무기 매출(SIPRI 4위)",
+     "value": 33.79,
+     "unit": "USD bn",
+     "as_of": "2024",
+     "source": "SIPRI Top 100",
+     "url": "https://www.sipri.org/sites/default/files/2025-11/fs_2512_top_100_2024.pdf"
+    },
+    {
+     "name": "General Dynamics",
+     "country": "USA",
+     "metric": "무기 매출(SIPRI 5위)",
+     "value": 33.63,
+     "unit": "USD bn",
+     "as_of": "2024",
+     "source": "SIPRI Top 100",
+     "url": "https://www.sipri.org/sites/default/files/2025-11/fs_2512_top_100_2024.pdf"
+    },
+    {
+     "name": "Hanwha Group",
+     "country": "South Korea",
+     "metric": "무기 매출(SIPRI 21위, +42%)",
+     "value": 7.97,
+     "unit": "USD bn",
+     "as_of": "2024",
+     "source": "SIPRI Top 100",
+     "url": "https://www.sipri.org/sites/default/files/2025-11/fs_2512_top_100_2024.pdf"
+    }
+   ],
+   "drivers": "유럽 재무장(2025년 +14%)과 NATO 의 GDP 5% 목표가 구조적 수요를 만들고 있으며, 미국을 뺀 세계 군사비는 9%대로 늘고 있다. 한국은 K9·K2·천무 등 가격·납기 경쟁력으로 수주가 반등했고 120조 원대 수주잔고가 수년에 걸쳐 매출로 잡힌다.",
+   "watch": [
+    "대형 입찰 결과(폴란드 후속 계약, 중동 방공, 캐나다 잠수함 등)",
+    "NATO·유럽 국방예산과 역내 우선구매 정책",
+    "SIPRI 연례 발표(4월 군사비, 12월 Top100)",
+    "방산 빅4 분기 수주잔고",
+    "에어버스·보잉 월간 인도와 엔진 공급 차질"
+   ]
+  },
+  "기계": {
+   "definition": "세계 = KHL Yellow Table 세계 상위 50개 건설장비 제조사 장비 매출 합계(USD), Off-Highway Research 판매 증가율, IFR 산업용 로봇 설치 대수·시장가치. 한국 = 산업통상부 통관 기준 일반기계(건설·공작·산업기계·부품) 수출, KIET 생산·내수는 원화 명목.",
+   "world": [
+    {
+     "metric": "세계 상위 50 건설장비 업체 매출(Yellow Table)",
+     "year": "2024",
+     "value": 237.6,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -2.4,
+     "source": "KHL Yellow Table 2025 (Construction Briefing)",
+     "url": "https://www.constructionbriefing.com/news/yellow-table-ranking-of-the-worlds-biggest-construction-equipment-manufacturers-revealed/8062161.article",
+     "published": "2025-05-30",
+     "note": "아시아 업체 44.3%, 유럽 27.9%, 북미 27.5%",
+     "verified": true
+    },
+    {
+     "metric": "세계 상위 50 건설장비 업체 매출(Yellow Table)",
+     "year": "2025",
+     "value": 246.6,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 3.8,
+     "source": "KHL Yellow Table 2026 (CEA 보도)",
+     "url": "https://thecea.org.uk/industry-news/18-cea-member-brands-named-among-the-worlds-top-50-oems",
+     "published": "2026-05-05",
+     "note": "랭킹 사상 최대",
+     "verified": true
+    },
+    {
+     "metric": "세계 건설장비 판매 증가율(Off-Highway Research)",
+     "year": "2025",
+     "value": 2,
+     "unit": "% YoY",
+     "kind": "actual",
+     "growth_pct": 2,
+     "source": "KHL Yellow Table 2026 (CEA 보도)",
+     "url": "https://thecea.org.uk/industry-news/18-cea-member-brands-named-among-the-worlds-top-50-oems",
+     "published": "2026-05-05",
+     "verified": true
+    },
+    {
+     "metric": "중국 건설장비 시장 증가율(Off-Highway Research)",
+     "year": "2026 H1",
+     "value": 16,
+     "unit": "% YoY",
+     "kind": "actual",
+     "growth_pct": 16,
+     "source": "Off-Highway Research",
+     "url": "https://offhighwayresearch.com/news",
+     "published": "2026-08-03",
+     "note": "2025년 중국 미니굴삭기 42,980대(+28%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 산업용 로봇 설치(IFR)",
+     "year": "2025",
+     "value": 603307,
+     "unit": "units",
+     "kind": "actual",
+     "growth_pct": 11,
+     "source": "IFR World Robotics 2026 Executive Summary",
+     "url": "https://ifr.org/img/worldrobotics/Executive_Summary_WR_2026_-_Industrial_Robots.pdf",
+     "published": "2026-09-24",
+     "note": "역대 최대(종전 2022년 552,946대). 중국 354,226대(+20%, 59%), 미국 38,428대(+12%), 유럽 73,054대(-14%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 산업용 로봇 설치 전망(IFR)",
+     "year": "2026",
+     "value": 655000,
+     "unit": "units",
+     "kind": "forecast",
+     "growth_pct": 9,
+     "source": "IFR World Robotics 2026 Executive Summary",
+     "url": "https://ifr.org/img/worldrobotics/Executive_Summary_WR_2026_-_Industrial_Robots.pdf",
+     "published": "2026-09-24",
+     "verified": true
+    },
+    {
+     "metric": "세계 산업용 로봇 설치 전망(IFR)",
+     "year": "2029",
+     "value": 806000,
+     "unit": "units",
+     "kind": "forecast",
+     "growth_pct": 7,
+     "source": "IFR World Robotics 2026 Executive Summary",
+     "url": "https://ifr.org/img/worldrobotics/Executive_Summary_WR_2026_-_Industrial_Robots.pdf",
+     "published": "2026-09-24",
+     "note": "growth_pct = 2026~2029 연평균. 가동 대수 2025년 507.9만 대(+9%)",
+     "verified": true
+    },
+    {
+     "metric": "세계 산업용 로봇 시장가치(IFR)",
+     "year": "2025",
+     "value": 18.6,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 11,
+     "source": "IFR World Robotics 2026 Executive Summary",
+     "url": "https://ifr.org/img/worldrobotics/Executive_Summary_WR_2026_-_Industrial_Robots.pdf",
+     "published": "2026-09-24",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "일반기계 수출액",
+     "year": "2024",
+     "value": 51.173,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -4.2,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://files-scs.pstatic.net/2026/02/01/JRnQpJYUmQ/260101_%EC%88%98%EC%B6%9C%EC%9E%85%EA%B3%BC_25%EB%85%84_%EC%97%B0%EA%B0%84_%EB%B0%8F_12%EC%9B%94_%EC%88%98%EC%B6%9C%EC%9E%85_%EB%8F%99%ED%96%A5_3%EB%B3%B4%20%EC%B5%9C%EC%A2%85(%EC%88%98%EC%A0%95%EC%99%84).pdf",
+     "published": "2026-01-01",
+     "verified": true
+    },
+    {
+     "metric": "일반기계 수출액",
+     "year": "2025",
+     "value": 47.023,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -8.2,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료의 '25년 전체' 확정치(2026.1.1 잠정치와 소폭 다름). 미국 관세·글로벌 경기 둔화",
+     "verified": true
+    },
+    {
+     "metric": "일반기계 수출액 1~9월 누계",
+     "year": "2026 1~9월",
+     "value": 35.091,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -1.5,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 월별표 1~9월 합산(잠정, 파생). 증감률은 월별 증감률로 전년 동월을 역산한 근사치. 9월 4.073bn(-3.2%)",
+     "verified": true
+    },
+    {
+     "metric": "건설광산기계 수출액(MTI, 1.1~9.25)",
+     "year": "2026 1.1~9.25",
+     "value": 4.187,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 4.3,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 보도자료 참고4(9.1~25일 기준 MTI 표). 2025년 연간 5.353bn(+3.5%)",
+     "verified": true
+    },
+    {
+     "metric": "일반기계 수출 전망(KIET)",
+     "year": "2026",
+     "value": 46.438,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": -1.0,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "하반기 23.609bn(+1.4%)",
+     "verified": true
+    },
+    {
+     "metric": "일반기계 생산 전망(KIET, 원화 명목)",
+     "year": "2026",
+     "value": 147.397,
+     "unit": "KRW tn",
+     "kind": "forecast",
+     "growth_pct": -0.4,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "2025년 148.0조 원(-2.1%)",
+     "verified": true
+    },
+    {
+     "metric": "일반기계 내수 전망(KIET, 원화 명목)",
+     "year": "2026",
+     "value": 128.962,
+     "unit": "KRW tn",
+     "kind": "forecast",
+     "growth_pct": 1.0,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Caterpillar",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 389.86,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/caterpillar/marketcap/"
+    },
+    {
+     "name": "Deere & Company",
+     "country": "USA",
+     "metric": "시가총액(농기계 중심, 건설장비 Yellow Table 상위)",
+     "value": 183.93,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/caterpillar/marketcap/"
+    },
+    {
+     "name": "Komatsu",
+     "country": "Japan",
+     "metric": "시가총액",
+     "value": 43.3,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/komatsu/marketcap/"
+    },
+    {
+     "name": "Fanuc",
+     "country": "Japan",
+     "metric": "시가총액(산업용 로봇)",
+     "value": 36.24,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/fanuc/marketcap/"
+    },
+    {
+     "name": "Sany Heavy Industry",
+     "country": "China",
+     "metric": "시가총액",
+     "value": 23.98,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회(지연 시세)",
+     "source": "CompaniesMarketCap",
+     "url": "https://companiesmarketcap.com/sany-heavy-industry/marketcap/"
+    },
+    {
+     "name": "XCMG",
+     "country": "China",
+     "metric": "건설장비 매출(Yellow Table 3위, 점유율 5.8%)",
+     "value": 14.2,
+     "unit": "USD bn",
+     "as_of": "2025",
+     "source": "XCMG 보도자료(Kyodo PR Wire)",
+     "url": "https://kyodonewsprwire.jp/release/202605048522"
+    }
+   ],
+   "drivers": "건설장비는 2025년 바닥을 지나 중국·인도 중심으로 회복 중이지만 북미·유럽은 금리와 재고 부담으로 약하다. 로봇은 중국이 세계 설치의 59%를 차지하며 전자·자동차 공장 자동화 수요로 2026년에도 9% 안팎 성장이 예상된다.",
+   "watch": [
+    "중국 굴삭기 월간 판매(CCMA)",
+    "미국 건설지출·ISM 제조업 PMI",
+    "캐터필러 딜러 판매 통계",
+    "산업통상부 월간 일반기계 수출(대미·대중동)",
+    "IFR 연례 로봇 통계(매년 9월)",
+    "금리"
+   ]
+  },
+  "철강": {
+   "definition": "세계: worldsteel 조강생산·완제품 겉보기 수요(SRO). 한국: 조강생산(worldsteel), 철강재 명목소비(POSRI·철강협회), 통관 수출(산업통상부·KIET MTI 61), 비철금속 수출 포함.",
+   "world": [
+    {
+     "metric": "세계 조강생산",
+     "year": "2025",
+     "value": 1849.4,
+     "unit": "Mt",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "worldsteel 2025 global crude steel production totals",
+     "url": "https://worldsteel.org/media/press-releases/2026/december-2025-crude-steel-production-2025-global-crude-steel-production/",
+     "published": "2026-01-23",
+     "note": "보고 70개국 합계 1,803.8Mt(−2.0%). 중국 960.8Mt(−4.4%), 인도 164.9Mt(+10.4%).",
+     "verified": true
+    },
+    {
+     "metric": "세계 조강생산 1~8월(70개국)",
+     "year": "2026 1~8월",
+     "value": 1225.2,
+     "unit": "Mt",
+     "kind": "actual",
+     "growth_pct": -0.7,
+     "source": "worldsteel August 2026 crude steel production",
+     "url": "https://worldsteel.org/media/press-releases/2026/august-2026-crude-steel-production/",
+     "published": "2026-09-24",
+     "note": "8월 단월 144.2Mt(−1.2%), 중국 1~8월 651.9Mt(−3.1%), 인도 115.9Mt(+6.0%).",
+     "verified": true
+    },
+    {
+     "metric": "세계 철강 수요(완제품 겉보기소비)",
+     "year": "2025",
+     "value": 1718,
+     "unit": "Mt",
+     "kind": "estimate",
+     "growth_pct": -1.9,
+     "source": "worldsteel SRO 2026년 4월(POSRI 이슈리포트 표 재인용)",
+     "url": "https://www.posri.re.kr/upload/file/202606/20260622O9edELX.pdf",
+     "published": "2026-06-22",
+     "note": "SRO 2025년 10월판은 2025년 1,749Mt(보합)로 봤음 → 중국 −7.1% 공식치 반영으로 하향.",
+     "verified": true
+    },
+    {
+     "metric": "세계 철강 수요 전망",
+     "year": "2026",
+     "value": 1724,
+     "unit": "Mt",
+     "kind": "forecast",
+     "growth_pct": 0.3,
+     "source": "worldsteel Short Range Outlook April 2026",
+     "url": "https://worldsteel.org/media/press-releases/2026/worldsteel-short-range-outlook-april-2026/",
+     "published": "2026-04-14",
+     "note": "직전판(SRO 2025-10-13)은 2026년 1,773Mt(+1.3%) → 49Mt 하향. 중국 −1.5%, 인도 +7.4%, 선진국 +1.0%, 중동 급감(전쟁). 6월 종전 가정.",
+     "verified": true
+    },
+    {
+     "metric": "세계 철강 수요 전망",
+     "year": "2027",
+     "value": 1762,
+     "unit": "Mt",
+     "kind": "forecast",
+     "growth_pct": 2.2,
+     "source": "worldsteel Short Range Outlook April 2026",
+     "url": "https://worldsteel.org/media/press-releases/2026/worldsteel-short-range-outlook-april-2026/",
+     "published": "2026-04-14",
+     "note": "중국 보합, 인도 +9.2%, 선진국 +2.3%, 중국 제외 +4.0%. 다음 개정은 2026년 10월 SRO.",
+     "verified": true
+    },
+    {
+     "metric": "세계 철강 수요 전망(직전판)",
+     "year": "2026",
+     "value": 1773,
+     "unit": "Mt",
+     "kind": "forecast",
+     "growth_pct": 1.3,
+     "source": "worldsteel Short Range Outlook October 2025",
+     "url": "https://worldsteel.org/media/press-releases/2025/worldsteel-short-range-outlook-october-2025/",
+     "published": "2025-10-13",
+     "note": "편집판 비교용(2026년 4월판으로 대체됨).",
+     "verified": true
+    },
+    {
+     "metric": "미국 열연(HRC) 현물가",
+     "year": "2026-09-18",
+     "value": 1205,
+     "unit": "USD/short ton",
+     "kind": "snapshot",
+     "growth_pct": null,
+     "source": "GMK Center(Kallanish 인용)",
+     "url": "https://gmk.center/en/news/the-global-hrc-market-is-showing-mixed-trends-in-september/",
+     "published": "2026-09-23",
+     "note": "1,200~1,210$/st(≈1,328$/t) 중간값. SMU 9/22 평균 1,300$/st 근접. 북유럽 €740~750/t. 공급 부족으로 미국만 강세.",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "한국 조강생산",
+     "year": "2025",
+     "value": 61.9,
+     "unit": "Mt",
+     "kind": "actual",
+     "growth_pct": -2.8,
+     "source": "worldsteel 2025 global crude steel production totals",
+     "url": "https://worldsteel.org/media/press-releases/2026/december-2025-crude-steel-production-2025-global-crude-steel-production/",
+     "published": "2026-01-23",
+     "note": "세계 6위, 세계 비중 약 3.3%(61.9/1,849.4, 계산). 2024년 63.6Mt.",
+     "verified": true
+    },
+    {
+     "metric": "한국 조강생산 1~8월",
+     "year": "2026 1~8월",
+     "value": 42.8,
+     "unit": "Mt",
+     "kind": "actual",
+     "growth_pct": 2.8,
+     "source": "worldsteel August 2026 crude steel production",
+     "url": "https://worldsteel.org/media/press-releases/2026/august-2026-crude-steel-production/",
+     "published": "2026-09-24",
+     "note": "8월 단월 5.4Mt(+2.6%).",
+     "verified": true
+    },
+    {
+     "metric": "한국 철강 명목소비(생산−수출+수입)",
+     "year": "2025",
+     "value": 43.59,
+     "unit": "Mt",
+     "kind": "actual",
+     "growth_pct": -8.8,
+     "source": "POSRI 이슈리포트 「2026년 세계 철강수요 전망」",
+     "url": "https://www.posri.re.kr/upload/file/202606/20260622O9edELX.pdf",
+     "published": "2026-06-22",
+     "note": "23년 만의 최저. worldsteel SRO: 2026년 43.7Mt(+0.3%), 2027년 44.2Mt(+1.1%). 2026년 1~4월 수요 +3.2%(기저효과).",
+     "verified": true
+    },
+    {
+     "metric": "철강 수출(MTI 61)",
+     "year": "2024",
+     "value": 33282,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": -5.4,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "",
+     "verified": true
+    },
+    {
+     "metric": "철강 수출(MTI 61)",
+     "year": "2025",
+     "value": 30301,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": -9.0,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "1.1~12.25 수출단가 1,119→1,027$/t(−8.2%). KIET 집계는 30,285.",
+     "verified": true
+    },
+    {
+     "metric": "철강 수출 전망(KIET)",
+     "year": "2026",
+     "value": 30553,
+     "unit": "USD mn",
+     "kind": "forecast",
+     "growth_pct": 0.9,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "직전판(2025-11-24) 29,356(−5.0%)에서 상향. 수출물량 28,356천t(+0.4%), 생산 63,356천t(+0.2%), 내수 43,413천t(−0.4%).",
+     "verified": true
+    },
+    {
+     "metric": "철강제품 수출(신 20대 품목 기준) 상반기",
+     "year": "2026 H1",
+     "value": 12402,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": -2.0,
+     "source": "산업통상부 2026년 6월 및 상반기 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=283602",
+     "published": "2026-07-01",
+     "note": "2026년부터 산업통상부 철강 범위가 좁아짐(같은 기준 2025 연간 24,798, MTI 61 기준 30,301). 미국 철강관세 50%.",
+     "verified": true
+    },
+    {
+     "metric": "철강제품 수출(월)",
+     "year": "2026-09",
+     "value": 2241,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 3.3,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "4개월 연속 증가. 수출단가(9.1~25일) 982$/t(+15.8%, 전년 848). AI 데이터센터향 수요.",
+     "verified": true
+    },
+    {
+     "metric": "철강제품 수출 1~9월(신 20대 품목 기준)",
+     "year": "2026 1~9월",
+     "value": 19068,
+     "unit": "USD mn",
+     "kind": "derived",
+     "growth_pct": 0.2,
+     "source": "산업통상부 2026년 9월 수출입 동향 참고표(20대 품목 월별 추이)",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "월별 잠정치 합산(공식 누계 아님). 비교기준 2025년 1~9월=19,034(2025 연간−10~12월, 같은 표의 신 20대 품목 기준). 이 표의 1~6월 합 12,360 vs 상반기 보도자료 누계 12,402(월별 수정 반영 차이).",
+     "verified": true
+    },
+    {
+     "metric": "비철금속 수출(신 20대 품목 기준)",
+     "year": "2025",
+     "value": 14709,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 9.2,
+     "source": "산업통상부 2026년 9월 수출입 동향 참고표",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "섹터 정의상 비철 포함. 2025 연간은 2026-10-01 자료의 재집계값.",
+     "verified": true
+    },
+    {
+     "metric": "비철금속 수출(월)",
+     "year": "2026-09",
+     "value": 1737,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 33.6,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "9월 중 역대 최대. AI·신재생 수요와 국제가격 상승.",
+     "verified": true
+    },
+    {
+     "metric": "비철금속 수출 1~9월",
+     "year": "2026 1~9월",
+     "value": 14417,
+     "unit": "USD mn",
+     "kind": "derived",
+     "growth_pct": 34.4,
+     "source": "산업통상부 2026년 9월 수출입 동향 참고표(20대 품목 월별 추이)",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "월별 잠정치 합산(공식 누계 아님). 비교기준 2025년 1~9월=10,727(2025 연간−10~12월, 같은 표의 신 20대 품목 기준). 이 표의 1~6월 합 9,459 vs 상반기 보도자료 누계 9,438(월별 수정 반영 차이).",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "China Baowu Group",
+     "country": "China",
+     "metric": "조강생산",
+     "value": 124.76,
+     "unit": "Mt",
+     "as_of": "2025",
+     "source": "worldsteel Top steel-producing companies 2025/2024",
+     "url": "https://worldsteel.org/data/top-producers/",
+     "verified": true,
+     "note": "1위(2024 130.09Mt)"
+    },
+    {
+     "name": "ArcelorMittal",
+     "country": "Luxembourg",
+     "metric": "조강생산",
+     "value": 63.43,
+     "unit": "Mt",
+     "as_of": "2025",
+     "source": "worldsteel Top steel-producing companies 2025/2024",
+     "url": "https://worldsteel.org/data/top-producers/",
+     "verified": true,
+     "note": "2위"
+    },
+    {
+     "name": "Nippon Steel",
+     "country": "Japan",
+     "metric": "조강생산",
+     "value": 57.78,
+     "unit": "Mt",
+     "as_of": "2025",
+     "source": "worldsteel Top steel-producing companies 2025/2024",
+     "url": "https://worldsteel.org/data/top-producers/",
+     "verified": true,
+     "note": "3위, US Steel 인수로 +32%"
+    },
+    {
+     "name": "Ansteel Group",
+     "country": "China",
+     "metric": "조강생산",
+     "value": 57.61,
+     "unit": "Mt",
+     "as_of": "2025",
+     "source": "worldsteel Top steel-producing companies 2025/2024",
+     "url": "https://worldsteel.org/data/top-producers/",
+     "verified": true,
+     "note": "4위"
+    },
+    {
+     "name": "POSCO Holdings",
+     "country": "South Korea",
+     "metric": "조강생산",
+     "value": 37.36,
+     "unit": "Mt",
+     "as_of": "2025",
+     "source": "worldsteel Top steel-producing companies 2025/2024",
+     "url": "https://worldsteel.org/data/top-producers/",
+     "verified": true,
+     "note": "8위. 시가총액 17.61bn USD(CompaniesMarketCap, 2026-10-06)"
+    },
+    {
+     "name": "Hyundai Steel",
+     "country": "South Korea",
+     "metric": "조강생산",
+     "value": 17.95,
+     "unit": "Mt",
+     "as_of": "2025",
+     "source": "worldsteel Top steel-producing companies 2025/2024",
+     "url": "https://worldsteel.org/data/top-producers/",
+     "verified": true,
+     "note": "20위"
+    }
+   ],
+   "drivers": "중국 수요 급감(2025년 −7.1%)으로 늘어난 중국산 수출과 미국 50% 관세·EU 쿼터 같은 보호무역이 가격과 물량을 함께 누르고, 국내 명목소비는 건설 부진으로 23년 만의 최저(2025년 4,359만t)다. 2026년엔 수출단가 회복과 미국 데이터센터향 수요로 수출이 소폭 플러스로 돌았지만 세계 수요는 +0.3% 정체, 2027년 +2.2% 회복이 기본 시나리오다.",
+   "watch": [
+    "worldsteel 월간 조강생산(중국·한국)",
+    "산업통상부 철강 수출단가($/t)·대미 수출",
+    "중국 철강 수출량·열연(HRC) 가격",
+    "미국 철강 관세·EU 수입쿼터 변경",
+    "국내 건설 착공·수주(봉형강 수요)",
+    "worldsteel SRO(4월·10월) 수요 전망 개정"
+   ]
+  },
+  "석유화학": {
+   "definition": "세계: Cefic 세계 화학 매출(제약 제외, 명목 유로), ACC 세계 화학 생산 물량 증가율, BNEF 에틸렌 순증설. 한국: 석유화학제품 통관 수출(MTI 21), KIET 3대 유도품 생산·내수, NCC 에틸렌 설비.",
+   "world": [
+    {
+     "metric": "세계 화학 매출",
+     "year": "2024",
+     "value": 5.1,
+     "unit": "EUR tn",
+     "kind": "estimate",
+     "growth_pct": null,
+     "source": "Cefic 2025 Facts and Figures(Profile)",
+     "url": "https://cefic.org/facts-and-figures-of-the-european-chemical-industry/profile/",
+     "published": "2025",
+     "note": "페이지 문구 \"2024년 세계 화학 매출은 2004년(1조4,060억 유로)의 3.6배\" 기준 환산(≈5.06조 유로). 중국 비중 46%, EU27 13%(2024).",
+     "verified": true
+    },
+    {
+     "metric": "세계 화학 생산 물량 증가율",
+     "year": "2025",
+     "value": 2.6,
+     "unit": "% YoY",
+     "kind": "estimate",
+     "growth_pct": 2.6,
+     "source": "ACC 연말 전망(2025.12판, SunSirs 재인용)",
+     "url": "https://www.sunsirs.com/uk/detail_news-29933.html",
+     "published": "2026-01-22",
+     "note": "정정: 스카우트 메모는 \"2026 mid-year\"로 표기했으나 기사일 2026-01-22 → ACC Year-End 2025 전망. 금액 아닌 물량.",
+     "verified": true
+    },
+    {
+     "metric": "세계 화학 생산 물량 증가율 전망",
+     "year": "2026",
+     "value": 1.9,
+     "unit": "% YoY",
+     "kind": "forecast",
+     "growth_pct": 1.9,
+     "source": "ACC 연말 전망(2025.12판, SunSirs 재인용)",
+     "url": "https://www.sunsirs.com/uk/detail_news-29933.html",
+     "published": "2026-01-22",
+     "note": "유럽 −1.2%→+0.2%, 아프리카·중동 +3.8%(최고), 북미 +0.5%. 이란 전쟁 이전 전망.",
+     "verified": true
+    },
+    {
+     "metric": "세계 에틸렌 순증설",
+     "year": "2026",
+     "value": 14.6,
+     "unit": "Mt",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "BloombergNEF(SunSirs 재인용)",
+     "url": "https://www.sunsirs.com/uk/detail_news-30687.html",
+     "published": "2026-02-24",
+     "note": "사상 최대, 직전 5년 평균의 약 2배. 중국 56%. PE 신규 14.7Mt(평년 5.4Mt). 한국 샤힌 포함.",
+     "verified": true
+    },
+    {
+     "metric": "세계 50대 화학기업 매출 합계(C&EN Global Top 50)",
+     "year": "2024",
+     "value": 1.06,
+     "unit": "USD tn",
+     "kind": "actual",
+     "growth_pct": -1.0,
+     "source": "C&EN 2025 Global Top 50(뉴스스페이스 재인용)",
+     "url": "https://newsspace.kr/news/article.html?no=8398",
+     "published": "2025-08-04",
+     "note": "BASF 1위, Sinopec 2위, LG화학 7위(359억 달러), 롯데케미칼 24위. C&EN 원문 미열람.",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "석유화학 수출",
+     "year": "2024",
+     "value": 47988,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 5.0,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "",
+     "verified": true
+    },
+    {
+     "metric": "석유화학 수출",
+     "year": "2025",
+     "value": 42513,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": -11.4,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "1.1~12.25 수출단가 1,219→1,106$/t(−9.2%). 저유가·공급과잉.",
+     "verified": true
+    },
+    {
+     "metric": "석유화학 수출 전망(KIET)",
+     "year": "2026",
+     "value": 43711,
+     "unit": "USD mn",
+     "kind": "forecast",
+     "growth_pct": 2.8,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "직전판 43,041(−2.0%). 수출물량 34,633천t(−1.3%), 3대 유도품 생산 21,334천t(+4.2%, 샤힌 vs NCC 감축).",
+     "verified": true
+    },
+    {
+     "metric": "석유화학 수출 상반기",
+     "year": "2026 H1",
+     "value": 22847,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 5.2,
+     "source": "산업통상부 2026년 6월 및 상반기 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=283602",
+     "published": "2026-07-01",
+     "note": "물량 1,720만t(−10%), 단가 1,328$/t(+17%) — 가격 효과.",
+     "verified": true
+    },
+    {
+     "metric": "석유화학 수출(월)",
+     "year": "2026-09",
+     "value": 3953,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 5.1,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "물량 279만t(−19.1%), 단가 1,416$/t(+30.0%). 7월 4,211(+10.9%), 8월 3,878(+12.7%).",
+     "verified": true
+    },
+    {
+     "metric": "석유화학 수출 1~9월",
+     "year": "2026 1~9월",
+     "value": 34859,
+     "unit": "USD mn",
+     "kind": "derived",
+     "growth_pct": 6.6,
+     "source": "산업통상부 2026년 9월 수출입 동향 참고표(20대 품목 월별 추이)",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "월별 잠정치 합산(공식 누계 아님). 비교기준 2025년 1~9월=32,715(2025 연간−10~12월, 같은 표의 신 20대 품목 기준). 이 표의 1~6월 합 22,817 vs 상반기 보도자료 누계 22,847(월별 수정 반영 차이).",
+     "verified": true
+    },
+    {
+     "metric": "국내 NCC 에틸렌 생산능력",
+     "year": "2025",
+     "value": 14.7,
+     "unit": "Mt/년",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "헤럴드경제(정부·10개사 구조개편 협약)",
+     "url": "https://www.heraldk.com/article/2025081920313502749",
+     "published": "2025-08-19",
+     "note": "헤럴드 본문: 국내 전체 NCC 능력 1,470만t, 필요 감축 270만~370만t(18~25%), 10개사 사업재편 협약.",
+     "verified": true
+    },
+    {
+     "metric": "여수 NCC 가동중단(YNCC 2·3호기)",
+     "year": "2026",
+     "value": 1.39,
+     "unit": "Mt/년(에틸렌)",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "뉴시스(산업통상부 사업재편 승인)",
+     "url": "https://www.newsis.com/view/NISX20260722_0003718310",
+     "published": "2026-07-22",
+     "note": "3년 중단, 지원 7,000억원. 대산 롯데케미칼 110만t 3년 중단(2월 승인). 울산 S-OIL 샤힌 180만t 2027년 초 가동이 변수.",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Nan Ya Plastics",
+     "country": "Taiwan",
+     "metric": "시가총액",
+     "value": 71.52,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/nan-ya-plastics/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "BASF",
+     "country": "Germany",
+     "metric": "시가총액",
+     "value": 49.86,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/basf/marketcap/",
+     "verified": true,
+     "note": "C&EN 2025 매출 1위"
+    },
+    {
+     "name": "SABIC",
+     "country": "Saudi Arabia",
+     "metric": "시가총액",
+     "value": 37.55,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/sabic/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Dow",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 20.59,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/dow/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "LyondellBasell",
+     "country": "USA/Netherlands",
+     "metric": "시가총액",
+     "value": 19.13,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/lyondellbasell/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "LG Chem",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 15.47,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/lg-chem/marketcap/",
+     "verified": true,
+     "note": "LG에너지솔루션 지분 포함 가치. C&EN 2025 7위(2024 매출 359억 달러)"
+    }
+   ],
+   "drivers": "중국 주도 대규모 증설(2026년 세계 에틸렌 순증설 1,460만t, 사상 최대)로 공급과잉이 이어지며 국내 NCC는 270만~370만t 감축 구조조정 중이다. 2026년 수출액 증가는 중동 사태로 원료·제품 단가가 오른 가격 효과이고 물량은 두 자릿수 감소 중이라 업황 회복으로 보기 어렵다.",
+   "watch": [
+    "산업통상부 석유화학 수출물량(t)·단가($/t) 분해",
+    "에틸렌·PE 등 제품-나프타 스프레드",
+    "중국 신규 크래커 가동 일정",
+    "국내 NCC 감축 이행(대산·여수·울산, 샤힌 2027 가동)",
+    "국제유가·나프타 가격"
+   ]
+  },
+  "정유": {
+   "definition": "세계: IEA OMR·OPEC MOMR 석유수요·정제처리량(mb/d). 한국: 석유제품 통관 수출(MTI 133, 산업통상부), 정유 4사 수출(대한석유협회, 범위 좁음), KIET 석유제품 생산·내수(배럴).",
+   "world": [
+    {
+     "metric": "세계 석유수요(IEA)",
+     "year": "2026",
+     "value": 102.45,
+     "unit": "mb/d",
+     "kind": "forecast",
+     "growth_pct": -2.4,
+     "source": "IEA Oil Market Report 2026년 9월(OGJ 보도)",
+     "url": "https://www.ogj.com/general-interest/economics-markets/news/55404447/iea-sees-oil-demand-decline-deepening-as-middle-east-disruptions-persist",
+     "published": "2026-09-11",
+     "note": "전년 대비 −2.5mb/d(8월판 대비 94만b/d 추가 하향). growth_pct 는 계산치(−2.5/104.95). 전쟁 전 2월 수준(약 106mb/d) 회복은 2027년 말.",
+     "verified": true
+    },
+    {
+     "metric": "세계 석유수요(IEA)",
+     "year": "2027",
+     "value": 105.01,
+     "unit": "mb/d",
+     "kind": "forecast",
+     "growth_pct": 2.5,
+     "source": "IEA Oil Market Report 2026년 9월(OGJ 보도)",
+     "url": "https://www.ogj.com/general-interest/economics-markets/news/55404447/iea-sees-oil-demand-decline-deepening-as-middle-east-disruptions-persist",
+     "published": "2026-09-11",
+     "note": "+2.6mb/d 반등 가정(걸프 공급 2027년 회복). growth_pct 계산치.",
+     "verified": true
+    },
+    {
+     "metric": "세계 정제처리량(IEA)",
+     "year": "2026",
+     "value": 81.5,
+     "unit": "mb/d",
+     "kind": "forecast",
+     "growth_pct": -3.1,
+     "source": "IEA Oil Market Report 2026년 9월(OGJ 보도)",
+     "url": "https://www.ogj.com/general-interest/economics-markets/news/55404447/iea-sees-oil-demand-decline-deepening-as-middle-east-disruptions-persist",
+     "published": "2026-09-11",
+     "note": "전년 대비 −2.6mb/d, 2027년 84.5mb/d. 8월 대서양 정제마진 사상 최고, 9월 초 유럽 경유 크랙 100$/bbl 상회. 세계 공급 2026년 100.7mb/d(−5.7).",
+     "verified": true
+    },
+    {
+     "metric": "세계 석유수요(OPEC)",
+     "year": "2026",
+     "value": 105.8,
+     "unit": "mb/d",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "OPEC MOMR 2026년 9월(Ship & Bunker 보도)",
+     "url": "https://shipandbunker.com/news/world/685720-opec-trims-2026-oil-demand-growth-forecast-raises-2027-outlook",
+     "published": "2026-09-11",
+     "note": "증가폭 +0.38mb/d(8월판 +0.6에서 하향) — IEA(−2.5mb/d)와 정반대. 2027년 증가폭 +2.4mb/d(8월판 +2.2).",
+     "verified": true
+    },
+    {
+     "metric": "두바이유 월평균",
+     "year": "2026-09",
+     "value": 113.71,
+     "unit": "USD/bbl",
+     "kind": "actual",
+     "growth_pct": 62.4,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "8월 88.75. 9월 석유제품 수출단가 1,267$/t(+84.7%).",
+     "verified": true
+    },
+    {
+     "metric": "브렌트유 전제(한은)",
+     "year": "2026",
+     "value": 86,
+     "unit": "USD/bbl",
+     "kind": "assumption",
+     "growth_pct": null,
+     "source": "한국은행 경제전망(2026년 8월)",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=285904",
+     "published": "2026-08-27",
+     "note": "2025년 68, 하반기 84, 2027년 74(5월 전제 대비 −7/−6달러).",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "석유제품 수출",
+     "year": "2024",
+     "value": 50326,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": -3.2,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "",
+     "verified": true
+    },
+    {
+     "metric": "석유제품 수출",
+     "year": "2025",
+     "value": 45482,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": -9.6,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "유가 하락에 따른 단가 하락. KIET 집계 45,459.",
+     "verified": true
+    },
+    {
+     "metric": "정유 4사 석유제품 수출(대한석유협회)",
+     "year": "2025",
+     "value": 40.7,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -9.9,
+     "source": "대한석유협회(이투데이 보도)",
+     "url": "https://www.etoday.co.kr/news/view/2549148",
+     "published": "2026-01-26",
+     "note": "물량 4억8,535만 배럴(−1.1%), 경유 42%, 대미 4,961만 배럴(+15%, 최대). 원유도입액 684억 달러의 59.5% 회수.",
+     "verified": true
+    },
+    {
+     "metric": "석유제품 수출 전망(KIET)",
+     "year": "2026",
+     "value": 48949,
+     "unit": "USD mn",
+     "kind": "forecast",
+     "growth_pct": 7.7,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "직전판(2025-11) 38,773(−16.3%)에서 대폭 상향. 생산 1,068,223천 배럴(−15.6%), 수출물량 −21.1%. 하반기 −4.8% 전망은 7~9월 실적(+44~72%)이 크게 상회.",
+     "verified": true
+    },
+    {
+     "metric": "석유제품 수출 상반기",
+     "year": "2026 H1",
+     "value": 30127,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 39.6,
+     "source": "산업통상부 2026년 6월 및 상반기 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=283602",
+     "published": "2026-07-01",
+     "note": "물량 2,966만t(−6%), 단가 1,016$/t(+49%).",
+     "verified": true
+    },
+    {
+     "metric": "석유제품 수출(월)",
+     "year": "2026-09",
+     "value": 7224,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 72.0,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "월 역대 1위. 물량 570만t(−6.9%), 단가 1,267$/t(+84.7%). 휘발유·경유·등유 수출통제 품목 물량 감소.",
+     "verified": true
+    },
+    {
+     "metric": "석유제품 수출 1~9월",
+     "year": "2026 1~9월",
+     "value": 49899,
+     "unit": "USD mn",
+     "kind": "derived",
+     "growth_pct": 46.1,
+     "source": "산업통상부 2026년 9월 수출입 동향 참고표(20대 품목 월별 추이)",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "월별 잠정치 합산(공식 누계 아님). 비교기준 2025년 1~9월=34,159(2025 연간−10~12월, 같은 표의 신 20대 품목 기준). 이 표의 1~6월 합 29,742 vs 상반기 보도자료 누계 30,127(월별 수정 반영 차이).",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Marathon Petroleum",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 126.54,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/marathon-petroleum/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Valero Energy",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 120.73,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/valero/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Phillips 66",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 107.62,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/phillips-66/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Sinopec",
+     "country": "China",
+     "metric": "시가총액",
+     "value": 95.07,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/sinopec/marketcap/",
+     "verified": true,
+     "note": "정유·화학 통합사(A주 기준)"
+    },
+    {
+     "name": "S-OIL",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 13.74,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/s-oil/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "SK Innovation",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 8.88,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/sk-innovation/marketcap/",
+     "verified": true,
+     "note": "배터리(SK온) 포함 지주형"
+    }
+   ],
+   "drivers": "호르무즈 해협 차질로 원유·제품가가 급등해 2026년 석유제품 수출액은 크게 늘었지만(9월 +72%), 수출통제와 원유 수급 불안으로 물량·가동률은 줄어든 가격 주도 국면이다. IEA는 2026년 세계 석유수요를 −250만b/d로, OPEC은 +38만b/d로 봐 전망이 정반대로 갈려 변동성이 매우 크다.",
+   "watch": [
+    "두바이유·브렌트(한은 전제 2026 86→2027 74달러)",
+    "싱가포르 정제마진·경유 크랙",
+    "IEA OMR·OPEC MOMR 월간 수요 전망 수정",
+    "석유제품 수출물량 vs 단가(산업통상부)",
+    "국내 정유 가동률·원유 도입물량",
+    "걸프 원유 수출 정상화 시점"
+   ]
+  },
+  "해운": {
+   "definition": "세계: 컨테이너 물동량(DynaLiners), 업계 EBIT(Drewry), 수급(Fitch), 운임지수 SCFI·Drewry WCI·BDI. 한국: 해양진흥공사 국적선사 100개사 실적(컨테이너·벌크·탱커).",
+   "world": [
+    {
+     "metric": "세계 정기선 물동량(carryings)",
+     "year": "2025",
+     "value": 194.086,
+     "unit": "million TEU",
+     "kind": "estimate",
+     "growth_pct": 4.1,
+     "source": "DynaLiners(Container News 보도)",
+     "url": "https://container-news.com/msc-leads-carriers-as-apm-terminals-climbs-global-terminal-ranking/",
+     "published": "2026-08-24",
+     "note": "2024년 186.487m TEU. 상위 12개 선사 164.147m TEU(+5.2%).",
+     "verified": true
+    },
+    {
+     "metric": "컨테이너선 업계 EBIT",
+     "year": "2025",
+     "value": 32,
+     "unit": "USD bn",
+     "kind": "estimate",
+     "growth_pct": null,
+     "source": "Drewry Container Shipping Financial Health Check 2026",
+     "url": "https://www.drewry.co.uk/news/drewry-releases-financial-health-check-report-2026-as-container-shipping-fundamentals-near-a-reset",
+     "published": "2026-02-02",
+     "note": "당시 2026년 EBIT −96.7% 전망(이란 전쟁 이전, 과잉공급). 이후 운임 급등으로 시나리오 변경.",
+     "verified": true
+    },
+    {
+     "metric": "컨테이너 수요 증가율 전망(Fitch)",
+     "year": "2026",
+     "value": 2,
+     "unit": "% YoY",
+     "kind": "forecast",
+     "growth_pct": 2,
+     "source": "Fitch Ratings 글로벌 해운 전망(Hellenic Shipping News 게재)",
+     "url": "https://www.hellenicshippingnews.com/?p=1136990",
+     "published": "2026-06-12",
+     "note": "선복 공급 +5% 내외, 수주잔량 >35%. 현물운임 전쟁 전 대비 2배 이상, 섹터 전망 deteriorating→neutral(탱커 급등).",
+     "verified": true
+    },
+    {
+     "metric": "SCFI 종합지수",
+     "year": "2026-09-30",
+     "value": 3662.3,
+     "unit": "pt",
+     "kind": "snapshot",
+     "growth_pct": -0.66,
+     "source": "해양통신(상하이해운거래소)",
+     "url": "https://www.oceanpress.co.kr/news/article.html?no=31374",
+     "published": "2026-10-02",
+     "note": "전주 대비 −24.32pt, 2주 연속 하락. growth_pct 는 주간 변화. 2026년 SCFI 1분기 평균 1,507 → 2분기 2,337(비즈워치).",
+     "verified": true
+    },
+    {
+     "metric": "Drewry WCI(40ft)",
+     "year": "2026-10-01",
+     "value": 4434,
+     "unit": "USD/40ft",
+     "kind": "snapshot",
+     "growth_pct": -1,
+     "source": "Drewry World Container Index",
+     "url": "https://www.drewry.co.uk/supply-chain-advisors/supply-chain-expertise/world-container-index-assessed-by-drewry",
+     "published": "2026-10-01",
+     "note": "주간 −1%. 상하이→LA 7,835, →뉴욕 10,428, →로테르담 3,399, →제노아 3,702. 아시아-유럽 12주 연속 하락, 수에즈 통항 증가.",
+     "verified": true
+    },
+    {
+     "metric": "발틱건화물운임지수(BDI)",
+     "year": "2026-09-30",
+     "value": 3113,
+     "unit": "pt",
+     "kind": "snapshot",
+     "growth_pct": -2.1,
+     "source": "Trading Economics",
+     "url": "https://tradingeconomics.com/commodity/baltic/news/588309",
+     "published": "2026-09-30",
+     "note": "일간 −2.1%, 1개월여 최저. 케이프 4,928, 파나막스 2,384, 수프라막스 1,797(2022년 8월 이후 최고).",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "국적선사 100개사 매출",
+     "year": "2025",
+     "value": 50,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": 0.7,
+     "source": "한국해양진흥공사 분석(헤럴드경제 보도)",
+     "url": "https://www.heraldk.com/article/2026052517212366732",
+     "published": "2026-05-25",
+     "note": "영업이익 6.6조(−23.1%), 순이익 6.1조(−31.2%). 컨테이너 13개사 21조(42%, OP 2.6조 −47%), 벌크 12조(−3.6%), 탱커·가스 7.3조(+4.1%). KCCI·SCFI 연평균 −37%.",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "MSC",
+     "country": "Switzerland",
+     "metric": "물동량(carryings)",
+     "value": 30.0,
+     "unit": "million TEU",
+     "as_of": "2025",
+     "source": "DynaLiners(Container News)",
+     "url": "https://container-news.com/msc-leads-carriers-as-apm-terminals-climbs-global-terminal-ranking/",
+     "verified": true,
+     "note": "+11.1%, 비상장"
+    },
+    {
+     "name": "COSCO Shipping",
+     "country": "China",
+     "metric": "물동량(carryings)",
+     "value": 27.435,
+     "unit": "million TEU",
+     "as_of": "2025",
+     "source": "DynaLiners(Container News)",
+     "url": "https://container-news.com/msc-leads-carriers-as-apm-terminals-climbs-global-terminal-ranking/",
+     "verified": true,
+     "note": "시가총액 37.15bn USD(2026-10-06)"
+    },
+    {
+     "name": "Maersk",
+     "country": "Denmark",
+     "metric": "물동량(carryings)",
+     "value": 25.884,
+     "unit": "million TEU",
+     "as_of": "2025",
+     "source": "DynaLiners(Container News)",
+     "url": "https://container-news.com/msc-leads-carriers-as-apm-terminals-climbs-global-terminal-ranking/",
+     "verified": true,
+     "note": "시가총액 51.90bn USD(2026-10-06)"
+    },
+    {
+     "name": "CMA CGM",
+     "country": "France",
+     "metric": "물동량(carryings)",
+     "value": 24.24,
+     "unit": "million TEU",
+     "as_of": "2025",
+     "source": "DynaLiners(Container News)",
+     "url": "https://container-news.com/msc-leads-carriers-as-apm-terminals-climbs-global-terminal-ranking/",
+     "verified": true,
+     "note": "비상장"
+    },
+    {
+     "name": "Hapag-Lloyd",
+     "country": "Germany",
+     "metric": "물동량(carryings)",
+     "value": 13.486,
+     "unit": "million TEU",
+     "as_of": "2025",
+     "source": "DynaLiners(Container News)",
+     "url": "https://container-news.com/msc-leads-carriers-as-apm-terminals-climbs-global-terminal-ranking/",
+     "verified": true,
+     "note": "시가총액 27.32bn USD(2026-10-06)"
+    },
+    {
+     "name": "HMM",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 15.0,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/hmm/marketcap/",
+     "verified": true,
+     "note": "2025 물동량 +3.1%(DynaLiners)"
+    }
+   ],
+   "drivers": "이란 전쟁 전 컨테이너선은 신조 인도로 선복이 +5% 늘고 수요는 +2%에 그쳐 이익 급감 국면(Drewry 2026 EBIT −97% 전망)이었으나, 호르무즈·홍해 우회로 운임이 2배 이상 뛰며 반전됐다. 최근 아시아-유럽 운임이 12주 연속 하락하는 등 수에즈 통항이 재개되면 과잉공급이 다시 드러날 위험이 크다.",
+   "watch": [
+    "SCFI·Drewry WCI 주간 노선별 운임",
+    "BDI·케이프사이즈 운임(벌크)",
+    "수에즈·호르무즈 통항 정상화",
+    "컨테이너선 인도량·수주잔량(선복 대비 35%+)",
+    "탱커 운임(VLCC)"
+   ]
+  },
+  "건설": {
+   "definition": "세계: GlobalData 실질 건설산출 증가율, ENR Top 250 해외매출. 한국: 국내 건설수주(경상, 대한건설협회·건산연), 해외건설 수주(국토부·해외건설협회), 한은·KDI 건설투자(실질).",
+   "world": [
+    {
+     "metric": "세계 건설산출 증가율(실질)",
+     "year": "2025",
+     "value": -0.3,
+     "unit": "% YoY",
+     "kind": "estimate",
+     "growth_pct": -0.3,
+     "source": "GlobalData Construction Market report(Q2 2026), GII 리셀러 요약",
+     "url": "https://www.giiresearch.com/report/gd2114237-construction-market-size-trends-growth-forecasts.html",
+     "published": "2026-06-30",
+     "note": "중국 부동산 부진 탓.",
+     "verified": true
+    },
+    {
+     "metric": "세계 건설산출 증가율(실질) 전망",
+     "year": "2026",
+     "value": 0.8,
+     "unit": "% YoY",
+     "kind": "forecast",
+     "growth_pct": 0.8,
+     "source": "GlobalData Construction Market report(Q2 2026), GII 리셀러 요약",
+     "url": "https://www.giiresearch.com/report/gd2114237-construction-market-size-trends-growth-forecasts.html",
+     "published": "2026-06-30",
+     "note": "중국 제외 +3.1%. 동북아 −1.2%(유일한 감소), 아태 +0.5%, 남아시아 +6.0%, 동남아 +5.0%.",
+     "verified": true
+    },
+    {
+     "metric": "ENR Top 250 해외매출 합계",
+     "year": "2025",
+     "value": 550.6,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 9.7,
+     "source": "ENR 2026 Top 250 International Contractors(튀르키예 무역부 발표, Hurriyet)",
+     "url": "https://www.hurriyetdailynews.com/48-turkish-contractors-make-enrs-global-top-250-list-225887",
+     "published": "2026-08-21",
+     "note": "중국 업체 다수, 튀르키예 48개사. 한국 10개사(2개 감소).",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "국내 건설수주(대한건설협회 집계)",
+     "year": "2025",
+     "value": 221.1,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "한국건설산업연구원 하반기 전망 세미나(데일리안)",
+     "url": "https://www.dailian.co.kr/news/view/1657449",
+     "published": "2026-06-18",
+     "note": "국가데이터처 조사(기성 상위 54% 기업) 기준은 205.4조. 2022년 정점 248.4조.",
+     "verified": true
+    },
+    {
+     "metric": "국내 건설수주 1~4월",
+     "year": "2026 1~4월",
+     "value": 70.8,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": 32.4,
+     "source": "한국건설산업연구원(데일리안)",
+     "url": "https://www.dailian.co.kr/news/view/1657449",
+     "published": "2026-06-18",
+     "note": "철도·궤도 +321.8%, 기계설치 +212.9%. 대형사 위주, 중소 감소.",
+     "verified": true
+    },
+    {
+     "metric": "국내 건설수주 전망(건산연)",
+     "year": "2026",
+     "value": 240.8,
+     "unit": "KRW tn",
+     "kind": "forecast",
+     "growth_pct": 8.9,
+     "source": "한국건설산업연구원 2026년 하반기 건설·부동산 경기 전망",
+     "url": "https://www.dailian.co.kr/news/view/1657449",
+     "published": "2026-06-18",
+     "note": "민간·비주거 부진 지속, 양극화.",
+     "verified": true
+    },
+    {
+     "metric": "국내 건설수주 전망(한국건설경영협회 세미나)",
+     "year": "2026",
+     "value": 266.6,
+     "unit": "KRW tn",
+     "kind": "forecast",
+     "growth_pct": 20.5,
+     "source": "한국건설경영협회 세미나 주제발표(블리츠자산운용 박형렬, 헤럴드경제)",
+     "url": "https://www.heraldk.com/article/2026062421573680232",
+     "published": "2026-06-24",
+     "note": "정정: 협회 공식 전망이 아니라 세미나 발표자 전망. 공공 81.6조(+24.9%), 민간 185.0조(+18.7%). 건산연(240.8)과 차이 큼.",
+     "verified": true
+    },
+    {
+     "metric": "해외건설 수주",
+     "year": "2024",
+     "value": 37.11,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "국토교통부(스마트투데이 보도)",
+     "url": "https://www.smarttoday.co.kr/ko-kr/articles/100675",
+     "published": "2026-01-09",
+     "note": "",
+     "verified": true
+    },
+    {
+     "metric": "해외건설 수주",
+     "year": "2025",
+     "value": 47.27,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 27.4,
+     "source": "국토교통부(스마트투데이 보도)",
+     "url": "https://www.smarttoday.co.kr/ko-kr/articles/100675",
+     "published": "2026-01-09",
+     "note": "2014년 이후 최대. 체코 두코바니 원전 187.2억(39.6%), 유럽 202억(42.6%), 중동 119억(−35.8%). growth_pct 계산치.",
+     "verified": true
+    },
+    {
+     "metric": "해외건설 수주 상반기",
+     "year": "2026 H1",
+     "value": 11.28,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": -36.4,
+     "source": "해외건설협회 상반기 분석(MTN 보도)",
+     "url": "https://news.mtn.co.kr/news-detail/2026071717255012911",
+     "published": "2026-07-18",
+     "note": "78개국 286건. 중동 12.72억(−77.2%, 미-이란 전쟁), 북미·태평양 72.46억(+165%, 델핀 FLNG 28.8억). 체코 원전 제외 시 전년 대비 91.6%.",
+     "verified": true
+    },
+    {
+     "metric": "건설투자 증가율(실질, 한은)",
+     "year": "2026",
+     "value": 0.2,
+     "unit": "% YoY",
+     "kind": "forecast",
+     "growth_pct": 0.2,
+     "source": "한국은행 경제전망(2026년 8월)",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=285904",
+     "published": "2026-08-27",
+     "note": "2025년 −9.7%, 2027년 +1.9%. KDI(2026.8)는 2026년 0% 내외, 2027년 +2.7%.",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Grupo ACS",
+     "country": "Spain",
+     "metric": "해외매출(ENR International 1위)",
+     "value": 52.86,
+     "unit": "USD bn",
+     "as_of": "FY2025(ENR 2026)",
+     "source": "ENR 2026 Top 250(MTN 보도)",
+     "url": "https://news.mtn.co.kr/news-detail/2026082000055088963",
+     "verified": true,
+     "note": "시가총액 27.65bn USD(2026-10-06)"
+    },
+    {
+     "name": "VINCI",
+     "country": "France",
+     "metric": "해외매출(ENR 2위)",
+     "value": 49.84,
+     "unit": "USD bn",
+     "as_of": "FY2025(ENR 2026)",
+     "source": "ENR 2026 Top 250(MTN 보도)",
+     "url": "https://news.mtn.co.kr/news-detail/2026082000055088963",
+     "verified": true,
+     "note": "시가총액 65.81bn USD(2026-10-06)"
+    },
+    {
+     "name": "Bouygues",
+     "country": "France",
+     "metric": "해외매출(ENR 3위)",
+     "value": 31.78,
+     "unit": "USD bn",
+     "as_of": "FY2025(ENR 2026)",
+     "source": "ENR 2026 Top 250(MTN 보도)",
+     "url": "https://news.mtn.co.kr/news-detail/2026082000055088963",
+     "verified": true
+    },
+    {
+     "name": "China Communications Construction",
+     "country": "China",
+     "metric": "해외매출(ENR, 아시아 최고)",
+     "value": 27.47,
+     "unit": "USD bn",
+     "as_of": "FY2025(ENR 2026)",
+     "source": "ENR 2026 Top 250(MTN 보도)",
+     "url": "https://news.mtn.co.kr/news-detail/2026082000055088963",
+     "verified": true
+    },
+    {
+     "name": "Hyundai E&C",
+     "country": "South Korea",
+     "metric": "해외매출(ENR 13위, 3계단 하락)",
+     "value": 8.69,
+     "unit": "USD bn",
+     "as_of": "FY2025(ENR 2026)",
+     "source": "ENR 2026 Top 250(MTN 보도)",
+     "url": "https://news.mtn.co.kr/news-detail/2026082000055088963",
+     "verified": true,
+     "note": "전년 98.5억"
+    },
+    {
+     "name": "Samsung C&T(건설부문)",
+     "country": "South Korea",
+     "metric": "해외매출(ENR 24위)",
+     "value": 5.4,
+     "unit": "USD bn",
+     "as_of": "FY2025(ENR 2026)",
+     "source": "ENR 2026 Top 250(MTN 보도)",
+     "url": "https://news.mtn.co.kr/news-detail/2026082000055088963",
+     "verified": true,
+     "note": "전년 65.2억, 19위"
+    }
+   ],
+   "drivers": "국내 수주는 정비사업·반도체 공장·SOC 예산으로 2026년 1~4월 +32% 반등했지만 착공·기성은 부진해 매출은 1~3년 시차를 두고 따라온다(한은 건설투자 2026 +0.2%, 2027 +1.9%). 해외는 2025년 체코 원전으로 472.7억 달러(11년 만의 최대)였으나 2026년 상반기는 중동 전쟁으로 112.8억 달러(−36%)로 줄고 북미가 공백을 메웠다.",
+   "watch": [
+    "월간 건설수주·착공·건설기성(국가데이터처)",
+    "주택 인허가·착공·미분양",
+    "부동산 PF 부실·건설사 유동성",
+    "해외건설 수주(지역별, 해외건설협회)",
+    "원전·LNG 등 대형 프로젝트 수주"
+   ]
+  },
+  "제약·바이오": {
+   "definition": "세계: IQVIA 세계 의약품 지출(송장가 기준), 바이오 CDMO 시장(조사기관 추정). 한국: 바이오헬스 통관 수출(산업통상부, 화장품 제외), 진흥원 의약품 수출, KIET 바이오헬스 전망.",
+   "world": [
+    {
+     "metric": "세계 의약품 지출 전망",
+     "year": "2030",
+     "value": 2.6,
+     "unit": "USD tn",
+     "kind": "forecast",
+     "growth_pct": null,
+     "source": "IQVIA Institute — Global Medicine Use Trends 2026",
+     "url": "https://www.iqvia.com/insights/the-iqvia-institute/reports-and-publications/reports/global-medicine-use-trends-2026",
+     "published": "2026-02-11",
+     "note": "2030년 2.6조 달러 초과, 연 5~8% 증가. 항암·면역·당뇨·비만이 성장 주도. 2025년 수준은 페이지에 미기재.",
+     "verified": true
+    },
+    {
+     "metric": "세계 바이오 CDMO 시장",
+     "year": "2025",
+     "value": 25.32,
+     "unit": "USD bn",
+     "kind": "estimate",
+     "growth_pct": null,
+     "source": "Mordor Intelligence(IMAPAC 재인용)",
+     "url": "https://www.imapac.com/news-updates/biologics-cdmo-and-market-growth-accelerating-what-the-numbers-mean-and-what-is-driving-them",
+     "published": "2026-05-19",
+     "note": "조사기관별 편차 큼(Precedence 23.08bn). 2031년 38.29bn(CAGR 7.1%). 참고용.",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "바이오헬스 수출(산업통상부)",
+     "year": "2024",
+     "value": 15080,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 13.0,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "",
+     "verified": true
+    },
+    {
+     "metric": "바이오헬스 수출(산업통상부)",
+     "year": "2025",
+     "value": 16268,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 7.9,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "의약품 10,731(+11.9%). 2026년 신 기준 재집계 16,564(+10.4%).",
+     "verified": true
+    },
+    {
+     "metric": "의약품 수출(보건산업진흥원)",
+     "year": "2025",
+     "value": 10.41,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 12.3,
+     "source": "한국보건산업진흥원 2025년 바이오헬스산업 수출 실적(메디칼타임즈)",
+     "url": "https://medicaltimes.com/Main/News/NewsView.html?ID=1167565",
+     "published": "2026-03-05",
+     "note": "첫 100억 달러 돌파. 바이오의약품 65.2억(+18.2%), 미국 19.3억(+29.4%), 스위스 12.8억(+153%).",
+     "verified": true
+    },
+    {
+     "metric": "바이오헬스 수출 전망(KIET)",
+     "year": "2026",
+     "value": 17945,
+     "unit": "USD mn",
+     "kind": "forecast",
+     "growth_pct": 6.6,
+     "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편",
+     "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+     "published": "2026-05-26",
+     "note": "직전판 18,667(+7.8%)에서 하향. 생산 50,764십억원(+5.8%), 내수 +6.7%.",
+     "verified": true
+    },
+    {
+     "metric": "바이오헬스 수출 전망(진흥원, 화장품 포함)",
+     "year": "2026",
+     "value": 30.4,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 9.0,
+     "source": "한국보건산업진흥원 2025 동향·2026 전망(메디칼타임즈)",
+     "url": "https://medicaltimes.com/Mobile/News/NewsView.html?ID=1166511",
+     "published": "2025-12-18",
+     "note": "의약품 117억(+10.5%), 화장품 125억(+9.9%), 의료기기 62억(+4.5%), 바이오의약품 85억(+23.4%).",
+     "verified": true
+    },
+    {
+     "metric": "바이오헬스 수출(진흥원, 화장품 포함) 상반기",
+     "year": "2026 H1",
+     "value": 16.12,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 17.5,
+     "source": "한국보건산업진흥원(씨앤씨뉴스 보도)",
+     "url": "https://cncnews.co.kr/news/article.html?no=11100",
+     "published": "2026-07-22",
+     "note": "의약품 60.6억(+14.1%), 화장품 69.8억(+26.9%), 의료기기 30.8억(+5.9%).",
+     "verified": true
+    },
+    {
+     "metric": "바이오헬스 수출(산업통상부, 신 기준) 상반기",
+     "year": "2026 H1",
+     "value": 9198,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 11.2,
+     "source": "산업통상부 2026년 6월 및 상반기 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=283602",
+     "published": "2026-07-01",
+     "note": "",
+     "verified": true
+    },
+    {
+     "metric": "바이오헬스 수출(월)",
+     "year": "2026-09",
+     "value": 1547,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": -8.6,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "바이오의약품 6.8억(−14.1%), 의료기기 5.9억(−3.1%). 고기저(전년 +37.8%)·조업일수 감소.",
+     "verified": true
+    },
+    {
+     "metric": "바이오헬스 수출 1~9월(신 기준)",
+     "year": "2026 1~9월",
+     "value": 13716,
+     "unit": "USD mn",
+     "kind": "derived",
+     "growth_pct": 11.3,
+     "source": "산업통상부 2026년 9월 수출입 동향 참고표(20대 품목 월별 추이)",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "월별 잠정치 합산(공식 누계 아님). 비교기준 2025년 1~9월=12,322(2025 연간−10~12월, 같은 표의 신 20대 품목 기준). 이 표의 1~6월 합 9,191 vs 상반기 보도자료 누계 9,198(월별 수정 반영 차이).",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Eli Lilly",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 1018,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/eli-lilly/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Johnson & Johnson",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 609.53,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/johnson-and-johnson/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "AbbVie",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 469.62,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/abbvie/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Roche",
+     "country": "Switzerland",
+     "metric": "시가총액",
+     "value": 343.37,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/roche/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Samsung Biologics",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 46.29,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/samsung-biologics/marketcap/",
+     "verified": true,
+     "note": "2025 매출 4.557조원(+30.3%, 메디게이트뉴스)"
+    },
+    {
+     "name": "Celltrion",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 31.6,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/celltrion/marketcap/",
+     "verified": true,
+     "note": "2025 매출 4.1625조원"
+    }
+   ],
+   "drivers": "세계 의약품 지출은 비만·당뇨(GLP-1)·항암·면역 신약 중심으로 2030년까지 연 5~8% 늘어날 전망이다(IQVIA). 한국은 2025~2029년 블록버스터 특허 만료를 겨냥한 바이오시밀러와 CDMO 수주가 수출을 이끌지만, 월별 수출은 대형 선적 시점에 따라 크게 출렁인다.",
+   "watch": [
+    "바이오의약품 월간 수출(산업통상부·진흥원)",
+    "미국 의약품 관세·최혜국 약가 정책",
+    "FDA 바이오시밀러 허가·출시",
+    "CDMO 수주·증설",
+    "원/달러 환율"
+   ]
+  },
+  "화장품": {
+   "definition": "세계: 맥킨지 핵심 뷰티 4개 부문(스킨케어·색조·헤어·향수) 시장. 한국: 화장품 통관 수출(산업통상부·식약처), 세계 수출 순위(식약처). KIET 13대 산업에는 화장품 없음.",
+   "world": [
+    {
+     "metric": "세계 핵심 뷰티 시장 전망",
+     "year": "2030",
+     "value": 590,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 5,
+     "source": "McKinsey — A close look at the global beauty industry in 2025",
+     "url": "https://karriere.mckinsey.de/industries/consumer-packaged-goods/our-insights/a-close-look-at-the-global-beauty-industry-in-2025",
+     "published": "2025-08-28",
+     "note": "향후 5년 연 5% 성장(growth_pct=연평균). 인접 카테고리(시술·선케어·이너뷰티 등) 8,200억 달러 별도. 2030년 온라인 비중 30%+.",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "화장품 수출",
+     "year": "2024",
+     "value": 10178,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 20.3,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "",
+     "verified": true
+    },
+    {
+     "metric": "화장품 수출",
+     "year": "2025",
+     "value": 11431,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 12.3,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "연간 역대 최대. 식약처 집계 114억(+11.8%).",
+     "verified": true
+    },
+    {
+     "metric": "세계 화장품 수출국 순위",
+     "year": "2025",
+     "value": 2,
+     "unit": "위",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "식품의약품안전처(뉴스서울 보도)",
+     "url": "https://newsseoul.co.kr/news/view/1065583815650562",
+     "published": "2026-05-22",
+     "note": "2024년 3위 → 2025년 미국 제치고 프랑스에 이어 2위. 무역흑자 101억(+13.5%). 국가별 미국 22억(1위), 중국 20억(−19%), 일본 11억.",
+     "verified": true
+    },
+    {
+     "metric": "화장품 수출 상반기",
+     "year": "2026 H1",
+     "value": 6997,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 27.2,
+     "source": "산업통상부 2026년 6월 및 상반기 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=283602",
+     "published": "2026-07-01",
+     "note": "상반기 역대 최대.",
+     "verified": true
+    },
+    {
+     "metric": "화장품 수출(월)",
+     "year": "2026-09",
+     "value": 1506,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 31.4,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "전 기간 월 최대, 11개월 연속 증가. 9.1~25일 대EU 1.7억(+110%).",
+     "verified": true
+    },
+    {
+     "metric": "화장품 수출 1~9월",
+     "year": "2026 1~9월",
+     "value": 11139,
+     "unit": "USD mn",
+     "kind": "derived",
+     "growth_pct": 31.2,
+     "source": "산업통상부 2026년 9월 수출입 동향 참고표(20대 품목 월별 추이)",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "월별 잠정치 합산(공식 누계 아님). 비교기준 2025년 1~9월=8,490(2025 연간−10~12월, 같은 표의 신 20대 품목 기준). 이 표의 1~6월 합 6,974 vs 상반기 보도자료 누계 6,997(월별 수정 반영 차이).",
+     "verified": true
+    },
+    {
+     "metric": "화장품 수출 3분기 누계(식약처)",
+     "year": "2026 1~9월",
+     "value": 11.1,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "식품의약품안전처(씨앤씨뉴스 보도)",
+     "url": "https://cncnews.co.kr/news/article.html?no=11328",
+     "published": "2026-10-03",
+     "note": "3분기 41.7억(전분기 +7.5%). 미국 23.5억(21.1%, +40.6%), 중국 15.8억, 일본 8.9억. 기초화장품 87.2억(+45.1%). 위 산업통상부 합산(111.4억)과 일치.",
+     "verified": true
+    },
+    {
+     "metric": "화장품 수출 전망(진흥원)",
+     "year": "2026",
+     "value": 12.5,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 9.9,
+     "source": "한국보건산업진흥원(메디칼타임즈)",
+     "url": "https://medicaltimes.com/Mobile/News/NewsView.html?ID=1166511",
+     "published": "2025-12-18",
+     "note": "2025년 12월 전망 — 1~9월 실적 111억으로 사실상 초과 확실(구판 전망).",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "L'Oréal",
+     "country": "France",
+     "metric": "시가총액",
+     "value": 223.17,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/l-oreal/marketcap/",
+     "verified": true,
+     "note": "2025 매출 440.5억 유로(L’Oréal 2025 연차보고서)"
+    },
+    {
+     "name": "Estée Lauder",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 33.8,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/estee-lauder/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Beiersdorf",
+     "country": "Germany",
+     "metric": "시가총액",
+     "value": 18.57,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/beiersdorf/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Shiseido",
+     "country": "Japan",
+     "metric": "시가총액",
+     "value": 8.2,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/shiseido/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Amorepacific",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 6.81,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/amorepacific/marketcap/",
+     "verified": true
+    }
+   ],
+   "drivers": "세계 뷰티 시장은 연 5% 안팎 성장에 그치지만(맥킨지), K-뷰티는 미국·유럽 기초화장품과 인디 브랜드·ODM을 앞세워 2026년 1~9월 수출 111억 달러로 이미 2025년 연간(114억)에 육박했다. 2025년 프랑스에 이어 세계 2위 수출국이 됐고 중국 의존이 줄며 미국이 1위 시장이 됐다.",
+   "watch": [
+    "화장품 월간 수출(국가별: 미국·EU·중국·일본)",
+    "미국 관세·통관 규제",
+    "ODM 가동률·수주",
+    "중국 소비 회복",
+    "온라인 채널(아마존·틱톡샵) 판매"
+   ]
+  },
+  "음식료": {
+   "definition": "세계: FAO 세계 식품 수입액, 세계라면협회(WINA) 즉석면 수요. 한국: 농수산식품 통관 수출(산업통상부), K-Food+ 수출(농식품부), 라면 수출. 담배는 시장 통계 미포함(리더에만 반영).",
+   "world": [
+    {
+     "metric": "세계 식품 수입액(FIB)",
+     "year": "2025",
+     "value": 2.22,
+     "unit": "USD tn",
+     "kind": "estimate",
+     "growth_pct": 8.0,
+     "source": "FAO Food Outlook(2025년 11월판, Miller Magazine·FAO 보도)",
+     "url": "https://millermagazine.com/blog/record-global-food-import-bill-in-2025-despite-cheaper-cereals-6496",
+     "published": "2025-11-13",
+     "note": "전년 대비 \"nearly 8%\"(growth_pct=약 8). 사상 최대, 커피·코코아 등 고가 품목 가격 급등이 주도(곡물·설탕은 감소). FAO 뉴스룸에도 같은 수치(https://www.fao.org/newsroom/detail/fao-food-outlook-points-to-broad-based-increase-in-global-food-commodity-production/en).",
+     "verified": true
+    },
+    {
+     "metric": "세계 즉석면 수요",
+     "year": "2025",
+     "value": 124.21,
+     "unit": "billion servings",
+     "kind": "actual",
+     "growth_pct": 0.7,
+     "source": "World Instant Noodles Association(The Standard 보도)",
+     "url": "https://www.thestandard.com.hk/news/article/340748/Global-instant-noodle-demand-tops-124-billion-servings-China-and-Hong-Kong-lead",
+     "published": "2026-08-24",
+     "note": "2024년 123.31bn. 중국·홍콩 43.27bn, 인도네시아 14.54bn, 인도 9.60bn — 카테고리 자체는 정체.",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "농수산식품 수출",
+     "year": "2024",
+     "value": 11664,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 7.6,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "",
+     "verified": true
+    },
+    {
+     "metric": "농수산식품 수출",
+     "year": "2025",
+     "value": 12431,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 6.6,
+     "source": "산업통상부 2025년 연간 및 12월 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=275598",
+     "published": "2026-01-01",
+     "note": "10년 연속 증가, 연간 최대. 신 기준 재집계 12,402(+6.5%).",
+     "verified": true
+    },
+    {
+     "metric": "K-Food+ 수출(농식품부)",
+     "year": "2025",
+     "value": 13.62,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 5.1,
+     "source": "농림축산식품부(Korea Herald 보도)",
+     "url": "https://www.koreaherald.com/article/10653707",
+     "published": "2026-01-12",
+     "note": "농식품 104.1억(+4.3%), 전후방산업 32.2억(+8%). 미국 18억(+13.2%), 중국 15.9억. 2026년 목표 160억.",
+     "verified": true
+    },
+    {
+     "metric": "라면 수출",
+     "year": "2025",
+     "value": 1.52,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 21.9,
+     "source": "농림축산식품부(Korea Herald·파이낸셜뉴스 보도)",
+     "url": "https://www.koreaherald.com/article/10653707",
+     "published": "2026-01-12",
+     "note": "단일 식품 최초 15억 달러 돌파. 중국 3.854억, 미국 2.547억. 15.2억/+21.9%는 파이낸셜뉴스 본문(https://www.fnnews.com/news/202601121028009509)으로 확인.",
+     "verified": true
+    },
+    {
+     "metric": "K-Food+ 수출 상반기",
+     "year": "2026 H1",
+     "value": 7.05,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 4.1,
+     "source": "농림축산식품부(파이낸셜뉴스·뉴스1)",
+     "url": "https://www.fnnews.com/news/202607051100444453",
+     "published": "2026-07-05",
+     "note": "라면 9억3,540만 달러(+27.9%), 미국 10.4억(+11.3%).",
+     "verified": true
+    },
+    {
+     "metric": "농수산식품 수출 상반기",
+     "year": "2026 H1",
+     "value": 6570,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": 8.7,
+     "source": "산업통상부 2026년 6월 및 상반기 수출입 동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=283602",
+     "published": "2026-07-01",
+     "note": "상반기 역대 최대.",
+     "verified": true
+    },
+    {
+     "metric": "농수산식품 수출(월)",
+     "year": "2026-09",
+     "value": 1107,
+     "unit": "USD mn",
+     "kind": "actual",
+     "growth_pct": -4.7,
+     "source": "산업통상부 2026년 9월 수출입 동향",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "조업일수 감소. 면류·소스류 호조, 기호식품·수산가공품 감소.",
+     "verified": true
+    },
+    {
+     "metric": "농수산식품 수출 1~9월",
+     "year": "2026 1~9월",
+     "value": 9744,
+     "unit": "USD mn",
+     "kind": "derived",
+     "growth_pct": 5.5,
+     "source": "산업통상부 2026년 9월 수출입 동향 참고표(20대 품목 월별 추이)",
+     "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+     "published": "2026-10-01",
+     "note": "월별 잠정치 합산(공식 누계 아님). 비교기준 2025년 1~9월=9,237(2025 연간−10~12월, 같은 표의 신 20대 품목 기준). 이 표의 1~6월 합 6,567 vs 상반기 보도자료 누계 6,570(월별 수정 반영 차이).",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Coca-Cola",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 372.21,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/coca-cola/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Philip Morris International",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 295.4,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/philip-morris/marketcap/",
+     "verified": true,
+     "note": "담배"
+    },
+    {
+     "name": "Nestlé",
+     "country": "Switzerland",
+     "metric": "시가총액",
+     "value": 230.62,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/nestle/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "PepsiCo",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 171.63,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/pepsico/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "KT&G",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 13.63,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap 담배 업종 순위",
+     "url": "https://companiesmarketcap.com/tobacco/largest-tobacco-companies-by-market-cap/",
+     "verified": true
+    },
+    {
+     "name": "Samyang Foods",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 6.82,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/samyang-foods/marketcap/",
+     "verified": true
+    }
+   ],
+   "drivers": "K-푸드 수출은 라면·소스 등 가공식품이 이끌며 2025년 136.2억 달러로 사상 최대였고 라면은 단일 품목 최초로 15억 달러를 넘었다(+21.9%). 세계 즉석면 수요는 +0.7%로 정체여서 한국 업체가 점유율을 가져가는 구조이며, 정체된 내수 대신 해외 비중이 성장 속도를 좌우한다.",
+   "watch": [
+    "라면·소스 월간 수출(농식품부·관세청)",
+    "곡물·팜유 등 원재료 가격(FAO 식품가격지수)",
+    "원/달러 환율",
+    "미국·중국 수출과 관세",
+    "해외 생산 증설"
+   ]
+  },
+  "인터넷·게임": {
+   "definition": "세계: Newzoo 게임 시장 소비자 지출(모바일·콘솔·PC). 한국: 게임백서 국내 게임 매출·수출, K-콘텐츠 수출(문체부), 온라인쇼핑 거래액(국가데이터처, 플랫폼 대용).",
+   "world": [
+    {
+     "metric": "세계 게임 시장",
+     "year": "2025",
+     "value": 201.6,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "Newzoo 2026 Global Games Market Report 예비치(GodisaGeek 보도)",
+     "url": "https://godisageek.com/2026/08/global-games-market-2026/",
+     "published": "2026-08-27",
+     "note": "처음 2,000억 달러 돌파.",
+     "verified": true
+    },
+    {
+     "metric": "세계 게임 시장 전망",
+     "year": "2026",
+     "value": 213.9,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 6.1,
+     "source": "Newzoo 2026 Global Games Market Report 예비치(GodisaGeek 보도)",
+     "url": "https://godisageek.com/2026/08/global-games-market-2026/",
+     "published": "2026-08-27",
+     "note": "모바일 121.1bn(57%), 콘솔 46.9bn(+5.1%, 처음으로 PC 45.9bn 추월). GTA VI(2026년 11월)로 콘솔 패키지 +17.5%. 이용자 37억(+4.4%). 중·미 합계 52%. 본보고서 9/10 발간.",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "국내 게임산업 매출",
+     "year": "2024",
+     "value": 23.85,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": 3.9,
+     "source": "2025 대한민국 게임백서(아시아경제 보도)",
+     "url": "https://view.asiae.co.kr/article/2026032515223006138",
+     "published": "2026-03-25",
+     "note": "모바일 59%, PC 25.2%, 콘솔 5.0%. 2025년 수치는 2026 백서 미발간.",
+     "verified": true
+    },
+    {
+     "metric": "게임 수출",
+     "year": "2024",
+     "value": 8.5,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 1.3,
+     "source": "2025 대한민국 게임백서(아시아경제 보도)",
+     "url": "https://view.asiae.co.kr/article/2026032515223006138",
+     "published": "2026-03-25",
+     "note": "85억346만 달러. 세계시장 점유율 7.2%(중·미·일 다음 4위). 수출처 중국 29.7%, 동남아 20.6%, 북미 19.5%.",
+     "verified": true
+    },
+    {
+     "metric": "K-콘텐츠 수출",
+     "year": "2025",
+     "value": 14.9,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": null,
+     "source": "문화체육관광부(파이낸스스코프 보도)",
+     "url": "https://www.finance-scope.com/article/view/scp202606020012",
+     "published": "2026-06-02",
+     "note": "역대 최대(22.51조원). 게임이 최대 비중.",
+     "verified": true
+    },
+    {
+     "metric": "온라인쇼핑 거래액",
+     "year": "2025",
+     "value": 274.94,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": 4.8,
+     "source": "국가데이터처 2026년 5월 온라인쇼핑동향 통계표(KDI EIEC 게재)",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=283601",
+     "published": "2026-07-01",
+     "note": "2024년 262.43조. growth_pct 계산치. 플랫폼(포털·커머스) 업황 대용지표.",
+     "verified": true
+    },
+    {
+     "metric": "온라인쇼핑 거래액(월)",
+     "year": "2026-05",
+     "value": 25.013,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": 10.3,
+     "source": "국가데이터처 2026년 5월 온라인쇼핑동향",
+     "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=283601",
+     "published": "2026-07-01",
+     "note": "모바일 19.289조(+9.7%, 비중 77.1%). 음식서비스 15.4%, 음식료품 14.2%.",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "Alphabet",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 4205,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/alphabet-google/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Meta Platforms",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 1889,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/meta-platforms/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Tencent",
+     "country": "China",
+     "metric": "시가총액",
+     "value": 495.36,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/tencent/marketcap/",
+     "verified": true,
+     "note": "세계 최대 게임 매출"
+    },
+    {
+     "name": "Nintendo",
+     "country": "Japan",
+     "metric": "시가총액",
+     "value": 57.9,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/nintendo/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "NAVER",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 21.55,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/naver/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Krafton",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 6.38,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/krafton/marketcap/",
+     "verified": true
+    }
+   ],
+   "drivers": "세계 게임 시장은 2026년 2,139억 달러(+6.1%)로 GTA VI 같은 콘솔 대작이 성장을 끄는 성숙·흥행 산업이다(Newzoo). 한국 게임 수출은 2024년 85억 달러(+1.3%)로 정체한 반면 국내 온라인쇼핑은 2025년 275조원(+4.8%), 2026년 5월 +10.3%로 플랫폼 거래가 꾸준히 늘고 있다.",
+   "watch": [
+    "국내 게임사 신작 출시·글로벌 흥행(콘솔·PC)",
+    "중국 판호 발급",
+    "Newzoo 시장 전망 개정",
+    "온라인쇼핑 거래액(국가데이터처 월간)",
+    "광고 경기·AI 서비스 투자",
+    "해외 매출 비중"
+   ]
+  },
+  "통신": {
+   "definition": "세계: IDC 통신+유료방송 서비스 지출, Omdia 연결 매출(이동·유선 브로드밴드·유선전화)·설비투자. 한국: 통신 3사 AI 데이터센터(AIDC) 매출·설비투자(3사 연결 실적은 DART 집계 사용).",
+   "world": [
+    {
+     "metric": "세계 통신·유료방송 서비스 지출",
+     "year": "2025",
+     "value": 1551,
+     "unit": "USD bn",
+     "kind": "actual",
+     "growth_pct": 2.0,
+     "source": "IDC Worldwide Semiannual Telecom Services Tracker",
+     "url": "https://www.idc.com/resource-center/press-releases/telecom-services-tracker-h22025/",
+     "published": "2026-05-11",
+     "note": "미주 576bn(+1.8%), EMEA 491bn(+3.0%), 아태 484bn(+1.4%). 표 합계 증가율 2.1%.",
+     "verified": true
+    },
+    {
+     "metric": "세계 통신·유료방송 서비스 지출 전망",
+     "year": "2026",
+     "value": 1580,
+     "unit": "USD bn",
+     "kind": "forecast",
+     "growth_pct": 1.8,
+     "source": "IDC Worldwide Semiannual Telecom Services Tracker",
+     "url": "https://www.idc.com/resource-center/press-releases/telecom-services-tracker-h22025/",
+     "published": "2026-05-11",
+     "note": "저궤도 위성·D2D가 성장 요인.",
+     "verified": true
+    },
+    {
+     "metric": "세계 통신 연결 매출(Omdia)",
+     "year": "2025",
+     "value": 1.3,
+     "unit": "USD tn",
+     "kind": "actual",
+     "growth_pct": 4,
+     "source": "Omdia(TelecomLead 보도)",
+     "url": "https://telecomlead.com/?p=125541",
+     "published": "2026-04-21",
+     "note": "IDC보다 범위 좁음. 4분기 333bn(+5%). 통신 설비투자 303bn(감소).",
+     "verified": true
+    }
+   ],
+   "korea": [
+    {
+     "metric": "통신 3사 AIDC 매출 합계",
+     "year": "2025",
+     "value": 1.9394,
+     "unit": "KRW tn",
+     "kind": "actual",
+     "growth_pct": 27.2,
+     "source": "메트로신문(3사 실적 취합)",
+     "url": "https://www.metroseoul.co.kr/article/20260212500444",
+     "published": "2026-02-12",
+     "note": "2024년 1.525조. SKT 5,199억(+34.9%), LG유플러스 4,220억. 본업 유무선은 3%대 성장. 3사 설비투자 6.4조 중 약 4조가 AIDC.",
+     "verified": true
+    }
+   ],
+   "leaders": [
+    {
+     "name": "China Mobile",
+     "country": "China",
+     "metric": "시가총액",
+     "value": 218.03,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/china-mobile/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Verizon",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 190.49,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/verizon/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "T-Mobile US",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 176.6,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/t-mobile-us/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "AT&T",
+     "country": "USA",
+     "metric": "시가총액",
+     "value": 166.1,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/att/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "Deutsche Telekom",
+     "country": "Germany",
+     "metric": "시가총액",
+     "value": 144.03,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/deutsche-telekom/marketcap/",
+     "verified": true
+    },
+    {
+     "name": "SK Telecom",
+     "country": "South Korea",
+     "metric": "시가총액",
+     "value": 13.97,
+     "unit": "USD bn",
+     "as_of": "2026-10-06 조회",
+     "source": "CompaniesMarketCap(개별 기업 페이지, \"As of October 2026\")",
+     "url": "https://companiesmarketcap.com/sk-telecom/marketcap/",
+     "verified": true,
+     "note": "KT 9.00bn USD"
+    }
+   ],
+   "drivers": "통신은 세계 지출 증가율이 연 2% 안팎인 저성장 유틸리티라(IDC) 성장보다 비용 통제·설비투자 축소·배당이 가치를 좌우한다. 국내 3사도 유무선 본업은 3%대 성장에 그친 반면 AI 데이터센터 매출이 2025년 1.94조원(+27.2%)으로 유일한 고성장 영역이다.",
+   "watch": [
+    "ARPU·5G 가입자",
+    "AIDC 매출·GPU·전력 계약",
+    "설비투자 가이던스",
+    "규제(요금·과징금)",
+    "배당·자사주 정책"
+   ]
+  }
+ },
+ "kiet": {
+  "source": "산업연구원(KIET) 2026년 하반기 경제·산업 전망: 13대 주력산업편 (수급·수출입 전망 표 <표 n-8>/<표 n-9>) + 본보고서 <표 2-11~2-16> 대조",
+  "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=57",
+  "published": "2026-05-26",
+  "pdf": "https://www.kiet.re.kr/common/file/userDownload?atch_no=nAD3IaK3BqtGBLpHrlRDMA%3D%3D&menu_cd=003002001&lang=KR&no=57",
+  "summary_table_url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=56",
+  "prev_edition": {
+   "title": "산업연구원(KIET) 2026년 경제·산업 전망(13대 주력산업편·본보고서 <표 2-13>)",
+   "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=55",
+   "published": "2025-11-24",
+   "note": "prev_2026F_export_g 는 직전판이 당시 2025년 추정치 대비 계산한 증가율(2025 실적 대비 아님)."
+  },
+  "units_note": "수출·수입은 백만 달러(통관). 생산·내수 단위는 업종마다 다름(prod.unit). 2026H1E 는 5월 발표 시점 추정치, 2026F 는 연간 전망.",
+  "industries": {
+   "반도체": {
+    "sector_key": "반도체",
+    "export_usd_mn": {
+     "2025": 173404,
+     "2026F": 350129
+    },
+    "export_g": {
+     "2025": 22.2,
+     "2026F": 101.9
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 170977,
+     "2026H2F": 179152
+    },
+    "prod": {
+     "unit": "십억 원",
+     "2025": 199298,
+     "2026F": 406437
+    },
+    "prod_g": {
+     "2025": 33.7,
+     "2026F": 103.9
+    },
+    "dom": {
+     "unit": "십억 원",
+     "2025": 60616,
+     "2026F": 39237
+    },
+    "dom_g": {
+     "2025": 10.5,
+     "2026F": -35.3
+    },
+    "import_usd_mn": {
+     "2025": 75787,
+     "2026F": 95565
+    },
+    "import_g": {
+     "2025": 4.9,
+     "2026F": 26.1
+    },
+    "prev_2026F_export_usd_mn": 173224,
+    "prev_2026F_export_g": 4.7,
+    "motir_2026H1_actual": {
+     "value": 192376,
+     "g": 162.6,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준)"
+    },
+    "note": "내수는 생산+수입−수출(재고 포함)이라 재고조정으로 감소 전망. 원화 수급표의 수입 행이 달러 표와 같은 숫자로 인쇄돼 있음(PDF 자체 오류로 보임, 수입은 달러 표 사용).",
+    "verified": true
+   },
+   "디스플레이": {
+    "sector_key": "디스플레이",
+    "export_usd_mn": {
+     "2025": 16985,
+     "2026F": 16933
+    },
+    "export_g": {
+     "2025": -9.4,
+     "2026F": -0.3
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 8026,
+     "2026H2F": 8907
+    },
+    "prod": {
+     "unit": "십억 원",
+     "2025": 48889,
+     "2026F": 49138
+    },
+    "prod_g": {
+     "2025": -0.9,
+     "2026F": 0.5
+    },
+    "dom": {
+     "unit": "십억 원",
+     "2025": 29226,
+     "2026F": 29596
+    },
+    "dom_g": {
+     "2025": 1.2,
+     "2026F": 1.3
+    },
+    "import_usd_mn": {
+     "2025": 3153,
+     "2026F": 3376
+    },
+    "import_g": {
+     "2025": -16.7,
+     "2026F": 7.1
+    },
+    "prev_2026F_export_usd_mn": 17760,
+    "prev_2026F_export_g": 2.7,
+    "motir_2026H1_actual": {
+     "value": 8325,
+     "g": 9.4,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준)"
+    },
+    "note": "MTI 8361(모듈 포함) 기준.",
+    "verified": true
+   },
+   "이차전지": {
+    "sector_key": "2차전지",
+    "export_usd_mn": {
+     "2025": 7228,
+     "2026F": 7717
+    },
+    "export_g": {
+     "2025": -11.9,
+     "2026F": 6.8
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 3817,
+     "2026H2F": 3901
+    },
+    "prod": {
+     "unit": "십억 원",
+     "2025": 7321,
+     "2026F": 7828
+    },
+    "prod_g": {
+     "2025": -8.8,
+     "2026F": 6.9
+    },
+    "dom": {
+     "unit": "십억 원",
+     "2025": 4732,
+     "2026F": 5242
+    },
+    "dom_g": {
+     "2025": 20.5,
+     "2026F": 10.8
+    },
+    "import_usd_mn": {
+     "2025": 5409,
+     "2026F": 5932
+    },
+    "import_g": {
+     "2025": 4.6,
+     "2026F": 9.7
+    },
+    "prev_2026F_export_usd_mn": 6243,
+    "prev_2026F_export_g": -12.0,
+    "motir_2026H1_actual": {
+     "value": 4000,
+     "g": 11.1,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준)"
+    },
+    "note": "국내 생산·수출만(해외 현지생산 제외). 직전판 감소(−12.0%) → 증가(+6.8%)로 반전.",
+    "verified": true
+   },
+   "자동차": {
+    "sector_key": "자동차·부품",
+    "export_usd_mn": {
+     "2025": 93175,
+     "2026F": 91586
+    },
+    "export_g": {
+     "2025": -0.2,
+     "2026F": -1.7
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 45792,
+     "2026H2F": 45794
+    },
+    "prod": {
+     "unit": "천 대(완성차)",
+     "2025": 4102,
+     "2026F": 4137
+    },
+    "prod_g": {
+     "2025": -0.6,
+     "2026F": 0.8
+    },
+    "dom": {
+     "unit": "천 대(완성차)",
+     "2025": 1698,
+     "2026F": 1715
+    },
+    "dom_g": {
+     "2025": 3.2,
+     "2026F": 1.0
+    },
+    "import_usd_mn": {
+     "2025": 21417,
+     "2026F": 21450
+    },
+    "import_g": {
+     "2025": 3.8,
+     "2026F": 0.2
+    },
+    "prev_2026F_export_usd_mn": 91882,
+    "prev_2026F_export_g": -0.6,
+    "motir_2026H1_actual": {
+     "value": 45969,
+     "g": null,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준) 자동차 35,941 + 자동차부품 10,028 합산(KIET 정의와 맞춤)"
+    },
+    "note": "수출입 금액은 자동차부품 포함(MTI 741·742), 생산·내수는 완성차 대수.",
+    "verified": true,
+    "export_volume": {
+     "unit": "천 대",
+     "2025": 2736,
+     "2026F": 2774,
+     "g_2025": -1.7,
+     "g_2026F": 1.4
+    }
+   },
+   "조선": {
+    "sector_key": "조선",
+    "export_usd_mn": {
+     "2025": 31816,
+     "2026F": 33229
+    },
+    "export_g": {
+     "2025": 24.1,
+     "2026F": 4.4
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 16042,
+     "2026H2F": 17187
+    },
+    "prod": {
+     "unit": "만 CGT(건조량)",
+     "2025": 1222,
+     "2026F": 1180
+    },
+    "prod_g": {
+     "2025": 6.1,
+     "2026F": -3.4
+    },
+    "dom": {
+     "unit": "만 CGT(국적선사 인수)",
+     "2025": 300,
+     "2026F": 157
+    },
+    "dom_g": {
+     "2025": -7.4,
+     "2026F": -47.7
+    },
+    "import_usd_mn": {
+     "2025": 4622,
+     "2026F": 4879
+    },
+    "import_g": {
+     "2025": 15.3,
+     "2026F": 5.6
+    },
+    "prev_2026F_export_usd_mn": 30326,
+    "prev_2026F_export_g": -4.0,
+    "motir_2026H1_actual": {
+     "value": 16555,
+     "g": 18.4,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준)"
+    },
+    "note": "MTI 746(선박·해양구조물·부품). 내수=국내 해운사 신조 인수량이라 변동성 큼.",
+    "verified": true,
+    "export_volume": {
+     "unit": "만 CGT",
+     "2025": 972,
+     "2026F": 1087,
+     "g_2025": 13.2,
+     "g_2026F": 11.8
+    }
+   },
+   "일반기계": {
+    "sector_key": "기계",
+    "export_usd_mn": {
+     "2025": 46897,
+     "2026F": 46438
+    },
+    "export_g": {
+     "2025": -8.4,
+     "2026F": -1.0
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 22830,
+     "2026H2F": 23609
+    },
+    "prod": {
+     "unit": "십억 원",
+     "2025": 148033,
+     "2026F": 147397
+    },
+    "prod_g": {
+     "2025": -2.1,
+     "2026F": -0.4
+    },
+    "dom": {
+     "unit": "십억 원",
+     "2025": 127669,
+     "2026F": 128962
+    },
+    "dom_g": {
+     "2025": 5.1,
+     "2026F": 1.0
+    },
+    "import_usd_mn": {
+     "2025": 32580,
+     "2026F": 33662
+    },
+    "import_g": {
+     "2025": 5.5,
+     "2026F": 3.3
+    },
+    "prev_2026F_export_usd_mn": 45197,
+    "prev_2026F_export_g": -3.7,
+    "motir_2026H1_actual": {
+     "value": 22986,
+     "g": -2.9,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준)"
+    },
+    "note": "원화 수입 2025 연간이 표에 43,642로 인쇄됐으나 반기 합(22,663+23,679)은 46,342 — PDF 오기 추정(이 JSON은 달러 수입만 사용).",
+    "verified": true
+   },
+   "철강": {
+    "sector_key": "철강",
+    "export_usd_mn": {
+     "2025": 30285,
+     "2026F": 30553
+    },
+    "export_g": {
+     "2025": -9.0,
+     "2026F": 0.9
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 15403,
+     "2026H2F": 15150
+    },
+    "prod": {
+     "unit": "천 톤(철강재)",
+     "2025": 63229,
+     "2026F": 63356
+    },
+    "prod_g": {
+     "2025": -5.0,
+     "2026F": 0.2
+    },
+    "dom": {
+     "unit": "천 톤(철강재 명목소비)",
+     "2025": 43604,
+     "2026F": 43413
+    },
+    "dom_g": {
+     "2025": -8.9,
+     "2026F": -0.4
+    },
+    "import_usd_mn": {
+     "2025": 18652,
+     "2026F": 18323
+    },
+    "import_g": {
+     "2025": -11.7,
+     "2026F": -1.8
+    },
+    "prev_2026F_export_usd_mn": 29356,
+    "prev_2026F_export_g": -5.0,
+    "motir_2026H1_actual": {
+     "value": 12402,
+     "g": -2.0,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준). 주의: 2026년 산업통상부 철강은 범위가 좁아짐(2025 연간 24,798 vs MTI 61 기준 30,301) — KIET(MTI 61)와 직접 비교 불가"
+    },
+    "note": "MTI 61 기준.",
+    "verified": true,
+    "export_volume": {
+     "unit": "천 톤",
+     "2025": 28249,
+     "2026F": 28356,
+     "g_2025": -0.4,
+     "g_2026F": 0.4
+    }
+   },
+   "정유": {
+    "sector_key": "정유",
+    "export_usd_mn": {
+     "2025": 45459,
+     "2026F": 48949
+    },
+    "export_g": {
+     "2025": -9.7,
+     "2026F": 7.7
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 26210,
+     "2026H2F": 22740
+    },
+    "prod": {
+     "unit": "천 배럴(석유제품)",
+     "2025": 1265159,
+     "2026F": 1068223
+    },
+    "prod_g": {
+     "2025": -0.9,
+     "2026F": -15.6
+    },
+    "dom": {
+     "unit": "천 배럴",
+     "2025": 931629,
+     "2026F": 858619
+    },
+    "dom_g": {
+     "2025": -2.8,
+     "2026F": -7.8
+    },
+    "import_usd_mn": {
+     "2025": 21227,
+     "2026F": 21908
+    },
+    "import_g": {
+     "2025": -15.3,
+     "2026F": 3.2
+    },
+    "prev_2026F_export_usd_mn": 38773,
+    "prev_2026F_export_g": -16.3,
+    "motir_2026H1_actual": {
+     "value": 30127,
+     "g": 39.6,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준). 물량 2,966만t(−6%), 단가 1,016$/t(+49%)"
+    },
+    "note": "MTI 133. 물량은 페트로넷 기준. 본보고서는 같은 값을 십만 배럴 단위로 표기(12,652→10,682).",
+    "verified": true,
+    "export_volume": {
+     "unit": "천 배럴",
+     "2025": 509025,
+     "2026F": 401743,
+     "g_2025": -1.0,
+     "g_2026F": -21.1
+    }
+   },
+   "석유화학": {
+    "sector_key": "석유화학",
+    "export_usd_mn": {
+     "2025": 42520,
+     "2026F": 43711
+    },
+    "export_g": {
+     "2025": -11.4,
+     "2026F": 2.8
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 21728,
+     "2026H2F": 21983
+    },
+    "prod": {
+     "unit": "천 톤(3대 유도품)",
+     "2025": 20468,
+     "2026F": 21334
+    },
+    "prod_g": {
+     "2025": -3.0,
+     "2026F": 4.2
+    },
+    "dom": {
+     "unit": "천 톤(3대 유도품)",
+     "2025": 8794,
+     "2026F": 8663
+    },
+    "dom_g": {
+     "2025": -5.5,
+     "2026F": -1.5
+    },
+    "import_usd_mn": {
+     "2025": 10815,
+     "2026F": 11090
+    },
+    "import_g": {
+     "2025": -12.7,
+     "2026F": 2.5
+    },
+    "prev_2026F_export_usd_mn": 43041,
+    "prev_2026F_export_g": -2.0,
+    "motir_2026H1_actual": {
+     "value": 22847,
+     "g": 5.2,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준). 물량 1,720만t(−10%), 단가 1,328$/t(+17%)"
+    },
+    "note": "생산·내수는 3대 유도품(합성수지·합섬원료·합성고무), 수출입은 석유화학제품(MTI 21).",
+    "verified": true,
+    "export_volume": {
+     "unit": "천 톤",
+     "2025": 35072,
+     "2026F": 34633,
+     "g_2025": -11.0,
+     "g_2026F": -1.3
+    }
+   },
+   "섬유": {
+    "sector_key": null,
+    "export_usd_mn": {
+     "2025": 9679,
+     "2026F": 9435
+    },
+    "export_g": {
+     "2025": -7.5,
+     "2026F": -2.5
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 4795,
+     "2026H2F": 4640
+    },
+    "prod": {
+     "unit": "십억 원",
+     "2025": 51812,
+     "2026F": 52230
+    },
+    "prod_g": {
+     "2025": -2.5,
+     "2026F": 0.8
+    },
+    "dom": {
+     "unit": "십억 원",
+     "2025": 65126,
+     "2026F": 66610
+    },
+    "dom_g": {
+     "2025": 0.0,
+     "2026F": 2.3
+    },
+    "import_usd_mn": {
+     "2025": 19048,
+     "2026F": 19428
+    },
+    "import_g": {
+     "2025": -1.1,
+     "2026F": 2.0
+    },
+    "prev_2026F_export_usd_mn": 9805,
+    "prev_2026F_export_g": 0.9,
+    "motir_2026H1_actual": {
+     "value": 5376,
+     "g": 1.2,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준)"
+    },
+    "note": "섹터 정의(산업_섹터.py)에 대응 섹터 없음(화학섬유는 석유화학에 포함). 13대편 <표 7-9> 주석에 \"자동차부품 포함(MTI 741, 742)\"이 잘못 붙어 있음(복사 오류).",
+    "verified": true
+   },
+   "정보통신기기": {
+    "sector_key": "가전·IT기기",
+    "export_usd_mn": {
+     "2025": 32062,
+     "2026F": 61950
+    },
+    "export_g": {
+     "2025": 1.8,
+     "2026F": 93.2
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 29227,
+     "2026H2F": 32723
+    },
+    "prod": {
+     "unit": "십억 원",
+     "2025": 54962,
+     "2026F": 93211
+    },
+    "prod_g": {
+     "2025": 6.3,
+     "2026F": 69.6
+    },
+    "dom": {
+     "unit": "십억 원",
+     "2025": 51330,
+     "2026F": 57562
+    },
+    "dom_g": {
+     "2025": 12.4,
+     "2026F": 12.1
+    },
+    "import_usd_mn": {
+     "2025": 29508,
+     "2026F": 37242
+    },
+    "import_g": {
+     "2025": 9.2,
+     "2026F": 26.2
+    },
+    "prev_2026F_export_usd_mn": 32885,
+    "prev_2026F_export_g": 4.9,
+    "motir_2026H1_actual": {
+     "value": 31102,
+     "g": null,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준) 무선통신기기 9,904 + 컴퓨터 21,198 합산(KIET 집계는 HS 기준이라 범위 다를 수 있음)"
+    },
+    "note": "KIET 분류는 무선통신기기+컴퓨터(SSD 포함). 2025 수출은 13대편 32,062, 본보고서 32,061(반올림 차).",
+    "verified": true
+   },
+   "가전": {
+    "sector_key": "가전·IT기기",
+    "export_usd_mn": {
+     "2025": 7269,
+     "2026F": 6896
+    },
+    "export_g": {
+     "2025": -8.9,
+     "2026F": -5.1
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 3275,
+     "2026H2F": 3621
+    },
+    "prod": {
+     "unit": "십억 원",
+     "2025": 29070,
+     "2026F": 28779
+    },
+    "prod_g": {
+     "2025": -6.0,
+     "2026F": -1.0
+    },
+    "dom": {
+     "unit": "십억 원",
+     "2025": 30473,
+     "2026F": 30834
+    },
+    "dom_g": {
+     "2025": -3.1,
+     "2026F": 1.2
+    },
+    "import_usd_mn": {
+     "2025": 8256,
+     "2026F": 8317
+    },
+    "import_g": {
+     "2025": -1.1,
+     "2026F": 0.7
+    },
+    "prev_2026F_export_usd_mn": 7244,
+    "prev_2026F_export_g": 0.4,
+    "motir_2026H1_actual": {
+     "value": 3251,
+     "g": -12.2,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준)"
+    },
+    "note": "MTI 82. 생산·내수 2025는 추정치.",
+    "verified": true
+   },
+   "바이오헬스": {
+    "sector_key": "제약·바이오",
+    "export_usd_mn": {
+     "2025": 16832,
+     "2026F": 17945
+    },
+    "export_g": {
+     "2025": 8.7,
+     "2026F": 6.6
+    },
+    "export_half_usd_mn": {
+     "2026H1E": 8764,
+     "2026H2F": 9181
+    },
+    "prod": {
+     "unit": "십억 원",
+     "2025": 47974,
+     "2026F": 50764
+    },
+    "prod_g": {
+     "2025": 6.4,
+     "2026F": 5.8
+    },
+    "dom": {
+     "unit": "십억 원",
+     "2025": 54997,
+     "2026F": 58668
+    },
+    "dom_g": {
+     "2025": 5.2,
+     "2026F": 6.7
+    },
+    "import_usd_mn": {
+     "2025": 21769,
+     "2026F": 23423
+    },
+    "import_g": {
+     "2025": 4.9,
+     "2026F": 7.6
+    },
+    "prev_2026F_export_usd_mn": 18667,
+    "prev_2026F_export_g": 7.8,
+    "motir_2026H1_actual": {
+     "value": 9198,
+     "g": 11.2,
+     "note": "산업통상부 2026년 상반기 실적(통관, 신 20대 품목 기준) (산업통상부 바이오헬스는 KIET와 품목 범위 다름)"
+    },
+    "note": "MTI 2262·733·8146·8147·950, HS 3822. 생산 2025는 13대편 47,974(반기 합과 일치), 본보고서 48,974는 오기.",
+    "verified": true
+   }
+  },
+  "total_13": {
+   "export_usd_mn": {
+    "2024": 536012,
+    "2025": 553610,
+    "2026F": 765471
+   },
+   "export_g": {
+    "2025": 3.3,
+    "2026F": 38.3
+   },
+   "share_of_total_exports_pct": {
+    "2025": 78.1,
+    "2026F": 82.8
+   },
+   "import_usd_mn": {
+    "2025": 272243,
+    "2026F": 304595
+   },
+   "import_g": {
+    "2025": 0.6,
+    "2026F": 11.9
+   },
+   "prev_2026F_export_usd_mn": 544403,
+   "prev_2026F_export_g": -0.6,
+   "verified": true
+  }
+ },
+ "macro": [
+  {
+   "metric": "총수출(월)",
+   "year": "2026-09",
+   "value": 120944,
+   "unit": "USD mn",
+   "kind": "actual",
+   "growth_pct": 83.5,
+   "source": "산업통상부 2026년 9월 수출입 동향",
+   "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+   "published": "2026-10-01",
+   "note": "월 사상 최대(첫 1,200억 달러대). 수입 710.9억(+26.0%), 수지 498.5억. 일평균 56.3억(+105%). 반도체 602.95억(+262.8%, 비중 49.9%), 반도체 외 +23%.",
+   "verified": true
+  },
+  {
+   "metric": "총수출 1~9월 누계",
+   "year": "2026 1~9월",
+   "value": 8145,
+   "unit": "억 USD",
+   "kind": "actual",
+   "growth_pct": 56.8,
+   "source": "산업통상부 2026년 9월 수출입 동향",
+   "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+   "published": "2026-10-01",
+   "note": "이미 2025년 연간(7,093억) 상회. 1~9월 수입 5,621억(+19.7%), 무역수지 2,525억.",
+   "verified": true
+  },
+  {
+   "metric": "총수출 상반기",
+   "year": "2026 H1",
+   "value": 4967,
+   "unit": "억 USD",
+   "kind": "actual",
+   "growth_pct": 48.4,
+   "source": "산업통상부 2026년 6월 및 상반기 수출입 동향",
+   "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=283602",
+   "published": "2026-07-01",
+   "note": "반도체 1,924억(+163%), 반도체 외 3,043억(+16%). KIET 5월 추정 4,585억을 크게 상회.",
+   "verified": true
+  },
+  {
+   "metric": "총수출",
+   "year": "2025",
+   "value": 7093,
+   "unit": "억 USD",
+   "kind": "actual",
+   "growth_pct": 3.8,
+   "source": "산업통상부 2026년 9월 수출입 동향(본문 인용 확정치)",
+   "url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/172254/view",
+   "published": "2026-10-01",
+   "note": "2026-01-01 잠정 7,097억(709,693 USD mn) → 확정 7,093억.",
+   "verified": true
+  },
+  {
+   "metric": "GDP 성장률(한은)",
+   "year": "2025",
+   "value": 1.1,
+   "unit": "%",
+   "kind": "actual",
+   "growth_pct": 1.1,
+   "source": "한국은행 경제전망(2026년 8월)",
+   "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=285904",
+   "published": "2026-08-27",
+   "note": "",
+   "verified": true
+  },
+  {
+   "metric": "GDP 성장률 전망(한은)",
+   "year": "2026",
+   "value": 3.3,
+   "unit": "%",
+   "kind": "forecast",
+   "growth_pct": 3.3,
+   "source": "한국은행 경제전망(2026년 8월)",
+   "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=285904",
+   "published": "2026-08-27",
+   "note": "5월 전망 대비 +0.7%p(반도체 호황). 상반기 3.8, 하반기 3.0.",
+   "verified": true
+  },
+  {
+   "metric": "GDP 성장률 전망(한은)",
+   "year": "2027",
+   "value": 2.9,
+   "unit": "%",
+   "kind": "forecast",
+   "growth_pct": 2.9,
+   "source": "한국은행 경제전망(2026년 8월)",
+   "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=285904",
+   "published": "2026-08-27",
+   "note": "5월 대비 +0.8%p. 2027년 1분기 미국 반도체 관세(15%) 부과 전제.",
+   "verified": true
+  },
+  {
+   "metric": "재화수출 증가율 전망(실질, 한은)",
+   "year": "2026",
+   "value": 9.7,
+   "unit": "% YoY",
+   "kind": "forecast",
+   "growth_pct": 9.7,
+   "source": "한국은행 경제전망(2026년 8월)",
+   "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=285904",
+   "published": "2026-08-27",
+   "note": "5월 4.9 → 9.7. 2025년 3.3, 2027년 4.6(5월 3.3). 통관 금액 아닌 실질(물량) 기준.",
+   "verified": true
+  },
+  {
+   "metric": "경상수지 전망(한은)",
+   "year": "2026",
+   "value": 4500,
+   "unit": "억 USD",
+   "kind": "forecast",
+   "growth_pct": null,
+   "source": "한국은행 경제전망(2026년 8월)",
+   "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=285904",
+   "published": "2026-08-27",
+   "note": "사상 최대(2025년 1,231억). 2027년 4,300억. 상품수지 2026 4,672억.",
+   "verified": true
+  },
+  {
+   "metric": "소비자물가 전망(한은)",
+   "year": "2026",
+   "value": 2.7,
+   "unit": "%",
+   "kind": "forecast",
+   "growth_pct": 2.7,
+   "source": "한국은행 경제전망(2026년 8월)",
+   "url": "https://eiec.kdi.re.kr/policy/materialView.do?num=285904",
+   "published": "2026-08-27",
+   "note": "2027년 2.3%, 근원 2.5%/2.5%. 설비투자 2026 +6.8%, 2027 +4.7%.",
+   "verified": true
+  },
+  {
+   "metric": "GDP 성장률 전망(KDI)",
+   "year": "2026",
+   "value": 3.2,
+   "unit": "%",
+   "kind": "forecast",
+   "growth_pct": 3.2,
+   "source": "KDI 경제전망 수정(2026.8), 정책브리핑",
+   "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=156774833",
+   "published": "2026-08-19",
+   "note": "5월 대비 +0.7%p. 2027년 2.2%(+0.5%p). 상품수출 2026 8.7%, 2027 5.0%. 설비투자 7.9/7.0%. 소비자물가 2.7/2.2%.",
+   "verified": true
+  },
+  {
+   "metric": "경상수지 전망(KDI)",
+   "year": "2026",
+   "value": 3600,
+   "unit": "억 USD",
+   "kind": "forecast",
+   "growth_pct": null,
+   "source": "KDI 경제전망 수정(2026.8), 정책브리핑",
+   "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=156774833",
+   "published": "2026-08-19",
+   "note": "2027년도 약 3,600억. 한은(4,500억)과 차이 큼 — 정책브리핑 요약 기준.",
+   "verified": true
+  },
+  {
+   "metric": "GDP 성장률 전망(KIET)",
+   "year": "2026",
+   "value": 2.5,
+   "unit": "%",
+   "kind": "forecast",
+   "growth_pct": 2.5,
+   "source": "산업연구원 2026년 하반기 경제·산업 전망(본보고서)",
+   "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=56",
+   "published": "2026-05-26",
+   "note": "직전판(2025-11-24) 1.9%. 5월 발표라 8월 한은·KDI보다 낮음.",
+   "verified": true
+  },
+  {
+   "metric": "통관수출 전망(KIET)",
+   "year": "2026",
+   "value": 9244,
+   "unit": "억 USD",
+   "kind": "forecast",
+   "growth_pct": 30.3,
+   "source": "산업연구원 2026년 하반기 경제·산업 전망(본보고서)",
+   "url": "https://www.kiet.re.kr/trends/ecolookView?ecolook_no=56",
+   "published": "2026-05-26",
+   "note": "수입 7,054억(+11.6%), 무역수지 2,190억. 직전판(2025-11) 6,971억(−0.5%). 1~9월 실적 8,145억(+56.8%)이 이미 연간 전망 경로를 크게 상회.",
+   "verified": true
+  }
+ ],
+ "dropped": [
+  {
+   "sector": "반도체",
+   "metric": "한국반도체산업협회 2026 반도체 수출 전망",
+   "value": "약 4,000억$",
+   "reason": "원문 미열람·'약' 표기 근사치라 이번 세션에서 검증 못함(KIET 350.1bn 으로 대체)"
+  },
+  {
+   "sector": "반도체",
+   "metric": "반도체 수출 상반기(헤럴드경제·ICT 통계 기준)",
+   "value": "192.43bn",
+   "reason": "집계 기준(ICT 통계)이 산업통상부와 달라 산업통상부 192.376bn 으로 대체"
+  },
+  {
+   "sector": "반도체",
+   "metric": "TrendForce 메모리 시장 2026 전망(2026.1판)",
+   "value": "551.6bn",
+   "reason": "이후 판(WSTS 2026.6, Gartner 2026.8)에 대체됐고 원문 재확인 안 함"
+  },
+  {
+   "sector": "반도체",
+   "metric": "SEMI 한국 반도체 장비 매출 2025",
+   "value": "25.8bn",
+   "reason": "이번 세션에서 원문(AAP/Cision) 재확인 안 함"
+  },
+  {
+   "sector": "디스플레이",
+   "metric": "한국 OLED 매출 2025",
+   "value": "36bn",
+   "reason": "원문은 'IT 부문 443억$'로 표기돼 세계 OLED 시장(523억$)×한국 점유율(68.7%)과 맞지 않음 — 정의 불명확"
+  },
+  {
+   "sector": "전자부품",
+   "metric": "세계 MLCC 시장 규모 2025",
+   "value": "15.9~27.3bn(조사기관별)",
+   "reason": "컨설팅사 추정치가 2배 가까이 엇갈리고 1차 집계 기관 없음"
+  },
+  {
+   "sector": "전자부품",
+   "metric": "세계 카메라모듈 시장 규모 2025",
+   "value": "27~45bn(조사기관별)",
+   "reason": "컨설팅사 추정치 범위가 넓고 정의가 달라 비교 불가"
+  },
+  {
+   "sector": "전자부품",
+   "metric": "삼성전기 전체 MLCC 점유율",
+   "value": "25~30%",
+   "reason": "범위형 업계 추정, 조사기관 미명시"
+  },
+  {
+   "sector": "2차전지",
+   "metric": "한국 3사 비중국 시장 점유율 1~7월",
+   "value": "27.2%",
+   "reason": "이번 세션에서 원문(SBS Biz) 재확인 안 함"
+  },
+  {
+   "sector": "2차전지",
+   "metric": "한국 3사 점유율 2025 1~10월",
+   "value": "16%",
+   "reason": "연간 확정치(15.3%, 파생)로 대체"
+  },
+  {
+   "sector": "전력기기",
+   "metric": "세계 변압기 시장(MarketsandMarkets) 2025/2030",
+   "value": "64.64bn / 88.48bn",
+   "reason": "원문 미확인, 컨설팅사 간 범위 차이 큼(포춘비즈니스인사이트 1건만 보도로 확인해 수록)"
+  },
+  {
+   "sector": "전력기기",
+   "metric": "전기기기 수출(KOTRA·KOEMA 집계) 2025",
+   "value": "16.48bn",
+   "reason": "산업통상부 통관 기준(16.683bn)과 집계 범위가 달라 제외"
+  },
+  {
+   "sector": "자동차·부품",
+   "metric": "KAMA 2026 국내 생산 전망",
+   "value": "4.13M대",
+   "reason": "원문 재확인 안 함(KIET 4.137M대로 대체)"
+  },
+  {
+   "sector": "조선",
+   "metric": "세계 신조선 발주량 상반기 2026",
+   "value": "42.95M CGT(+66%)",
+   "reason": "인용 기사(Maritime Executive)에서 세계 합계를 확인하지 못함(중국 31M CGT 만 확인)"
+  },
+  {
+   "sector": "조선",
+   "metric": "세계 선대+수주잔량 가치(Clarkson 반기)",
+   "value": "2,400bn",
+   "reason": "이번 세션에서 원문 재확인 안 함"
+  },
+  {
+   "sector": "조선",
+   "metric": "신조선가지수 역대 최고(2008)",
+   "value": "191.6",
+   "reason": "원문 미확인"
+  },
+  {
+   "sector": "방산·항공우주",
+   "metric": "증권사 2026 방산 수출 수주 전망",
+   "value": "37.7bn",
+   "reason": "원문 재확인 안 함, 증권사 기대치(수출입은행 27bn+ 로 대체)"
+  },
+  {
+   "sector": "가전·IT기기",
+   "metric": "IDC 2026 스마트폰 출하 대수 전망(절대값)",
+   "value": "약 10.5억 대",
+   "reason": "IDC 가 '10억 대 남짓'으로만 표기 — 증감률(-16.7%)로 수록"
+  },
+  {
+   "sector": "철강",
+   "metric": "한국 조강생산 2025 62.2Mt(헤럴드경제)",
+   "reason": "worldsteel 공식 61.9Mt(2026-01-23)로 대체. 62.2Mt 출처 원문 미확인.",
+   "url": "https://www.heraldk.com/article/2026062217222178799"
+  },
+  {
+   "sector": "철강",
+   "metric": "세계 조강생산 2026 1~8월 1,220Mt",
+   "reason": "정정: worldsteel 원문 1,225.2Mt(−0.7%).",
+   "url": "https://worldsteel.org/media/press-releases/2026/august-2026-crude-steel-production/"
+  },
+  {
+   "sector": "철강",
+   "metric": "세계 철강수요 2025 1,749Mt(SRO 2025-10)",
+   "reason": "SRO 2026-04판에서 2025년 1,718Mt(−1.9%)로 수정 → 최신치로 대체(직전판 2026F 1,773Mt는 편집판 비교용으로 유지).",
+   "url": "https://worldsteel.org/media/press-releases/2025/worldsteel-short-range-outlook-october-2025/"
+  },
+  {
+   "sector": "철강",
+   "metric": "한국 철강 수출물량 2025 27.9Mt(헤럴드경제)",
+   "reason": "KIET 철강재 수출물량 28,249천t(−0.4%)로 대체(정의 명확).",
+   "url": "https://www.heraldk.com/article/2026062217222178799"
+  },
+  {
+   "sector": "철강",
+   "metric": "중국 열연 3,387위안/t(Mysteel, 8월 말)",
+   "reason": "원문 재확인 안 함. 주간 변동 가격이라 watch 지표로만 둠.",
+   "url": "https://www.mysteel.net/analysis/5139699-monthly-chinas-hrc-prices-to-see-moderate-growth-in-sept"
+  },
+  {
+   "sector": "철강",
+   "metric": "기업별 조강생산 2024(Wikipedia 경유)",
+   "reason": "worldsteel 2025 기업 순위(원 데이터)로 대체. POSCO 2025는 37.36Mt(검색 요약의 37.97Mt 아님).",
+   "url": "https://worldsteel.org/data/top-producers/"
+  },
+  {
+   "sector": "석유화학",
+   "metric": "2026 석유화학 수출 400억 달러(이데일리, 2025-12)",
+   "reason": "전쟁 전 업계 전망, KIET 2026-05 전망과 실적으로 대체.",
+   "url": "https://v.daum.net/v/20251215163347327"
+  },
+  {
+   "sector": "석유화학",
+   "metric": "LG화학 시가총액 15.32bn(업종 순위 페이지)",
+   "reason": "개별 페이지 15.47bn으로 대체(순위 페이지는 갱신 지연).",
+   "url": "https://companiesmarketcap.com/lg-chem/marketcap/"
+  },
+  {
+   "sector": "정유",
+   "metric": "OPEC 2027 수요 108.19mb/d",
+   "reason": "검색 요약에만 있고 기사 본문에 없음.",
+   "url": "https://shipandbunker.com/news/world/685720-opec-trims-2026-oil-demand-growth-forecast-raises-2027-outlook"
+  },
+  {
+   "sector": "정유",
+   "metric": "SK에너지 2026 2분기 영업이익",
+   "reason": "개별 기업 실적 — DART 집계(산업.py)와 중복.",
+   "url": "https://biz.sbs.co.kr/amp/article/20000325720"
+  },
+  {
+   "sector": "해운",
+   "metric": "HMM 2025 매출 10.89조·2026 2분기 매출 3.402조",
+   "reason": "원문 확인됨(스마트투데이 2026-02-11, 비즈워치 2026-08-13)이나 개별 기업 실적 — DART 집계와 중복이라 제외.",
+   "url": "https://news.bizwatch.co.kr/article/industry/2026/08/13/0043"
+  },
+  {
+   "sector": "제약·바이오",
+   "metric": "세계 바이오시밀러 시장 28bn(2025)/32.3bn(2026)(Roots Analysis)",
+   "reason": "조사기관별 편차 큼(28~39bn), 의사결정용 신뢰도 낮음.",
+   "url": "https://www.rootsanalysis.com/reports/biosimilars-market.html"
+  },
+  {
+   "sector": "제약·바이오",
+   "metric": "Lonza CDMO 매출 7.5bn",
+   "reason": "연도 불명.",
+   "url": "https://www.imapac.com/news-updates/biologics-cdmo-and-market-growth-accelerating-what-the-numbers-mean-and-what-is-driving-them"
+  },
+  {
+   "sector": "제약·바이오",
+   "metric": "삼성바이오로직스 2025 매출 4.557조",
+   "reason": "원문 확인됨(메디게이트 2026-02-18)이나 개별 기업 실적 — 리더 note로만 반영.",
+   "url": "https://medigatenews.com/news/1005744605"
+  },
+  {
+   "sector": "화장품",
+   "metric": "세계 뷰티 시장 현재 약 4,500억 달러(McKinsey)",
+   "reason": "검색 요약에만 있고 원문 페이지에 없음.",
+   "url": "https://karriere.mckinsey.de/industries/consumer-packaged-goods/our-insights/a-close-look-at-the-global-beauty-industry-in-2025"
+  },
+  {
+   "sector": "화장품",
+   "metric": "프랑스 화장품 수출 약 243억 달러",
+   "reason": "검색 요약에만 있음.",
+   "url": "https://newsseoul.co.kr/news/view/1065583815650562"
+  },
+  {
+   "sector": "화장품",
+   "metric": "세계 뷰티 2022~24년 연 7% 성장",
+   "reason": "원문에서 확인 못 함.",
+   "url": "https://karriere.mckinsey.de/industries/consumer-packaged-goods/our-insights/a-close-look-at-the-global-beauty-industry-in-2025"
+  },
+  {
+   "sector": "통신",
+   "metric": "통신 3사 2025 합산 매출 60.91조(컨센서스)",
+   "reason": "실적 발표 전 추정치 — 확정 실적은 DART 집계로 대체.",
+   "url": "https://dealsite.co.kr/articles/155913"
+  },
+  {
+   "sector": "통신",
+   "metric": "SKT·KT·LG유플러스 2026 2분기 실적",
+   "reason": "개별 기업 실적 — DART 집계와 중복.",
+   "url": "https://www.dailian.co.kr/news/view/1677587"
+  },
+  {
+   "sector": "건설",
+   "metric": "한국건설경영협회 2026 수주 전망 266.6조(협회 전망으로 표기)",
+   "reason": "정정 후 유지: 협회 세미나 발표자(블리츠자산운용) 전망. 2025년 기준치 221.1조는 대한건설협회 집계.",
+   "url": "https://www.heraldk.com/article/2026062421573680232"
+  }
+ ]
+}

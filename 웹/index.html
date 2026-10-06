@@ -2559,6 +2559,61 @@ details.linMore>summary::-webkit-details-marker{display:none}
 .linEmpty{padding:18px 4px;color:var(--faint);font-size:13px}
 @media (max-width:900px){.askRow{grid-template-columns:12px minmax(0,1fr) 104px}.askStrip{display:none}
   .linCard{grid-template-columns:1fr;gap:6px}.linGB{grid-template-columns:1fr}}
+/* ---------- 산업 성장률 (/api/industry · 산업.py) ---------- */
+.grQuote{font:600 14px/1.6 'Noto Serif KR',serif;color:var(--ink);border-left:3px solid var(--accent);padding:2px 0 2px 12px;margin:2px 0 10px}
+.grAsOf{font-size:11.5px;color:var(--faint);margin:-4px 0 10px;line-height:1.6}
+.grBar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 10px}
+.grBar .seg button{padding:5px 11px;font-size:12px}
+.grMacro{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.grMacro span{font-size:11.5px;color:var(--dim);background:var(--line2);border-radius:999px;padding:2px 9px}
+.grWrap{overflow-x:auto}
+table.grSum th.r,table.grTrend th.r,table.grMem th.r,table.grExt th.r{text-align:right}
+.dipTbl th.vSort{cursor:pointer;user-select:none;white-space:nowrap}.dipTbl th.vSort:hover{color:var(--ink)}.dipTbl th.vSort.on{color:var(--accent)}
+.dipTbl th.vSort i{font-style:normal;font-size:10px;opacity:.55}.dipTbl th.vSort.on i{opacity:1}
+table.grSum td{vertical-align:middle;white-space:nowrap}
+table.grSum td.nm b{font-size:13px}
+table.grSum td.nm small{display:block;color:var(--faint);font-size:10.5px;white-space:normal;max-width:220px}
+table.grSum td.num small,table.grTrend td.num small{display:block;font-size:10.5px;color:var(--faint)}
+.grPh{display:inline-block;font:600 10.5px/1.5 var(--sans);border-radius:999px;padding:0 7px;margin-left:6px;vertical-align:1px}
+.grPh.pos{background:var(--add-bg);color:var(--add)}.grPh.warn{background:var(--warn-bg);color:var(--warn)}
+.grPh.acc{background:var(--accent-soft);color:var(--accent)}.grPh.neg{background:var(--del-bg);color:var(--del)}
+.grSpark{display:block}.grSpark .p{fill:var(--add)}.grSpark .n{fill:var(--del)}.grSpark .z{stroke:var(--line);stroke-width:1}
+.grDet{padding:10px 6px 16px}
+.grDet h4{font:700 14px 'Noto Serif KR',serif;margin:16px 0 6px}
+.grDet h4 span{font:400 11.5px var(--sans);color:var(--dim);margin-left:8px}
+.grCards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin:4px 0 6px}
+.grCard{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel)}
+.grCard em{display:block;font-style:normal;font-size:11px;color:var(--dim)}
+.grCard b{display:block;font:700 17px/1.35 var(--mono);color:var(--ink);margin:2px 0}
+.grCard small{display:block;font-size:11px;color:var(--faint);line-height:1.45}
+.grCard a{color:var(--accent)}
+table.grTrend{font-size:12px}
+table.grTrend td,table.grTrend th{padding:4px 7px;white-space:nowrap}
+table.grTrend th.fc,table.grTrend td.fc{background:var(--accent-soft)}
+table.grTrend th.now,table.grTrend td.now{background:var(--line2)}
+table.grTrend td.rl{color:var(--dim);font-size:11.5px}
+table.grTrend tr.lvl td.num{color:var(--dim)}
+table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--del)}
+.grSig{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
+.grSig span{font-size:11.5px;border:1px solid var(--line);border-radius:6px;padding:3px 8px;cursor:help;background:var(--panel)}
+.grSig span b{font-family:var(--mono);margin-left:4px}
+.grSig span.pos b{color:var(--add)}.grSig span.neg b{color:var(--del)}
+.grLeg{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);margin:2px 0 0}
+.grLeg i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.grLines .l0{stroke:var(--reg-inf)}.grLines .l1{stroke:var(--reg-dec)}.grLines .l2{stroke:var(--reg-acc)}
+.grLines path{fill:none;stroke-width:1.8;stroke-linejoin:round}
+.grLeg .l0{background:var(--reg-inf)}.grLeg .l1{background:var(--reg-dec)}.grLeg .l2{background:var(--reg-acc)}
+.grExt td{white-space:normal!important}
+.grExt td.src{font-size:11px;color:var(--faint);max-width:280px}
+.grExt td.src a{color:var(--accent)}
+.grExt td.k{font-size:10.5px;color:var(--dim)}
+.grLead{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
+.grLead span{font-size:11.5px;background:var(--line2);border-radius:6px;padding:2px 8px}
+.grLead span b{font-family:var(--mono);font-weight:600;margin-left:4px}
+.grDrv{font-size:12.5px;line-height:1.65;color:var(--ink);margin:2px 0 4px}
+.grWatch{margin:2px 0 0;padding-left:18px;font-size:12px;color:var(--dim);line-height:1.6}
+.grMem a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--faint)}
+.grMem td small{color:var(--faint);font-size:10.5px}
 </style>
 </head>
 <body>
@@ -2595,11 +2650,13 @@ details.linMore>summary::-webkit-details-marker{display:none}
         <button data-t="play">분석 레시피</button>
         <button data-t="cat">호재기업</button>
         <button data-t="exp">수출 추적</button>
+        <button data-t="grow">산업 성장률</button>
       </div>
       <div id="panes">
         <div class="empty" id="welcome">
           왼쪽 위 검색창에 기업명을 넣으면 최근 15년 보고서가 전부 열립니다.
           <div style="margin-top:14px"><button class="ghost" onclick="S.tab='val';jump('val')">저평가 종목 보기 — 가치는 지켰는데 주가가 빠진 회사</button></div>
+          <div style="margin-top:8px"><button class="ghost" onclick="S.tab='grow';jump('grow')">산업 성장률 — 섹터별 매출 · 이익 · 생산 · 수출 추이와 시장 규모 · 시가총액 · 전망</button></div>
         </div>
       </div>
     </main>
@@ -2790,7 +2847,7 @@ function show(t){
   ({orbit:viewOrbit, land:viewLand, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, rep:viewReports, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue, val2:viewValue2}[t])(p);
+    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue, val2:viewValue2, grow:viewGrowth}[t])(p);
 }
 
 // ---------------------------------------------------------- 분기 변화 — 보고서가 나올 때마다 직전 공시(3개월 전)와 맞댄다
@@ -4164,6 +4221,283 @@ async function viewValue(p, force){
     '업황 = ECOS 수출물가 · KOSIS 출하·재고(회사 업종코드). 점수는 순서를 정하는 참고다 — "싸다"는 뜻이지 "오른다"는 뜻은 아니고, 왜 빠졌는지 마지막 확인은 사람이 한다.'));
 }
 
+// ---------------------------------------------------------- 산업 성장률 — 섹터별 성장률 추이 · 시장 규모 · 시가총액 · 전망(/api/industry · 산업.py)
+// 상장사 실적은 같은 회사 · 같은 자회사 구조로 잰 증가율(두 기간 모두 숫자가 있는 회사만). 생산 · 가동률 · 수출물가는 KOSIS · 한국은행,
+// 수출은 관세청 통관, 세계 시장 · 기관 전망은 산업_외부자료.json(출처 · 날짜를 단 숫자만).
+const GR_PHASE={'확장':['pos','최근 분기 매출 증가율이 플러스이고 앞 두 분기보다 빨라졌다'],'둔화':['warn','플러스지만 앞 두 분기보다 느려졌다'],
+  '회복':['acc','아직 마이너스지만 앞 두 분기보다 나아졌다'],'수축':['neg','마이너스이고 앞 두 분기보다 나빠졌다']};
+const grJo=v=>v==null?'—':Math.abs(v)>=1e14?Math.round(v/1e12).toLocaleString('ko-KR')+'조':Math.abs(v)>=1e12?(v/1e12).toFixed(1)+'조':Math.round(v/1e8).toLocaleString('ko-KR')+'억';
+const grUsd=v=>v==null?'—':Math.abs(v)>=1e12?(v/1e12).toFixed(2)+'조$':Math.abs(v)>=1e8?Math.round(v/1e8).toLocaleString('ko-KR')+'억$':(v/1e6).toFixed(0)+'백만$';
+const grP=(v,d)=>v==null||!isFinite(v)?'—':(v>=0?'+':'−')+Math.abs(v).toFixed(d==null?1:d)+'%';
+const grPp=v=>v==null||!isFinite(v)?'—':(v>=0?'+':'−')+Math.abs(v).toFixed(1)+'%p';
+const grT=v=>v==null?'':v>=3?'pos':v<=-3?'neg':'';
+// 외부 숫자 단위 — 'USD bn' 은 억 달러로, 'KRW bn'(십억 원)은 조로
+const GR_BASIS={yoy:'전년 대비',cagr:'연평균',real:'실질'};
+function grVal(v,u){
+  if(v==null) return '—'; u=u||''; const q=(u.match(/\(([^)]*)\)\s*$/)||[])[1]; if(q){ return grVal(v,u.replace(/\s*\([^)]*\)\s*$/,''))+(q?' '+q:''); }
+  const n=x=>x.toLocaleString('ko-KR',{maximumFractionDigits:x>=100?0:x>=10?1:2});
+  if(/^십억\s*원/.test(u)) return v>=1000?n(v/1000)+'조원':n(v*10)+'억원';
+  if(/^million\s*units\/yr/i.test(u)) return n(v*100)+'만 대/년';
+  if(/^USD\s*bn/i.test(u)) return v>=1000?(v/1000).toFixed(2)+'조$':n(v*10)+'억$';
+  if(/^USD\s*mn/i.test(u)) return v>=1e6?(v/1e6).toFixed(2)+'조$':n(v/100)+'억$';
+  if(/^USD\s*tn/i.test(u)) return n(v)+'조$';
+  if(/^million\s*units/i.test(u)) return n(v*100)+'만 대';
+  if(/^million\s*CGT/i.test(u)) return n(v*100)+'만 CGT';
+  if(/^million\s*TEU/i.test(u)) return n(v*100)+'만 TEU';
+  if(/^million/i.test(u)) return n(v*100)+'만 '+u.replace(/^million\s*/i,'');
+  if(/^billion/i.test(u)) return n(v*10)+'억 '+u.replace(/^billion\s*/i,'');
+  if(/^Mt$/i.test(u)) return n(v)+'백만 톤';
+  if(/^mb\/d/i.test(u)) return n(v)+'백만 배럴/일';
+  if(/^억\s*USD/.test(u)) return n(v)+'억$';
+  if(/^KRW\s*tn/i.test(u)) return n(v)+'조원';
+  if(/^KRW\s*bn/i.test(u)) return v>=1000?n(v/1000)+'조원':n(v*10)+'억원';
+  if(/^EUR\s*tn/i.test(u)) return n(v)+'조€';
+  if(/^EUR\s*bn/i.test(u)) return n(v*10)+'억€';
+  if(u==='%'||/^%/.test(u)) return n(v)+'%';
+  return n(v)+' '+u;
+}
+// 분기 매출 증가율 작은 막대(최근 12분기)
+function grBars(vals){
+  const W=96,H=26,n=vals.length; const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,width:W,height:H,class:'grSpark'});
+  const ok=vals.filter(v=>v!=null); if(!ok.length) return svg;
+  const m=Math.max(10,...ok.map(Math.abs)), z=H/2, bw=W/n;
+  svg.appendChild(svgEl('line',{x1:0,x2:W,y1:z,y2:z,class:'z'}));
+  vals.forEach((v,i)=>{ if(v==null) return; const h=Math.max(1,Math.min(1,Math.abs(v)/m)*(H/2-1));
+    svg.appendChild(tip(svgEl('rect',{x:i*bw+1,y:v>=0?z-h:z,width:Math.max(1,bw-2),height:h,class:v>=0?'p':'n'}),grP(v))); });
+  return svg;
+}
+// 월별 증가율 선 여러 개(3개월 평균의 전년 대비) — 생산 · 수출 · 수출물가
+function grLines(list,n){
+  n=n||60; const W=760,H=170,L=34,R=8,T=12,B=20;
+  const yo=(s,k,sum)=>{ const a=[0,1,2].map(i=>s[expShift(k,i)]), b=[0,1,2].map(i=>s[expShift(k,i+12)]);
+    if(a.some(v=>v==null)||b.some(v=>v==null)) return null; const A=a.reduce((x,y)=>x+y,0), Bb=b.reduce((x,y)=>x+y,0); return Bb>0?(A/Bb-1)*100:null; };
+  const keys=[...new Set(list.flatMap(x=>Object.keys(x.s||{})))].sort(); if(!keys.length) return el('div');
+  const last=keys[keys.length-1], ks=[]; for(let i=n-1;i>=0;i--) ks.push(expShift(last,i));
+  const S2=list.map(x=>ks.map(k=>yo(x.s||{},k)));
+  const all=S2.flat().filter(v=>v!=null); if(all.length<3) return el('div');
+  const hi=Math.min(300,Math.max(10,...all)), lo=Math.max(-80,Math.min(-10,...all));
+  const x=i=>L+i*(W-L-R)/(ks.length-1), y=v=>T+(hi-Math.max(lo,Math.min(hi,v)))/(hi-lo)*(H-T-B);
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'expTrend grLines'});
+  [hi,0,lo].forEach(v=>{ svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:v===0?'zero':'g'})); const t=svgEl('text',{x:L-4,y:y(v)+3,'text-anchor':'end',class:'ax'}); t.textContent=(v>0?'+':'')+Math.round(v)+'%'; svg.appendChild(t); });
+  ks.forEach((k,i)=>{ if(k.slice(4)==='01'){ svg.appendChild(svgEl('line',{x1:x(i),x2:x(i),y1:T,y2:H-B,class:'yr'})); const t=svgEl('text',{x:x(i)+2,y:H-6,class:'ax'}); t.textContent=k.slice(0,4); svg.appendChild(t); } });
+  S2.forEach((vs,j)=>{ let d=''; vs.forEach((v,i)=>{ if(v==null){ d+=' '; return; } d+=(/\d$/.test(d)?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1); });
+    svg.appendChild(svgEl('path',{d:d.replace(/ +/g,''),class:'l'+j})); });
+  return expHover(svg,W,H,ks.map((k,i)=>x(i)),(W-L-R)/(ks.length-1),
+    i=>[ks[i].slice(0,4)+'년 '+(+ks[i].slice(4))+'월 · 3개월, 전년 대비'].concat(list.map((x,j)=>x.name+' '+grP(S2[j][i]))),
+    i=>{ const v=S2.find(s=>s[i]!=null); return v?y(v[i]):null; },[T,H-B]);
+}
+async function viewGrowth(p, force){
+  p.innerHTML='';
+  const box=el('div','valBox'); p.appendChild(box);
+  const hd=el('div','dipHead');
+  hd.appendChild(el('b',null,'산업 성장률'));
+  hd.appendChild(el('span',null,'섹터마다 매출 · 영업이익 · 생산 · 수출이 얼마나 빨리 크는가, 시장은 얼마나 큰가, 누가 주축이고 시가총액은 얼마인가, 기관은 어떻게 보는가'));
+  const rf=el('button','ghost','다시 계산'); rf.style.marginLeft='auto'; rf.onclick=()=>viewGrowth(p,true); hd.appendChild(rf);
+  box.appendChild(hd);
+  box.appendChild(el('div','grQuote','산업의 성장률을 추적하는 것 자체가 그 산업을 이해하는 핵심이다.'));
+  const body=el('div'); box.appendChild(body);
+  let d;
+  try{ d=await (await fetch('/api/industry'+(force?'?force=1':''))).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
+  if(!box.isConnected) return;
+  if(d.error){ body.appendChild(el('div','err',d.error)); return; }
+  if(d.running||(d.phase&&/실패/.test(d.phase))){
+    const pr=el('div','prog'); pr.appendChild(el('span',null,(d.phase||'계산 중')+(d.total?' '+d.done+'/'+d.total:'')));
+    if(d.running){ const b=el('div','bar'); const i=el('i'); i.style.width=(d.total?Math.round(d.done/d.total*100):5)+'%'; b.appendChild(i); pr.appendChild(b); }
+    body.appendChild(pr);
+    if(d.running) setTimeout(()=>{ if(box.isConnected && S.tab==='grow') viewGrowth(p,false); }, 4000);
+    if(!(d.sectors||[]).length) return;
+  }
+  const secs=d.sectors||[]; if(!secs.length){ body.appendChild(el('div','empty','아직 결과가 없다 — 다시 계산을 눌러라.')); return; }
+  const A=d.as_of||{}, ym=s=>s?s.slice(0,4)+'.'+s.slice(4,6):'—';
+  body.appendChild(el('div','grAsOf','기준 — 상장사 실적 '+(A.fin||'—')+' · 주가 '+(A.price?A.price.slice(0,4)+'.'+A.price.slice(4,6)+'.'+A.price.slice(6):'—')+
+    ' · 생산(KOSIS) '+ym(A.kosis)+' · 가격(한국은행) '+ym(A.ecos)+' · 수출(관세청) '+ym(A.customs)+' · 외부 숫자 확인 '+(A.ext||'—')+
+    (d.at?' · 계산 '+new Date(d.at*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'')));
+  if((d.macro||[]).length){ const m=el('div','grMacro'); d.macro.slice(0,6).forEach(x=>{ const s=el('span',null,x.metric+' '+(x.year||'')+' '+grVal(x.value,x.unit)+(x.growth_pct!=null&&!/^%/.test(x.unit||'')?' ('+grP(x.growth_pct)+')':'')); s.title=(x.source||'')+(x.published?' · '+x.published:''); m.appendChild(s); }); body.appendChild(m); }
+  // 정렬
+  S.grSort=S.grSort||'cap'; S.grOpen=S.grOpen||new Set();
+  const bar=el('div','grBar'); const sg=el('div','seg');
+  [['cap','시가총액순'],['rev','매출 성장순'],['op','이익 성장순'],['exp','수출 성장순']].forEach(([k,t])=>{ const b=el('button',S.grSort===k?'on':'',t); b.onclick=()=>{ S.grSort=k; draw(); [...sg.children].forEach(x=>x.classList.toggle('on',x===b)); }; sg.appendChild(b); });
+  bar.appendChild(sg); bar.appendChild(el('span',null,'')); bar.lastChild.style.cssText='font-size:11.5px;color:var(--faint)';
+  bar.lastChild.textContent='행을 누르면 그 섹터의 연도별 성장률 표 · 분기 차트 · 생산 · 수출 · 주축 기업 · 세계 시장과 전망';
+  body.appendChild(bar);
+  const tw=el('div','grWrap'); body.appendChild(tw);
+  const opRank=T=>T.op_turn==='흑자 전환'?1e8:T.op_turn==='적자 축소'?-1e5:T.op_turn==='적자 확대'||T.op_turn==='적자 전환'?-1e7:(T.op_g??-1e9);
+  const sortKey={cap:s=>-((s.cap||{}).adj||0), rev:s=>-((s.ttm||{}).rev_g??-1e9), op:s=>-opRank(s.ttm||{}), exp:s=>-(((s.exports||{}).m3_g)??-1e9)};
+  const draw=()=>{ tw.innerHTML=''; tw.appendChild(grSummary([...secs].sort((a,b)=>sortKey[S.grSort](a)-sortKey[S.grSort](b)), d)); };
+  draw();
+  // 제외 · 방법
+  const ex=d.excluded||{};
+  const det=el('details','dipEvd'); det.appendChild(el('summary',null,'어떻게 셌나 — 섹터 분류 · 자회사 중복 · 같은 표본 증가율 · 출처'));
+  [
+    '섹터 분류는 DART 기업개황의 업종코드(표준산업분류)에 종목별 예외를 더했다(산업_섹터.py). 금융 · 지주 · 목록 밖 업종 '+(ex.n||0)+'곳(시총 '+grJo(ex.cap)+')은 뺐다'+((ex.top||[]).length?' — '+ex.top.slice(0,8).map(x=>x.name).join(' · ')+' 등':'')+'.',
+    '자회사 중복 — 상장 모회사의 연결 매출에는 상장 자회사 매출이 들어 있다(예: HD한국조선해양 ⊃ HD현대중공업). 모회사는 연결 − 상장 자회사(그 해 내내 연결된 것만)로 넣고, 자회사는 따로 넣는다. 시가총액도 모회사에서 지분율 × 자회사 시총을 뺐다.',
+    '섞인 회사는 부문으로 나눴다 — 삼성전자(DS → 반도체, SDC → 디스플레이, DX · Harman → 가전·IT기기), SK이노베이션(석유 · 화학 · 윤활유 → 정유 — 2024년부터 한 부문으로 공시, 배터리 → 2차전지), LG화학(석유화학 · 첨단소재(2021~) · 생명과학), 한화솔루션(케미칼 · 기초 · 가공소재), POSCO홀딩스(철강), HD현대(정유), 현대차(차량 — 금융 제외), KT(통신 — BC카드 금융 제외), 삼성물산(건설), 현대글로비스(해운), 풍산(방산), 현대로템(디펜스), LG생활건강(Beauty → 화장품, 음료 → 음식료), SKC(화학 · 2차전지 소재). 부문 매출은 부문 간 내부거래를 포함할 수 있다(삼성전자). 부문 시총은 자회사 지분 가치를 뺀 뒤 최근 4분기 부문 영업이익(플러스) 비중으로 나눈 근사다.',
+    '값 매기기(PER · PSR) — 부문 회사(순이익을 부문으로 나눌 수 없다)와 자기 몫 시총이 0 인 지주는 빼고, 남은 회사의 시총 ÷ 최근 4분기 순이익(지분법 관계회사 몫은 뺌) · 매출로 낸다. 영업이익 PER = 시총 ÷ (영업이익 × 0.76) — 일회성 금융손익에 덜 흔들린다. 시가총액은 보통주만(우선주 제외).',
+    '증가율은 같은 회사 · 같은 자회사 구조로 잰다 — 두 기간 모두 숫자가 있는 회사만 넣고, 분할 · 설립 첫해와 연결/별도가 바뀐 해는 뺀다. 그래서 수준(조 원)의 변화와 증가율이 다를 수 있다(새로 상장한 회사는 수준에만 들어간다). 매출 지수(2015=100)는 이 증가율을 이어 붙인 것.',
+    '업황 단계 — 최근 분기 매출 증가율(같은 표본)과 앞 두 분기 평균의 차: 확장(+, 빨라짐) · 둔화(+, 느려짐) · 회복(−, 나아짐) · 수축(−, 나빠짐).',
+    '생산 = 통계청 광공업생산지수(업종, 원지수) · 가동률지수, 수출물가 · 수출물량 = 한국은행(원화 기준), 수출 = 관세청 품목(HS)별 전국 통관(달러, 섹터 품목 합), BSI = 한국은행 기업경기조사 매출 전망. 세계 시장 · 한국 점유율 · 기관 전망은 출처 원문에서 숫자를 확인한 것만 실었다(산업_외부자료.json).',
+    '상장사 매출 합은 시장 규모가 아니다 — 비상장사(삼성디스플레이는 삼성전자 SDC 부문으로 들어간다 · GS칼텍스 · SK온은 SK이노베이션 부문)와 해외 생산 · 매출이 섞이고 빠진다. 시장 규모는 세계 시장 · 한국 수출 · 산업연구원 생산액을 함께 본다.',
+  ].forEach(t=>det.appendChild(el('p',null,t)));
+  body.appendChild(det);
+  body.appendChild(el('div','finnote','주가 · 시가총액 · 컨센서스는 네이버 자료라 개인 열람용이다(상용 서비스 전에 계약 자료로 바꿔야 한다). 기관 전망은 발표 시점이 다르다 — 표의 날짜를 보라. 이 표는 산업의 방향을 읽는 도구이지 종목을 사고팔 근거가 아니다.'));
+}
+function grSummary(rows, d){
+  const t=el('table','tbl dipTbl grSum');
+  t.innerHTML='<tr><th>섹터 · 업황</th><th class="r" title="자회사 지분 가치를 뺀 시가총액 합 · 1년 주가 변화(시총 가중)">시가총액</th><th class="r" title="최근 4분기 상장사 매출 합 · 같은 표본 전년 대비">매출 4분기</th>'+
+    '<th class="r" title="최근 4분기 영업이익 합 · 같은 표본 전년 대비">영업이익 4분기</th><th class="r">이익률</th><th class="r" title="올해 들어 나온 분기 합의 전년 대비(같은 표본)">올해 매출</th>'+
+    '<th class="r" title="광공업생산지수, 최근 3개월 평균 전년 대비">생산</th><th class="r" title="관세청 통관 수출, 최근 3개월 합 전년 대비 · 아래 = 최근 12개월 수출">수출</th>'+
+    '<th class="r" title="한국은행 수출물가지수(원화), 3개월 평균 전년 대비">수출물가</th><th class="r" title="세계 시장 규모(가장 최근 실제·추정, 출처는 펼쳐서)">세계 시장</th>'+
+    '<th class="r" title="올해 · 내년 전망 — 세계 시장 기관 전망, 없으면 산업연구원 한국 수출 전망">전망</th><th title="분기 매출 증가율(같은 표본), 최근 12분기">분기 추이</th><th></th></tr>';
+  rows.forEach(s=>{
+    const tr=el('tr','dipRow'+(S.grOpen.has(s.key)?' open':'')); const T=s.ttm||{}, sg={}; (s.signals||[]).forEach(x=>sg[x.k]=x);
+    const nm=el('td','nm'); nm.appendChild(el('b',null,s.key));
+    if(s.phase){ const ph=GR_PHASE[s.phase.label]||['','']; const c=el('span','grPh '+ph[0],s.phase.label); c.title=ph[1]+' — 최근 분기 '+grP(s.phase.g)+' · 앞 두 분기 대비 '+grPp(s.phase.dg); nm.appendChild(c); }
+    nm.appendChild(el('small',null,s.desc)); tr.appendChild(nm);
+    const td=(main,sub,cls,tl)=>{ const c=el('td','num'+(cls?' '+cls:'')); c.appendChild(document.createTextNode(main)); if(sub!=null) c.appendChild(el('small',null,sub)); if(tl) c.title=tl; tr.appendChild(c); };
+    const Cp=s.cap||{}; td(grJo(Cp.adj),Cp.ret1y!=null?'1년 '+grP(Cp.ret1y,0):'', '', '상장사 '+(Cp.n||0)+'곳 · 상위 3곳 '+(Cp.top3!=null?Math.round(Cp.top3)+'%':'—')+(s.val&&s.val.per?' · PER '+s.val.per:''));
+    td(grJo(T.rev),grP(T.rev_g),grT(T.rev_g),'같은 표본 '+(T.n_same||0)+'곳, '+(T.q0||'')+'~'+(T.q1||''));
+    td(grJo(T.op),T.op_turn||grP(T.op_g),T.op_turn?(T.op_turn==='흑자 전환'?'pos':'neg'):grT(T.op_g));
+    td(T.opm==null?'—':T.opm.toFixed(1)+'%',T.opm_b!=null&&T.opm!=null?'1년 전 '+T.opm_b.toFixed(1)+'%':'');
+    const Y=s.ytd||{}; td(grP(Y.rev_g),(Y.qs||[]).length?(Y.qs[0].slice(0,4)+' '+Y.qs.length+'개 분기'):'',grT(Y.rev_g));
+    const sp=sg['생산']; td(sp?grP(sp.v):'—',sp&&sp.at?sp.at.slice(2,4)+'.'+sp.at.slice(4):'',sp?grT(sp.v):'',sp?sp.note:'');
+    const E=s.exports; td(E?grP(E.m3_g):'—',E?'12개월 '+grUsd(E.m12):'',E?grT(E.m3_g):'',E&&E.last?'최근 '+E.last.slice(0,4)+'.'+E.last.slice(4)+' · 12개월 전년 대비 '+grP(E.m12_g)+(E.share!=null?' · 총수출의 '+E.share+'%':''):'');
+    const xp=sg['수출물가']; td(xp?grP(xp.v):'—',null,xp?grT(xp.v):'',xp?xp.note:'');
+    const w=s.world_now; td(w?grVal(w.value,w.unit):'—',w?(w.year+(w.kind==='forecast'?' 전망':'')+(w.growth_pct!=null?' '+grP(w.growth_pct):'')):'','',w?(w.metric+' · '+(w.source||'')):'');
+    const f=s.fc_main;
+    td(f?grP(f.g):'—',f?(String(f.year).slice(0,4)+' '+(f.kind||'')+(f.basis==='cagr'?' 연평균':'')):'',f?grT(f.g):'',f?(f.what+' · '+(f.src||'')):'');
+    const sp2=el('td'); sp2.appendChild(grBars((s.quarters||[]).map(q=>q.rev_yoy))); tr.appendChild(sp2);
+    tr.appendChild(el('td','caret','▾'));
+    const dt=el('tr','dipDet'); dt.hidden=!S.grOpen.has(s.key); const dd=el('td'); dd.colSpan=13; dt.appendChild(dd);
+    const fill=()=>{ if(!dd.firstChild) dd.appendChild(grDetail(s,d)); };
+    if(!dt.hidden) fill();
+    tr.onclick=()=>{ dt.hidden=!dt.hidden; tr.classList.toggle('open',!dt.hidden); if(dt.hidden) S.grOpen.delete(s.key); else { S.grOpen.add(s.key); fill(); } };
+    t.appendChild(tr); t.appendChild(dt);
+  });
+  return t;
+}
+function grDetail(s, d){
+  const box=el('div','grDet'), T=s.ttm||{}, E=s.exports, K=s.kiet;
+  // 1) 시장 규모 카드
+  box.appendChild(el('h4',null,'시장 규모')); box.lastChild.appendChild(el('span',null,s.definition||''));
+  const cards=el('div','grCards');
+  const card=(em,b,sm,url)=>{ const c=el('div','grCard'); c.appendChild(el('em',null,em)); c.appendChild(el('b',null,b)); if(sm){ const x=el('small',null,sm); if(url){ x.appendChild(document.createTextNode(' ')); const a=el('a',null,'출처'); a.href=url; a.target='_blank'; a.rel='noopener'; x.appendChild(a); } c.appendChild(x); } cards.appendChild(c); };
+  const w=s.world_now; if(w) card('세계 시장 '+w.year+(w.kind==='forecast'?' 전망':''),grVal(w.value,w.unit),(w.growth_pct!=null?GR_BASIS[w.g_basis||'yoy']+' '+grP(w.growth_pct)+' · ':'')+w.metric+' · '+(w.source||'')+(w.published?' ('+w.published+')':''),w.url);
+  if(E) card('한국 수출 최근 12개월',grUsd(E.m12),'전년 대비 '+grP(E.m12_g)+(E.share!=null?' · 한국 총수출의 '+E.share+'%':'')+' · 관세청 HS '+(E.hs||[]).map(h=>h.hs).join(' · '));
+  if(T.rev) card('상장사 매출 최근 4분기',grJo(T.rev),'영업이익 '+grJo(T.op)+(T.opm!=null?' · 이익률 '+T.opm.toFixed(1)+'%':'')+' · '+(s.cap.n||0)+'곳(자회사 중복 뺌)');
+  if(K&&K.prod&&K.prod['2025']!=null) card('한국 생산 2025(산업연구원)',grVal(K.prod['2025'],K.prod.unit),'2026 전망 '+grVal(K.prod['2026F'],K.prod.unit)+' ('+grP((K.prod_g||{})['2026F'])+')');
+  const shs=(s.korea||[]).filter(x=>/점유율|share/i.test(x.metric)&&x.kind!=='forecast'&&!/^(삼성|LG|SK|현대|한화)/.test(x.metric)).sort((a,b)=>String(b.year).localeCompare(String(a.year)));
+  const share=shs[0]; if(share) card(share.metric+' '+share.year,grVal(share.value,share.unit),(share.source||'')+(share.published?' ('+share.published+')':''),share.url);
+  const V=s.val||{}, Cp=s.cap||{}; card('시가총액(자회사 지분 뺌)',grJo(Cp.adj),'1년 '+grP(Cp.ret1y,0)+' · 상위 3곳 '+(Cp.top3!=null?Math.round(Cp.top3)+'%':'—')+(V.per?' · PER '+V.per+'배':'')+(V.per_op?' · 영업이익 PER '+V.per_op+'배':'')+(V.psr?' · PSR '+V.psr+'배':'')+(V.n?' (값 매기기 '+V.n+'곳, 시총의 '+V.cov+'%'+((V.seg_out||[]).length?' — 부문 회사 '+V.seg_out.join(' · ')+' 제외':'')+')':''));
+  if(s.backlog) card('수주잔고(상장사)',grJo(s.backlog.value),(s.backlog.years!=null?'최근 4분기 매출의 '+s.backlog.years+'년치':'')+(s.backlog.yoy!=null?' · 1년 전보다 '+grP(s.backlog.yoy):'')+' · '+s.backlog.n+'곳');
+  box.appendChild(cards);
+  // 2) 성장률 추이와 전망 표
+  box.appendChild(el('h4',null,'성장률 추이와 전망')); box.lastChild.appendChild(el('span',null,'증가율 = 같은 회사 · 같은 구조 표본. 회색 = 최근, 초록 = 전망(출처는 칸에 마우스)'));
+  box.appendChild(grTrendTable(s,d));
+  // 3) 분기 차트
+  const qs=(s.quarters||[]).filter(q=>q.rev!=null);
+  if(qs.length){ box.appendChild(el('h4',null,'분기 매출 · 영업이익')); box.lastChild.appendChild(el('span',null,'막대 = 상장사 합(분기 단독), 마우스 = 같은 표본 전년 대비'));
+    const w2=el('div','qtrChart'); w2.appendChild(qtrChart(qs)); box.appendChild(w2); }
+  // 4) 월별 — 생산 · 수출 · 수출물가 증가율
+  const M=s.monthly||{}, lines=[];
+  if(Object.keys(M.prod||{}).length) lines.push({name:'생산',s:M.prod});
+  if(Object.keys(M.exp||{}).length) lines.push({name:'수출',s:M.exp});
+  if(Object.keys(M.xp||{}).length) lines.push({name:'수출물가',s:M.xp});
+  if(lines.length){ box.appendChild(el('h4',null,'월별 — 생산 · 수출 · 수출물가')); box.lastChild.appendChild(el('span',null,'3개월 평균(수출은 합)의 전년 대비, 최근 5년'));
+    const lg=el('div','grLeg'); lines.forEach((x,j)=>{ const s2=el('span'); s2.appendChild(el('i','l'+j)); s2.appendChild(document.createTextNode(x.name)); lg.appendChild(s2); }); box.appendChild(lg);
+    box.appendChild(grLines(lines,60)); }
+  // 5) 지금 신호
+  if((s.signals||[]).length||(s.items||[]).length){ box.appendChild(el('h4',null,'지금 신호')); box.lastChild.appendChild(el('span',null,'마우스를 올리면 정의'));
+    const g=el('div','grSig');
+    (s.signals||[]).forEach(x=>{ const c=el('span',grT(x.v)); c.appendChild(document.createTextNode(x.k)); c.appendChild(el('b',null,x.unit==='%p'?grPp(x.v):grP(x.v))); c.title=x.note+(x.at?' · '+x.at:''); g.appendChild(c); });
+    (s.items||[]).forEach(x=>{ const c=el('span',grT(x.v)); c.appendChild(document.createTextNode(x.name)); c.appendChild(el('b',null,grP(x.v))); c.title='한국은행 품목별 수출물가, 3개월 평균 전년 대비 · '+x.at; g.appendChild(c); });
+    if(s.bsi){ const c=el('span',s.bsi.fc>=100?'pos':'neg'); c.appendChild(document.createTextNode('매출 전망 BSI')); c.appendChild(el('b',null,String(Math.round(s.bsi.fc)))); c.title='한국은행 기업경기조사 '+(s.bsi.name||'')+' 매출 전망('+s.bsi.fc_at+') — 100 위면 늘 거라는 기업이 많다'+(s.bsi.fc_prev!=null?' · 3개월 전 '+Math.round(s.bsi.fc_prev):''); g.appendChild(c); }
+    box.appendChild(g); }
+  // 6) 주축 기업
+  if((s.members||[]).length){ box.appendChild(el('h4',null,'주축 기업과 시가총액')); box.lastChild.appendChild(el('span',null,'시총 = 자회사 지분 가치를 뺀 값(부문 회사는 부문 이익 비중으로 나눈 근사). 이름을 누르면 그 회사'));
+    box.appendChild(grMembers(s)); }
+  if((s.leaders||[]).length){ const ld=el('div','grLead'); ld.appendChild(el('span',null,'세계 주요 기업')); ld.firstChild.style.background='none';
+    s.leaders.forEach(x=>{ const c=el('span',null,x.name+(x.country?'('+x.country+')':'')); c.appendChild(el('b',null,grVal(x.value,x.unit))); c.title=(x.metric||'')+' · '+(x.as_of||'')+' · '+(x.source||''); ld.appendChild(c); }); box.appendChild(ld); }
+  // 7) 세계 시장 · 한국 · 기관 전망(출처)
+  const ext=[...(s.world||[]).map(x=>Object.assign({_k:'세계'},x)),...(s.korea||[]).map(x=>Object.assign({_k:'한국'},x))];
+  if(ext.length){ box.appendChild(el('h4',null,'세계 시장 · 한국 · 기관 전망')); box.lastChild.appendChild(el('span',null,'원문에서 숫자를 확인한 것만'));
+    const t=el('table','tbl dipTbl grExt'); t.innerHTML='<tr><th></th><th>항목</th><th>연도</th><th class="r">값</th><th class="r">증감</th><th>구분</th><th>출처</th></tr>';
+    ext.forEach(x=>{ const tr=el('tr'); tr.appendChild(el('td','k',x._k)); tr.appendChild(el('td',null,x.metric+(x.note?'':''))); if(x.note) tr.lastChild.title=x.note;
+      tr.appendChild(el('td',null,String(x.year))); tr.appendChild(el('td','num',grVal(x.value,x.unit))); tr.appendChild(el('td','num '+grT(x.growth_pct),x.growth_pct!=null&&!/^%/.test(x.unit||'')?grP(x.growth_pct)+(x.g_basis&&x.g_basis!=='yoy'?' '+GR_BASIS[x.g_basis]:''):''));
+      tr.appendChild(el('td','k',{actual:'실적',forecast:'전망',estimate:'추정',derived:'합산',snapshot:'시점값',assumption:'전제'}[x.kind]||x.kind||''));
+      const sc=el('td','src'); if(x.url){ const a=el('a',null,x.source||'출처'); a.href=x.url; a.target='_blank'; a.rel='noopener'; sc.appendChild(a); } else sc.appendChild(document.createTextNode(x.source||'')); if(x.published) sc.appendChild(document.createTextNode(' · '+x.published)); tr.appendChild(sc);
+      t.appendChild(tr); });
+    const w3=el('div','grWrap'); w3.appendChild(t); box.appendChild(w3); }
+  // 8) 동인 · 볼 지표
+  if(s.drivers||(s.watch||[]).length){ box.appendChild(el('h4',null,'무엇이 이 산업을 움직이나'));
+    if(s.drivers) box.appendChild(el('div','grDrv',s.drivers));
+    if((s.watch||[]).length){ const ul=el('ul','grWatch'); s.watch.forEach(x=>ul.appendChild(el('li',null,x))); box.appendChild(el('div','grAsOf','먼저 볼 지표')); box.appendChild(ul); } }
+  if((s.notes||[]).length){ const ul=el('ul','grWatch'); s.notes.forEach(x=>ul.appendChild(el('li',null,x))); box.appendChild(el('div','grAsOf','이 섹터 숫자를 읽을 때')); box.appendChild(ul); }
+  return box;
+}
+function grTrendTable(s,d){
+  const A=s.annual||[], T=s.ttm||{}, Y=s.ytd||{}, E=s.exports||{}, K=s.kiet||{}, C=s.cons, sg={}; (s.signals||[]).forEach(x=>sg[x.k]=x);
+  const yrs=A.filter(a=>a.y>=2016);
+  const fcYear=String((d&&d.y_now)||new Date().getFullYear()), fcNext=String(+fcYear+1);
+  const turnT=v=>v==='흑자 전환'||v==='적자 축소'?'pos':v?'neg':'';
+  // 세계 시장 — 가장 최근 실제치와 같은 출처를 먼저, 해마다 한 칸
+  const W=(s.world_main&&s.world_main.length?s.world_main:s.world)||[], w0=s.world_now;
+  const wOf=y=>{ const c=W.filter(x=>String(x.year).trim()===String(y)); return c.find(x=>w0&&x.source===w0.source&&x.growth_pct!=null)||c.find(x=>x.growth_pct!=null)||c[0]; };
+  const t=el('table','tbl dipTbl grTrend');
+  let h='<tr><th></th>'+yrs.map(a=>'<th class="r">'+a.y+'</th>').join('')+'<th class="r now" title="재무 = 최근 4분기, 수출 = 최근 12개월, 생산 · 물가 = 최근 3개월">최근</th><th class="r now" title="올해 들어 나온 기간의 전년 대비">올해 누적</th><th class="r fc">'+fcYear+' 전망</th><th class="r fc">'+fcNext+' 전망</th></tr>';
+  t.innerHTML=h;
+  const row=(name,cells,cls,help)=>{ const tr=el('tr',cls||''); const c0=el('td','rl',name); if(help) c0.title=help; tr.appendChild(c0);
+    cells.forEach(c=>{ const x=c&&typeof c==='object'?c:{v:c}; const td=el('td','num'+(x.t?' '+x.t:'')+(x.cls?' '+x.cls:''),x.v==null?'—':x.v); if(x.tl) td.title=x.tl; if(x.sub){ td.appendChild(el('small',null,x.sub)); } tr.appendChild(td); }); t.appendChild(tr); };
+  const now=c=>Object.assign({cls:'now'},c), fc=c=>Object.assign({cls:'fc'},c);
+  row('매출(조)',[...yrs.map(a=>({v:grJo(a.rev),tl:'상장사 '+a.n+'곳'})),now({v:grJo(T.rev)}),now({v:null}),fc({v:null}),fc({v:null})],'lvl','상장사 합(자회사 중복 뺌) — 그해 숫자가 있는 회사 모두');
+  row('매출 증가율',[...yrs.map(a=>({v:grP(a.rev_g),t:grT(a.rev_g),tl:'같은 표본 '+(a.n_same||0)+'곳 · 매출의 '+(a.cov!=null?a.cov+'%':'—')})),
+    now({v:grP(T.rev_g),t:grT(T.rev_g),tl:'최근 4분기 · '+(T.n_same||0)+'곳'}),now({v:grP(Y.rev_g),t:grT(Y.rev_g),tl:(Y.qs||[]).join(' · ')}),
+    fc(C&&C.rev_g!=null?{v:grP(C.rev_g),t:grT(C.rev_g),tl:'주축 '+C.n+'곳 컨센서스(네이버) — '+(C.names||[]).join(' · ')+' · 시총의 '+C.cov+'%',sub:'컨센 '+C.n+'곳'}:{v:null}),fc({v:null})],'','같은 회사 · 같은 자회사 구조 표본의 전년 대비');
+  row('영업이익(조)',[...yrs.map(a=>({v:grJo(a.op)})),now({v:grJo(T.op)}),now({v:null}),fc({v:null}),fc({v:null})],'lvl');
+  row('영업이익 증가율',[...yrs.map(a=>({v:a.op_turn||grP(a.op_g),t:a.op_turn?turnT(a.op_turn):grT(a.op_g)})),
+    now({v:T.op_turn||grP(T.op_g),t:T.op_turn?turnT(T.op_turn):grT(T.op_g)}),now({v:Y.op_turn||grP(Y.op_g),t:Y.op_turn?turnT(Y.op_turn):grT(Y.op_g)}),
+    fc(C&&C.op_g!=null?{v:grP(C.op_g),t:grT(C.op_g),tl:'주축 '+C.n+'곳 컨센서스(네이버)',sub:'컨센'}:{v:null}),fc({v:null})]);
+  row('영업이익률',[...yrs.map(a=>({v:a.opm==null?null:a.opm.toFixed(1)+'%'})),now({v:T.opm==null?null:T.opm.toFixed(1)+'%'}),now({v:null}),fc({v:null}),fc({v:null})]);
+  if(yrs.some(a=>a.prod_g!=null)){ const p=sg['생산'];
+    const kp=/원/.test((K.prod||{}).unit||'')?null:(K.prod_g||{})[fcYear+'F'];
+    row('생산 증가율',[...yrs.map(a=>({v:grP(a.prod_g),t:grT(a.prod_g)})),now({v:p?grP(p.v):null,t:p?grT(p.v):'',tl:p?p.note:''}),now({v:null}),
+      fc(kp!=null?{v:grP(kp),t:grT(kp),tl:'산업연구원 '+fcYear+' 생산 전망('+(K.prod||{}).unit+' — 물량)',sub:'산업연구원'}:{v:null}),fc({v:null})],'','광공업생산지수(업종, 물량) 연평균의 전년 대비'); }
+  if(K.prod&&/원/.test(K.prod.unit||'')&&(K.prod_g||{})[fcYear+'F']!=null){ const g=(K.prod_g||{})[fcYear+'F'];
+    row('생산액(산업연구원)',[...yrs.map(a=>({v:a.y===+fcYear-1&&(K.prod_g||{})[String(a.y)]!=null?grP((K.prod_g||{})[String(a.y)]):null})),now({v:null}),now({v:null}),
+      fc({v:grP(g),t:grT(g),tl:'산업연구원 '+fcYear+' 생산액 전망('+K.prod.unit+', 명목 — 가격 효과 포함) '+grVal(K.prod[fcYear+'F'],K.prod.unit),sub:'원화 명목'}),fc({v:null})],'','산업연구원 생산액(원화 명목) 증가율 — 위 생산지수(물량)와 달리 가격 변화가 들어 있다'); }
+  if(yrs.some(a=>a.exp!=null)){
+    const kg=(K.export_g||{})[fcYear+'F'];
+    row('수출',[...yrs.map(a=>({v:grUsd(a.exp)})),now({v:grUsd(E.m12),tl:'최근 12개월'}),now({v:grUsd(E.ytd),tl:(E.ytd_months||0)+'개월 누적'}),
+      fc({v:null}),fc({v:null})],'lvl','관세청 통관 수출, 섹터 HS 합(달러) — '+((E.hs||[]).map(h=>h.hs).join(' · ')));
+    row('수출 증가율',[...yrs.map(a=>({v:grP(a.exp_g),t:grT(a.exp_g)})),now({v:grP(E.m12_g),t:grT(E.m12_g),tl:'최근 12개월'}),now({v:grP(E.ytd_g),t:grT(E.ytd_g),tl:(E.ytd_months||0)+'개월 누적 전년 대비'}),
+      fc(kg!=null?{v:grP(kg),t:grT(kg),tl:'산업연구원 '+fcYear+' 수출 증가율 전망(산업연구원 품목 기준 '+grVal((K.export_usd_mn||{})[fcYear+'F'],'USD mn')+' — 관세청 HS 합과 범위가 다를 수 있다)',sub:'산업연구원'}:{v:null}),fc({v:null})]); }
+  if(yrs.some(a=>a.xp_g!=null)){ const x=sg['수출물가'];
+    row('수출물가 증가율',[...yrs.map(a=>({v:grP(a.xp_g),t:grT(a.xp_g)})),now({v:x?grP(x.v):null,t:x?grT(x.v):''}),now({v:null}),fc({v:null}),fc({v:null})],'','한국은행 수출물가지수(원화) 연평균의 전년 대비'); }
+  if(W.length){ const w1=wOf(fcYear), w2=wOf(fcNext);
+    const bs=x=>x&&x.g_basis&&x.g_basis!=='yoy'?' ('+GR_BASIS[x.g_basis]+')':'';
+    row('세계 시장 증가율',[...yrs.map(a=>{ const x=wOf(a.y); return x&&x.growth_pct!=null?{v:grP(x.growth_pct),t:grT(x.growth_pct),tl:x.metric+bs(x)+' · '+(x.source||'')}:{v:null}; }),now({v:null}),now({v:null}),
+      fc(w1&&w1.growth_pct!=null?{v:grP(w1.growth_pct),t:grT(w1.growth_pct),tl:w1.metric+bs(w1)+' · '+(w1.source||'')+' '+(w1.published||''),sub:(w1.source||'').slice(0,14)+bs(w1)}:{v:null}),
+      fc(w2&&w2.growth_pct!=null?{v:grP(w2.growth_pct),t:grT(w2.growth_pct),tl:w2.metric+bs(w2)+' · '+(w2.source||'')+' '+(w2.published||''),sub:(w2.source||'').slice(0,14)+bs(w2)}:{v:null})],'',w0?w0.metric:'');
+    row('세계 시장 규모',[...yrs.map(a=>{ const x=wOf(a.y); return x?{v:grVal(x.value,x.unit),tl:x.metric}:{v:null}; }),now({v:null}),now({v:null}),
+      fc(w1?{v:grVal(w1.value,w1.unit),tl:w1.metric+' · '+(w1.source||'')}:{v:null}),fc(w2?{v:grVal(w2.value,w2.unit),tl:w2.metric+' · '+(w2.source||'')}:{v:null})],'lvl'); }
+  row('매출 지수',[...yrs.map(a=>({v:a.idx==null?null:Math.round(a.idx).toLocaleString('ko-KR')})),now({v:null}),now({v:null}),fc({v:null}),fc({v:null})],'lvl','2015=100, 같은 표본 증가율을 이어 붙인 값 — 회사 구성이 바뀌어도 성장 속도만 본다');
+  const wrap=el('div','grWrap'); wrap.appendChild(t); return wrap;
+}
+function grMembers(s){
+  const t=el('table','tbl dipTbl grMem');
+  t.innerHTML='<tr><th>회사</th><th class="r">시가총액</th><th class="r">섹터 비중</th><th class="r">매출 4분기</th><th class="r">증가율</th><th class="r">영업이익률</th><th class="r">PER</th><th class="r">1년 주가</th><th class="r" title="네이버 연간 컨센서스(화면을 연 회사만 쌓임) — 올해 예상 매출 · 영업이익의 지난해 대비">컨센서스 올해</th></tr>';
+  (s.members||[]).forEach(m=>{ const tr=el('tr');
+    const nm=el('td'); const known=S.companies&&S.companies.some(c=>c.code===m.code);
+    if(known){ const a=el('a',null,m.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(m.code).then(()=>jump('orbit')); }; nm.appendChild(a); } else nm.appendChild(document.createTextNode(m.name||m.code));
+    nm.appendChild(el('small',null,' '+m.code+(m.seg?' · '+m.seg+(/부문/.test(m.seg)?'':' 부문'):''))); if(m.note){ const w=el('small',null,' ⓘ'); w.title=m.note; w.style.cursor='help'; nm.appendChild(w); } tr.appendChild(nm);
+    const c=(v,cls,tl)=>{ const x=el('td','num'+(cls?' '+cls:''),v); if(tl) x.title=tl; tr.appendChild(x); };
+    c(grJo(m.adj),'',m.seg?'회사 전체 '+grJo(m.cap)+' × 부문 이익 비중':m.adj<m.cap?'회사 시총 '+grJo(m.cap)+' − 상장 자회사 지분 가치':'');
+    c(m.share!=null?m.share.toFixed(1)+'%':'—');
+    c(grJo(m.rev_ttm)); c(grP(m.rev_g),grT(m.rev_g),m.op_turn?'영업이익 '+m.op_turn:(m.op_g!=null?'영업이익 '+grP(m.op_g):'')); c(m.opm==null?'—':m.opm.toFixed(1)+'%'); c(m.per==null?'—':m.per.toFixed(1)); c(grP(m.ret1y,0),grT(m.ret1y));
+    const cs=m.cons; c(cs?grP(cs.rev_g)+' / '+(cs.op_g!=null?grP(cs.op_g):'—'):'—','',cs?'매출 '+grJo(cs.rev_a)+' → '+grJo(cs.rev_e)+' · 영업이익 '+grJo(cs.op_a)+' → '+grJo(cs.op_e)+(cs.at?' · '+cs.at:''):'');
+    t.appendChild(tr); });
+  const w=el('div','grWrap'); w.appendChild(t); return w;
+}
+
 // ---------------------------------------------------------- 저평가V2 — 저평가 종목 가운데 차트로 유리한 자리(/api/value2 · 기술.py)
 const V2_DEF={
   box_spike:'최근 20봉 안에 60봉 평균의 3배 넘는 양봉. 그 앞 60봉은 고저 30% 안 박스였고 박스 바닥이 52주 저점 15% 안. 지금 종가가 그 양봉 시가 위',
@@ -4979,17 +5313,62 @@ function valDetail(r) {
 }
 
 // ---------- 표 한 줄 — 열은 그대로. PER 칸에 싸짐/비싸짐, 자기 역사 칸에 작은 온도계 + 말 + 쌌던 때 ----------
-function valTable(rows, title, sub) {
+// 저평가 표 머리글 정렬 — 누를 때마다 큰 값부터(▼) → 작은 값부터(▲) → 원래 순서(점수 순). 값이 없는 종목은 늘 맨 뒤
+const VAL_SORT = {
+  name: ['종목', r => r.name, '이름 순'],
+  dd: ['고점 대비', r => r.dd, '52주 고점 대비 하락률'],
+  px: ['주가 1년', r => r.px_yoy, '1년 주가 변화'],
+  ni: ['순이익 1년', r => valBase(r).neg ? 1e9 : r.ni_yoy, '최근 4분기 순이익의 1년 전 대비(적자→흑자는 가장 큰 쪽)'],
+  per: ['PER 1년 전→지금', r => valBase(r).neg ? null : r.comp, '같은 이익에 매긴 값(PER)의 1년 변화 — 작을수록(마이너스) 그만큼 싸졌다'],
+  hist: ['PER 자기 역사', r => r.per_pct, '최근 10년 PER 가운데 지금 자리(%) — 작을수록 역사적으로 싸다'],
+  roe: ['ROE', r => r.roe, '자기자본이익률'],
+  opm: ['영업이익률', r => r.opm, '영업이익률'],
+  score: ['점수', r => r.score, '저평가 점수'],
+};
+// 첫 클릭 방향 — 작을수록 의미 있는 칸(많이 빠짐 · 많이 싸짐 · 역사적으로 쌈 · 이름)은 작은 값부터
+const VAL_FIRST_ASC = new Set(['name', 'dd', 'per', 'hist']);
+const VAL_HEAD_TIP = {per: '같은 이익 1원에 시장이 쳐준 값. 1년 전 PER → 지금 PER', hist: '최근 10년 분기 말 PER 가운데 지금 자리. 쌌던 때 = 지금보다 PER 이 낮았던 분기 수'};
+function valSorted(rows, st) {
+  if (!st || !st.k || !VAL_SORT[st.k]) return rows;
+  const f = VAL_SORT[st.k][1], dir = st.dir === 'asc' ? 1 : -1;
+  return rows.map((r, i) => [r, f(r), i]).sort((a, b) => {
+    const x = a[1], y = b[1];
+    if (x == null || (typeof x === 'number' && !isFinite(x) && x !== 1e9)) return (y == null ? a[2] - b[2] : 1);
+    if (y == null) return -1;
+    const c = typeof x === 'string' ? x.localeCompare(y, 'ko') : x - y;
+    return c ? c * dir : a[2] - b[2];
+  }).map(z => z[0]);
+}
+function valTable(rows0, title, sub) {
   const w = el('div', 'dipBlock');
-  const h = el('div', 'dipBH'); h.appendChild(el('b', null, title + ' ' + rows.length + '곳')); h.appendChild(el('span', null, sub)); w.appendChild(h);
-  if (!rows.length) { w.appendChild(el('div', 'empty', '없음')); return w; }
+  const h = el('div', 'dipBH'); h.appendChild(el('b', null, title + ' ' + rows0.length + '곳')); h.appendChild(el('span', null, sub)); w.appendChild(h);
+  if (!rows0.length) { w.appendChild(el('div', 'empty', '없음')); return w; }
+  S.valSort = S.valSort || {};
+  const st = S.valSort[title] || {};
+  const rows = valSorted(rows0, st);
+  const head = () => {
+    const tr = el('tr');
+    Object.entries(VAL_SORT).forEach(([k, [nm, , tip]]) => {
+      const th = el('th', (k === 'name' ? '' : 'r') + ' vSort' + (st.k === k ? ' on' : ''));
+      th.appendChild(document.createTextNode(nm));
+      th.appendChild(el('i', null, st.k === k ? (st.dir === 'asc' ? ' ▲' : ' ▼') : ' ↕'));
+      const d1 = VAL_FIRST_ASC.has(k) ? 'asc' : 'desc', d2 = d1 === 'asc' ? 'desc' : 'asc';
+      th.title = (VAL_HEAD_TIP[k] ? VAL_HEAD_TIP[k] + ' · ' : '') + '누르면 정렬 — ' + tip + ' · ' + (d1 === 'asc' ? '작은 값부터(▲)' : '큰 값부터(▼)') + ' → 반대로 → 원래 순서(점수 순)';
+      th.onclick = e => { e.stopPropagation();
+        const cur = S.valSort[title] || {};
+        S.valSort[title] = cur.k !== k ? {k, dir: d1} : cur.dir === d1 ? {k, dir: d2} : {};
+        w.replaceWith(valTable(rows0, title, sub)); };
+      tr.appendChild(th);
+    });
+    tr.appendChild(el('th'));
+    return tr;
+  };
   const t = el('table', 'tbl dipTbl');
-  t.innerHTML = '<tr><th>종목</th><th class="r">고점 대비</th><th class="r">주가 1년</th><th class="r">순이익 1년</th>' +
-    '<th class="r" title="같은 이익 1원에 시장이 쳐준 값. 1년 전 PER → 지금 PER">PER 1년 전→지금</th><th class="r" title="최근 10년 분기 말 PER 가운데 지금 자리. 쌌던 때 = 지금보다 PER 이 낮았던 분기 수">PER 자기 역사</th><th class="r">ROE</th><th class="r">영업이익률</th><th class="r">점수</th><th></th></tr>';
+  t.appendChild(head());
   const X = v => v >= 200 ? '200↑' : v >= 100 ? Math.round(v) : v.toFixed(1);
   S.valOpen = S.valOpen || new Set();
   const LIM = 30, t2 = rows.length > LIM ? el('table', 'tbl dipTbl') : null;
-  if (t2) t2.innerHTML = t.innerHTML;
+  if (t2) t2.appendChild(head());
   rows.forEach((r, ri) => {
     const tb = ri < LIM ? t : t2;
     const tr = el('tr', 'dipRow');
@@ -5035,7 +5414,7 @@ function valTable(rows, title, sub) {
     tb.appendChild(tr); tb.appendChild(dt);
   });
   w.appendChild(t);
-  if (t2) { const det = el('details', 'dipDrop'); det.appendChild(el('summary', null, '나머지 ' + (rows.length - LIM) + '곳 — 점수 순. 과거 검증에서 점수 60↑가 50↑보다 더 낫지는 않았다(위 30곳은 읽기 편하게 자른 것)'));
+  if (t2) { const det = el('details', 'dipDrop'); det.appendChild(el('summary', null, '나머지 ' + (rows.length - LIM) + '곳 — ' + (st.k ? VAL_SORT[st.k][0] + (st.dir === 'asc' ? ' 작은 값부터' : ' 큰 값부터') + ' 정렬' : '점수 순. 과거 검증에서 점수 60↑가 50↑보다 더 낫지는 않았다(위 30곳은 읽기 편하게 자른 것)')));
     det.appendChild(t2); w.appendChild(det); }
   return w;
 }
