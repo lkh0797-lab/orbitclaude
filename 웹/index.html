@@ -2283,6 +2283,11 @@ table.csTbl td.emptyRow{color:var(--faint);text-align:center;padding:26px 0}
 .vclNow{font:700 10px var(--sans);color:var(--add);background:var(--add-bg);border-radius:4px;padding:0 5px;white-space:nowrap;line-height:16px}
 .vclThD{font:500 10px var(--mono);color:var(--faint);white-space:nowrap;line-height:16px;padding:0 2px}
 .vclLead.go,.vclTh.go{cursor:pointer}.vclLead.go:hover,.vclTh.go:hover{background:var(--accent-soft)}
+/* csTbl 의 .ot span 규칙(테두리 · 색)이 칩 묶음과 칩에 겹쳐 글자가 안 보이던 것 — 칩은 제 색으로 */
+table.csTbl .ot span.vclChips{border:0;padding:0;background:none}
+table.csTbl .ot span.vclLead{color:#c08a1e;background:transparent;border-color:#c08a1e;font-size:10px}
+table.csTbl .ot span.vclLead.go:hover{background:var(--accent-soft)}
+table.csTbl .ot span.vclTh{background:transparent}table.csTbl .ot span.vclNow{background:transparent}
 .vclMk{font-size:11px;white-space:nowrap}.vclMk.ok{color:var(--add);font-weight:600}.vclMk.no{color:var(--faint)}
 .vclToday{display:inline-flex;flex-direction:column;gap:1px;text-align:left}
 .vclSup{font-size:12px;color:var(--faint);white-space:nowrap}.vclSup.on{color:var(--ink);font-weight:600}
