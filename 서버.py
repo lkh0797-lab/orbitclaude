@@ -8714,6 +8714,154 @@ def value2_view(force=False):
     return out
 
 
+# ---------------------------------------------------------------- 보컬: 거래대금 · 강한 테마 · 테마 대장주 · 눌림목 깔때기 (2026-10-08)
+# 보컬.py 가 전부 센다(서버는 목록 · 일봉 · 분류표를 모아 넘기고 결과를 저장). 유니버스 = 전 시장 보통주(네이버 시총 API 목록).
+# 매일 07:00(저평가 06:30 뒤) 목록 → 전 종목 일봉 → 두 모드 계산. 과거 검증은 도구/보컬_백테스트.py → .cache/vocal/bt_report.json.
+try:
+    _vspec = _ilu.spec_from_file_location("보컬", os.path.join(BASE, "보컬.py"))
+    VOC = _ilu.module_from_spec(_vspec)
+    _vspec.loader.exec_module(VOC)
+except Exception as _e:
+    VOC = None
+    print("보컬 모듈 로드 실패:", _e)
+VOCAL_V = 1
+VOCAL_DIR = os.path.join(CACHE_DIR, "vocal")
+VOCAL_PATH = os.path.join(VOCAL_DIR, "_result.json")
+VOCAL = {"running": False, "done": 0, "total": 0, "phase": "", "at": 0, "date": None, "results": None, "n_univ": 0, "listing_date": None}
+VOCAL_LOCK = threading.Lock()
+VOCAL_DAILY_AT = (7, 0)
+_VBT = {"mt": None, "d": None}
+
+
+def _vocal_bt():
+    p = os.path.join(VOCAL_DIR, "bt_report.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return None
+    if _VBT["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                _VBT.update(d=json.load(fh), mt=mt)
+        except Exception:
+            return None
+    return _VBT["d"]
+
+
+def _run_vocal(refresh=True):
+    try:
+        with VOCAL_LOCK:
+            VOCAL.update(done=0, total=0, phase="전 시장 목록")
+        L = VOC.load_listing()
+        if not L:
+            return
+        codes = sorted(L["stocks"])
+        if refresh:
+            # 마지막 장 마감(평일 15:40) 뒤 받은 일봉만 믿는다 — 장중이면 오늘 반쪽 봉은 빼고 어제까지로 잰다(저평가V2 와 같다)
+            now = dt.datetime.now()
+            lc = now.replace(hour=15, minute=40, second=0, microsecond=0)
+            while lc > now or lc.weekday() >= 5:
+                lc -= dt.timedelta(days=1)
+                lc = lc.replace(hour=15, minute=40)
+            with VOCAL_LOCK:
+                VOCAL.update(phase="전 종목 일봉", total=len(codes))
+
+            def prog(a, b):
+                with VOCAL_LOCK:
+                    VOCAL.update(done=a, total=b)
+            VOC.fetch_all_bars(codes, progress=prog, max_age=max(60, (now - lc).total_seconds()))
+        now = dt.datetime.now()
+        live = now.weekday() < 5 and (now.hour, now.minute) < (15, 40)
+        with VOCAL_LOCK:
+            VOCAL.update(phase="패널", done=0, total=len(codes))
+
+        def prog2(a, b):
+            with VOCAL_LOCK:
+                VOCAL.update(done=a, total=b)
+        smap = (sector_map() or {}).get("stocks", {})
+        P = VOC.load_panel(codes, {k: v["name"] for k, v in L["stocks"].items()}, {k: (smap.get(k) or {}).get("themes") for k in codes},
+                           drop=now.strftime("%Y%m%d") if live else None, progress=prog2)
+        if len(P.bars) < 500:
+            return
+        gi = len(P.gd) - 1
+        with VOCAL_LOCK:
+            VOCAL.update(phase="거래대금 순위 · 테마 합")
+        P.precompute(top_max=max(m["top"] for m in VOC.MODES.values()))     # 검증 도구와 같은 길 — 대장 이력(최근 30일)도 이걸로 빨리
+        with VOCAL_LOCK:
+            VOCAL.update(phase="깔때기")
+        results = {}
+        for mode in VOC.MODES:
+            R = VOC.run_day(P, gi, mode)
+            for f in R["funnel"]:
+                B = P.bars[f["code"]]
+                j = P.loc(f["code"], gi)
+                n = j + 1
+                f["spark"] = {"c": B["c"][max(0, n - 120):n], "v": B["v"][max(0, n - 120):n], "d": [str(x) for x in B["d"][max(0, n - 120):n]]}
+            results[mode] = R
+        at = time.time()
+        data = {"v": VOCAL_V, "at": at, "date": str(P.gd[gi]), "results": results, "n_univ": len(P.bars), "listing_date": L.get("date")}
+        with VOCAL_LOCK:
+            VOCAL.update(at=at, date=data["date"], results=results, n_univ=len(P.bars), listing_date=L.get("date"))
+        os.makedirs(VOCAL_DIR, exist_ok=True)
+        with open(VOCAL_PATH, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, ensure_ascii=False)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+    finally:
+        with VOCAL_LOCK:
+            VOCAL.update(running=False, phase="")
+
+
+def vocal_view(force=False):
+    if VOC is None or FIN is None:
+        return {"error": "보컬 모듈이 없습니다."}
+    with VOCAL_LOCK:
+        if VOCAL["results"] is None and not VOCAL["at"]:
+            try:
+                with open(VOCAL_PATH, "r", encoding="utf-8") as fh:
+                    old = json.load(fh)
+                if old.get("v") == VOCAL_V:
+                    VOCAL.update(at=old["at"], date=old.get("date"), results=old.get("results"), n_univ=old.get("n_univ", 0),
+                                 listing_date=old.get("listing_date"))
+            except Exception:
+                pass
+        stale = force or not VOCAL["results"] or time.time() - VOCAL["at"] > 26 * 3600     # 매일 07:00 _vocal_auto_loop 가 미리 센다
+        if stale and not VOCAL["running"]:
+            VOCAL["running"] = True
+            threading.Thread(target=_run_vocal, daemon=True).start()
+        out = {k: VOCAL.get(k) for k in ("running", "done", "total", "phase", "at", "date", "results", "n_univ", "listing_date")}
+    out["bt"] = _vocal_bt()
+    out["rules"] = {"modes": VOC.MODES, "consts": {k: getattr(VOC, k) for k in (
+        "POOL_DAYS", "RALLY_WIN", "BASE_WIN", "RISE_MAX", "RETRACE_MAX", "TOUCH", "HOLD_BELOW", "DRY_PEAK", "DRY_RALLY", "REFLOW", "BODY",
+        "RR_MIN", "GAP_SKIP", "THEME_RATIO", "THEME_MIN", "THEME_TOP")}}
+    return out
+
+
+def _vocal_auto_loop():
+    """매일 07:00 — 저평가(06:30)가 988곳 일봉을 데운 뒤 나머지 전 시장 일봉을 받아 깔때기를 센다. 뷰어를 켰을 때 20시간 넘게 묵었으면 15분 뒤 한 번."""
+    time.sleep(900)
+    first = True
+    while True:
+        try:
+            old = (time.time() - os.path.getmtime(VOCAL_PATH)) if os.path.exists(VOCAL_PATH) else 1e9
+            if not first or old > 20 * 3600:
+                with VOCAL_LOCK:
+                    go = not VOCAL["running"]
+                    if go:
+                        VOCAL["running"] = True
+                if go:
+                    _run_vocal(True)
+        except Exception as e:
+            print("보컬 자동 갱신: %s" % e, flush=True)
+        first = False
+        n = dt.datetime.now()
+        nxt = n.replace(hour=VOCAL_DAILY_AT[0], minute=VOCAL_DAILY_AT[1], second=0, microsecond=0)
+        if nxt <= n:
+            nxt += dt.timedelta(days=1)
+        time.sleep(max(60, (nxt - n).total_seconds()))
+
+
 # ---------------------------------------------------------------- 산업 성장률 (2026-10-06)
 # 섹터별 매출 · 영업이익(상장사, 자회사 중복 제거) · 생산 · 가동률 · 수출 · 가격 · 시장 규모 · 시가총액 · 전망을 한 표로.
 # 계산은 산업.py → .cache/산업/_result.json. 재료는 산업_패널.py(회사 패널 · 연결 구조) · 산업_부문.py(섞인 회사의 부문) ·
@@ -9657,6 +9805,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, value_view(q.get("force") == "1"))
             if path == "/api/value2":
                 return self._send(200, value2_view(q.get("force") == "1"))
+            if path == "/api/vocal":
+                return self._send(200, vocal_view(q.get("force") == "1"))
             if path == "/api/industry":
                 return self._send(200, industry_view(q.get("force") == "1"))
             if path == "/api/reports":
@@ -9791,6 +9941,8 @@ def main():
         threading.Thread(target=_vc_auto_loop, daemon=True).start()
         threading.Thread(target=_rep_auto_loop, daemon=True).start()
         threading.Thread(target=_ind_auto_loop, daemon=True).start()
+    if VOC is not None:
+        threading.Thread(target=_vocal_auto_loop, daemon=True).start()
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:

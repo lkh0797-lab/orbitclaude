@@ -230,7 +230,9 @@ def build(V):
     os.makedirs(OUT, exist_ok=True)
     E = build_eps(S) if ("--rebuild" in sys.argv or not os.path.exists(EPS_PATH)) else json.load(open(EPS_PATH, encoding="utf-8"))
     TL = tier_line(V)
-    codes = sorted(f[:-5] for f in os.listdir(OHLCV) if f.endswith(".json"))
+    # 일봉 폴더는 보컬 탭 때문에 전 시장(~2,600곳)으로 늘었다 — 저평가V2 검증은 색인 988곳 그대로(2026-10-08)
+    idx = {c["code"] for c in S.INDEX["companies"] if c.get("code")}
+    codes = sorted(f[:-5] for f in os.listdir(OHLCV) if f.endswith(".json") and f[:-5] in idx)
     print("셋업 재는 중 — 종목 %d · 달 %d" % (len(codes), len(DATES)), flush=True)
     by_t = {}
     with Pool(8, initializer=_init_tech) as pool:

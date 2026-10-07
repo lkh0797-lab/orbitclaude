@@ -2234,6 +2234,126 @@ table.csTbl td.emptyRow{color:var(--faint);text-align:center;padding:26px 0}
 .csPage button{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:2px 10px;cursor:pointer;color:var(--ink)}
 .csPage button:disabled{opacity:.35;cursor:default}
 .csDefs{margin-top:10px;font-size:12px;line-height:1.6;color:var(--dim)}.csDefs p{margin:0 0 6px}.csDefs b{color:var(--ink);margin-right:2px}
+/* ---------- 보컬 — 거래대금 · 테마 대장주 · 눌림목 (2026-10-08) ---------- */
+/* ---------- 보컬 — 거래대금 · 테마 대장주 · 눌림목 (2026-10-08) ----------
+   클래스는 vcl* (vc* 는 밸류체인 탭이 쓴다). 레일·카드·표·쪽·팝업은 저평가V2(cs*, v2*) 를 같이 쓴다.
+   단계 색: ④ 회색 · ⑤ 파랑 #3a6fd8 · ⑥ 금 #c08a1e · ⑦ 빨강 #d24c43 */
+.vclBox{display:block}
+.vclMeta{flex-wrap:wrap;row-gap:6px}
+.vclMeta .csSeg button{padding:4px 10px}
+
+/* 깔때기 띠 — 8칸, 누르면 그 절로 */
+.vclFun{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;margin:2px 0 14px}
+.vclStep{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;padding:8px 10px 7px;border:1px solid var(--line);border-radius:9px;
+  background:var(--panel);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,transform .15s}
+.vclStep:hover{border-color:var(--accent);transform:translateY(-1px)}
+.vclStep b{font:700 12px var(--mono);color:var(--dim)}
+.vclStep span{font-size:11.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.vclStep em{font:700 16px var(--mono);font-style:normal;color:var(--ink);line-height:1.2}
+.vclStep.zero em{color:var(--faint)}
+.vclStep.last{border-color:#d24c43;background:rgba(210,76,67,.06)}
+.vclStep.last b,.vclStep.last em{color:#d24c43}
+.vclStep.last.zero em{color:var(--faint)}
+@media (max-width:860px){.vclFun{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* 테마 고름 알림 */
+.vclPill{display:inline-flex;align-items:center;gap:10px;margin:0 0 12px;padding:4px 6px 4px 12px;border:1px solid var(--accent);border-radius:999px;background:var(--accent-soft);font-size:12px;color:var(--ink)}
+.vclPill button{border:0;background:var(--panel);color:var(--dim);border-radius:999px;padding:2px 9px;font-size:11.5px;cursor:pointer}
+.vclPill button:hover{color:var(--accent)}
+
+/* 절 */
+.vclSec{margin:0 0 22px}
+.vclSecH{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin:0 0 8px}
+.vclSecH b{font:700 13px var(--mono);color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:1px 7px}
+.vclSecH h4{margin:0;font-size:15px;letter-spacing:-.01em}
+.vclSecH span{font:500 11.5px var(--mono);color:var(--faint)}
+.vclEmpty{color:var(--faint);font-size:13px;text-align:center;padding:24px 8px;border:1px dashed var(--line);border-radius:10px;background:var(--panel)}
+
+/* 칩 — 단계 · 대장 · 테마 · ✓✗ */
+.vclSt{display:inline-block;font:600 10.5px var(--mono);padding:1px 6px;border-radius:4px;white-space:nowrap;color:var(--faint);background:var(--line2)}
+.vclSt.s4{color:var(--dim);background:var(--line2)}
+.vclSt.s5{color:#3a6fd8;background:rgba(58,111,216,.12)}
+.vclSt.s6{color:#c08a1e;background:rgba(192,138,30,.15)}
+.vclSt.s7{color:#d24c43;background:rgba(210,76,67,.13)}
+.vclChips{display:inline-flex;flex-wrap:wrap;gap:3px;vertical-align:middle}
+.vclLead{font:700 10px var(--sans);color:#c08a1e;border:1px solid #c08a1e;border-radius:4px;padding:0 5px;white-space:nowrap;line-height:16px}
+.vclLead.sub{border-style:dashed;font-weight:600;opacity:.85}
+.vclTh{font-size:10px;color:var(--accent);border:1px solid var(--line);border-radius:4px;padding:0 5px;white-space:nowrap;line-height:16px}
+.vclTh.more{color:var(--faint);cursor:help}
+.vclNow{font:700 10px var(--sans);color:var(--add);background:var(--add-bg);border-radius:4px;padding:0 5px;white-space:nowrap;line-height:16px}
+.vclThD{font:500 10px var(--mono);color:var(--faint);white-space:nowrap;line-height:16px;padding:0 2px}
+.vclLead.go,.vclTh.go{cursor:pointer}.vclLead.go:hover,.vclTh.go:hover{background:var(--accent-soft)}
+.vclMk{font-size:11px;white-space:nowrap}.vclMk.ok{color:var(--add);font-weight:600}.vclMk.no{color:var(--faint)}
+.vclToday{display:inline-flex;flex-direction:column;gap:1px;text-align:left}
+.vclSup{font-size:12px;color:var(--faint);white-space:nowrap}.vclSup.on{color:var(--ink);font-weight:600}
+.vclDry{white-space:nowrap}.vclDry.on{color:var(--add);font-weight:600}
+.vclThA{color:var(--ink);text-decoration:none;font-weight:600}.vclThA:hover{color:var(--accent)}
+
+/* ⑧ 진입 후보 카드 */
+.vclEnt{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.vclEntC{display:flex;flex-direction:column;gap:7px;border:1px solid var(--line);border-left:3px solid #d24c43;border-radius:10px;background:var(--panel);padding:10px 13px 10px}
+.vclEntH{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.vclEntH a{font-weight:700;font-size:15px;color:var(--ink);text-decoration:none}.vclEntH a:hover{color:var(--accent)}
+.vclEntH small{font:11px var(--mono);color:var(--faint)}
+.vclEntCh{display:flex;flex-wrap:wrap;gap:3px}
+.vclNums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);padding:7px 0}
+.vclNums .n{display:flex;flex-direction:column;gap:1px;min-width:0}
+.vclNums .n span{font-size:10.5px;color:var(--faint)}
+.vclNums .n b{font:700 14px var(--mono);color:var(--ink);white-space:nowrap}
+.vclNums .n small{font:10.5px var(--mono);color:var(--dim)}
+.vclNums .n.dn b,.vclNums .n.dn small{color:#3a6fd8}
+.vclNums .n.up b,.vclNums .n.up small{color:#d24c43}
+.vclNums .n.gold b{color:#c08a1e}
+.vclEntL{display:flex;flex-wrap:wrap;gap:4px 12px;font:12px var(--mono);color:var(--dim)}
+.vclEntL .vclSup{font-family:var(--sans)}
+.vclWhy{font-size:12px;color:var(--dim);line-height:1.5}
+.vclSpk{cursor:zoom-in;align-self:flex-start}
+.vclSpk .v2Spark{width:100%;max-width:300px;height:52px}
+.vclSpk:hover .v2Spark{outline:1px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* 표 — csTbl 위에 조금 */
+table.vclTbl td.nm .ot{margin-top:3px}
+table.vclTbl td.vclStTd{text-align:left;max-width:170px}table.vclTbl td.vclStTd .vclWhy{font-size:11px;margin-top:3px;white-space:normal}
+table.vclTbl td.vclSupTd{white-space:nowrap}
+table.vclTbl td.vclRr i{font-style:normal}table.vclTbl td.vclRr i.dn{color:#3a6fd8}table.vclTbl td.vclRr i.up{color:#d24c43}table.vclTbl td.vclRr b{color:#c08a1e}
+table.vclTbl td.vclThTd{max-width:220px}
+table.vclTbl tr.st7 td.nm a{color:#d24c43}
+table.vclTbl .v2Spark{width:96px;height:36px}
+table.vclTbl td.nm{max-width:186px}table.vclTbl td.nm .ot{white-space:normal}table.vclTbl td.vclStTd{max-width:150px}
+table.vclAllT tr.weak td{color:var(--faint)}table.vclAllT tr.weak a{color:var(--dim)}
+table.vclAllT a{color:var(--ink);text-decoration:none;font-weight:600}table.vclAllT a:hover{color:var(--accent)}
+table.vclYr td:first-child{color:var(--dim);font-size:11.5px;white-space:nowrap}
+table.vclYr td.num.up{color:#d24c43}table.vclYr td.num.dn{color:#3a6fd8}
+
+/* 테마 카드 — csCard 위에 */
+.csCard.vclThC{flex-basis:224px}
+.csCard.vclThC .t span{color:#c08a1e}
+.csCard.vclThC .ds{min-height:0}
+.vclAll{margin:4px 0 0;border:1px solid var(--line2);border-radius:6px;padding:6px 12px}
+.vclAll summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--dim)}
+.vclAll .tblwrap{margin-top:6px}
+
+/* 과거 검증 · 규칙 */
+.vclEvd em,.vclRule em{display:block;font-style:normal;font-size:11.5px;color:var(--dim);margin:10px 0 2px}
+.vclSteps{margin:8px 0 6px;padding-left:20px;font-size:12.5px;line-height:1.7;color:var(--dim)}
+.vclSteps li{margin:0 0 3px}.vclSteps b{color:var(--ink)}
+.vclLimit{font-size:12px;color:var(--faint);margin:6px 0 2px}
+
+/* 큰 차트 팝업 */
+.expPop.vclPop{width:min(960px,100%)}
+.vclPopSig{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:2px 0 4px}
+.vclPopSig .why{font-size:12px;color:var(--dim);margin-left:4px}
+.vclBig .m5{fill:none;stroke:#2e9e6e;stroke-width:1.2}
+.vclBig .m10{fill:none;stroke:#8a5cd0;stroke-width:1.2}
+.vclBig .zone{fill:#c08a1e;opacity:.07}
+.vclBig .lvT{stroke:#c08a1e;stroke-width:1.4;stroke-dasharray:6 3}.vclBig .lvTt{font:700 10.5px var(--mono);fill:#c08a1e}
+.vclBig .lvS{stroke:#d24c43;stroke-width:1.4;stroke-dasharray:6 3}.vclBig .lvSt{font:700 10.5px var(--mono);fill:#d24c43}
+.vclBig .lvL{stroke:#3a6fd8;stroke-width:1.1;stroke-dasharray:4 3}.vclBig .lvLt{font:600 10px var(--sans);fill:#3a6fd8;paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+.vclBig .mk{stroke:var(--dim);stroke-width:1;stroke-dasharray:3 3;opacity:.8}
+.vclBig .mkt{font:600 10.5px var(--sans);fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+.v2Key.vclKey .k5{border-color:#2e9e6e}.v2Key.vclKey .k10{border-color:#8a5cd0}.v2Key.vclKey .k20{border-color:#e09a2b}
+.v2Key.vclKey .lvT{border-color:#c08a1e;border-top-style:dashed}.v2Key.vclKey .lvS{border-color:#d24c43;border-top-style:dashed}.v2Key.vclKey .lvL{border-color:#3a6fd8;border-top-style:dashed}
+.v2Key.vclKey .mk{color:var(--dim);margin-right:3px}.v2Key.vclKey .spk{color:#e09a2b;margin-right:3px}.v2Key.vclKey .zone{color:#c08a1e;opacity:.35;margin-right:3px}
 .v2Spark{width:150px;height:46px;display:block}
 .v2SpTd{cursor:zoom-in}.v2SpTd:hover .v2Spark{outline:1px solid var(--accent);outline-offset:2px;border-radius:3px}
 .expPop.v2Pop{width:min(940px,100%)}
@@ -2730,6 +2850,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
       <div class="tabs" id="tabs" hidden>
         <button data-t="val">저평가</button>
         <button data-t="val2">저평가V2</button>
+        <button data-t="vocal">보컬</button>
         <button data-t="orbit" class="on">궤도</button>
         <button data-t="land">풍경</button>
         <button data-t="brief">변화 브리핑</button>
@@ -2943,7 +3064,7 @@ function show(t){
   ({orbit:viewOrbit, land:viewLand, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, rep:viewReports, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue, val2:viewValue2, grow:viewGrowth}[t])(p);
+    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue, val2:viewValue2, vocal:viewVocal, grow:viewGrowth}[t])(p);
 }
 
 // ---------------------------------------------------------- 분기 변화 — 보고서가 나올 때마다 직전 공시(3개월 전)와 맞댄다
@@ -5067,6 +5188,482 @@ async function v2Pop(r, key){
     fig.appendChild(svg); fig.appendChild(tip);
   };
   [[60,'3개월'],[120,'6개월'],[250,'1년'],[500,'2년']].forEach(([n,t])=>{ const b=el('button',null,t); b.dataset.n=n; b.onclick=()=>draw(n); rg.appendChild(b); });
+  draw(Math.min(want, d.c.length));
+}
+
+// ---------------------------------------------------------- 보컬(김형준) — 거래대금 · 테마 대장주 · 눌림목 (/api/vocal)
+// ① 거래대금 상위 → ② 강한 테마 → ③ 테마 대장주 → ④ 큰 상승 → ⑤ 눌림 → ⑥ 지지선에서 거래량 감소 → ⑦ 거래대금 재유입 + 양봉 → ⑧ 진입.
+// 계산은 전부 서버(전 시장 일봉). 이 화면은 그리기만 한다. 모드 · 고른 테마 · 정렬 · 쪽 = S.vc.
+// CSS 클래스는 vcl*(밸류체인 탭이 vc* 를 이미 쓴다). 함수는 viewVocal · vcPop · vcl*.
+const VCL_STG={4:'④ 큰 상승',5:'⑤ 눌림',6:'⑥ 거래량 감소',7:'⑦ 재유입'};
+const VCL_STEPS=[['①','거래대금 상위'],['②','강한 테마'],['③','테마 대장주'],['④','큰 상승'],['⑤','눌림'],['⑥','거래량 감소'],['⑦','재유입 양봉'],['⑧','진입 후보']];
+const VCL_MODES=[['pull','눌림목',150],['short','단기',50]];
+const vclOk=v=>v!=null&&isFinite(v);
+const vclN=(v,d)=>vclOk(v)?Number(v).toFixed(d==null?1:d):'—';
+const vclP=(v,d)=>vclOk(v)?(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d==null?1:d)+'%':'—';   // 부호 있는 %
+const vclPc=(v,d)=>vclOk(v)?Number(v).toFixed(d==null?1:d)+'%':'—';                           // 부호 없는 %
+const vclX=v=>vclOk(v)?Number(v).toFixed(v>=10?0:1)+'배':'—';
+const vclW=v=>vclOk(v)?Math.round(v).toLocaleString('ko-KR'):'—';
+const vclI=v=>vclOk(v)?Math.round(v).toLocaleString('ko-KR'):'—';
+const vclD=s=>s&&String(s).length>=8?String(s).slice(2,4)+'.'+String(s).slice(4,6)+'.'+String(s).slice(6,8):'—';
+const vclHM=t=>{ if(!t) return ''; const a=new Date(t*1000), z=n=>String(n).padStart(2,'0'); return z(a.getMonth()+1)+'.'+z(a.getDate())+' '+z(a.getHours())+':'+z(a.getMinutes()); };
+const vclUpDn=v=>v>0?'up':v<0?'dn':'';
+const vclSt=()=>{ S.vc=S.vc||{mode:'pull',sort:{},leadOnly:true,theme:null,page:0,topPage:0,btOpen:false,ruleOpen:false,allOpen:false}; return S.vc; };
+
+async function viewVocal(p, force){
+  p.innerHTML='';
+  const box=el('section','valBox vclBox'); p.appendChild(box);
+  const hd=el('div','csHead'); const ht=el('div');
+  ht.appendChild(el('h3',null,'보컬 — 거래대금 · 테마 대장주 · 눌림목'));
+  ht.appendChild(el('p',null,'① 거래대금 상위 → ② 강한 테마 → ③ 테마 대장주 → ④ 큰 상승 확인 → ⑤ 눌림 → ⑥ 지지선에서 거래량 감소 → ⑦ 거래대금 재유입 + 양봉 → ⑧ 진입. '+
+    '돈이 몰린 테마의 대장이 쉬는 동안 거래량이 마르고, 지지선에서 다시 돈이 들어오는 첫 양봉을 잡는다. 전 시장 일봉으로 서버가 센다.'));
+  hd.appendChild(ht);
+  const meta=el('div','csMeta vclMeta'); hd.appendChild(meta); box.appendChild(hd);
+  const body=el('div'); box.appendChild(body);
+  let d;
+  try{ d=await (await fetch('/api/vocal'+(force?'?force=1':''))).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
+  if(!box.isConnected) return;
+  if(!d||typeof d!=='object') d={error:'응답이 비었다'};
+  const st=vclSt();
+  let draw=()=>{};   // 결과가 오면 아래서 채운다(그 전에 모드를 눌러도 조용히)
+  // ── 메타 줄: 기준 봉 · 모드 · 다시 계산
+  meta.appendChild(el('span',null,'기준: '+vclD(d.date)+' 장 마감 봉 · 전 시장 '+(d.n_univ!=null?vclI(d.n_univ):'—')+'곳'+(d.at?' · 계산 '+vclHM(d.at):'')));
+  const seg=el('div','csSeg'); const modes=(d.rules&&d.rules.modes)||{};
+  VCL_MODES.forEach(([k,lab,top0])=>{ const m=modes[k]||{}; const b=el('button',null,lab+' '+(m.top||top0)+'위'); b.dataset.k=k;
+    b.title=k==='pull'?'눌림목 모드 — 거래대금 상위 '+(m.top||top0)+'위 풀, 더 깊고 긴 눌림':'단기 모드 — 거래대금 상위 '+(m.top||top0)+'위 풀, 얕고 짧은 눌림';
+    b.onclick=()=>{ if(st.mode===k) return; st.mode=k; st.theme=null; st.page=0; st.topPage=0; draw(); }; seg.appendChild(b); });
+  meta.appendChild(seg);
+  const rf=el('button','ghost','다시 계산'); rf.onclick=()=>viewVocal(p,true); meta.appendChild(rf);
+  if(d.error&&!d.results){ body.appendChild(el('div','err',d.error)); return; }
+  if(d.error) body.appendChild(el('div','err','마지막 계산 실패: '+d.error+' — 아래는 이전 결과'));
+  if(d.running){
+    const pr=el('div','prog');
+    pr.appendChild(el('span',null,(d.phase||'계산 중')+' '+(d.done||0)+'/'+(d.total||0)+(d.results?' — 아래는 이전 결과':' — 처음 한 번은 몇 분')));
+    const b=el('div','bar'); const i=el('i'); i.style.width=(d.total?Math.round((d.done||0)/d.total*100):5)+'%'; b.appendChild(i); pr.appendChild(b);
+    body.appendChild(pr);
+    setTimeout(()=>{ if(box.isConnected && S.tab==='vocal') viewVocal(p,false); }, 5000);
+    if(!d.results) return;
+  }
+  const content=el('div'); body.appendChild(content);
+  draw=()=>{ [...seg.children].forEach(b=>b.classList.toggle('on',b.dataset.k===st.mode)); content.innerHTML=''; vclDraw(content, d, draw); };
+  draw();
+}
+
+// 본문 전부 — 모드 · 테마 · 정렬이 바뀌면 통째로 다시 그린다
+function vclDraw(root, d, redraw){
+  const st=vclSt(), R=(d.results||{})[st.mode]||null, rules=d.rules||{};
+  if(!R){ root.appendChild(el('div','empty','이 모드의 결과가 아직 없다')); root.appendChild(vclRules(rules, st.mode)); return; }
+  const top=R.top||[], themes=R.themes||[], leaders=R.leaders||[], funnel=R.funnel||[], entries=R.entries||[];
+  const byCode=new Map(funnel.map(f=>[f.code,f]));
+  const nStage=k=>funnel.filter(f=>(+f.stage||0)>=k).length;
+  const counts=[top.length, themes.length, leaders.length, nStage(4), nStage(5), nStage(6), funnel.filter(f=>+f.stage===7).length, entries.length];
+  const secs={};
+  // ── 깔때기 띠
+  const strip=el('div','vclFun');
+  VCL_STEPS.forEach(([no,lab],i)=>{ const b=el('button','vclStep'+(i===7?' last':'')+(counts[i]?'':' zero'));
+    b.appendChild(el('b',null,no)); b.appendChild(el('span',null,lab)); b.appendChild(el('em',null,vclI(counts[i])));
+    b.title=i===0?'오늘 거래대금 상위 '+top.length+'종목 · 풀(최근 '+(((rules.consts||{}).POOL_DAYS)||'—')+'일 안 순위 안) '+vclI(R.n_pool)+'곳':i>=3&&i<=6?'풀 종목 가운데 '+lab+' 단계까지 온 종목':'';
+    b.onclick=()=>{ const s=secs[i]; if(s) s.scrollIntoView({behavior:'smooth',block:'start'}); }; strip.appendChild(b); });
+  root.appendChild(strip);
+  if(st.theme){ const pill=el('div','vclPill'); pill.appendChild(el('span',null,'테마 고름: '+st.theme+' — ③ 대장주 · ④~⑦ 표에만'));
+    const x=el('button',null,'✕ 풀기'); x.onclick=()=>{ st.theme=null; redraw(); }; pill.appendChild(x); root.appendChild(pill); }
+  secs[7]=vclEntries(root, entries, rules);
+  secs[3]=secs[4]=secs[5]=secs[6]=vclFunnelTbl(root, funnel, redraw);
+  secs[1]=vclThemes(root, R, redraw);
+  secs[2]=vclLeaders(root, leaders, byCode, redraw);
+  secs[0]=vclTop(root, top, redraw);
+  root.appendChild(vclBT(d.bt, st.mode));
+  root.appendChild(vclRules(rules, st.mode));
+  root.appendChild(el('div','finnote','시세 = 네이버 일봉(수정주가) · 거래대금 = 종가 × 거래량. 테마 = 오늘 분류표(종목이 여러 테마에 들 수 있다). 상장 목록 '+vclD(d.listing_date)+' · 전 시장 '+vclI(R.n_univ!=null?R.n_univ:d.n_univ)+'곳. '+
+    '마감 봉으로 잰 신호라 진입은 다음 날 시가 — 사고팔 근거가 아니라 볼 자리를 좁히는 도구다.'));
+}
+
+// 절 머리 — 번호 · 제목 · 한 줄
+function vclSec(root, no, title, note){
+  const s=el('div','vclSec'); const h=el('div','vclSecH');
+  h.appendChild(el('b',null,no)); h.appendChild(el('h4',null,title)); if(note) h.appendChild(el('span',null,note));
+  s.appendChild(h); root.appendChild(s); return s;
+}
+function vclStage(stage){
+  const s=+stage||0, c=el('span','vclSt s'+(s>=4&&s<=7?s:0),VCL_STG[s]||(s?'단계 '+s:'—'));
+  c.title=s>=4?'깔때기에서 '+VCL_STG[s]+'까지 왔다':'풀 밖이거나 ④ 큰 상승 전'; return c;
+}
+// lead = [[테마, 역할, 처음 대장이 된 날?]] — ①표는 2칸(오늘 기준), 깔때기 F 는 3칸(상승 중 처음 그 테마 대장이 된 날)
+function vclLeadChips(lead, onTheme){
+  const w=el('span','vclChips');
+  (lead||[]).forEach(l=>{ const t=l[0]||'', r=l[1]||'대장', d0=l[2]&&String(l[2]).length>=8?String(l[2]):null;
+    const c=el('span','vclLead'+(r==='부대장'?' sub':''),t+' · '+r+(d0?' ('+d0.slice(4,6)+'.'+d0.slice(6,8)+')':''));
+    c.title=t+' 테마의 '+r+' — 테마 시작일부터 거래대금 합 순'+(d0?'. 상승 중 처음 '+r+'이 된 날 '+vclD(d0):'');
+    if(onTheme){ c.classList.add('go'); c.onclick=e=>{ e.stopPropagation(); onTheme(t); }; } w.appendChild(c); });
+  return w;
+}
+// 눌림 중에도 오늘 기준 대장이면 작은 표시(lead_now 는 보통 비어 있다)
+function vclNowChip(f){
+  const now=(f&&f.lead_now)||[]; if(!now.length) return null;
+  const c=el('span','vclNow','지금도 '+(now.some(l=>l[1]!=='부대장')?'대장':'부대장'));
+  c.title='오늘 거래대금 기준으로도 '+now.map(l=>(l[0]||'')+' '+(l[1]||'대장')).join(' · '); return c;
+}
+function vclThemeChips(themes, n, onTheme){
+  const w=el('span','vclChips'); const a=themes||[], m=n||3;
+  a.slice(0,m).forEach(t=>{ const c=el('span','vclTh',t); if(onTheme){ c.classList.add('go'); c.onclick=e=>{ e.stopPropagation(); onTheme(t); }; } w.appendChild(c); });
+  if(a.length>m){ const c=el('span','vclTh more','+'+(a.length-m)); c.title=a.slice(m).join(' · '); w.appendChild(c); }
+  return w;
+}
+function vclNameTd(r, sub){
+  const td=el('td','nm'); const l1=el('div','l1');
+  const a=el('a',null,r.name||r.code||'—'); a.href='#'; a.title=(r.name||'')+' — 눌러서 회사 화면으로'; a.onclick=e=>{ e.preventDefault(); if(r.code) pick(r.code); }; l1.appendChild(a);
+  td.appendChild(l1); td.appendChild(el('small',null,(r.code||'')+(sub?' · '+sub:''))); return td;
+}
+const vclMark=(ok,lab,title)=>{ const s=el('span','vclMk '+(ok?'ok':'no'),lab+(ok?' ✓':' ✗')); if(title) s.title=title; return s; };
+// 지지선 칸 — 닿은 선 이름, 없으면 가장 가까운 후보
+function vclSupport(f){
+  const t=f.touched||[], lv=f.levels||[];
+  const w=el('span','vclSup'+(t.length?' on':''));
+  if(t.length) w.textContent=t.join(' · ');
+  else if(lv.length){ const near=lv.slice().sort((a,b)=>Math.abs(a[2]||0)-Math.abs(b[2]||0))[0]; w.textContent=near[0]+' '+vclP(near[2]); }
+  else w.textContent='—';
+  if(lv.length) w.title=lv.map(l=>l[0]+' '+vclW(l[1])+' ('+vclP(l[2])+')').join('\n');
+  return w;
+}
+
+// ⑧ 진입 후보 — 카드
+function vclEntries(root, list, rules){
+  const rrMin=(rules.consts||{}).RR_MIN;
+  const sec=vclSec(root,'⑧','진입 후보',list.length+'종목 · ⑦ 신호'+(vclOk(rrMin)?' + 손익비 '+vclN(rrMin,1)+'↑':'')+' · 진입 = 다음 날 시가(표는 오늘 종가)');
+  if(!list.length){ sec.appendChild(el('div','vclEmpty','오늘 ⑦ 신호를 채운 대장주가 없다 — ④~⑦ 표에서 다음 후보를 본다')); return sec; }
+  const g=el('div','vclEnt');
+  list.forEach(f=>{
+    const c=el('div','vclEntC');
+    const h=el('div','vclEntH');
+    const a=el('a',null,f.name||f.code||'—'); a.href='#'; a.onclick=e=>{ e.preventDefault(); if(f.code) pick(f.code); }; h.appendChild(a);
+    h.appendChild(el('small',null,(f.code||'')+(f.rank?' · 거래대금 '+f.rank+'위':'')+(vclOk(f.tv)?' · '+qWon(f.tv):'')));
+    c.appendChild(h);
+    const ch=el('div','vclEntCh'); ch.appendChild(vclLeadChips(f.lead)); const nw=vclNowChip(f); if(nw) ch.appendChild(nw); ch.appendChild(vclThemeChips(f.themes,3));
+    if(vclOk(f.n_theme_days)){ const td=el('span','vclThD','테마 강세 '+f.n_theme_days+'일'); td.title='상승 중 이 종목의 테마가 강한 테마였던 날 수'; ch.appendChild(td); }
+    c.appendChild(ch);
+    const nums=el('div','vclNums');
+    [['진입',vclW(f.entry),'오늘 종가','ink'],['손절',vclW(f.stop),vclOk(f.stop_pct)?'−'+Math.abs(f.stop_pct).toFixed(1)+'%':'눌림 저점','dn'],
+     ['목표',vclW(f.target),vclOk(f.target_pct)?'+'+Math.abs(f.target_pct).toFixed(1)+'%':'고점','up'],['손익비',vclN(f.rr,1),vclOk(rrMin)?rrMin+'↑':'목표÷손절','gold']].forEach(([k,v,s,cl])=>{
+      const b=el('div','n '+cl); b.appendChild(el('span',null,k)); b.appendChild(el('b',null,v)); b.appendChild(el('small',null,s)); nums.appendChild(b); });
+    c.appendChild(nums);
+    const ln=el('div','vclEntL');
+    const sp=el('span'); sp.appendChild(document.createTextNode('지지선 ')); sp.appendChild(vclSupport(f)); ln.appendChild(sp);
+    ln.appendChild(el('span',null,'거래대금 '+vclX(f.reflow_x)));
+    ln.appendChild(vclMark(!!f.bull,'양봉')); ln.appendChild(vclMark(!!f.above5,'5일선 위')); ln.appendChild(vclMark(!!f.hold,'지지선 지킴'));
+    c.appendChild(ln);
+    if(f.why) c.appendChild(el('div','vclWhy',f.why));
+    const spk=el('div','vclSpk'); spk.appendChild(v2Spark(f.spark||{})); spk.title='누르면 크게 — 캔들 · 거래량 · 5·10·20일선 · 바닥 · 급등봉 · 고점 · 손절 · 목표 · 지지선'; spk.onclick=()=>vcPop(f); c.appendChild(spk);
+    g.appendChild(c);
+  });
+  sec.appendChild(g); return sec;
+}
+
+// ④~⑦ 깔때기 표 — [머리, 정렬 키, 정렬 값, 풀이]
+const VCL_COLS=[
+  ['종목','name',f=>f.name,''],['단계','stage',f=>+f.stage||0,'④ 큰 상승 → ⑤ 눌림 → ⑥ 거래량 감소 → ⑦ 재유입 양봉'],
+  ['상승폭','gain',f=>f.gain,'바닥에서 고점까지'],['고점 뒤','days',f=>f.days,'고점 뒤 지난 봉 수'],['눌림','depth',f=>f.depth,'고점에서 지금까지 내려온 폭'],
+  ['되돌림','retrace',f=>f.retrace,'상승폭 가운데 돌려준 비율'],['지지선','sup',f=>(f.touched||[]).length,'닿은 지지선 — 없으면 가장 가까운 후보와 거리'],
+  ['거래량','vol',f=>f.v_ratio_peak,'최근 3봉 거래량 ÷ 급등 대량봉 · ÷ 급등 구간 평균 — 작을수록 말랐다'],['오늘','today',f=>(f.bull?1:0)+(f.reflow?1:0)+(f.above5?1:0),'양봉 · 거래대금 재유입 · 5일선 위'],
+  ['손절 / 목표 / 손익비','rr',f=>f.rr,'손절 = 눌림 저점 · 목표 = 고점'],['최근 120일','spark',null,'']];
+function vclFunnelTbl(root, funnel, redraw){
+  const st=vclSt();
+  const inTheme=f=>!st.theme||(f.themes||[]).includes(st.theme)||(f.lead||[]).some(l=>l[0]===st.theme);
+  const list=funnel.filter(f=>(+f.stage||0)>=4&&inTheme(f)&&(!st.leadOnly||(f.lead||[]).length));
+  const sec=vclSec(root,'④~⑦','깔때기 — 큰 상승 · 눌림 · 거래량 감소 · 재유입',list.length+'종목'+(st.theme?' · 테마 '+st.theme:''));
+  const bar=el('div','csBar'); const rt=el('div','rt');
+  const wl=el('label','csWarn'); const cb=el('input'); cb.type='checkbox'; cb.checked=!!st.leadOnly; cb.onchange=()=>{ st.leadOnly=cb.checked; redraw(); };
+  wl.appendChild(cb); wl.appendChild(document.createTextNode(' 대장·부대장만')); wl.title='상승 중 어느 날이든 강한 테마의 대장·부대장이었던 종목만(lead). 끄면 풀 전체에서 ④ 넘은 종목';
+  rt.appendChild(wl); bar.appendChild(el('div','lt')); bar.appendChild(rt); sec.appendChild(bar);
+  const key=st.sort[st.mode]||['stage',-1];
+  const col=VCL_COLS.find(c=>c[1]===key[0]);
+  const rows=list.map((f,i)=>[f,i]).sort((a,b)=>{ const x=col&&col[2]?col[2](a[0]):null, y=col&&col[2]?col[2](b[0]):null;
+    if(x==null&&y==null) return a[1]-b[1]; if(x==null) return 1; if(y==null) return -1;
+    const r=(typeof x==='string'?x.localeCompare(y,'ko'):x-y)*key[1]; return r||a[1]-b[1]; }).map(q=>q[0]);
+  const t=el('table','tbl csTbl vclTbl'); const head=el('tr');
+  VCL_COLS.forEach(([lab,k,sv,tl])=>{ const h=el('th',k==='name'||k==='why'||k==='sup'?null:'r'); h.appendChild(document.createTextNode(lab));
+    if(sv){ const on=key[0]===k; h.appendChild(el('i','so'+(on?' on':''),on?(key[1]<0?'↓':'↑'):'↕')); h.onclick=()=>{ st.sort[st.mode]=[k,on?-key[1]:(k==='name'?1:-1)]; redraw(); }; }
+    else h.style.cursor='default';
+    if(tl) h.title=tl; head.appendChild(h); });
+  t.appendChild(head);
+  rows.forEach(f=>t.appendChild(vclFunnelRow(f, redraw)));
+  if(!rows.length){ const tr=el('tr'); const td=el('td','emptyRow',funnel.length?'조건에 맞는 종목이 없다 — '+(st.leadOnly?'"대장·부대장만"을 끄거나 ':'')+(st.theme?'테마를 풀어 ':'')+'범위를 넓혀 보라':'풀 안에 ④ 큰 상승을 넘은 종목이 없다'); td.colSpan=VCL_COLS.length; tr.appendChild(td); t.appendChild(tr); }
+  sec.appendChild(el('div','tblwrap')).appendChild(t);
+  return sec;
+}
+function vclFunnelRow(f, redraw){
+  const st=vclSt(), tr=el('tr','st'+(+f.stage||0));
+  const onTheme=t=>{ st.theme=st.theme===t?null:t; redraw(); };
+  const nm=vclNameTd(f,(f.rank?'거래대금 '+f.rank+'위':'순위 밖')+(vclOk(f.tv)?' · '+qWon(f.tv):'')+(vclOk(f.pool_days)?' · 풀 '+f.pool_days+'일':'')+(vclOk(f.n_theme_days)?' · 테마 강세 '+f.n_theme_days+'일':''));
+  const ch=el('div','ot vclChips'); ch.appendChild(vclLeadChips(f.lead,onTheme)); const nw=vclNowChip(f); if(nw) ch.appendChild(nw); ch.appendChild(vclThemeChips(f.themes,3,onTheme)); nm.appendChild(ch);
+  tr.appendChild(nm);
+  const td=(v,cls,tl)=>{ const x=el('td','num'+(cls?' '+cls:'')); if(typeof v==='string') x.textContent=v; else x.appendChild(v); if(tl) x.title=tl; tr.appendChild(x); return x; };
+  const stc=el('div'); stc.appendChild(vclStage(f.stage)); if(f.why) stc.appendChild(el('div','vclWhy',f.why)); td(stc,'vclStTd');
+  td(vclP(f.gain,0),vclUpDn(f.gain),vclOk(f.rise)?f.rise+'봉 동안 · 고점 '+vclD(f.hk)+' '+vclW(f.H)+' · 바닥 '+vclD(f.lk)+' '+vclW(f.base_lo):'');
+  td(vclOk(f.days)?f.days+'봉':'—','',f.hk?'고점 '+vclD(f.hk):'');
+  td(vclOk(f.depth)?'−'+Math.abs(f.depth).toFixed(1)+'%':'—','dn',vclOk(f.pl)?'눌림 저점 '+vclW(f.pl):'');
+  td(vclPc(f.retrace,0),'',vclOk(f.pl)?'고점 '+vclW(f.H)+' → 저점 '+vclW(f.pl):'');
+  const sp=el('td','vclSupTd'); sp.appendChild(vclSupport(f)); tr.appendChild(sp);
+  const vol=el('span',(f.dry_now?'vclDry on':'vclDry'),vclX(f.v_ratio_peak)+' · '+vclX(f.v_ratio_rally));
+  td(vol,'',(vclOk(f.v_now3)?'최근 3봉 평균 '+vclI(f.v_now3)+(vclOk(f.v_prev3)?' (앞 3봉 '+vclI(f.v_prev3)+')':''):'')+(vclOk(f.v_peak)?'\n급등봉 '+vclI(f.v_peak)+' · 급등 구간 평균 '+vclI(f.v_rally):'')+(f.dry_now?'\n말랐다 ✓':''));
+  const tdy=el('span','vclToday'); tdy.appendChild(vclMark(!!f.bull,'양봉')); tdy.appendChild(vclMark(!!f.reflow,'재유입'+(vclOk(f.reflow_x)?' '+vclX(f.reflow_x):''),'오늘 거래대금 ÷ 앞 봉 평균')); tdy.appendChild(vclMark(!!f.above5,'5일선'));
+  td(tdy);
+  const rr=el('span'); rr.appendChild(el('i','dn',vclOk(f.stop_pct)?'−'+Math.abs(f.stop_pct).toFixed(1)+'%':'—')); rr.appendChild(document.createTextNode(' / ')); rr.appendChild(el('i','up',vclOk(f.target_pct)?'+'+Math.abs(f.target_pct).toFixed(1)+'%':'—')); rr.appendChild(document.createTextNode(' / ')); rr.appendChild(el('b',null,vclN(f.rr,1)));
+  td(rr,'vclRr',vclOk(f.entry)?'진입 '+vclW(f.entry)+' · 손절 '+vclW(f.stop)+' · 목표 '+vclW(f.target):'');
+  const sk=el('td','v2SpTd'); sk.appendChild(v2Spark(f.spark||{})); sk.title='누르면 크게'; sk.onclick=()=>vcPop(f); tr.appendChild(sk);
+  return tr;
+}
+
+// ② 강한 테마 — 카드 레일 + 전체 표
+function vclThemes(root, R, redraw){
+  const st=vclSt(), themes=R.themes||[], all=R.themes_all||[];
+  const sec=vclSec(root,'②','강한 테마',themes.length+'개 · 거래대금 상위 안 점유율이 평소보다 큰 테마, 강한 순 · 누르면 ③ · ④~⑦ 을 그 테마로');
+  const rail=el('div','csRail'); const track=el('div','csTrack'); rail.appendChild(track);
+  const nav=dir=>{ const b=el('button','csNav '+(dir<0?'l':'r'),dir<0?'‹':'›'); b.onclick=()=>track.scrollBy({left:dir*track.clientWidth*.8,behavior:'smooth'}); return b; };
+  const nl=nav(-1), nr=nav(1); rail.appendChild(nl); rail.appendChild(nr);
+  const navUpd=()=>{ nl.hidden=track.scrollLeft<=4; nr.hidden=track.scrollLeft+track.clientWidth>=track.scrollWidth-4; };
+  track.addEventListener('scroll',navUpd,{passive:true}); setTimeout(navUpd,50);
+  themes.forEach(t=>{
+    const c=el('button','csCard vclThC'+(t.theme===st.theme?' on':''));
+    const h=el('div','t'); h.appendChild(el('b',null,t.theme||'—')); h.appendChild(el('span',null,vclX(t.ratio))); c.appendChild(h);
+    c.appendChild(el('div','ds','5일 '+vclP(t.r5)+' · 60일 신고가 '+vclI(t.nh)+'곳 · 멤버 '+vclI(t.n_pool)+'/'+vclI(t.n)));
+    c.appendChild(el('div','vd','시작 '+vclD(t.start)+' · 점유율 '+vclPc(t.share)+' · 점수 '+vclN(t.score,1)));
+    c.title='점유율 배수 = 거래대금 상위 안 이 테마 비중 ÷ 전체 종목 안 비중\n5일 = 멤버 5일 수익률 중앙값 · 신고가 = 60일 신고가 멤버 수 · 멤버 = 풀 안 / 전체';
+    c.onclick=()=>{ st.theme=st.theme===t.theme?null:t.theme; redraw(); };
+    track.appendChild(c);
+  });
+  if(!themes.length) track.appendChild(el('div','vclEmpty','오늘 강한 테마가 없다 — 상위 안 점유율이 평소와 비슷하다'));
+  sec.appendChild(rail);
+  const det=el('details','vclAll'); det.open=!!st.allOpen; det.addEventListener('toggle',()=>{ st.allOpen=det.open; });
+  det.appendChild(el('summary',null,'테마 전체 보기 — '+all.length+'개(약한 테마 포함)'));
+  const t=el('table','tbl csTbl vclTbl vclAllT');
+  t.innerHTML='<tr><th>테마</th><th class="r">점유율 배수</th><th class="r">점유율</th><th class="r">5일</th><th class="r">신고가</th><th class="r">멤버(풀/전체)</th><th class="r">점수</th><th class="r">강함</th></tr>';
+  [...t.querySelectorAll('th')].forEach(h=>{ h.style.cursor='default'; });
+  all.forEach(x=>{ const tr=el('tr',x.strong===false?'weak':''); const a=el('td'); const b=el('a',null,x.theme||'—'); b.href='#'; b.onclick=e=>{ e.preventDefault(); st.theme=st.theme===x.theme?null:x.theme; redraw(); }; a.appendChild(b); tr.appendChild(a);
+    [vclX(x.ratio),vclPc(x.share),vclP(x.r5),vclI(x.nh),vclI(x.n_pool)+'/'+vclI(x.n),vclN(x.score,1),x.strong===false?'':'✓'].forEach((v,i)=>tr.appendChild(el('td','num'+(i===2&&x.r5>0?' up':i===2&&x.r5<0?' dn':''),v)));
+    t.appendChild(tr); });
+  if(!all.length){ const tr=el('tr'); const td=el('td','emptyRow','테마 자료가 없다'); td.colSpan=8; tr.appendChild(td); t.appendChild(tr); }
+  det.appendChild(el('div','tblwrap')).appendChild(t); sec.appendChild(det);
+  return sec;
+}
+
+// ③ 대장주 표
+function vclLeaders(root, leaders, byCode, redraw){
+  const st=vclSt(), list=leaders.filter(l=>!st.theme||l.theme===st.theme);
+  const sec=vclSec(root,'③','테마 대장주',list.length+'종목 · 테마 시작일부터 거래대금 합 1·2위'+(st.theme?' · 테마 '+st.theme:''));
+  const t=el('table','tbl csTbl vclTbl'); const head=el('tr');
+  [['테마',''],['역할',''],['종목',''],['시작','r'],['거래대금 합','r'],['수익률','r'],['오늘 거래대금','r'],['단계','r']].forEach(([l,c])=>{ const h=el('th',c||null,l); h.style.cursor='default'; head.appendChild(h); });
+  head.children[4].title='테마 시작일부터 오늘까지 거래대금 합'; head.children[5].title='테마 시작일 종가 → 오늘'; head.children[7].title='④~⑦ 깔때기에서 어디까지 왔나';
+  t.appendChild(head);
+  list.forEach(l=>{ const tr=el('tr');
+    const th=el('td'); const a=el('a','vclThA',l.theme||'—'); a.href='#'; a.onclick=e=>{ e.preventDefault(); st.theme=st.theme===l.theme?null:l.theme; redraw(); }; th.appendChild(a); tr.appendChild(th);
+    const rl=el('td'); rl.appendChild(el('span','vclLead'+(l.role==='부대장'?' sub':''),l.role||'대장')); tr.appendChild(rl);
+    tr.appendChild(vclNameTd(l,vclOk(l.ret_rank)?'수익률 '+l.ret_rank+'위':''));
+    tr.appendChild(el('td','num',vclD(l.start)));
+    tr.appendChild(el('td','num',vclOk(l.tv_sum)?qWon(l.tv_sum):'—'));
+    tr.appendChild(el('td','num '+vclUpDn(l.ret),vclP(l.ret,0)));
+    tr.appendChild(el('td','num',vclOk(l.tv)?qWon(l.tv):'—'));
+    const sd=el('td','num'); const f=byCode.get(l.code); sd.appendChild(vclStage(f?f.stage:0)); tr.appendChild(sd);
+    t.appendChild(tr); });
+  if(!list.length){ const tr=el('tr'); const td=el('td','emptyRow',leaders.length?'이 테마의 대장주가 없다':'강한 테마가 없어 대장주도 없다'); td.colSpan=8; tr.appendChild(td); t.appendChild(tr); }
+  sec.appendChild(el('div','tblwrap')).appendChild(t); return sec;
+}
+
+// ① 거래대금 상위 표 — 50개씩
+function vclTop(root, top, redraw){
+  const st=vclSt(), PER=50, pages=Math.max(1,Math.ceil(top.length/PER)); if(st.topPage>=pages) st.topPage=pages-1; if(st.topPage<0) st.topPage=0;
+  const sec=vclSec(root,'①','거래대금 상위',top.length+'종목 · 오늘 종가 × 거래량');
+  const t=el('table','tbl csTbl vclTbl'); const head=el('tr');
+  [['순위','r'],['종목',''],['거래대금','r'],['20일 대비','r'],['등락률','r'],['테마',''],['단계','r'],['대장','']].forEach(([l,c])=>{ const h=el('th',c||null,l); h.style.cursor='default'; head.appendChild(h); });
+  head.children[3].title='오늘 거래대금 ÷ 20일 평균'; t.appendChild(head);
+  top.slice(st.topPage*PER,(st.topPage+1)*PER).forEach(r=>{ const tr=el('tr');
+    tr.appendChild(el('td','num',vclI(r.rank)));
+    tr.appendChild(vclNameTd(r,vclOk(r.c)?vclW(r.c)+'원':''));
+    tr.appendChild(el('td','num',vclOk(r.tv)?qWon(r.tv):'—'));
+    tr.appendChild(el('td','num'+(r.x20>=3?' hi':''),vclX(r.x20)));
+    tr.appendChild(el('td','num '+vclUpDn(r.chg),vclP(r.chg,2)));
+    const th=el('td','vclThTd'); th.appendChild(vclThemeChips(r.themes,3,x=>{ st.theme=st.theme===x?null:x; redraw(); })); tr.appendChild(th);
+    const sd=el('td','num'); sd.appendChild(vclStage(r.stage)); tr.appendChild(sd);
+    const ld=el('td'); ld.appendChild(vclLeadChips(r.lead)); tr.appendChild(ld);
+    t.appendChild(tr); });
+  if(!top.length){ const tr=el('tr'); const td=el('td','emptyRow','거래대금 자료가 없다'); td.colSpan=8; tr.appendChild(td); t.appendChild(tr); }
+  sec.appendChild(el('div','tblwrap')).appendChild(t);
+  if(top.length>PER){ const pg=el('div','csPage');
+    const pb=el('button',null,'‹'); pb.disabled=st.topPage===0; pb.onclick=()=>{ st.topPage--; redraw(); };
+    const nb=el('button',null,'›'); nb.disabled=st.topPage>=pages-1; nb.onclick=()=>{ st.topPage++; redraw(); };
+    pg.appendChild(pb); pg.appendChild(el('span',null,(st.topPage*PER+1)+'-'+Math.min(top.length,(st.topPage+1)*PER)+' / '+top.length)); pg.appendChild(nb); sec.appendChild(pg); }
+  return sec;
+}
+
+// 과거 검증 — 지금 모드만
+function vclBT(bt, mode){
+  const st=vclSt(), det=el('details','dipEvd vclEvd'); det.open=!!st.btOpen; det.addEventListener('toggle',()=>{ st.btOpen=det.open; });
+  const Sx=bt&&bt.modes?bt.modes[mode]:null, tr=(Sx&&Sx.trades)||{}, name=(VCL_MODES.find(m=>m[0]===mode)||[])[1]||mode;
+  const dates=(bt&&bt.dates)||[];
+  det.appendChild(el('summary',null,'과거 검증 — '+name+' 모드 · '+(dates.length===2?vclD(dates[0])+'~'+vclD(dates[1])+(bt.n_days?' '+vclI(bt.n_days)+'거래일':''):'아직 안 잼')+
+    (Sx?' · 신호 '+vclI(Sx.n_signals)+' · 체결 '+vclI(Sx.n_filled)+' · 승률 '+vclPc(tr.win,0)+' · 평균 '+vclP(tr.avg)+' · 손익비 '+vclN(tr.pf,2):'')));
+  if(!Sx){ det.appendChild(el('p',null,'과거 검증 결과가 없다. 서버와 같은 규칙으로 과거 날마다 다시 재는 검증 도구를 돌리면 여기 붙는다.')); return det; }
+  const ex=tr.exit||{};
+  det.appendChild(el('p',null,'매 거래일 그날까지의 봉만으로 ①~⑦을 다시 재고(미래 봉 안 씀) ⑧ 신호는 다음 날 시가에 사서 손절(눌림 저점) · 목표(고점) · 시간 가운데 먼저 오는 것으로 판다. '+
+    '신호 '+vclI(Sx.n_signals)+'건 · 체결 '+vclI(Sx.n_filled)+'건 · 갭으로 건너뜀 '+vclI(Sx.n_skipped_gap)+'건. '+
+    '매매 '+vclI(tr.n)+'건: 승률 '+vclPc(tr.win,0)+' · 평균 '+vclP(tr.avg)+' · 중앙 '+vclP(tr.med)+' · 손익비 '+vclN(tr.pf,2)+' · 평균 이익 '+vclP(tr.avg_win)+' · 평균 손실 '+vclP(tr.avg_loss)+
+    ' · 최대 연속 손실 '+vclI(tr.max_loss_streak)+'번 · 청산 사유 손절 '+vclI(ex.stop)+' / 목표 '+vclI(ex.target)+' / 시간 '+vclI(ex.time)+'.'));
+  const row=(t,cells,strong)=>{ const r=el('tr'); r.appendChild(el('td',null,t)); cells.forEach((v,i)=>r.appendChild(el('td','num'+(i===strong?' strong':''),v))); return r; };
+  // 보유 기간별 초과수익
+  const fwd=Sx.fwd||{};
+  if(Object.keys(fwd).length){ det.appendChild(el('em',null,'신호 뒤 n일 — 전 종목 중앙값 대비 초과수익(중앙) · 이긴 비율'));
+    const t=el('table','tbl dipTbl'); t.innerHTML='<tr><th>보유</th><th class="r">초과수익</th><th class="r">이긴 비율</th></tr>';
+    ['5','10','20'].forEach(k=>{ const x=fwd[k]; if(!x) return; t.appendChild(row(k+'일',[vclP(x.ex),vclPc(x.hit,0)],0)); }); det.appendChild(t); }
+  // 규칙 하나씩 빼 보기
+  const vars=Sx.variants||{};
+  if(Object.keys(vars).length){ det.appendChild(el('em',null,'규칙을 하나씩 빼면 — 전체 규칙보다 나빠져야 그 규칙이 몫을 한다'));
+    const t=el('table','tbl dipTbl'); t.innerHTML='<tr><th>규칙</th><th class="r">매매</th><th class="r">승률</th><th class="r">평균</th><th class="r">손익비</th></tr>';
+    Object.entries(vars).forEach(([k,x])=>t.appendChild(row(k,[vclI(x.n),vclPc(x.win,0),vclP(x.avg),vclN(x.pf,2)],2))); det.appendChild(t); }
+  const bs=Sx.by_support||{};
+  if(Object.keys(bs).length){ det.appendChild(el('em',null,'닿은 지지선별'));
+    const t=el('table','tbl dipTbl'); t.innerHTML='<tr><th>지지선</th><th class="r">매매</th><th class="r">승률</th><th class="r">평균</th><th class="r">손익비</th></tr>';
+    Object.entries(bs).forEach(([k,x])=>t.appendChild(row(k,[vclI(x.n),vclPc(x.win,0),vclP(x.avg),vclN(x.pf,2)],2))); det.appendChild(t); }
+  const by=Sx.by_year||{};
+  if(Object.keys(by).length){ det.appendChild(el('em',null,'해마다'));
+    const t=el('table','tbl dipTbl vclYr'); const h=el('tr'); h.appendChild(el('th',null,'')); const r1=el('tr'), r2=el('tr'), r3=el('tr');
+    r1.appendChild(el('td',null,'매매')); r2.appendChild(el('td',null,'승률')); r3.appendChild(el('td',null,'평균'));
+    Object.keys(by).sort().forEach(y=>{ const x=by[y]||{}; h.appendChild(el('th','r',y)); r1.appendChild(el('td','num',vclI(x.n))); r2.appendChild(el('td','num',vclPc(x.win,0))); r3.appendChild(el('td','num '+vclUpDn(x.avg),vclP(x.avg))); });
+    t.appendChild(h); t.appendChild(r1); t.appendChild(r2); t.appendChild(r3); det.appendChild(el('div','tblwrap')).appendChild(t); }
+  const ul=el('ul','dipEvdL');
+  if(tr.early||tr.late) ul.appendChild(el('li',null,'앞 기간 '+vclI((tr.early||{}).n)+'건 승률 '+vclPc((tr.early||{}).win,0)+' 평균 '+vclP((tr.early||{}).avg)+' · 뒤 기간 '+vclI((tr.late||{}).n)+'건 승률 '+vclPc((tr.late||{}).win,0)+' 평균 '+vclP((tr.late||{}).avg)+' — 두 기간 다 +여야 믿는다.'));
+  ul.appendChild(el('li',null,'지금 상장된 회사만 있어 수준은 부풀어 있다(생존 편향). 테마 소속은 오늘 분류표를 과거에도 쓴다 — 그때 그 테마가 아니었을 수 있다. 수수료 · 세금 · 호가 미끄러짐은 안 뺐다.'));
+  det.appendChild(ul);
+  if(bt.made) det.appendChild(el('div','finnote','검증 '+bt.made));
+  return det;
+}
+
+// 규칙 — 8단계와 문턱. 값은 서버 rules 그대로(이름을 괄호에)
+function vclRules(rules, mode){
+  const st=vclSt(), det=el('details','dipEvd vclRule'); det.open=!!st.ruleOpen; det.addEventListener('toggle',()=>{ st.ruleOpen=det.open; });
+  const m=((rules||{}).modes||{})[mode]||{}, C=(rules||{}).consts||{};
+  const v=(x,u)=>vclOk(x)?String(parseFloat(Number(x).toFixed(2)))+(u||''):'—';
+  const c=(k,u)=>v(C[k],u)+'('+k+')';
+  det.appendChild(el('summary',null,'규칙 — '+(m.name||mode)+' 모드 · 8단계 문턱'));
+  const ol=el('ol','vclSteps');
+  [['① 거래대금 상위','오늘 거래대금 '+v(m.top)+'위 안. 최근 '+c('POOL_DAYS','일')+' 안에 한 번이라도 든 종목이 풀 — 큰 상승은 순위에 들었던 날 근처에서 생긴다.'],
+   ['② 강한 테마','풀 안 점유율이 전체 종목 안 점유율의 '+c('THEME_RATIO','배')+' 넘고 멤버 '+c('THEME_MIN','곳')+' 이상인 테마, 강한 순 '+c('THEME_TOP','개')+'까지. 시작일 = 점유율이 올라선 첫날.'],
+   ['③ 테마 대장주','테마 시작일부터 거래대금 합 1위 = 대장, 2위 = 부대장. 수익률 순위는 참고만.'],
+   ['④ 큰 상승 확인','최근 '+c('RALLY_WIN','봉')+' 안, 앞 '+c('BASE_WIN','봉')+' 바닥에서 +'+v(m.gain,'%')+' 이상 올랐고 오르는 데 '+c('RISE_MAX','봉')+' 안. 급등 대량봉 = 상승 구간 거래량 최대 봉.'],
+   ['⑤ 눌림','고점 뒤 '+v(m.days_lo)+'~'+v(m.days_hi)+'봉 · 고점에서 −'+v(m.pull_lo)+'~−'+v(m.pull_hi)+'% · 상승폭 되돌림 '+c('RETRACE_MAX','%')+' 안.'],
+   ['⑥ 지지선에서 거래량 감소','지지선 후보(바닥 · 급등봉 시가·종가 · 5·10·20일선 · 직전 고점) '+c('TOUCH','%')+' 안에 닿고, 아래 마감 허용 '+c('HOLD_BELOW')+'. 최근 3봉 거래량이 급등 대량봉의 '+c('DRY_PEAK','배')+' · 급등 구간 평균의 '+c('DRY_RALLY','배')+' 아래.'],
+   ['⑦ 거래대금 재유입 + 양봉','오늘 거래대금이 앞 봉 평균의 '+c('REFLOW','배')+' 이상 · 몸통 '+c('BODY','%')+' 이상 양봉 · 5일선 위.'],
+   ['⑧ 진입','다음 날 시가. 손절 = 눌림 저점 · 목표 = 고점 · 손익비 '+c('RR_MIN')+' 이상 · 시가 갭 '+c('GAP_SKIP','%')+' 넘으면 건너뜀 · 최대 보유 '+v(m.hold,'봉')+'.']].forEach(([a,b])=>{ const li=el('li'); li.appendChild(el('b',null,a)); li.appendChild(document.createTextNode(' '+b)); ol.appendChild(li); });
+  det.appendChild(ol);
+  det.appendChild(el('p','vclLimit','한계 — 일봉뿐: ⑦은 마감 봉으로 판정, 진입은 다음 날 시가 · 테마 소속은 오늘 분류표를 과거에도 씀 · 지금 상장사만(생존 편향) · 같은 규칙을 서버와 검증 도구가 공유.'));
+  return det;
+}
+
+// 큰 차트 — 캔들 + 거래량 + 5·10·20일선, 바닥(lk) · 급등봉(bk) · 고점(hk) 세로 표시, 목표(H) · 손절(pl) · 닿은 지지선 가로 점선, 눌림 구간 음영
+async function vcPop(F){
+  F=F||{};
+  const old=document.querySelector('.expPopBg'); if(old) old.remove();
+  const bg=el('div','expPopBg'), pop=el('div','expPop vclPop'); bg.appendChild(pop);
+  const esc=e=>{ if(e.key==='Escape') close(); };
+  const close=()=>{ bg.remove(); document.removeEventListener('keydown',esc); };
+  bg.addEventListener('click',e=>{ if(e.target===bg) close(); }); document.addEventListener('keydown',esc);
+  const hd=el('div','h'); hd.appendChild(el('b',null,F.name||F.code||'—'));
+  hd.appendChild(el('span','sub',(F.code||'')+(F.rank?' · 거래대금 '+F.rank+'위':'')+(vclOk(F.gain)?' · 상승 '+vclP(F.gain,0):'')+(vclOk(F.depth)?' · 눌림 −'+Math.abs(F.depth).toFixed(0)+'%':'')+(vclOk(F.rr)?' · 손익비 '+vclN(F.rr,1):'')));
+  const rg=el('div','v2Rng'); hd.appendChild(rg);
+  const cb=el('button','x','✕'); cb.title='닫기 (Esc)'; cb.onclick=close; hd.appendChild(cb);
+  pop.appendChild(hd);
+  const cs=el('div','vclPopSig'); cs.appendChild(vclStage(F.stage)); cs.appendChild(vclLeadChips(F.lead)); const nw=vclNowChip(F); if(nw) cs.appendChild(nw); cs.appendChild(vclThemeChips(F.themes,4));
+  if(vclOk(F.n_theme_days)) cs.appendChild(el('span','vclThD','테마 강세 '+F.n_theme_days+'일'));
+  if(F.why) cs.appendChild(el('span','why',F.why));
+  pop.appendChild(cs);
+  const fig=el('div','v2Fig'); fig.appendChild(el('div','loading','일봉 불러오는 중…')); pop.appendChild(fig);
+  const keyb=el('div','v2Key vclKey');
+  keyb.innerHTML='<span><i class="k5"></i>5일</span><span><i class="k10"></i>10일</span><span><i class="k20"></i>20일</span>'+
+    '<span><i class="lvT"></i>목표 = 고점 H</span><span><i class="lvS"></i>손절 = 눌림 저점</span><span><i class="lvL"></i>닿은 지지선</span>'+
+    '<span><b class="mk">┆</b>바닥 · 급등봉 · 고점</span><span><b class="spk">●</b>급등 대량봉</span><span><b class="zone">▮</b>눌림 구간(고점 뒤)</span>';
+  pop.appendChild(keyb);
+  document.body.appendChild(bg); cb.focus();
+  let d;
+  try{ d=await (await fetch('/api/ohlcv?code='+encodeURIComponent(F.code||'')+'&n=250')).json(); }catch(e){ d=null; }
+  if(!bg.isConnected) return;
+  if(!d||!(d.c||[]).length||!d.d||!d.o||!d.h||!d.l||!d.v){ fig.innerHTML=''; fig.appendChild(el('div','err','시세를 불러오지 못했습니다')); return; }
+  const ma=n=>{ const o=[]; let s=0; d.c.forEach((x,i)=>{ s+=x; if(i>=n) s-=d.c[i-n]; o.push(i+1>=n?s/n:null); }); return o; };
+  const M={5:ma(5),10:ma(10),20:ma(20)};
+  const vavg=d.v.map((_,i)=>i>=20?d.v.slice(i-20,i).reduce((a,b)=>a+b,0)/20:null);
+  const at=new Map(d.d.map((s,i)=>[s,i]));
+  const ix=k=>at.has(k)?at.get(k):null;
+  const iL=ix(F.lk), iB=ix(F.bk), iH=ix(F.hk);
+  const firsts=[iL,iB,iH].filter(x=>x!=null);
+  const span=firsts.length?d.c.length-Math.min.apply(null,firsts):0;
+  const want=span>0?([60,120,250].find(n=>n>=span+15)||250):(S.vclRng||120);
+  const touched=new Set(F.touched||[]);
+  const lv=(F.levels||[]).filter(l=>touched.has(l[0])&&vclOk(l[1]));
+  const draw=N=>{
+    S.vclRng=N; [...rg.children].forEach(b=>b.classList.toggle('on',+b.dataset.n===N));
+    fig.innerHTML='';
+    const T0=Math.max(0,d.c.length-N), idx=[]; for(let i=T0;i<d.c.length;i++) idx.push(i);
+    const W=880,L=8,R=66,T=12,H1=300,G=8,H2=80,B=22,H=T+H1+G+H2+B;
+    let mx=Math.max.apply(null,idx.map(i=>d.h[i])), mn=Math.min.apply(null,idx.map(i=>d.l[i]));
+    [5,10,20].forEach(n=>idx.forEach(i=>{ const q=M[n][i]; if(q!=null){ if(q>mx) mx=q; if(q<mn) mn=q; } }));
+    [F.H,F.pl].concat(lv.map(l=>l[1])).forEach(q=>{ if(vclOk(q)){ mx=Math.max(mx,q); mn=Math.min(mn,q); } });
+    const pad=(mx-mn)*.05||1; mx+=pad; mn-=pad;
+    const cw=(W-L-R)/idx.length, X=k=>L+k*cw+cw/2, Y=q=>T+(mx-q)/(mx-mn)*H1;
+    const vmx=Math.max(Math.max.apply(null,idx.map(i=>d.v[i])),1), YV=q=>T+H1+G+H2-q/vmx*H2;
+    const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'v2Big vclBig'});
+    // 눌림 구간(고점 뒤) 음영
+    if(iH!=null&&iH>=T0){ const x0=X(iH-T0)-cw/2; svg.appendChild(svgEl('rect',{x:x0,y:T,width:Math.max(0,W-R-x0),height:H1,class:'zone'})); }
+    for(let g=0;g<=4;g++){ const q=mn+(mx-mn)*g/4, y=Y(q); svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y,y2:y,class:'gr'}));
+      const t=svgEl('text',{x:W-R+4,y:y+3,class:'ax'}); t.textContent=won(Math.round(q)); svg.appendChild(t); }
+    // 캔들 · 거래량 (급등봉 bk 는 강조)
+    idx.forEach((i,k)=>{ const up=d.c[i]>=d.o[i], x=X(k), bw=Math.max(1,cw*.66), isB=i===iB;
+      svg.appendChild(svgEl('line',{x1:x,x2:x,y1:Y(d.h[i]),y2:Y(d.l[i]),class:up?'wu':'wd'}));
+      const y1=Y(Math.max(d.o[i],d.c[i])), y2=Y(Math.min(d.o[i],d.c[i]));
+      svg.appendChild(svgEl('rect',{x:x-bw/2,y:y1,width:bw,height:Math.max(1,y2-y1),class:up?'cu':'cd'}));
+      svg.appendChild(svgEl('rect',{x:x-bw/2,y:YV(d.v[i]),width:bw,height:Math.max(0,T+H1+G+H2-YV(d.v[i])),class:(up?'vu':'vd')+(isB?' spk':'')}));
+      if(isB) svg.appendChild(svgEl('circle',{cx:x,cy:YV(d.v[i])-4,r:2.6,class:'spd'}));
+    });
+    [5,10,20].forEach(n=>{ let p=''; idx.forEach((i,k)=>{ const q=M[n][i]; if(q==null) return; p+=(p?'L':'M')+X(k).toFixed(1)+','+Y(q).toFixed(1); });
+      if(p) svg.appendChild(svgEl('path',{d:p,class:'m'+n})); });
+    // 가로 점선 — 목표(고점) · 손절(눌림 저점) · 닿은 지지선
+    const hline=(q,cls,lab,left)=>{ if(!vclOk(q)||q>mx||q<mn) return; const y=Y(q);
+      svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y,y2:y,class:cls}));
+      const t=svgEl('text',{x:left?L+4:W-R+4,y:left?y-3:y+3,class:cls+'t'}); t.textContent=lab+(left?' '+won(Math.round(q)):''); svg.appendChild(t); };
+    lv.forEach(l=>hline(l[1],'lvL',l[0],true));
+    hline(F.H,'lvT','목표 '+won(Math.round(F.H||0)));
+    hline(F.pl,'lvS','손절 '+won(Math.round(F.pl||0)));
+    // 세로 표시 — 바닥 · 급등봉 · 고점
+    [[iL,'바닥 '+vclD(F.lk),0],[iB,'급등봉 '+vclD(F.bk),1],[iH,'고점 '+vclD(F.hk),0]].forEach(([i,lab,row])=>{ if(i==null||i<T0) return; const x=X(i-T0);
+      svg.appendChild(svgEl('line',{x1:x,x2:x,y1:T,y2:T+H1+G+H2,class:'mk'}));
+      const t=svgEl('text',{x:x,y:T+11+row*13,'text-anchor':'middle',class:'mkt'}); t.textContent=lab; svg.appendChild(t); });
+    const tv=svgEl('text',{x:W-R+4,y:T+H1+G+10,class:'ax'}); tv.textContent='거래량'; svg.appendChild(tv);
+    const step=Math.max(1,Math.round(idx.length/8));
+    idx.forEach((i,k)=>{ if(k%step) return; const t=svgEl('text',{x:X(k),y:H-6,'text-anchor':'middle',class:'ax'}); t.textContent=vclD(d.d[i]); svg.appendChild(t); });
+    const li=idx[idx.length-1], yl=Y(d.c[li]);
+    svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:yl,y2:yl,class:'now'}));
+    const nt=svgEl('text',{x:W-R+4,y:yl+3,class:'nowt'}); nt.textContent=won(d.c[li]); svg.appendChild(nt);
+    // 안내선 · 말풍선
+    const guide=svgEl('line',{y1:T,y2:T+H1+G+H2,class:'gd'}); guide.style.display='none'; svg.appendChild(guide);
+    const tip=el('div','spTip v2Tip'); tip.hidden=true;
+    const hit=svgEl('rect',{x:L,y:T,width:W-L-R,height:H1+G+H2,fill:'transparent'}); svg.appendChild(hit);
+    hit.addEventListener('pointermove',ev=>{
+      const bx=svg.getBoundingClientRect(), sc=bx.width/W||1, xs=(ev.clientX-bx.left)/sc;
+      const k=Math.max(0,Math.min(idx.length-1,Math.floor((xs-L)/cw))), i=idx[k], x=X(k);
+      guide.style.display=''; guide.setAttribute('x1',x); guide.setAttribute('x2',x);
+      const chg=i>0&&d.c[i-1]?(d.c[i]/d.c[i-1]-1)*100:null, m5=M[5][i], m20=M[20][i];
+      tip.innerHTML='';
+      const tag=i===iL?' · 바닥':i===iB?' · 급등봉':i===iH?' · 고점':'';
+      tip.appendChild(el('b',null,vclD(d.d[i])+tag));
+      [['시가',won(d.o[i])],['고가',won(d.h[i])],['저가',won(d.l[i])],['종가',won(d.c[i])+(chg!=null?' ('+vclP(chg)+')':'')],
+       ['거래량',vclI(d.v[i])+(vavg[i]?' · 20일 평균의 '+(d.v[i]/vavg[i]).toFixed(1)+'배':'')],
+       ['거래대금',qWon(d.c[i]*d.v[i])],
+       ['5일선',m5?won(Math.round(m5))+' ('+vclP((d.c[i]/m5-1)*100)+')':'—'],
+       ['20일선',m20?won(Math.round(m20))+' ('+vclP((d.c[i]/m20-1)*100)+')':'—']].forEach(([a,b])=>{ const q=el('div'); q.appendChild(el('span',null,a)); q.appendChild(el('em',null,b)); tip.appendChild(q); });
+      tip.hidden=false;
+      const fb=fig.getBoundingClientRect(); let lx=x*sc+14; if(lx+tip.offsetWidth>fb.width-4) lx=x*sc-tip.offsetWidth-14;
+      tip.style.left=Math.max(4,lx)+'px'; tip.style.top='8px';
+    });
+    hit.addEventListener('pointerleave',()=>{ guide.style.display='none'; tip.hidden=true; });
+    fig.appendChild(svg); fig.appendChild(tip);
+  };
+  [[60,'3개월'],[120,'6개월'],[250,'1년']].forEach(([n,t])=>{ const b=el('button',null,t); b.dataset.n=n; b.onclick=()=>draw(n); rg.appendChild(b); });
   draw(Math.min(want, d.c.length));
 }
 
