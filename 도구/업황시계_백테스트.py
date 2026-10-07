@@ -18,7 +18,8 @@
           여러 섹터에 걸쳐 있어 회사 전체 주가를 한 섹터에 못 붙이니 뺀다. 그날 종가가 있는 회사만(상장 전이면 뺀다). 5곳 이상일 때만.
   수익    회사마다 r = 분할 보정 종가(진입일 + 91 · 182 · 365일 뒤 첫 거래일) ÷ 종가(진입일) − 1.
           동일 가중 = 평균, 시총 가중 = Σw·r ÷ Σw(w = 2026-10-01 시총 스냅샷 × 그날 주가 ÷ 스냅샷 날 주가 — 주식 수 고정 근사).
-  기준    같은 날 시세 캐시 전 종목(988곳) 수익의 중앙값. 초과수익 = 바구니 − 기준(%p).
+  기준    같은 날 시세 캐시 전 종목(988곳)의 같은 통계 — 동일 가중 바구니는 전 종목 평균, 시총 가중 바구니는 전 종목 시총 가중 평균.
+          초과수익 = 바구니 − 기준(%p). (처음엔 평균에서 중앙값을 빼서 모든 라벨이 +10%p 안팎 양수로 떠 보였다 — 2026-10-08 고침)
   통계    라벨 × 기간 × 가중마다 n(섹터-분기) · 중앙값 · 이긴 비율(>0) · 90% 구간 · 2020 앞/뒤 중앙값.
           90% 구간 = 섹터를 통째로 복원추출하는 부트스트랩 500회(시드 고정) — 한 섹터의 분기들은 서로 닮아 있어
           섹터 단위로 뽑아야 구간이 덜 좁아진다.
@@ -213,14 +214,23 @@ class Engine:
         return None if p1 is None else (p1 / p0 - 1) * 100
 
     def bench(self, entry, tgt):
+        """같은 날 전 종목(시세 캐시 988곳)의 (중앙값, n, 평균, 시총 가중 평균). 바구니와 같은 통계끼리 빼야 한다 —
+        바구니(평균)에서 시장 중앙값을 빼면 주가 수익의 오른쪽 꼬리 때문에 모든 라벨이 +10%p 안팎 양수로 떠 보였다(2026-10-08 고침)."""
         k = (entry, tgt)
         if k not in self.bench_cache:
-            rs = []
-            for px in self.PX.values():
+            rs, wv = [], []
+            for c, px in self.PX.items():
                 r = self.ret(px, entry, tgt)
-                if r is not None:
-                    rs.append(r)
-            self.bench_cache[k] = (med(rs), len(rs))
+                if r is None:
+                    continue
+                rs.append(r)
+                sp = self.snap_px.get(c)
+                w = self.cap.get(c) * px.at(entry) / sp if sp and self.cap.get(c) else None
+                if w:
+                    wv.append((w, r))
+            mean = sum(rs) / len(rs) if rs else None
+            capw = sum(w * r for w, r in wv) / sum(w for w, _ in wv) if wv else None
+            self.bench_cache[k] = (med(rs), len(rs), mean, capw)
         return self.bench_cache[k]
 
     def basket(self, codes, entry, tgt):
@@ -258,14 +268,15 @@ class Engine:
                     tgt = add_days(entry, h)
                     if tgt > self.LAST:
                         continue
-                    b, nb = self.bench(entry, tgt)
-                    if b is None:
+                    b, nb, bm, bc = self.bench(entry, tgt)
+                    if b is None or bm is None:
                         continue
                     bk = self.basket(mem[sec], entry, tgt)
                     if not bk:
                         continue
-                    rec[hk] = {"eq": bk[0] - b, "cap": None if bk[1] is None else bk[1] - b,
-                               "n": bk[2], "mkt": b, "raw": bk[0]}
+                    # 동일 가중 바구니 − 동일 가중 시장(평균), 시총 가중 바구니 − 시총 가중 시장. mkt = 시장 중앙값(보통 종목 하나의 수익)
+                    rec[hk] = {"eq": bk[0] - bm, "cap": None if bk[1] is None or bc is None else bk[1] - bc,
+                               "n": bk[2], "mkt": b, "mkt_mean": bm, "mkt_cap": bc, "raw": bk[0]}
                 recs.append(rec)
         return recs
 
@@ -456,7 +467,7 @@ def crowded(PH, recs):
 
 # ---------------------------------------------------------------- 출력
 def print_labels(T, title, hs=None):
-    print("\n[%s]  n = 섹터-분기 · 중앙값 · 이긴%% · 90%% 구간(섹터 부트스트랩) · ~2019 / 2020~ 중앙값   (단위 %%p, 시장 중앙값 대비)" % title)
+    print("\n[%s]  n = 섹터-분기 · 중앙값 · 이긴%% · 90%% 구간(섹터 부트스트랩) · ~2019 / 2020~ 중앙값   (단위 %%p, 같은 가중의 시장 대비)" % title)
     head = pad("라벨", 10) + pad("기간", 5) + pad("n", 4, True) + "  " + pad("동일 중앙", 9, True) + pad("이긴%", 7, True) + pad("90% 구간", 16, True) + pad("~2019", 8, True) + pad("2020~", 8, True) + " | " + pad("시총 중앙", 9, True) + pad("이긴%", 7, True) + pad("90% 구간", 16, True) + pad("~2019", 8, True) + pad("2020~", 8, True)
     print(head)
     print("-" * wid(head))
@@ -583,12 +594,12 @@ def main():
         "labels": labels, "contrasts": contrasts, "transition": trans, "sectors": secs,
         "lag1": lag1, "crowded": crowd,
         "notes": [
-            "바구니는 지금 상장된 회사만(생존 편향) — 수익률 수준은 부풀고, 라벨끼리 견주는 차이는 덜 휜다",
+            "바구니도 기준도 지금 상장된 회사만(생존 편향) — 라벨끼리 견주는 차이는 덜 휜다",
             "재무는 정정 뒤 값 — 그때 알 수 있던 숫자와 다를 수 있다(라벨이 사후에 바뀌었을 수 있다)",
             "시총 가중은 2026-10-01 시총 스냅샷 × 주가 비(주식 수 고정 근사) — 증자 · 소각 · 상장폐지는 안 잡힌다",
             "12개월 구간이 분기마다 겹쳐 표본이 독립이 아니다 — 부트스트랩을 섹터 단위로 뽑아 일부만 보정",
             "2016~2026 은 경기 사이클 2~3번뿐 — 라벨당 수십 건이라 90% 구간이 넓다",
-            "기준은 시세 캐시 988곳 수익의 중앙값(동일 가중 시장) — 코스피 지수와 다르다",
+            "기준은 시세 캐시 988곳의 같은 통계(동일 가중 = 전 종목 평균, 시총 가중 = 전 종목 시총 가중 평균) — 코스피 지수와 다르다",
             "부문 회사(삼성전자 등 %d곳)는 바구니에서 뺐다 — 주가는 회사 전체라 부문 섹터에 못 붙인다" % len(seg),
             "구성원 5곳 미만인 섹터-분기는 뺐다. 최근 분기(2026Q2)는 보고서가 다 안 모였을 수 있다(_result.json 그대로)",
         ],

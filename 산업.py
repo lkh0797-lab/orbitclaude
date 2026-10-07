@@ -490,7 +490,7 @@ def _exports_q(exp_series, qrows, latest_q, since):
     out = []
     for r in qrows:
         ms = _q_months(r["q"])
-        if not all(m in ks for m in ms) or not since(_mshift(ms[0], 12)):
+        if not all(m in ks for m in ms) or not all(_mshift(m, 12) in ks for m in ms) or not since(_mshift(ms[0], 12)):
             out.append({"q": r["q"], "g": None, "m": 0})
             continue
         a = sum(exp_series[m] for m in ms)
@@ -499,7 +499,7 @@ def _exports_q(exp_series, qrows, latest_q, since):
     nq = "%dQ1" % (int(latest_q[:4]) + 1) if latest_q[5] == "4" else "%sQ%d" % (latest_q[:4], int(latest_q[5]) + 1)
     ms = [m for m in _q_months(nq) if m in ks]
     now_q = None
-    if ms and since(_mshift(ms[0], 12)):
+    if ms and all(_mshift(m, 12) in ks for m in ms) and since(_mshift(ms[0], 12)):
         a = sum(exp_series[m] for m in ms)
         b = sum(exp_series.get(_mshift(m, 12), 0) for m in ms)
         now_q = {"q": nq, "months": ms, "g": _r1(_yoy(a, b))}
@@ -899,8 +899,8 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
     # 4) 수주잔고(수주로 매출이 정해지는 섹터)
     backlog = None
     if key in SEC.ORDER_DRIVEN:
-        tot = tot_b = rev_cov = 0.0
-        n = 0
+        tot = tot_b = tot_w = rev_cov = 0.0
+        n = n_b = 0
         blog_rows = []
         for m in mem_rows:
             c = m["code"]
@@ -924,16 +924,25 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
             n += 1
             if v_b and v_b > 0:
                 tot_b += v_b
-            if m["rev_ttm"]:
-                rev_cov += m["rev_ttm"]
+                tot_w += v            # 섹터 1년 변화는 전년 점이 있는 회사끼리(같은 표본) — 안 그러면 전년 점이 없는 큰 회사가 증가율을 부풀린다
+                n_b += 1
+            # 부문 회사(현대로템 등)의 잔고는 회사 전체 값이라 분모 · 기준도 회사 전체 매출로 — 부문 매출로 나누면 년수 · 차이가 부푼다
+            if m["seg"]:
+                rc = sum(((P.per(c, q) or {}).get("rev") or 0) for q in t4)
+                rcb = sum(((P.per(c, q) or {}).get("rev") or 0) for q in b4)
+                rev_c, rev_gc = (rc or None), (_r1(_yoy(rc, rcb)) if rc and rcb else None)
+            else:
+                rev_c, rev_gc = m["rev_ttm"], m["rev_g"]
+            if rev_c:
+                rev_cov += rev_c
             b_yoy = _r1(_yoy(v, v_b)) if v_b and v_b > 0 else None
-            blog_rows.append({"code": c, "name": m["name"], "value": v, "at": st, "yoy": b_yoy,
-                              "years": _r1(v / m["rev_ttm"], 1) if m["rev_ttm"] else None, "rev_g": m["rev_g"],
-                              "gap": _r1(b_yoy - m["rev_g"]) if b_yoy is not None and m["rev_g"] is not None else None,
+            blog_rows.append({"code": c, "name": m["name"], "seg": m["seg"], "value": v, "at": st, "yoy": b_yoy,
+                              "years": _r1(v / rev_c, 1) if rev_c else None, "rev_g": rev_gc,
+                              "gap": _r1(b_yoy - rev_gc) if b_yoy is not None and rev_gc is not None else None,
                               "ret1y": m["ret1y"], "adj": m["adj"]})
         if n:
             backlog = {"value": tot, "n": n, "years": _r1(tot / rev_cov, 1) if rev_cov else None,
-                       "yoy": _r1(_yoy(tot, tot_b)) if tot_b else None,
+                       "yoy": _r1(_yoy(tot_w, tot_b)) if tot_b else None, "n_b": n_b,
                        "rows": sorted(blog_rows, key=lambda r: -(r["value"] or 0))}
 
     # 5) 외부 자료(시장 규모 · 전망 · 동인)

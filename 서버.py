@@ -9019,6 +9019,10 @@ def _ind_contract_counts(days=90):
                     if "공급계약" not in ln or "기재정정" in ln:
                         continue
                     j = json.loads(ln)
+                    nm = (j.get("report_nm") or "").strip()
+                    # '단일판매ㆍ공급계약체결(자율공시)' 류만 — 해지 · 유동성공급계약 · 주권매매거래정지 안내 · [첨부정정] 재공시는 뺀다
+                    if not nm.startswith("단일판매") or "체결" not in nm.split("(")[0]:
+                        continue
                     if (j.get("rcept_dt") or "") >= since and j.get("stock_code"):
                         out[j["stock_code"]] = out.get(j["stock_code"], 0) + 1
         except Exception:
@@ -9037,7 +9041,8 @@ def industry_sub(tab, sector):
             d = IND["data"]
     secs = (d or {}).get("sectors") or []
     s = next((x for x in secs if x.get("key") == sector), None)
-    out = {"tab": tab, "sector": sector, "latest_q": (d or {}).get("latest_q")}
+    # 낡은 localStorage(없어진 섹터 이름)면 전체 모드로 — 화면은 sector 가 비어 있을 때 전체 모드를 그린다
+    out = {"tab": tab, "sector": sector if s else "", "latest_q": (d or {}).get("latest_q")}
     if tab == "clock":
         bt = _clock_bt()
         out["bt"] = bt
@@ -9082,7 +9087,7 @@ def industry_sub(tab, sector):
         val = _ind_file("exp_val", os.path.join(CACHE_DIR, "수출추적", "검증.json")) or {}
         out["bt"] = {"ic": val.get("ic") or val.get("summary") or None, "month": xr.get("month")}
         if s:
-            E = s.get("exports") or {}
+            E = s.get("exports") or None
             co = []
             for m in s.get("members_all") or []:
                 it = items.get(m["code"])
