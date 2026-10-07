@@ -2289,6 +2289,8 @@ table.csTbl .ot span.vclLead{color:#c08a1e;background:transparent;border-color:#
 table.csTbl .ot span.vclLead.go:hover{background:var(--accent-soft)}
 table.csTbl .ot span.vclTh{background:transparent}table.csTbl .ot span.vclNow{background:transparent}
 .vclMk{font-size:11px;white-space:nowrap}.vclMk.ok{color:var(--add);font-weight:600}.vclMk.no{color:var(--faint)}
+.vclJunk{font:700 10px var(--sans);color:#fff;background:var(--del);border-radius:4px;padding:0 5px;cursor:help;white-space:nowrap}
+.vclWarnJ{font-size:11px;color:#c08a1e;cursor:help}
 .vclToday{display:inline-flex;flex-direction:column;gap:1px;text-align:left}
 .vclSup{font-size:12px;color:var(--faint);white-space:nowrap}.vclSup.on{color:var(--ink);font-weight:600}
 .vclDry{white-space:nowrap}.vclDry.on{color:var(--add);font-weight:600}
@@ -5213,7 +5215,7 @@ const vclI=v=>vclOk(v)?Math.round(v).toLocaleString('ko-KR'):'—';
 const vclD=s=>s&&String(s).length>=8?String(s).slice(2,4)+'.'+String(s).slice(4,6)+'.'+String(s).slice(6,8):'—';
 const vclHM=t=>{ if(!t) return ''; const a=new Date(t*1000), z=n=>String(n).padStart(2,'0'); return z(a.getMonth()+1)+'.'+z(a.getDate())+' '+z(a.getHours())+':'+z(a.getMinutes()); };
 const vclUpDn=v=>v>0?'up':v<0?'dn':'';
-const vclSt=()=>{ S.vc=S.vc||{mode:'pull',sort:{},leadOnly:true,theme:null,page:0,topPage:0,btOpen:false,ruleOpen:false,allOpen:false}; return S.vc; };
+const vclSt=()=>{ S.vc=S.vc||{mode:'pull',sort:{},leadOnly:true,junkOff:true,theme:null,page:0,topPage:0,btOpen:false,ruleOpen:false,allOpen:false}; return S.vc; };
 
 async function viewVocal(p, force){
   p.innerHTML='';
@@ -5275,7 +5277,7 @@ function vclDraw(root, d, redraw){
   root.appendChild(strip);
   if(st.theme){ const pill=el('div','vclPill'); pill.appendChild(el('span',null,'테마 고름: '+st.theme+' — ③ 대장주 · ④~⑦ 표에만'));
     const x=el('button',null,'✕ 풀기'); x.onclick=()=>{ st.theme=null; redraw(); }; pill.appendChild(x); root.appendChild(pill); }
-  secs[7]=vclEntries(root, entries, rules);
+  secs[7]=vclEntries(root, entries, rules, R.n_junk_entries||0);
   secs[3]=secs[4]=secs[5]=secs[6]=vclFunnelTbl(root, funnel, redraw);
   secs[1]=vclThemes(root, R, redraw);
   secs[2]=vclLeaders(root, leaders, byCode, redraw);
@@ -5320,6 +5322,8 @@ function vclThemeChips(themes, n, onTheme){
 function vclNameTd(r, sub){
   const td=el('td','nm'); const l1=el('div','l1');
   const a=el('a',null,r.name||r.code||'—'); a.href='#'; a.title=(r.name||'')+' — 눌러서 회사 화면으로'; a.onclick=e=>{ e.preventDefault(); if(r.code) pick(r.code); }; l1.appendChild(a);
+  if((r.junk||[]).length){ const j=el('span','vclJunk','잡주'+(r.junk.length>1?' '+r.junk.length:'')); j.title='제외 사유 — '+r.junk.join('\n'); l1.appendChild(j); }
+  if((r.warn_j||[]).length){ const w=el('span','vclWarnJ','⚠'); w.title='참고 — '+r.warn_j.join('\n'); l1.appendChild(w); }
   td.appendChild(l1); td.appendChild(el('small',null,(r.code||'')+(sub?' · '+sub:''))); return td;
 }
 const vclMark=(ok,lab,title)=>{ const s=el('span','vclMk '+(ok?'ok':'no'),lab+(ok?' ✓':' ✗')); if(title) s.title=title; return s; };
@@ -5335,10 +5339,10 @@ function vclSupport(f){
 }
 
 // ⑧ 진입 후보 — 카드
-function vclEntries(root, list, rules){
+function vclEntries(root, list, rules, nJunk){
   const rrMin=(rules.consts||{}).RR_MIN;
-  const sec=vclSec(root,'⑧','진입 후보',list.length+'종목 · ⑦ 신호'+(vclOk(rrMin)?' + 손익비 '+vclN(rrMin,1)+'↑':'')+' · 진입 = 다음 날 시가(표는 오늘 종가)');
-  if(!list.length){ sec.appendChild(el('div','vclEmpty','오늘 ⑦ 신호를 채운 대장주가 없다 — ④~⑦ 표에서 다음 후보를 본다')); return sec; }
+  const sec=vclSec(root,'⑧','진입 후보',list.length+'종목 · ⑦ 신호'+(vclOk(rrMin)?' + 손익비 '+vclN(rrMin,1)+'↑':'')+' · 잡주 제외'+(nJunk?' '+nJunk+'곳':'')+' · 진입 = 다음 날 시가(표는 오늘 종가)');
+  if(!list.length){ sec.appendChild(el('div','vclEmpty','오늘 ⑦ 신호를 채운 대장주가 없다'+(nJunk?'(잡주로 뺀 '+nJunk+'곳 빼고)':'')+' — ④~⑦ 표에서 다음 후보를 본다')); return sec; }
   const g=el('div','vclEnt');
   list.forEach(f=>{
     const c=el('div','vclEntC');
@@ -5371,19 +5375,23 @@ const VCL_COLS=[
   ['종목','name',f=>f.name,''],['단계','stage',f=>+f.stage||0,'④ 큰 상승 → ⑤ 눌림 → ⑥ 거래량 감소 → ⑦ 재유입 양봉'],
   ['상승폭','gain',f=>f.gain,'바닥에서 고점까지'],['고점 뒤','days',f=>f.days,'고점 뒤 지난 봉 수'],['눌림','depth',f=>f.depth,'고점에서 지금까지 내려온 폭'],
   ['되돌림','retrace',f=>f.retrace,'상승폭 가운데 돌려준 비율'],['지지선','sup',f=>(f.touched||[]).length,'닿은 지지선 — 없으면 가장 가까운 후보와 거리'],
+  ['ROE','roe',f=>(f.fin||{}).roe,'최근 4분기 기준 ROE(네이버 재무 요약) — 마우스를 올리면 부채비율 · 4분기 순이익'],
   ['거래량','vol',f=>f.v_ratio_peak,'최근 3봉 거래량 ÷ 급등 대량봉 · ÷ 급등 구간 평균 — 작을수록 말랐다'],['오늘','today',f=>(f.bull?1:0)+(f.reflow?1:0)+(f.above5?1:0),'양봉 · 거래대금 재유입 · 5일선 위'],
   ['손절 / 목표 / 손익비','rr',f=>f.rr,'손절 = 눌림 저점 · 목표 = 고점'],['최근 120일','spark',null,'']];
 function vclFunnelTbl(root, funnel, redraw){
   const st=vclSt();
   const inTheme=f=>!st.theme||(f.themes||[]).includes(st.theme)||(f.lead||[]).some(l=>l[0]===st.theme);
   const hasLead=funnel.some(f=>(f.lead||[]).length);   // 오늘 대장 후보가 하나도 없으면 전체를 보인다(빈 표보다 낫다)
-  const list=funnel.filter(f=>(+f.stage||0)>=4&&inTheme(f)&&(!st.leadOnly||!hasLead||(f.lead||[]).length));
+  const nJunk=funnel.filter(f=>(f.junk||[]).length).length;
+  const list=funnel.filter(f=>(+f.stage||0)>=4&&inTheme(f)&&(!st.leadOnly||!hasLead||(f.lead||[]).length)&&(!st.junkOff||!(f.junk||[]).length));
   const sec=vclSec(root,'④~⑦','깔때기 — 큰 상승 · 눌림 · 거래량 감소 · 재유입',list.length+'종목'+(st.theme?' · 테마 '+st.theme:''));
   const bar=el('div','csBar'); const rt=el('div','rt');
   const wl=el('label','csWarn'); const cb=el('input'); cb.type='checkbox'; cb.checked=!!st.leadOnly; cb.onchange=()=>{ st.leadOnly=cb.checked; redraw(); };
   if(st.leadOnly&&!hasLead&&funnel.length) wl.title='지금은 급등 구간에 대장이었던 종목이 없어 전체를 보인다';
   wl.appendChild(cb); wl.appendChild(document.createTextNode(' 대장·부대장만')); wl.title='상승 중 어느 날이든 강한 테마의 대장·부대장이었던 종목만(lead). 끄면 풀 전체에서 ④ 넘은 종목';
-  rt.appendChild(wl); bar.appendChild(el('div','lt')); bar.appendChild(rt); sec.appendChild(bar);
+  const jl=el('label','csWarn'); const jc=el('input'); jc.type='checkbox'; jc.checked=!!st.junkOff; jc.onchange=()=>{ st.junkOff=jc.checked; redraw(); };
+  jl.appendChild(jc); jl.appendChild(document.createTextNode(' 잡주 빼기'+(nJunk?' ('+nJunk+')':''))); jl.title='공시 위험(상폐 절차 · 작전주 꼴 · 자금조달 잦음) · 24개월 안 CB · BW · 유상증자 · 제3자배정 2번↑ · 관리종목 사유 · 자본잠식 · 감사의견 비적정 · 회생 · 파산 · 부채비율 200%↑ · 큰 적자(4분기 순손실이면서 ROE −10%↓)';
+  rt.appendChild(jl); rt.appendChild(wl); bar.appendChild(el('div','lt')); bar.appendChild(rt); sec.appendChild(bar);
   const key=st.sort[st.mode]||['stage',-1];
   const col=VCL_COLS.find(c=>c[1]===key[0]);
   const rows=list.map((f,i)=>[f,i]).sort((a,b)=>{ const x=col&&col[2]?col[2](a[0]):null, y=col&&col[2]?col[2](b[0]):null;
@@ -5413,6 +5421,7 @@ function vclFunnelRow(f, redraw){
   td(vclOk(f.depth)?'−'+Math.abs(f.depth).toFixed(1)+'%':'—','dn',vclOk(f.pl)?'눌림 저점 '+vclW(f.pl):'');
   td(vclPc(f.retrace,0),'',vclOk(f.pl)?'고점 '+vclW(f.H)+' → 저점 '+vclW(f.pl):'');
   const sp=el('td','vclSupTd'); sp.appendChild(vclSupport(f)); tr.appendChild(sp);
+  const fn=f.fin||{}; td(vclP(fn.roe),fn.roe!=null?(fn.roe>=10?'up':fn.roe<0?'dn':''):'',fn.q?('기준 '+fn.q+' · 부채비율 '+vclPc(fn.debt,0)+' · 4분기 순이익 '+vclI(fn.ni4)+'억'):'재무 요약 없음');
   const vol=el('span',(f.dry_now?'vclDry on':'vclDry'),vclX(f.v_ratio_peak)+' · '+vclX(f.v_ratio_rally));
   td(vol,'',(vclOk(f.v_now3)?'최근 3봉 평균 '+vclI(f.v_now3)+(vclOk(f.v_prev3)?' (앞 3봉 '+vclI(f.v_prev3)+')':''):'')+(vclOk(f.v_peak)?'\n급등봉 '+vclI(f.v_peak)+' · 급등 구간 평균 '+vclI(f.v_rally):'')+(f.dry_now?'\n말랐다 ✓':''));
   const tdy=el('span','vclToday'); tdy.appendChild(vclMark(!!f.bull,'양봉')); tdy.appendChild(vclMark(!!f.reflow,'재유입'+(vclOk(f.reflow_x)?' '+vclX(f.reflow_x):''),'오늘 거래대금 ÷ 앞 봉 평균')); tdy.appendChild(vclMark(!!f.above5,'5일선'));
@@ -5564,7 +5573,8 @@ function vclRules(rules, mode){
    ['⑤ 눌림','고점 뒤 '+v(m.days_lo)+'~'+v(m.days_hi)+'봉 · 눌림 중 최저 종가가 고점 대비 −'+pc(m.pull_lo)+' 넘게, 오늘 종가는 −'+pc(m.pull_hi)+' 안 · 상승폭 되돌림 '+cp('RETRACE_MAX')+' 안.'],
    ['⑥ 지지선에서 거래량 감소','지지선 후보(5 · 10 · 20일선 · 전고점 · 급등봉 시가 · 중간값 · 50% 되돌림)에 눌림 저가가 ±'+cp('TOUCH')+' 안이면 닿음(이동평균은 저점이 생긴 날 값). 앞 3봉 거래량이 급등 대량봉의 '+c('DRY_PEAK','배')+' · 급등 구간 평균의 '+c('DRY_RALLY','배')+' 아래.'],
    ['⑦ 거래대금 재유입 + 양봉','오늘 거래대금이 앞 3봉 평균의 '+c('REFLOW','배')+' 이상 · 몸통 '+cp('BODY')+' 이상 양봉 · 종가 ≥ 전일 종가 · 저가가 닿은 지지선 −'+cp('HOLD_BELOW')+' 안 · 종가 > 5일선.'],
-   ['⑧ 진입','다음 날 시가. 손절 = 눌림 저점 · 목표 = 고점 · 손익비 '+c('RR_MIN')+' 이상 · 시가가 +'+cp('GAP_SKIP')+' 넘게 뜨면 못 삼 · 최대 보유 '+v(m.hold,'봉')+'.']].forEach(([a,b])=>{ const li=el('li'); li.appendChild(el('b',null,a)); li.appendChild(document.createTextNode(' '+b)); ol.appendChild(li); });
+   ['⑧ 진입','다음 날 시가. 손절 = 눌림 저점 · 목표 = 고점 · 손익비 '+c('RR_MIN')+' 이상 · 시가가 +'+cp('GAP_SKIP')+' 넘게 뜨면 못 삼 · 최대 보유 '+v(m.hold,'봉')+'.'],
+   ['잡주 제외','공시 위험(공시위험.json — 상폐 절차 · 보고서 없음 · 작전주 꼴 · 자금조달 잦음) · 24개월 안 CB · BW · 유상증자 · 제3자배정 공시가 서로 다른 날 2번 이상 · 관리종목 지정 사유 · 관리종목 우려 · 실질심사 · 상장폐지 우려 · 자본잠식 · 감사의견 비적정 · 회생 · 파산 · 부채비율 200% 이상 · 큰 적자(최근 4분기 순손실이면서 ROE −10% 이하). 재무는 네이버 분기 요약(7일 캐시). ⑧ 후보에서 빼고 ④~⑦ 표는 토글로 가린다. 과거 검증에는 못 붙였다(그 시점 공시 · 재무 상태를 다시 세지 않았다). 횡령 · 배임 · 불성실공시 · 보고서 지연 · 적자(ROE −10% 위)는 ⚠ 표시만.']].forEach(([a,b])=>{ const li=el('li'); li.appendChild(el('b',null,a)); li.appendChild(document.createTextNode(' '+b)); ol.appendChild(li); });
   det.appendChild(ol);
   det.appendChild(el('p','vclLimit','한계 — 일봉뿐: ⑦은 마감 봉으로 판정, 진입은 다음 날 시가 · 테마 소속은 오늘 분류표를 과거에도 씀 · 지금 상장사만(생존 편향) · 같은 규칙을 서버와 검증 도구가 공유.'));
   return det;

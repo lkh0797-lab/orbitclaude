@@ -602,6 +602,131 @@ def load_panel(codes, names=None, themes=None, min_n=60, drop=None, progress=Non
     return Panel(bars, names, themes)
 
 
+# ================================================================ 잡주 거르기 — 재무(네이버 분기 요약) · 공시 위험(공시위험.json) (2026-10-08)
+# 유니버스가 전 시장이라 DART 캐시(색인 988곳)로는 모자란다. 네이버 금융 분기 요약(ROE · 부채비율 · 분기 순이익, 종목당 호출 1번, 7일 캐시)과
+# 공시위험.json(전 시장 — 도구/공시위험.py 가 매일 만든다)으로 거른다. 과거 검증에는 못 붙인다(그 시점 재무 · 공시 상태를 다시 세지 않았다).
+FIN_DIR = os.path.join(CACHE, "fin")
+NAVER_FIN = "https://m.stock.naver.com/api/stock/%s/finance/quarter"
+DEBT_MAX = 200.0            # 부채비율 200%↑ 제외(저평가 등급과 같은 문턱)
+LOSS_ROE = -10.0            # 최근 4분기 순손실이면서 ROE −10%↓ → 큰 적자
+FUND_MIN = 2                # 24개월 안 CB · BW · 유상증자 · 제3자배정 공시가 서로 다른 날 2번↑ → 자금조달 잦음(공시위험의 '작전주 꼴' 3번보다 낮춘 문턱)
+RISK_RED = ("상폐 절차", "보고서 없음", "작전주 꼴", "자금조달 잦음")
+JUNK_REF = {"회생절차": "회생절차", "파산신청": "파산신청", "감사의견비적정": "감사의견 비적정", "관리종목_사유": "관리종목 지정 사유",
+            "관리종목_우려": "관리종목 우려", "실질심사": "상장적격성 실질심사", "상폐우려": "상장폐지 우려", "자본잠식": "자본잠식"}
+WARN_REF = {"횡령배임": "횡령 · 배임 혐의", "불성실_지정": "불성실공시", "보고서지연": "보고서 지연", "투자주의환기": "투자주의 환기"}
+FUND_CATS = {"CB발행": "CB 발행", "BW발행": "BW 발행", "유상증자": "유상증자", "제3자배정": "제3자배정"}
+
+
+def _num(x):
+    try:
+        return float(str(x).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+
+
+def fetch_fin(code, max_age=7 * 86400):
+    """네이버 분기 재무 요약 → {q(마지막 실적 분기), roe(%, 최근 4분기 기준), debt(부채비율 %), ni4(최근 4분기 순이익 합, 억원), ni_q[4]}. 못 받으면 None."""
+    os.makedirs(FIN_DIR, exist_ok=True)
+    p = os.path.join(FIN_DIR, code + ".json")
+    try:
+        if time.time() - os.path.getmtime(p) < max_age:
+            with open(p, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+    except OSError:
+        pass
+    except Exception:
+        pass
+    try:
+        import requests
+        r = requests.get(NAVER_FIN % code, headers=HEAD, timeout=30)
+        r.raise_for_status()
+        fi = r.json().get("financeInfo") or {}
+    except Exception:
+        return None
+    keys = [t["key"] for t in (fi.get("trTitleList") or []) if t.get("key") and t.get("isConsensus") != "Y"]
+    rows = {(row.get("title") or "").strip(): row.get("columns") or {} for row in (fi.get("rowList") or [])}
+
+    def col(title, k):
+        return _num(((rows.get(title) or {}).get(k) or {}).get("value"))
+    # 값이 있는 마지막 실적 분기
+    last = None
+    for k in reversed(keys):
+        if col("당기순이익", k) is not None or col("ROE", k) is not None:
+            last = k
+            break
+    out = {"q": None, "roe": None, "debt": None, "ni4": None, "ni_q": [], "at": time.time()}
+    if last:
+        i = keys.index(last)
+        qs = keys[max(0, i - 3):i + 1]
+        ni = [col("당기순이익", k) for k in qs]
+        out.update(q=last[:4] + "." + last[4:], roe=col("ROE", last), debt=col("부채비율", last),
+                   ni4=sum(x for x in ni if x is not None) if len(qs) == 4 and all(x is not None for x in ni) else None, ni_q=ni)
+    with open(p, "w", encoding="utf-8") as fh:
+        json.dump(out, fh, ensure_ascii=False)
+    time.sleep(0.1)
+    return out
+
+
+def fetch_fins(codes, workers=4, progress=None):
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    out, done = {}, 0
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        futs = {ex.submit(fetch_fin, c): c for c in codes}
+        for f in as_completed(futs):
+            done += 1
+            try:
+                out[futs[f]] = f.result()
+            except Exception:
+                out[futs[f]] = None
+            if progress and done % 50 == 0:
+                progress(done, len(codes))
+    return out
+
+
+def junk_flags(code, fin, risk):
+    """(제외 사유 목록, 참고 표시 목록). fin = fetch_fin 결과, risk = 공시위험.json 의 codes[code]."""
+    junk, warn = [], []
+    rk = risk or {}
+    if rk.get("level") in RISK_RED:
+        junk.append("공시 위험: " + rk["level"])
+    fund = [(FUND_CATS[h["cat"]], h["days"]) for h in (rk.get("hits") or []) if h.get("cat") in FUND_CATS and (h.get("days") or 0) >= FUND_MIN]
+    if fund and not any(j.startswith("공시 위험") for j in junk):
+        junk.append("자금조달 잦음: " + " · ".join("%s %d번" % kv for kv in fund))
+    for r in rk.get("ref") or []:
+        c = r.get("cat")
+        if c in JUNK_REF:
+            junk.append(JUNK_REF[c])
+        elif c in WARN_REF:
+            warn.append(WARN_REF[c])
+    f = fin or {}
+    if f.get("debt") is not None and f["debt"] >= DEBT_MAX:
+        junk.append("부채비율 %.0f%%" % f["debt"])
+    if f.get("debt") is not None and f["debt"] < 0:
+        junk.append("자본잠식(부채비율 음수)")
+    if f.get("ni4") is not None and f["ni4"] < 0:
+        if f.get("roe") is not None and f["roe"] <= LOSS_ROE:
+            junk.append("큰 적자: 4분기 순이익 %s억 · ROE %.1f%%" % (format(int(round(f["ni4"])), ","), f["roe"]))
+        else:
+            warn.append("적자: 4분기 순이익 %s억" % format(int(round(f["ni4"])), ","))
+    if not f:
+        warn.append("재무 요약 없음")
+    return junk, warn
+
+
+def annotate(R, fins, risk):
+    """run_day 결과에 재무 · 잡주 표시를 붙인다. ⑧ 후보에서 잡주를 뺀다(④~⑦ 표엔 남기고 표시 — 화면이 가린다)."""
+    def mark(r):
+        f = (fins or {}).get(r["code"])
+        r["fin"] = {k: (f or {}).get(k) for k in ("q", "roe", "debt", "ni4")} if f else None
+        r["junk"], r["warn_j"] = junk_flags(r["code"], f, (risk or {}).get(r["code"]))
+    for key in ("top", "leaders", "funnel"):
+        for r in R.get(key) or []:
+            mark(r)
+    R["n_junk_entries"] = sum(1 for f in R.get("entries") or [] if (f.get("junk") or []))
+    R["entries"] = [f for f in R.get("entries") or [] if not f.get("junk")]
+    return R
+
+
 if __name__ == "__main__":
     import sys
     sys.stdout.reconfigure(encoding="utf-8")

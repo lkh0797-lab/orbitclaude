@@ -8803,6 +8803,18 @@ def _run_vocal(refresh=True):
                 n = j + 1
                 f["spark"] = {"c": B["c"][max(0, n - 120):n], "v": B["v"][max(0, n - 120):n], "d": [str(x) for x in B["d"][max(0, n - 120):n]]}
             results[mode] = R
+        # 잡주 거르기 — 표에 오르는 종목만 재무 요약(네이버, 7일 캐시)을 받고 공시 위험(공시위험.json)을 붙인다
+        need = sorted({r["code"] for R in results.values() for key in ("top", "leaders", "funnel") for r in R.get(key) or []})
+        with VOCAL_LOCK:
+            VOCAL.update(phase="재무 요약(네이버)", done=0, total=len(need))
+
+        def prog3(a, b):
+            with VOCAL_LOCK:
+                VOCAL.update(done=a, total=b)
+        fins = VOC.fetch_fins(need, progress=prog3)
+        risk = (_disc_risk() or {}).get("codes") or {}
+        for R in results.values():
+            VOC.annotate(R, fins, risk)
         at = time.time()
         data = {"v": VOCAL_V, "at": at, "date": str(P.gd[gi]), "results": results, "n_univ": len(P.bars), "listing_date": L.get("date")}
         with VOCAL_LOCK:
