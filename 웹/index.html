@@ -2800,6 +2800,34 @@ svg.grClock{display:block;width:100%;max-width:820px;height:auto}
 .grClock .pn{font-size:10.5px;fill:var(--ink)}.grClock .tq{font-size:9.5px;fill:var(--faint)}
 .grClock .trail{fill:none;stroke:var(--dim);stroke-width:1.2;stroke-dasharray:3 2}.grClock .tp{fill:var(--faint);cursor:help}
 .grClock .band2{fill:var(--line);opacity:.6}.grClock .pt.out{stroke:var(--ink);stroke-width:1.5}.grClock .pn.out{font-weight:700}
+.grClock .pt.hollow{fill:none!important;stroke:var(--ink);stroke-width:2;opacity:1}
+/* 하위탭(요약 · 섹터 안 종목 · 시계 성적표 · 일감 · 수출 먼저) */
+.grTabs{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 10px}.grTabs .seg button{padding:6px 13px;font-size:12.5px}
+.grTabHint{font-size:11.5px;color:var(--dim)}
+.grChips{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 12px}
+.grChip{font:600 11px/1.6 var(--sans);border:1px solid var(--line);border-radius:999px;padding:1px 9px;background:var(--panel);color:var(--dim);cursor:pointer}
+.grChip.pos,.grChip.pos2{border-color:var(--add);color:var(--add)}.grChip.warn{border-color:var(--warn);color:var(--warn)}.grChip.neg,.grChip.neg2{border-color:var(--del);color:var(--del)}.grChip.acc{border-color:var(--accent);color:var(--accent)}
+.grChip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.grSub .grH{font:700 14px 'Noto Serif KR',serif;margin:16px 0 6px}.grSub .grH span{font:400 11.5px var(--sans);color:var(--dim);margin-left:8px}
+.grSecHead{display:grid;grid-template-columns:minmax(300px,440px) 1fr;gap:14px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel);margin:0 0 6px}
+.grSecHead h4{font:700 16px 'Noto Serif KR',serif;margin:0 0 4px}.grSecHead h4 span{font:400 11.5px var(--sans);color:var(--dim);margin-left:8px}
+.grSecHead .grPhWhy{font-size:11px;color:var(--dim)}.grSecHead svg.grClock{max-width:440px;margin-top:6px}
+.grSecHead .grCards{margin:0}
+.grMap{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
+.grMapBox{flex:1 1 auto;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel);text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between}
+.grMapBox b{font-size:14px;color:var(--ink)}.grMapBox span{font-size:11.5px;color:var(--dim)}.grMapBox small{font-size:10.5px;color:var(--faint)}
+.grMapBox.pos2{background:var(--add-bg);border-color:var(--add)}.grMapBox.pos{background:var(--add-bg)}.grMapBox.warn{background:var(--warn-bg)}.grMapBox.neg,.grMapBox.neg2{background:var(--del-bg)}.grMapBox.acc{background:var(--accent-soft)}.grMapBox.flat{background:var(--line2)}
+.grMapBox:hover{border-color:var(--ink)}
+.grZones{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 8px}.grZones .grPh{margin-left:0;cursor:help}.grZones small{color:var(--faint);font-size:11px}
+.grEvBox{border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:8px 0;background:var(--bg)}
+.grEvBox>b{display:block;font-size:12.5px;margin-bottom:4px}.grEvBox .lbr{font-size:11.5px;line-height:1.5;padding:2px 0}.grEvBox .lbr b{font-size:12px;margin-right:6px}
+.grEvBox .lbr.pos b{color:var(--add)}.grEvBox .lbr.neg b{color:var(--del)}.grEvBox .lbr span{color:var(--dim)}.grEvBox>small{display:block;font-size:11px;color:var(--faint);margin-top:4px;line-height:1.5}
+.grDetNav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:2px 0 8px}.grDetNav>span{font-size:11.5px;color:var(--faint)}.grDetNav button{font-size:11.5px;padding:3px 9px}
+.grBand{display:flex;flex-wrap:wrap;gap:3px;padding:6px 0}.grBand .grPh{margin-left:0;cursor:help;font-size:10px}
+table.grBtTbl td.num,table.grTrans td.num{text-align:right}
+.grBars .row{display:flex;align-items:center;gap:8px;font-size:11.5px;margin:2px 0}.grBars .k{width:150px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grBars .mb{flex:1;height:8px;background:var(--line2);border-radius:4px;max-width:360px}.grBars .mb i{display:block;height:100%;background:var(--accent);border-radius:4px}.grBars .v{color:var(--dim);white-space:nowrap}
+table.grStk td.num,table.grOrd td.num,table.grExp td.num{white-space:nowrap}
 .grSpark{display:block}.grSpark .p{fill:var(--add)}.grSpark .n{fill:var(--del)}.grSpark .z{stroke:var(--line);stroke-width:1}
 .grDet{padding:10px 6px 16px}
 .grDet h4{font:700 14px 'Noto Serif KR',serif;margin:16px 0 6px}
@@ -4502,8 +4530,8 @@ function grClock(pts, o){
   const fits=(x,y,w)=>x>=L-2&&x+w<=W-R+2&&y-10>=T-4&&y<=H-B+2&&!placed.some(b=>x<b[0]+b[2]&&x+w>b[0]&&y-10<b[1]&&y>b[1]-10);
   [...pts].filter(p=>p.speed!=null&&p.accel!=null).sort((a,b)=>Math.abs(b.speed)-Math.abs(a.speed)).forEach(p=>{
     const cx=X(p.speed), cy=Y(p.accel), o2=out(p.speed,p.accel);
-    const c=svgEl('circle',{cx,cy,r:p.trail?5.5:4.5,class:'pt '+((GR_PHASE[p.label]||[''])[0])+(o2?' out':'')});
-    tip(c,(p.name?p.name+' · ':'')+p.label+' — '+grPhaseTip(p)); svg.appendChild(c);
+    const c=svgEl('circle',{cx,cy,r:p.r||(p.trail?5.5:4.5),class:'pt '+((GR_PHASE[p.label]||[''])[0])+(o2?' out':'')+(p.hollow?' hollow':'')});
+    tip(c,((p.name||p.tn)?(p.name||p.tn)+' · ':'')+p.label+' — '+grPhaseTip(p)); svg.appendChild(c);
     placed.push([cx-5,cy+5,10]);
     if(!p.name) return;
     const txt=p.name+(o2?' ▸ '+grP(p.speed,0)+' · '+grPp(p.accel):'');
@@ -4604,6 +4632,11 @@ async function viewGrowth(p, force){
     ' · 생산(KOSIS) '+ym(A.kosis)+' · 가격(한국은행) '+ym(A.ecos)+' · 수출(관세청) '+ym(A.customs)+' · 외부 숫자 확인 '+(A.ext||'—')+
     (d.at?' · 계산 '+new Date(d.at*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'')));
   if((d.macro||[]).length){ const m=el('div','grMacro'); d.macro.slice(0,6).forEach(x=>{ const s=el('span',null,x.metric+' '+(x.year||'')+' '+grVal(x.value,x.unit)+(x.growth_pct!=null&&!/^%/.test(x.unit||'')?' ('+grP(x.growth_pct)+')':'')); s.title=(x.source||'')+(x.published?' · '+x.published:''); m.appendChild(s); }); body.appendChild(m); }
+  // 하위탭 — 요약(이 화면) · 섹터 안 종목 · 시계 성적표 · 일감 · 수출 먼저. 섹터 선택은 하위탭 사이에 따라간다
+  S.grData=d; S.grTab=S.grTab||lsGet('grTab','sum'); if(S.grSector===undefined) S.grSector=lsGet('grSector',null);
+  if(!GR_TABS.some(t=>t[0]===S.grTab)) S.grTab='sum';
+  body.appendChild(grTabBar(d, p));
+  if(S.grTab!=='sum'){ body.appendChild(grSubView(d, p)); return; }
   // 업황 시계 — 20개 섹터가 지금 어디에(가로 = 매출 속도, 세로 = 가속). 접어 둘 수 있다
   const ck=el('details','grClockBox'); ck.open=!S.grClockClosed; ck.addEventListener('toggle',()=>{ S.grClockClosed=!ck.open; });
   ck.appendChild(el('summary',null,'업황 시계 — 섹터가 지금 어디에 있나'));
@@ -4613,6 +4646,9 @@ async function viewGrowth(p, force){
   ck.appendChild(lg);
   ck.appendChild(grClock(secs.filter(s=>s.phase).map(s=>Object.assign({name:s.key},s.phase,{trail:null}))));
   ck.appendChild(el('div','grAsOf','점에 마우스를 올리면 그 섹터의 숫자. 오른쪽 위로 갈수록 빨리 크고 더 빨라지는 중, 오른쪽 아래는 크지만 느려지는 중(꼭지 신호), 왼쪽 위는 줄지만 바닥을 다지는 중. 축은 대부분의 섹터가 들어오는 범위로 잡았다 — 그 밖의 섹터(예: 반도체)는 가장자리에 굵은 테두리로 두고 이름 옆에 실제 값을 적었다. 가운데 회색 띠 = 가속 ±3%p(유지), 진한 칸 = 속도 ±2%(정체). 섹터를 펼치면 최근 8분기 궤적이 보인다.'));
+  if(d.clock_bt&&d.clock_bt.labels){ const L=d.clock_bt.labels, a=L['확장 가속']||{}, b=L['둔화']||{};
+    const nt=el('div','grAsOf grClockNote'); nt.appendChild(document.createTextNode('이 라벨대로 그때 섹터를 샀다면(2016~, 동일 가중 12개월 초과수익 중앙): 확장 가속 '+grPp(a.med)+'('+(a.n||0)+'건) · 둔화 '+grPp(b.med)+'('+(b.n||0)+'건) — 매출 라벨은 주가를 앞서지 않는다(둔화 뒤가 오히려 나았다). 지도이지 신호가 아니다. '));
+    const lk=el('a',null,'시계 성적표 →'); lk.href='#'; lk.onclick=e=>{ e.preventDefault(); S.grTab='clock'; lsSet('grTab','clock'); viewGrowth(p); }; nt.appendChild(lk); ck.appendChild(nt); }
   body.appendChild(ck);
   // 정렬 — 위 단추(자주 쓰는 넷)와 표 머리글이 같은 상태(S.grSort = {k, dir})를 쓴다
   if(!S.grSort||typeof S.grSort!=='object') S.grSort={k:'cap',dir:'desc'};
@@ -4704,13 +4740,18 @@ function grSummary(rows, d, resort){
     const dt=el('tr','dipDet'); dt.hidden=!S.grOpen.has(s.key); const dd=el('td'); dd.colSpan=13; dt.appendChild(dd);
     const fill=()=>{ if(!dd.firstChild) dd.appendChild(grDetail(s,d)); };
     if(!dt.hidden) fill();
-    tr.onclick=()=>{ dt.hidden=!dt.hidden; tr.classList.toggle('open',!dt.hidden); if(dt.hidden) S.grOpen.delete(s.key); else { S.grOpen.add(s.key); fill(); } };
+    tr.onclick=()=>{ dt.hidden=!dt.hidden; tr.classList.toggle('open',!dt.hidden); if(dt.hidden) S.grOpen.delete(s.key); else { S.grOpen.add(s.key); S.grSector=s.key; lsSet('grSector',s.key); fill(); } };
     t.appendChild(tr); t.appendChild(dt);
   });
   return t;
 }
 function grDetail(s, d){
   const box=el('div','grDet'), T=s.ttm||{}, E=s.exports, K=s.kiet;
+  // 0) 하위탭으로 — 이 섹터를 들고 간다
+  const nav=el('div','grDetNav'); nav.appendChild(el('span',null,'이 섹터로 더 보기'));
+  GR_TABS.slice(1).forEach(([k,t])=>{ if(k==='orders'&&!GR_ORDER_SECS.includes(s.key)) return; if(k==='exports'&&!E) return;
+    const b=el('button','ghost',t+' →'); b.onclick=e=>{ e.stopPropagation(); S.grSector=s.key; lsSet('grSector',s.key); S.grTab=k; lsSet('grTab',k); jump('grow'); }; nav.appendChild(b); });
+  box.appendChild(nav);
   // 1) 시장 규모 카드
   box.appendChild(el('h4',null,'시장 규모')); box.lastChild.appendChild(el('span',null,s.definition||''));
   const cards=el('div','grCards');
@@ -4836,6 +4877,328 @@ function grMembers(s){
     const cs=m.cons; c(cs?grP(cs.rev_g)+' / '+(cs.op_g!=null?grP(cs.op_g):'—'):'—','',cs?'매출 '+grJo(cs.rev_a)+' → '+grJo(cs.rev_e)+' · 영업이익 '+grJo(cs.op_a)+' → '+grJo(cs.op_e)+(cs.at?' · '+cs.at:''):'');
     t.appendChild(tr); });
   const w=el('div','grWrap'); w.appendChild(t); return w;
+}
+
+// ---------------------------------------------------------- 산업 성장률 하위탭 — 섹터 안 종목 · 시계 성적표 · 일감 · 수출 먼저 (/api/industry/sub, 2026-10-08)
+// 설계: docs/superpowers/specs/2026-10-08-industry-subtabs-design.md. 요약은 '지금 숫자', 하위탭은 그 숫자에 '과거 성적'과 '그래서 어느 회사'를 붙인다.
+const GR_TABS=[['sum','요약'],['stocks','섹터 안 종목'],['clock','시계 성적표'],['orders','일감'],['exports','수출 먼저']];
+const GR_ORDER_SECS=['조선','방산·항공우주','전력기기','건설','기계'];
+const grEv=(t,unit)=>{ if(!t||t.diff==null&&t.med==null&&t.median==null) return ''; const v=t.diff!=null?t.diff:t.med!=null?t.med:t.median, ci=t.ci||[];
+  return '과거 '+(t.n_on||t.n||0).toLocaleString('ko-KR')+'건: 12개월 초과수익 '+grPp(v).replace('%p',unit||'%p')+(ci[0]!=null?' ['+grPp(ci[0]).replace('%p','')+' ~ '+grPp(ci[1]).replace('%p','')+']':'')+
+    (t.hit_on!=null||t.hit!=null?' · 이긴 '+Math.round(t.hit_on!=null?t.hit_on:t.hit)+'%':'')+(t.early!=null&&t.late!=null?' · ~2019 '+grPp(t.early)+' · 2020~ '+grPp(t.late):''); };
+const grOk=t=>!!(t&&(t.diff!=null?t.diff:t.med!=null?t.med:t.median)>=1&&t.ci&&t.ci[0]>0&&(t.early==null||t.early>0)&&(t.late==null||t.late>0));
+// 하위탭 줄 + 섹터 칩(20개, 색 = 지금 라벨). 섹터는 하위탭 사이에 따라간다(S.grSector).
+function grTabBar(d, p){
+  const bar=el('div','grTabs'); const sg=el('div','seg');
+  GR_TABS.forEach(([k,t])=>{ const b=el('button',k===S.grTab?'on':'',t); b.onclick=()=>{ S.grTab=k; lsSet('grTab',k); viewGrowth(p); }; sg.appendChild(b); });
+  bar.appendChild(sg);
+  const hint={sum:'20섹터 요약 · 업황 시계',stocks:'섹터 안에서 누가 섹터보다 빨리 크고 누가 처지나 — 주가는 앞섰나',clock:'업황 시계 라벨대로 샀다면 과거 성적은',
+    orders:'수주 5섹터 — 일감이 몇 년치, 새 계약이 매출보다 빨리 느나',exports:'통관으로 아직 안 나온 이번 분기 섹터 매출 방향'}[S.grTab];
+  bar.appendChild(el('span','grTabHint',hint||''));
+  return bar;
+}
+function grSectorChips(d, p){
+  const row=el('div','grChips');
+  const all=el('button','grChip'+(S.grSector?'':' on'),'전체'); all.onclick=()=>{ S.grSector=null; lsSet('grSector',null); viewGrowth(p); }; row.appendChild(all);
+  (d.sectors||[]).forEach(s=>{ const ph=(GR_PHASE[(s.phase||{}).label]||[''])[0]; const b=el('button','grChip '+ph+(S.grSector===s.key?' on':''),s.key);
+    b.title=(s.phase?s.phase.label+' — 매출 속도 '+grP(s.phase.speed)+' · 가속 '+grPp(s.phase.accel):'')+' · 시총 '+grJo((s.cap||{}).adj);
+    b.onclick=()=>{ S.grSector=s.key; lsSet('grSector',s.key); viewGrowth(p); }; row.appendChild(b); });
+  return row;
+}
+// 섹터 머리 — 작은 업황 시계(8분기 궤적) + 카드 4장. 종목 표를 읽는 동안 '섹터 대비'가 머리에 남게
+function grSecHead(x, d){
+  const box=el('div','grSecHead');
+  const L=el('div'); const s=(d.sectors||[]).find(z=>z.key===x.sector)||{};
+  L.appendChild(el('h4',null,x.sector)); L.lastChild.appendChild(el('span',null,x.desc||s.desc||''));
+  if(x.phase){ const ph=GR_PHASE[x.phase.label]||['','']; const c=el('div'); c.appendChild(el('span','grPh '+ph[0],x.phase.label)); c.lastChild.style.marginLeft='0';
+    c.appendChild(el('small','grPhWhy',' 매출 속도 '+grP(x.phase.speed)+' ← 앞 '+grP(x.phase.prev)+' ('+grPp(x.phase.accel)+')')); L.appendChild(c);
+    if((x.phase.trail||[]).length) L.appendChild(grClock([Object.assign({},x.phase,{name:null})],{W:420,H:200})); }
+  box.appendChild(L);
+  const T=x.ttm||{}, Y=x.ytd||{}, F=x.fc_main, C=x.cap||{};
+  const cards=el('div','grCards');
+  const card=(em,b,sm)=>{ const c=el('div','grCard'); c.appendChild(el('em',null,em)); c.appendChild(el('b',null,b)); if(sm) c.appendChild(el('small',null,sm)); cards.appendChild(c); };
+  card('상장사 매출 최근 4분기',grJo(T.rev),'같은 표본 전년 대비 '+grP(T.rev_g)+' · 영업이익 '+(T.op_turn||grP(T.op_g))+(T.opm!=null?' · 이익률 '+T.opm.toFixed(1)+'%':''));
+  card('올해 누적 매출',grP(Y.rev_g),(Y.qs||[]).length?Y.qs.map(qQs).join(' · '):'');
+  card('올해 전망',F?grP(F.g):'—',F?(F.what+' · '+(F.src||'')):'기관 전망 없음');
+  card('시가총액(자회사 지분 뺌)',grJo(C.adj),'1년 '+grP(C.ret1y,0)+' · '+(C.n||0)+'곳'+(x.val&&x.val.per?' · PER '+x.val.per+'배':''));
+  box.appendChild(cards);
+  return box;
+}
+// 머리글 정렬 표 — cols = [[머리, 값 함수(정렬), 글 함수(표시, 없으면 값), 풀이, 색 함수]]
+function grTable(rows, cols, st, redraw, cls){
+  const t=el('table','tbl dipTbl '+(cls||'')); const hr=el('tr');
+  cols.forEach(([nm,fv,ft,tl],i)=>{ const th=el('th',(i?'r ':'')+'vSort'+(st.k===i?' on':'')); th.appendChild(document.createTextNode(nm)); th.appendChild(el('i',null,st.k===i?(st.dir==='asc'?' ▲':' ▼'):' ↕'));
+    if(tl) th.title=tl; th.onclick=()=>{ if(st.k!==i) Object.assign(st,{k:i,dir:'desc'}); else if(st.dir==='desc') st.dir='asc'; else Object.assign(st,{k:cols.length,dir:'desc'}); redraw(); }; hr.appendChild(th); });
+  t.appendChild(hr);
+  const f=cols[st.k]?cols[st.k][1]:null, dir=st.dir==='asc'?1:-1;
+  const sorted=f?rows.map((r,i)=>[r,f(r),i]).sort((a,b)=>{ const x=a[1],y=b[1]; if(x==null||x!==x) return (y==null||y!==y)?a[2]-b[2]:1; if(y==null||y!==y) return -1;
+    return (typeof x==='string'?x.localeCompare(y,'ko'):x-y)*dir||a[2]-b[2]; }).map(z=>z[0]):rows;
+  sorted.forEach(r=>{ const tr=el('tr'); cols.forEach(([nm,fv,ft,tl,fc],i)=>{ const v=ft?ft(r):fv(r); const td=el('td',(i?'num':'')+(fc?' '+(fc(r)||''):''));
+    if(v instanceof Node) td.appendChild(v); else td.textContent=v==null?'—':v; tr.appendChild(td); }); t.appendChild(tr); });
+  const w=el('div','grWrap'); w.appendChild(t); return w;
+}
+const grLink=(code,name,next)=>{ const a=el('a',null,name||code); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(code).then(()=>jump(next||'orbit')); }; return a; };
+function grSubView(d, p){
+  // 상자를 먼저 돌려주고(화면에 붙은 뒤) 자료는 뒤에서 채운다 — await 로 돌려주면 붙기 전이라 isConnected 가 늘 거짓이었다
+  const box=el('div','grSub');
+  box.appendChild(grSectorChips(d, p));
+  const body=el('div'); body.appendChild(el('div','loading','불러오는 중…')); box.appendChild(body);
+  const tab=S.grTab, sec=S.grSector;
+  (async()=>{
+    let x; try{ x=await (await fetch('/api/industry/sub?tab='+tab+'&sector='+encodeURIComponent(sec||''))).json(); }catch(e){ x={error:'불러오지 못했습니다'}; }
+    if(!box.isConnected||S.grTab!==tab||S.grSector!==sec) return;
+    body.innerHTML='';
+    if(x.error){ body.appendChild(el('div','err',x.error)); return; }
+    try{ ({stocks:grStocks, clock:grClockBt, orders:grOrders, exports:grExports}[tab]||(()=>{}))(body, x, d, p); }
+    catch(e){ body.appendChild(el('div','err','화면을 그리다 멈췄다: '+e.message)); console.error(e); }
+  })();
+  return box;
+}
+// ① 섹터 안 종목 — 같은 업황 시계 축에 섹터 구성원 전부. 섹터 대비 네 자리(속도 − 섹터 속도, 1년 주가 − 섹터 1년)
+const GR_ZONE={'따라붙을 자리':['pos','섹터보다 빨리 크는데 주가는 섹터보다 덜 올랐다'],'앞서 간 자리':['warn','섹터보다 빨리 크고 주가도 더 올랐다 — 기대가 앞섰나 본다'],
+  '값만 오른 자리':['neg','섹터보다 느린데 주가는 더 올랐다'],'이유 있는 뒤처짐':['flat','섹터보다 느리고 주가도 덜 올랐다']};
+const grZone=(m,P,C)=>{ if(m.speed==null||!P||P.speed==null||m.ret1y==null||(C||{}).ret1y==null) return null; const f=m.speed>P.speed, u=m.ret1y>=C.ret1y; return f?(u?'앞서 간 자리':'따라붙을 자리'):(u?'값만 오른 자리':'이유 있는 뒤처짐'); };
+function grStocks(body, x, d, p){
+  const bt=x.bt||{};
+  if(!x.sector){
+    body.appendChild(el('h4','grH','20섹터 — 크기는 시가총액, 색은 지금 업황 라벨. 누르면 그 섹터 안 종목'));
+    const map=el('div','grMap'); const tot=(x.sectors||[]).reduce((a,s)=>a+((s.cap||{}).adj||0),0);
+    (x.sectors||[]).slice().sort((a,b)=>((b.cap||{}).adj||0)-((a.cap||{}).adj||0)).forEach(s=>{ const sh=((s.cap||{}).adj||0)/(tot||1);
+      const b=el('button','grMapBox '+((GR_PHASE[(s.phase||{}).label]||[''])[0])); b.style.flexBasis=Math.max(9,Math.sqrt(sh)*62)+'%'; b.style.minHeight=Math.max(54,Math.sqrt(sh)*300)+'px';
+      b.appendChild(el('b',null,s.key)); b.appendChild(el('span',null,grJo((s.cap||{}).adj)+' · '+(s.n||0)+'곳'));
+      if(s.phase) b.appendChild(el('small',null,s.phase.label+' '+grP(s.phase.speed)+' / '+grPp(s.phase.accel)));
+      b.onclick=()=>{ S.grSector=s.key; lsSet('grSector',s.key); viewGrowth(p); }; map.appendChild(b); });
+    body.appendChild(map);
+    body.appendChild(el('p','grAsOf','섹터를 고르면 그 섹터 구성원 전부를 같은 업황 시계 축에 찍고, 섹터보다 빨리 크는 회사 · 처지는 회사 · 주가가 앞선 회사를 가른다.'));
+    return;
+  }
+  body.appendChild(grSecHead(x, d));
+  const M=x.members||[], P=x.phase||{}, C=x.cap||{};
+  const ok=M.filter(m=>m.speed!=null&&m.accel!=null);
+  body.appendChild(el('h4','grH','업황 시계 — 이 섹터 구성원 '+M.length+'곳(라벨 있는 곳 '+ok.length+')')); body.lastChild.appendChild(el('span',null,'회사마다 섹터와 같은 식 — 속도 = 최근 2분기 분기 매출 전년 대비 평균, 가속 = 앞 2분기 대비. 점 크기 = 자기 몫 시총, 큰 속 빈 점 = 섹터(8분기 궤적)'));
+  const top=new Set(ok.slice().sort((a,b)=>(b.adj||0)-(a.adj||0)).slice(0,14).map(m=>m.code));
+  const mx=Math.max(1,...ok.map(m=>m.adj||0));
+  const pts=ok.map(m=>({name:top.has(m.code)?m.name:null,tn:m.name,speed:m.speed,accel:m.accel,label:m.label,r:3+Math.sqrt((m.adj||0)/mx)*9}));
+  if(P.speed!=null) pts.push(Object.assign({},P,{name:x.sector,hollow:true,r:9}));
+  body.appendChild(grClock(pts,{H:360}));
+  // 네 자리
+  const zones={}; ok.forEach(m=>{ const z=grZone(m,P,C); if(z) zones[z]=(zones[z]||0)+1; });
+  const zl=el('div','grZones'); Object.entries(GR_ZONE).forEach(([k,[c,t]])=>{ const s=el('span','grPh '+c,k+' '+(zones[k]||0)); s.title=t; zl.appendChild(s); });
+  zl.appendChild(el('small',null,' 섹터 속도 '+grP(P.speed)+' · 섹터 1년 주가 '+grP(C.ret1y,0)+' 기준으로 가른 자리'));
+  body.appendChild(zl);
+  // 과거 성적(회사 단위 가속 백테스트 B식 — 같은 식)
+  const up=bt.B_up, dn=bt.B_dn, rg=bt.regime||{}, od=(bt.order||{}).B_up;
+  if(up){ const ev=el('div','grEvBox'); ev.appendChild(el('b',null,'이 라벨의 과거 성적(회사 단위, 같은 식 · '+(bt.firms||0)+'곳 · '+(bt.n||0).toLocaleString('ko-KR')+' 회사-분기)'));
+    const li=(t,o)=>{ const r=el('div','lbr '+(grOk(o)?'pos':(o&&o.med<=-1&&o.ci&&o.ci[1]<0)?'neg':'nu')); r.appendChild(el('b',null,t)); r.appendChild(el('span',null,grEv(o))); ev.appendChild(r); };
+    li('가속 전환 ↑(가속이 −에서 +로)',up); li('가속 전환 ↓',dn); if(od) li('수주 업종만 — 가속 전환 ↑',od);
+    const rgs=Object.entries(rg).map(([k,v])=>k+' '+grPp(v.med)+'(4분기 뒤 매출 '+grPp(v.dG4)+')').join(' · ');
+    if(rgs) ev.appendChild(el('small',null,'네 상태의 12개월 초과수익 중앙: '+rgs+(bt.whip?' · 2분기 안에 뒤집힌 헛신호 '+Math.round(bt.whip.pct)+'%':'')));
+    ev.appendChild(el('small',null,'효과가 작으니(이긴 비율 52%) 라벨은 \'사라\'가 아니라 \'거르라\'로 읽는다. 섹터 대비 네 자리의 성적은 검증 전.'));
+    body.appendChild(ev); }
+  // 표
+  S.grSt=S.grSt||{}; const st=S.grSt.stocks=S.grSt.stocks||{k:7,dir:'desc'};
+  const wrap=el('div'); body.appendChild(wrap);
+  const cols=[
+    ['회사',m=>m.name,m=>{ const c=el('span'); c.appendChild(grLink(m.code,m.name)); c.appendChild(el('small',null,' '+m.code+(m.seg?' · '+m.seg:''))); if(m.note){ const i=el('small',null,' ⓘ'); i.title=m.note; i.style.cursor='help'; c.appendChild(i); } return c; },'누르면 그 회사 궤도'],
+    ['업황',m=>({'확장 가속':6,'확장 유지':5,'회복':4,'정체':3,'둔화':2,'부진 지속':1,'수축 심화':0})[m.label],m=>m.label?el('span','grPh '+((GR_PHASE[m.label]||[''])[0]),m.label):'—','회사 자신의 2분기 속도 · 가속으로 매긴 라벨'],
+    ['속도',m=>m.speed,m=>grP(m.speed),'최근 2분기 분기 매출 전년 대비 평균',m=>grT(m.speed)],
+    ['가속',m=>m.accel,m=>grPp(m.accel),'속도 − 앞 2분기 평균',m=>grT(m.accel)],
+    ['섹터 대비 속도',m=>m.speed!=null&&P.speed!=null?m.speed-P.speed:null,m=>m.speed!=null&&P.speed!=null?grPp(m.speed-P.speed):'—','회사 속도 − 섹터 속도('+grP(P.speed)+')',m=>grT(m.speed!=null&&P.speed!=null?m.speed-P.speed:null)],
+    ['1년 주가',m=>m.ret1y,m=>grP(m.ret1y,0),'1년 주가 변화',m=>grT(m.ret1y)],
+    ['주가 − 섹터',m=>m.ret1y!=null&&C.ret1y!=null?m.ret1y-C.ret1y:null,m=>m.ret1y!=null&&C.ret1y!=null?grPp(m.ret1y-C.ret1y):'—','회사 1년 주가 − 섹터 시총 가중 1년('+grP(C.ret1y,0)+')',m=>grT(m.ret1y!=null&&C.ret1y!=null?m.ret1y-C.ret1y:null)],
+    ['시총',m=>m.adj,m=>grJo(m.adj)+(m.share!=null?' ('+m.share.toFixed(0)+'%)':''),'자기 몫 시총(자회사 지분 뺌) · 섹터 비중'],
+    ['매출 4분기',m=>m.rev_g,m=>grJo(m.rev_ttm)+' '+grP(m.rev_g),'최근 4분기 매출 · 같은 구조 전년 대비',m=>grT(m.rev_g)],
+    ['이익률',m=>m.opm,m=>m.opm==null?'—':m.opm.toFixed(1)+'%'+(m.opm_b!=null?' ← '+m.opm_b.toFixed(1):''),'최근 4분기 영업이익률 ← 1년 전'],
+    ['PER',m=>m.per,m=>m.per==null?'—':m.per.toFixed(1)+(x.val&&x.val.per?' / '+x.val.per:''),'회사 PER / 섹터 PER(최근 4분기 순이익)'],
+    ['자리',m=>({'따라붙을 자리':3,'앞서 간 자리':2,'값만 오른 자리':1,'이유 있는 뒤처짐':0})[grZone(m,P,C)],m=>{ const z=grZone(m,P,C); return z?el('span','grPh '+GR_ZONE[z][0],z):'—'; },'섹터 대비 속도와 주가로 가른 네 자리'],
+  ];
+  const redraw=()=>{ wrap.innerHTML=''; wrap.appendChild(grTable(M,cols,st,redraw,'grStk')); };
+  redraw();
+  body.appendChild(el('div','finnote','분기 전년 대비는 기저가 0 근처면 수천 %로 튄다 — 축은 대부분이 들어오는 범위로 잘랐고 밖의 점은 가장자리. 부문 회사(삼성전자 등)는 부문 매출 vs 회사 전체 주가라 \'부문\' 표시. 주가 · 시총은 네이버 자료라 개인 열람용.'));
+}
+// ② 시계 성적표 — 도구/업황시계_백테스트.py → .cache/산업/clock_bt.json
+function grClockBt(body, x, d, p){
+  const bt=x.bt;
+  if(!bt){ body.appendChild(el('div','empty','시계 성적표가 아직 없다 — python 도구/업황시계_백테스트.py 를 돌리면 .cache/산업/clock_bt.json 이 생긴다')); return; }
+  const H=S.grBtH||'h12', W=S.grBtW||'eq', HN={h3:'3개월',h6:'6개월',h12:'12개월'}[H], WN=W==='eq'?'동일 가중':'시총 가중';
+  const g=(o)=>o&&o[H]&&o[H][W]; const sg=v=>grPp(v).replace('%p','');
+  body.appendChild(el('h4','grH','업황 시계 라벨대로 그때 섹터를 샀다면')); body.lastChild.appendChild(el('span',null,'섹터 20 × 분기 '+(bt.from||'')+'~'+((bt.to||{})[H]||'')+' · 라벨은 그 분기까지의 숫자로 다시 매김 · 진입 = 그 분기 보고서 마감 다음 거래일 · 초과수익 = 섹터 바구니 − 전 종목('+(bt.firms_used||'')+'곳) 중앙값'));
+  const bar=el('div','grBar'); const s1=el('div','seg'); [['h3','3개월'],['h6','6개월'],['h12','12개월']].forEach(([k,t])=>{ const b=el('button',k===H?'on':'',t); b.onclick=()=>{ S.grBtH=k; viewGrowth(p); }; s1.appendChild(b); }); bar.appendChild(s1);
+  const s2=el('div','seg'); [['eq','동일 가중'],['cap','시총 가중']].forEach(([k,t])=>{ const b=el('button',k===W?'on':'',t); b.onclick=()=>{ S.grBtW=k; viewGrowth(p); }; s2.appendChild(b); }); bar.appendChild(s2);
+  bar.appendChild(el('span',null,'')); bar.lastChild.style.cssText='font-size:11.5px;color:var(--faint)'; bar.lastChild.textContent='모든 라벨이 양수인 것은 수준 효과(지금 상장사만 · 산업주 vs 전 종목) — 라벨끼리 차이만 본다';
+  body.appendChild(bar);
+  // 결론 한 줄 — 맞대기(확장 가속 vs 둔화, 확장 vs 그 밖)
+  const C=bt.contrasts||{}, c1=g(C['확장가속_vs_둔화']), c2=g(C['확장_vs_그밖']), L1=((bt.lag1||{}).contrasts||{}); const l1=g(L1['확장가속_vs_둔화']);
+  if(c1||c2){ const box=el('div','grEvBox grConc'); box.appendChild(el('b',null,HN+' · '+WN+' — 라벨은 주가를 앞서는 신호인가'));
+    const line=(t,o)=>{ if(!o) return; const r=el('div','lbr '+(o.diff>=1&&o.ci[0]>0?'pos':o.diff<=-1&&o.ci[1]<0?'neg':'nu')); r.appendChild(el('b',null,t));
+      r.appendChild(el('span',null,'차이 '+grPp(o.diff)+' ['+sg(o.ci[0])+' ~ '+sg(o.ci[1])+'] · 앞 '+grPp(o.med_a)+'('+o.n_a+'건, 이긴 '+Math.round(o.hit_a)+'%) vs 뒤 '+grPp(o.med_b)+'('+o.n_b+'건, '+Math.round(o.hit_b)+'%)')); box.appendChild(r); };
+    line('확장 가속 − 둔화',c1); line('확장(가속+유지) − 그 밖',c2); if(l1&&H==='h12') line('보수 판(라벨을 한 분기 늦게 안다): 확장 가속 − 둔화',l1);
+    const neg=c1&&c1.diff<0;
+    box.appendChild(el('small',null,neg?'결론: 매출 라벨은 주가를 앞서지 않는다 — 둔화가 찍힌 뒤 1년이 확장 가속 뒤보다 오히려 나았다(기저 반등). 매출은 주가보다 늦게 확인되는 꼬리표라, 업황 시계는 지금 어디쯤인지 읽는 지도이지 사고파는 신호가 아니다. 시총 가중에서는 차이가 0 근처라 대형주에선 어느 쪽도 우위가 없다.':'결론: 이 기간 · 가중에서는 확장 라벨 쪽이 나았다 — 다른 기간 · 가중과 보수 판을 같이 본다.'));
+    body.appendChild(box); }
+  const t=el('table','tbl dipTbl grBtTbl'); t.innerHTML='<tr><th>라벨</th><th class="r">섹터-분기</th><th class="r">초과수익 중앙</th><th class="r">90% 구간</th><th class="r">이긴 비율</th><th class="r">~2019</th><th class="r">2020~</th><th class="r">섹터 수</th></tr>';
+  Object.keys(GR_PHASE).forEach(k=>{ const v=g((bt.labels||{})[k]); const tr=el('tr'); const c0=el('td'); c0.appendChild(el('span','grPh '+GR_PHASE[k][0],k)); c0.firstChild.style.marginLeft='0'; tr.appendChild(c0);
+    const td=(s,cls)=>{ const c=el('td','num'+(cls?' '+cls:'')); c.textContent=s; tr.appendChild(c); };
+    if(!v||v.n==null){ ['—','—','—','—','—','—'].forEach(z=>td(z)); tr.appendChild(el('td',null,'')); t.appendChild(tr); return; }
+    td(String(v.n)); td(grPp(v.med),grT(v.med)); td(v.ci&&v.ci[0]!=null?sg(v.ci[0])+' ~ '+grPp(v.ci[1]):'—'); td(v.hit!=null?Math.round(v.hit)+'%':'—'); td(grPp(v.early)); td(grPp(v.late));
+    td(v.n_sec!=null?String(v.n_sec):'—'); t.appendChild(tr); });
+  const w=el('div','grWrap'); w.appendChild(t); body.appendChild(w);
+  body.appendChild(el('p','grAsOf','라벨마다 맞다 판정을 달지 않는다 — 모든 라벨이 양수라 수준은 뜻이 없고, 위 맞대기(라벨끼리 차이)만 뜻이 있다. 90% 구간 = 섹터 단위 부트스트랩 500회.'));
+  // 쏠림 — 지금처럼 18/20 이 확장인 때
+  const cr=bt.crowded||{}, pl=cr.pooled||{};
+  if((cr.expand||[]).length){ body.appendChild(el('h4','grH','섹터 15개↑가 확장(가속+유지)이던 때')); body.lastChild.appendChild(el('span',null,'지금(2026Q2)은 '+((cr.now||{}).expand||'')+'/'+((cr.now||{}).of||'')+' — 과거 그런 분기의 확장 바구니 성적과 그날 시장'));
+    const tt=el('table','tbl dipTbl'); tt.innerHTML='<tr><th>분기</th><th class="r">확장 섹터</th><th class="r">3개월</th><th class="r">6개월</th><th class="r">12개월</th><th class="r">12개월 시총 가중</th><th class="r">그 뒤 12개월 시장 자체</th></tr>';
+    cr.expand.forEach(e=>{ const tr=el('tr'); tr.appendChild(el('td',null,e.q)); const td=(s,cls)=>{ const c=el('td','num'+(cls?' '+cls:'')); c.textContent=s; tr.appendChild(c); };
+      td(e.k+'/'+e.of); ['h3','h6','h12'].forEach(h=>{ const o=e[h]||{}; td(o.med!=null?grPp(o.med)+' ('+o.n+')':'—',grT(o.med)); }); td(e.h12&&e.h12.med_cap!=null?grPp(e.h12.med_cap):'—',grT((e.h12||{}).med_cap)); td(e.h12&&e.h12.mkt!=null?grP(e.h12.mkt):'아직',grT((e.h12||{}).mkt)); tt.appendChild(tr); });
+    const w2=el('div','grWrap'); w2.appendChild(tt); body.appendChild(w2);
+    const a=(pl.expand_crowded||{})[H]||{}, b=(pl.expand_scattered||{})[H]||{};
+    if(a.n) body.appendChild(el('p','grAsOf','모아서 — 쏠린 분기의 확장 '+grPp(a.med)+'('+a.n+'건, 이긴 '+Math.round(a.hit||0)+'%) vs 흩어진 분기의 확장 '+grPp(b.med)+'('+b.n+'건) — 쏠렸다고 더 좋지 않았고, 2021년 류의 쏠림 뒤엔 시장 자체가 빠졌다(초과수익은 양수여도 절대수익은 마이너스).')); }
+  // 전이표
+  const T=bt.transition; if(T){ body.appendChild(el('h4','grH','라벨은 2분기 뒤 어디로 갔나')); body.lastChild.appendChild(el('span',null,'행 = 그때 라벨, 칸 = 2분기 뒤 라벨의 비율(%) · 굵게 = 40%↑'));
+    const ks=Object.keys(GR_PHASE); const tt=el('table','tbl dipTbl grTrans'); tt.innerHTML='<tr><th></th>'+ks.map(k=>'<th class="r">'+k+'</th>').join('')+'<th class="r">n</th></tr>';
+    ks.forEach(a=>{ const row=T[a]||{}; const tr=el('tr'); tr.appendChild(el('td',null,a)); ks.forEach(b=>{ const pct=(row.pct||{})[b]; const td=el('td','num'); td.textContent=pct==null||!row.n?'—':Math.round(pct)+'%'; if(pct>=40) td.style.fontWeight='700'; td.title=((row.to||{})[b]||0)+'건'; tr.appendChild(td); });
+      tr.appendChild(el('td','num',String(row.n||0))); tt.appendChild(tr); });
+    const w3=el('div','grWrap'); w3.appendChild(tt); body.appendChild(w3);
+    body.appendChild(el('p','grAsOf','확장 가속은 반년 뒤 셋 중 하나가 둔화로 넘어가고, 둔화의 셋 중 하나는 수축으로 깊어진다. 회복 · 부진 지속은 대개 확장 가속으로 간다(기저 효과).')); }
+  // 섹터 표
+  const SS=bt.sectors||{};
+  if(Object.keys(SS).length){ body.appendChild(el('h4','grH','섹터마다 — 지금 라벨과 그 라벨의 과거 12개월')); body.lastChild.appendChild(el('span',null,(W==='eq'?'동일':'시총')+' 가중 중앙값(괄호 = 건수) · 섹터를 고르면 분기 체류 띠'));
+    const ts=el('table','tbl dipTbl'); ts.innerHTML='<tr><th>섹터</th><th>지금</th><th class="r">이 라벨 과거</th><th class="r">확장 가속 뒤</th><th class="r">확장 유지 뒤</th><th class="r">둔화 뒤</th><th class="r">수축 심화 뒤</th><th class="r">회복 뒤</th></tr>';
+    const mv=o=>o&&o.n?grPp(W==='eq'?o.med:o.med_cap)+' ('+o.n+')':'—';
+    Object.entries(SS).sort((a,b)=>(S.grSector===a[0]?-1:S.grSector===b[0]?1:0)).forEach(([k,s])=>{ const tr=el('tr',S.grSector===k?'open':''); tr.appendChild(el('td',null,k));
+      const c=el('td'); const nw=(s.now||{}).label; if(nw){ c.appendChild(el('span','grPh '+((GR_PHASE[nw]||[''])[0]),nw)); c.firstChild.style.marginLeft='0'; } tr.appendChild(c);
+      const bl=s.by_label||{}; [s.now_hist,bl['확장 가속'],bl['확장 유지'],bl['둔화'],bl['수축 심화'],bl['회복']].forEach(o=>{ const td=el('td','num '+(o&&o.n?grT(W==='eq'?o.med:o.med_cap):'')); td.textContent=mv(o); tr.appendChild(td); });
+      ts.appendChild(tr);
+      if(S.grSector===k&&(s.band||[]).length){ const tr2=el('tr','dipDet'); const td=el('td'); td.colSpan=8; const strip=el('div','grBand');
+        s.band.forEach(q=>{ const b=el('span','grPh '+((GR_PHASE[q.label]||['flat'])[0])); b.textContent=qQs(q.q)+(q.ex12!=null?' '+(q.ex12>=0?'+':'−')+Math.abs(Math.round(q.ex12)):''); b.title=q.q+' '+q.label+' · 속도 '+grP(q.speed)+' · 가속 '+grPp(q.accel)+(q.ex12!=null?' · 뒤 12개월 초과수익 '+grPp(q.ex12)+(q.ex12c!=null?' (시총 가중 '+grPp(q.ex12c)+')':''):' · 아직 12개월이 안 됨'); strip.appendChild(b); });
+        td.appendChild(el('div','grAsOf','분기마다 그때 라벨(색)과 그 뒤 12개월 초과수익(숫자, %p)')); td.appendChild(strip); tr2.appendChild(td); ts.appendChild(tr2); } });
+    const w4=el('div','grWrap'); w4.appendChild(ts); body.appendChild(w4); }
+  body.appendChild(el('div','finnote',(bt.notes||[]).join(' · ')));
+}
+// ③ 일감 — 수주 5섹터의 잔고 · 잔고 증가 vs 매출 증가 · 회사별
+function grOrders(body, x, d, p){
+  const bt=x.bt||{}, up=bt.up, dn=bt.dn, stg=bt.stages||{};
+  const evbox=()=>{ const ev=el('div','grEvBox'); ev.appendChild(el('b',null,'과거 성적(회사 단위, 분기 변화 · 시너지 백테스트)'));
+    const li=(t,o)=>{ const r=el('div','lbr '+(grOk(o)?'pos':(o&&(o.diff!=null?o.diff:o.med)<=-1&&o.ci&&o.ci[1]<0)?'neg':'nu')); r.appendChild(el('b',null,t)); r.appendChild(el('span',null,grEv(o))); ev.appendChild(r); };
+    if(up) li('잔고 증가가 매출 증가보다 +15%p↑ — 매출이 따라올 여지',up); if(dn) li('잔고 증가가 매출 증가보다 −15%p↓ — 둔화가 먼저',dn);
+    if(stg['잠복']) li('시너지 단계 잠복(잔고는 느는데 주가 아직)',stg['잠복']); if(stg['둔화']) li('시너지 단계 둔화',stg['둔화']);
+    return ev; };
+  if(!x.sector){
+    body.appendChild(el('h4','grH','수주로 매출이 정해지는 다섯 섹터')); body.lastChild.appendChild(el('span',null,'잔고 = 분기보고서 수주 현황의 분기 말 잔고 합(상장 자회사 중복 뺌). 누르면 그 섹터 회사별'));
+    const t=el('table','tbl dipTbl'); t.innerHTML='<tr><th>섹터</th><th>업황</th><th class="r">잔고</th><th class="r">몇 년치</th><th class="r">잔고 1년</th><th class="r">매출 4분기</th><th class="r">잔고 − 매출</th><th class="r">90일 계약 공시</th><th class="r">곳</th></tr>';
+    (x.sectors||[]).forEach(s=>{ const b=s.backlog||{}, T=s.ttm||{}; const tr=el('tr','dipRow'); tr.onclick=()=>{ S.grSector=s.key; lsSet('grSector',s.key); viewGrowth(p); };
+      const c0=el('td'); c0.appendChild(el('b',null,s.key)); tr.appendChild(c0); const c1=el('td'); if(s.phase){ c1.appendChild(el('span','grPh '+((GR_PHASE[s.phase.label]||[''])[0]),s.phase.label)); c1.firstChild.style.marginLeft='0'; } tr.appendChild(c1);
+      const td=(v,cls)=>{ const c=el('td','num'+(cls?' '+cls:'')); c.textContent=v; tr.appendChild(c); };
+      const gap=b.yoy!=null&&T.rev_g!=null?b.yoy-T.rev_g:null;
+      td(grJo(b.value)); td(b.years!=null?b.years+'년':'—'); td(grP(b.yoy),grT(b.yoy)); td(grP(T.rev_g),grT(T.rev_g)); td(gap==null?'—':grPp(gap),gap==null?'':gap>=15?'pos':gap<=-15?'neg':''); td(String(s.filings90||0)); td(String(b.n||0)); t.appendChild(tr); });
+    const w=el('div','grWrap'); w.appendChild(t); body.appendChild(w); body.appendChild(evbox());
+    body.appendChild(el('p','grAsOf','잔고 − 매출 = 잔고 1년 증가율 − 최근 4분기 매출 증가율(%p). +15%p 넘으면 받은 일감이 매출로 아직 다 안 넘어온 것, −15%p 아래면 매출은 늘었는데 새 일감이 안 쌓이는 것. 계약 공시 = 최근 90일 단일판매ㆍ공급계약체결(거래소 목록, 기재정정 제외) 건수.'));
+    return;
+  }
+  body.appendChild(grSecHead(x, d));
+  if(!x.order_driven){ body.appendChild(el('div','empty','이 섹터는 수주로 매출이 정해지지 않는다 — \'수출 먼저\'를 보라.')); return; }
+  const B=x.backlog||{}, T=x.ttm||{};
+  if(!B.n){ body.appendChild(el('div','empty','이 섹터는 잔고를 적은 보고서가 없다.')); return; }
+  const gap=B.yoy!=null&&T.rev_g!=null?B.yoy-T.rev_g:null;
+  const cards=el('div','grCards'); const card=(em,b,sm)=>{ const c=el('div','grCard'); c.appendChild(el('em',null,em)); c.appendChild(el('b',null,b)); if(sm) c.appendChild(el('small',null,sm)); cards.appendChild(c); };
+  card('수주잔고(상장사 '+B.n+'곳)',grJo(B.value),'분기 말 잔고 합 · 상장 자회사 중복 뺌'); card('몇 년치 일감',B.years!=null?B.years+'년':'—','잔고 ÷ 최근 4분기 매출');
+  card('잔고 1년 변화',grP(B.yoy),'매출 4분기 '+grP(T.rev_g)); card('잔고 − 매출',gap==null?'—':grPp(gap),gap==null?'':gap>=15?'받은 일감이 매출로 아직 다 안 넘어왔다':gap<=-15?'매출은 늘었는데 새 일감이 덜 쌓인다':'일감과 매출이 같이 간다');
+  body.appendChild(cards); body.appendChild(evbox());
+  S.grSt=S.grSt||{}; const st=S.grSt.orders=S.grSt.orders||{k:1,dir:'desc'};
+  const wrap=el('div'); body.appendChild(wrap);
+  const zone=r=>r.gap==null?null:r.gap>=15?'매출이 따라올 여지':r.gap<=-15?'둔화가 먼저':'같이 감';
+  const cols=[
+    ['회사',r=>r.name,r=>{ const c=el('span'); c.appendChild(grLink(r.code,r.name,'qtr')); c.appendChild(el('small',null,' '+r.code+' · '+(r.at||''))); return c; },'누르면 분기 변화(수주 → 매출 파이프라인)'],
+    ['잔고',r=>r.value,r=>grJo(r.value),'분기 말 수주잔고'],
+    ['몇 년치',r=>r.years,r=>r.years!=null?r.years+'년':'—','잔고 ÷ 최근 4분기 매출'],
+    ['잔고 1년',r=>r.yoy,r=>grP(r.yoy),'1년 전 같은 분기 말 대비',r=>grT(r.yoy)],
+    ['매출 4분기',r=>r.rev_g,r=>grP(r.rev_g),'같은 구조 전년 대비',r=>grT(r.rev_g)],
+    ['잔고 − 매출',r=>r.gap,r=>r.gap==null?'—':grPp(r.gap),'%p',r=>r.gap==null?'':r.gap>=15?'pos':r.gap<=-15?'neg':''],
+    ['판정',r=>({'매출이 따라올 여지':2,'같이 감':1,'둔화가 먼저':0})[zone(r)],r=>{ const z=zone(r); return z?el('span','grPh '+(z==='매출이 따라올 여지'?'pos':z==='둔화가 먼저'?'neg':'flat'),z):'—'; },'±15%p 기준 — 위 과거 성적'],
+    ['90일 계약 공시',r=>r.filings90,r=>String(r.filings90||0),'최근 90일 단일판매ㆍ공급계약체결 건수(금액 없음)'],
+    ['1년 주가',r=>r.ret1y,r=>grP(r.ret1y,0),'',r=>grT(r.ret1y)],
+    ['시총',r=>r.adj,r=>grJo(r.adj),'자기 몫 시총'],
+  ];
+  const redraw=()=>{ wrap.innerHTML=''; wrap.appendChild(grTable(B.rows||[],cols,st,redraw,'grOrd')); };
+  redraw();
+  body.appendChild(el('div','finnote','잔고는 회사마다 적는 범위가 달라(수주 총액 · 계약 잔액 · 부문별) 섹터 합이 한 회사 기준 변경에 흔들린다. 검산이 맞은 값만 썼다. 계약 공시 금액은 원문이 필요해 건수만 센다(둘째 판). 주가는 네이버 자료 · 개인 열람용.'));
+}
+// ④ 수출 먼저 — 통관(관세청)으로 아직 공시 안 된 이번 분기 섹터 매출 방향
+function grExports(body, x, d, p){
+  const dirCls=v=>v==='가속'?'pos':v==='둔화'?'warn':v==='비슷'?'flat':'neg';
+  if(!x.sector){
+    body.appendChild(el('h4','grH','이번 분기 섹터 매출, 통관이 먼저 말하는가')); body.lastChild.appendChild(el('span',null,'수출(분기, 석 달 합) ↔ 섹터 매출 증가율(같은 표본)을 2016년부터 분기마다 맞댄 뒤, 나온 달의 수출로 이번 분기 매출을 짚는다. 누르면 그 섹터'));
+    const t=el('table','tbl dipTbl'); t.innerHTML='<tr><th>섹터</th><th>업황</th><th class="r">이번 분기 수출</th><th class="r">지난 분기 매출</th><th class="r">추정 매출</th><th>방향</th><th class="r">방향 적중</th><th class="r">상관</th><th class="r">단가</th><th class="r">수출추적 회사</th></tr>';
+    (x.sectors||[]).filter(s=>s.exports&&(s.exports.fit||s.exports.now_q)).sort((a,b)=>(((b.exports||{}).fit||{}).hit||0)-(((a.exports||{}).fit||{}).hit||0)).forEach(s=>{ const E=s.exports||{}, f=E.fit||{}, nq=E.now_q||{};
+      const tr=el('tr','dipRow'); tr.onclick=()=>{ S.grSector=s.key; lsSet('grSector',s.key); viewGrowth(p); };
+      const c0=el('td'); c0.appendChild(el('b',null,s.key)); tr.appendChild(c0); const c1=el('td'); if(s.phase){ c1.appendChild(el('span','grPh '+((GR_PHASE[s.phase.label]||[''])[0]),s.phase.label)); c1.firstChild.style.marginLeft='0'; } tr.appendChild(c1);
+      const td=(v,cls,tl)=>{ const c=el('td','num'+(cls?' '+cls:'')); c.textContent=v; if(tl) c.title=tl; tr.appendChild(c); };
+      const weak=f.dir&&f.dir!=='가속'&&f.dir!=='둔화'&&f.dir!=='비슷';
+      td(nq.q?grP(nq.g):'—',grT(nq.g),nq.q?(nq.q+' · 나온 달 '+(nq.months||[]).map(m=>+m.slice(4)+'월').join(' · ')):'');
+      td(grP(s.last_rev),grT(s.last_rev),'직전 분기 섹터 매출 증가율(같은 표본)');
+      td(weak||f.est==null?'—':grP(f.est)+' ±'+(f.mae!=null?f.mae.toFixed(0):'?'),weak?'':grT(f.est),'과거 직선(매출 = a + b × 수출)으로 짚은 이번 분기 매출 증가율 ± 과거 오차 중앙');
+      const cd=el('td'); if(f.dir){ cd.appendChild(el('span','grPh '+dirCls(f.dir),weak?'못 말함':f.dir)); cd.firstChild.style.marginLeft='0'; cd.title=f.dir; } else cd.textContent='—'; tr.appendChild(cd);
+      td(f.hit!=null?f.hit+'%':'—',f.hit!=null?(f.hit>=55?'pos':'neg'):'','수출 분기 전년 대비의 오르내림이 같은 분기 매출 증가율의 오르내림과 같았던 비율('+(f.n_hit||0)+'분기)');
+      td(f.corr0!=null?f.corr0.toFixed(2)+(f.corr1!=null?' / '+f.corr1.toFixed(2):''):'—','','순위상관 — 같은 분기 / 수출이 한 분기 앞설 때');
+      td(grP(E.unit_price_g),grT(E.unit_price_g),'수출 단가(달러/kg) 3개월 전년 대비 — 값이 올랐나 물량이 늘었나');
+      td((s.n_ab||0)+' / '+(s.n_ok||0),'','수출추적 신뢰도 A·B / 읽은 회사'); t.appendChild(tr); });
+    const w=el('div','grWrap'); w.appendChild(t); body.appendChild(w);
+    body.appendChild(el('p','grAsOf','방향 적중 55% 아래거나 상관 0.3 아래면 \'못 말함\' — 수출이 매출을 말해 주지 않는 섹터(해외 생산이 크거나, 인도 시점에 찍히는 수주 섹터). 해운 · 건설 · 인터넷 · 통신은 수출 품목이 없다.'));
+    body.appendChild(el('div','finnote','매출 예고까지만 약속한다 — 회사 단위 검증에서 통관은 다음 매출을 맞히지만(순위상관 0.13, t 12) 주가 신호는 약하다(0.05). 누구나 보는 자료라서다.'));
+    return;
+  }
+  body.appendChild(grSecHead(x, d));
+  const E=x.exports; if(!E){ body.appendChild(el('div','empty','이 섹터는 관세청 수출 품목이 없다.')); return; }
+  const f=E.fit||{}, nq=E.now_q||{}, weak=f.dir&&!['가속','둔화','비슷'].includes(f.dir);
+  const cards=el('div','grCards'); const card=(em,b,sm)=>{ const c=el('div','grCard'); c.appendChild(el('em',null,em)); c.appendChild(el('b',null,b)); if(sm) c.appendChild(el('small',null,sm)); cards.appendChild(c); };
+  card('이번 분기 수출 '+(nq.q||''),nq.q?grP(nq.g):'—',nq.q?'나온 달 '+(nq.months||[]).map(m=>+m.slice(4)+'월').join(' · ')+' 합의 전년 대비':'아직 나온 달이 없다');
+  card('추정 매출 증가율',weak||f.est==null?'못 말함':grP(f.est),f.est!=null?('지난 분기 '+grP(f.last_rev)+' → '+(weak?'수출이 매출을 말해 주지 않는 섹터':f.dir)+' · 과거 오차 ±'+(f.mae!=null?f.mae.toFixed(0):'?')+'%p'):'');
+  card('수출 → 매출 과거 적중',f.hit!=null?f.hit+'%':'—','오르내림 방향이 같았던 비율('+(f.n_hit||0)+'분기) · 상관 '+(f.corr0!=null?f.corr0.toFixed(2):'—'));
+  card('수출 단가',grP(E.unit_price_g),'달러/kg 3개월 전년 대비 · 12개월 수출 '+grUsd(E.m12)+(E.share!=null?' · 총수출의 '+E.share+'%':''));
+  body.appendChild(cards);
+  // 산점 — 가로 수출 분기 yoy, 세로 매출 분기 yoy
+  const pairs=(E.q||[]).map(o=>({q:o.q,x:o.g,y:((x.quarters||[]).find(r=>r.q===o.q)||{}).rev_yoy})).filter(o=>o.x!=null&&o.y!=null);
+  if(pairs.length>=6){ body.appendChild(el('h4','grH','분기마다 — 수출(가로) vs 섹터 매출(세로)')); body.lastChild.appendChild(el('span',null,'전년 대비 %, 2016년부터. 빈 점 = 이번 분기(수출만)'));
+    const W=620,H=260,L=46,R=14,T=14,B=28; const xs=pairs.map(o=>o.x).concat(nq.g!=null?[nq.g]:[]), ys=pairs.map(o=>o.y);
+    const q=(a,f)=>{ const s=[...a].sort((u,v)=>u-v); return s[Math.min(s.length-1,Math.floor(f*(s.length-1)))]; };
+    const xm=Math.max(10,q(xs.map(Math.abs),0.9)*1.2), ym=Math.max(10,q(ys.map(Math.abs),0.9)*1.2);
+    const cl=(v,m)=>Math.max(-m,Math.min(m,v)); const X=v=>L+(cl(v,xm)+xm)/(2*xm)*(W-L-R), Y=v=>T+(ym-cl(v,ym))/(2*ym)*(H-T-B);
+    const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'grClock grXY'});
+    svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:Y(0),y2:Y(0),class:'ax0'})); svg.appendChild(svgEl('line',{x1:X(0),x2:X(0),y1:T,y2:H-B,class:'ax0'}));
+    if(f.b!=null){ const pth=svgEl('path',{d:'M'+X(-xm)+','+Y(f.a+f.b*(-xm))+'L'+X(xm)+','+Y(f.a+f.b*xm),class:'trail'}); svg.appendChild(pth); }
+    pairs.forEach(o=>{ const c=svgEl('circle',{cx:X(o.x),cy:Y(o.y),r:3.5,class:'pt pos'}); tip(c,o.q+' · 수출 '+grP(o.x)+' · 매출 '+grP(o.y)); svg.appendChild(c); });
+    if(nq.g!=null&&f.est!=null&&!weak){ const c=svgEl('circle',{cx:X(nq.g),cy:Y(f.est),r:6,class:'pt hollow'}); tip(c,nq.q+' · 수출 '+grP(nq.g)+' → 추정 매출 '+grP(f.est)); svg.appendChild(c); }
+    [[-xm,'start'],[xm,'end']].forEach(([v,a])=>{ const t=svgEl('text',{x:X(v),y:H-B+13,'text-anchor':a,class:'tk'}); t.textContent=(v>0?'≥+':'≤')+Math.round(v)+'%'; svg.appendChild(t); });
+    [ym,-ym].forEach(v=>{ const t=svgEl('text',{x:L-4,y:Y(v)+3,'text-anchor':'end',class:'tk'}); t.textContent=(v>0?'+':'')+Math.round(v)+'%'; svg.appendChild(t); });
+    const xl=svgEl('text',{x:W-R,y:H-4,'text-anchor':'end',class:'tl'}); xl.textContent='수출(분기 합) 전년 대비 →'; svg.appendChild(xl);
+    const yl=svgEl('text',{x:4,y:10,class:'tl'}); yl.textContent='↑ 섹터 매출 증가율'; svg.appendChild(yl);
+    body.appendChild(svg); }
+  if(x.monthly&&Object.keys(x.monthly).length){ body.appendChild(el('h4','grH','월별 수출')); body.lastChild.appendChild(el('span',null,'3개월 합의 전년 대비, 최근 5년 — 끝의 두어 달이 이번 분기'));
+    body.appendChild(grLines([{name:'수출',s:x.monthly}],60)); }
+  const bars=(title,list,isUsd)=>{ list=(list||[]).filter(z=>Array.isArray(z)&&z.length>=3); if(!list.length) return; body.appendChild(el('h4','grH',title));
+    const g=el('div','grBars'); const tot=isUsd?list.reduce((a,z)=>a+(z[2]||0),0):100; const rows=list.map(z=>[z[0],z[1],isUsd?(tot?z[2]/tot*100:0):z[2],z[2]]); const mx=Math.max(...rows.map(z=>z[2]),1);
+    rows.forEach(z=>{ const r=el('div','row'); r.appendChild(el('span','k',z[1]+' '+z[0])); const b=el('div','mb'); const i=el('i'); i.style.width=(z[2]/mx*100)+'%'; b.appendChild(i); r.appendChild(b);
+      r.appendChild(el('span','v',z[2].toFixed(1)+'%'+(isUsd?' · '+grUsd(z[3]):''))); g.appendChild(r); }); body.appendChild(g); };
+  bars('품목(HS, 12개월 수출 가운데 비중)',E.sub12,true); bars('상대국(12개월 비중)',E.dest12,false);
+  // 회사 표
+  const co=x.companies||[];
+  body.appendChild(el('h4','grH','이 섹터 안 수출 추적 회사 '+co.length+'곳')); body.lastChild.appendChild(el('span',null,'수출 추적 탭의 회사별 통관(공장 시군구 × HS) — 신뢰도 A · B 먼저. 누르면 수출 추적'));
+  if(!co.length) body.appendChild(el('div','empty','이 섹터에는 통관 통로를 읽은 회사가 없다.'));
+  else { S.grSt=S.grSt||{}; const st=S.grSt.exports=S.grSt.exports||{k:99,dir:'desc'}; const wrap=el('div'); body.appendChild(wrap);
+    const cols=[
+      ['회사',r=>r.name,r=>{ const c=el('span'); c.appendChild(grLink(r.code,r.name,'exp')); c.appendChild(el('small',null,' '+r.code)); return c; },''],
+      ['신뢰도',r=>({A:3,B:2,C:1})[r.grade]||0,r=>r.grade||'—','통관 ↔ 매출이 과거에 맞은 정도(A 가 가장 믿을 만함)'],
+      ['이번 분기 통관',r=>r.partial,r=>grP(r.partial)+((r.p_months||[]).length?' ('+r.p_months.length+'달)':''),'나온 달의 전년 대비',r=>grT(r.partial)],
+      ['3개월',r=>r.y3,r=>grP(r.y3),'최근 3개월 전년 대비',r=>grT(r.y3)],
+      ['가속',r=>r.acc,r=>grPp(r.acc),'3개월 증가율의 변화',r=>grT(r.acc)],
+      ['상태',r=>r.state,r=>r.state||'—','수출 추적 탭의 상태'],
+      ['통관↔매출',r=>r.corr,r=>r.corr!=null?r.corr.toFixed(2):'—','과거 분기 상관 · 덮는 비율 '+''],
+      ['회사 업황',r=>r.label,r=>r.label?el('span','grPh '+((GR_PHASE[r.label]||[''])[0]),r.label):'—','섹터 안 종목 탭의 라벨'],
+      ['매출 4분기',r=>r.rev_g,r=>grP(r.rev_g),'',r=>grT(r.rev_g)],
+      ['1년 주가',r=>r.ret1y,r=>grP(r.ret1y,0),'',r=>grT(r.ret1y)],
+    ];
+    const redraw=()=>{ wrap.innerHTML=''; wrap.appendChild(grTable(co,cols,st,redraw,'grExp')); }; redraw(); }
+  body.appendChild(el('div','finnote','매출 예고 · 주가 신호 아님 — 회사 단위 검증(공시 6,809건)에서 통관은 다음 매출을 맞히지만(순위상관 0.13) 90일 초과수익 상관은 0.05 다. 수출은 달러 금액이라 물량과 가격이 섞인다(단가 칸). 해외 생산이 큰 회사는 통관과 연결 매출이 어긋난다.'));
 }
 
 // ---------------------------------------------------------- 저평가V2 — 차트 셋업 스크리너(/api/value2 · 기술.py setup · PRESETS)

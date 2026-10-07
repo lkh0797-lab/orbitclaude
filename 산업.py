@@ -32,7 +32,7 @@ CACHE = os.path.join(BASE, ".cache")
 DIR = os.path.join(CACHE, "산업")
 OUT = os.path.join(DIR, "_result.json")
 EXT_PATH = os.path.join(BASE, "산업_외부자료.json")
-V = 1
+V = 2          # 2: 하위탭 — members_all(섹터 안 전 종목 업황) · exports.q/fit(수출 분기) · backlog.rows (2026-10-08)
 FIRST_Y = 2015
 
 
@@ -459,6 +459,84 @@ def _q_of_month(k):
     return "%sQ%d" % (k[:4], (int(k[4:]) - 1) // 3 + 1)
 
 
+# ---------------------------------------------------------------- 수출 분기 ↔ 섹터 매출(하위탭 '수출 먼저')
+def _rank(v):
+    s = sorted(range(len(v)), key=lambda i: v[i])
+    r = [0.0] * len(v)
+    for k, i in enumerate(s):
+        r[i] = k + 1.0
+    return r
+
+
+def _spear(a, b):
+    if len(a) < 6:
+        return None
+    ra, rb = _rank(a), _rank(b)
+    ma, mb = sum(ra) / len(ra), sum(rb) / len(rb)
+    sa = sum((x - ma) ** 2 for x in ra) ** 0.5
+    sb = sum((x - mb) ** 2 for x in rb) ** 0.5
+    return sum((x - ma) * (y - mb) for x, y in zip(ra, rb)) / (sa * sb) if sa and sb else None
+
+
+def _q_months(q):
+    y, k = int(q[:4]), int(q[5])
+    return ["%d%02d" % (y, (k - 1) * 3 + m) for m in (1, 2, 3)]
+
+
+def _exports_q(exp_series, qrows, latest_q, since):
+    """{q: [{q, g, m}], now_q: {q, months, g}, fit: {...}} — 분기 수출 전년 대비(석 달 합), 다음 분기(나온 달만),
+    그리고 수출(t) ↔ 섹터 매출 증가율(t) 의 순위상관 · 방향 적중(앞 분기 대비 오르내림이 같은가) · 직선 추정."""
+    ks = set(_mkeys(exp_series))
+    out = []
+    for r in qrows:
+        ms = _q_months(r["q"])
+        if not all(m in ks for m in ms) or not since(_mshift(ms[0], 12)):
+            out.append({"q": r["q"], "g": None, "m": 0})
+            continue
+        a = sum(exp_series[m] for m in ms)
+        b = sum(exp_series.get(_mshift(m, 12), 0) for m in ms)
+        out.append({"q": r["q"], "g": _r1(_yoy(a, b)), "m": 3})
+    nq = "%dQ1" % (int(latest_q[:4]) + 1) if latest_q[5] == "4" else "%sQ%d" % (latest_q[:4], int(latest_q[5]) + 1)
+    ms = [m for m in _q_months(nq) if m in ks]
+    now_q = None
+    if ms and since(_mshift(ms[0], 12)):
+        a = sum(exp_series[m] for m in ms)
+        b = sum(exp_series.get(_mshift(m, 12), 0) for m in ms)
+        now_q = {"q": nq, "months": ms, "g": _r1(_yoy(a, b))}
+    # 맞대기 — 두 값이 다 있는 분기만, 같은 분기(시차 0)와 수출이 한 분기 앞선 것(시차 1)
+    rv = {r["q"]: r.get("rev_yoy") for r in qrows}
+    ex = {o["q"]: o["g"] for o in out}
+    qs = [r["q"] for r in qrows]
+    p0 = [(ex[q], rv[q]) for q in qs if ex.get(q) is not None and rv.get(q) is not None]
+    p1 = [(ex[qs[i - 1]], rv[q]) for i, q in enumerate(qs) if i and ex.get(qs[i - 1]) is not None and rv.get(q) is not None]
+    hit = tot = 0
+    for i in range(1, len(qs)):
+        a, b = qs[i - 1], qs[i]
+        if all(v is not None for v in (ex.get(a), ex.get(b), rv.get(a), rv.get(b))):
+            tot += 1
+            hit += (ex[b] - ex[a] > 0) == (rv[b] - rv[a] > 0)
+    fit = {"n": len(p0), "corr0": _r1(_spear([x for x, _ in p0], [y for _, y in p0]), 2) if len(p0) >= 6 else None,
+           "corr1": _r1(_spear([x for x, _ in p1], [y for _, y in p1]), 2) if len(p1) >= 6 else None,
+           "hit": _r1(hit / tot * 100, 0) if tot >= 8 else None, "n_hit": tot}
+    if len(p0) >= 12:
+        xs, ys = [x for x, _ in p0], [y for _, y in p0]
+        mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
+        vx = sum((x - mx) ** 2 for x in xs)
+        b = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / vx if vx else 0.0
+        a = my - b * mx
+        res = [abs(y - (a + b * x)) for x, y in zip(xs, ys)]
+        fit.update(a=_r1(a, 2), b=_r1(b, 3), mae=_r1(sorted(res)[len(res) // 2]))
+        last_rev = next((rv[q] for q in reversed(qs) if rv.get(q) is not None), None)
+        if now_q and now_q["g"] is not None:
+            est = a + b * now_q["g"]
+            fit["est"] = _r1(est)
+            fit["last_rev"] = last_rev
+            d = est - last_rev if last_rev is not None else None
+            ok = (fit["hit"] or 0) >= 55 and (fit["corr0"] or 0) >= 0.3
+            fit["dir"] = ("수출이 매출을 말해 주지 않는 섹터" if not ok else "가속" if d is not None and d >= 3 else "둔화" if d is not None and d <= -3 else "비슷")
+    return {"q": out, "now_q": now_q, "fit": fit}
+
+
 # ---------------------------------------------------------------- 업황 시계
 PHASE_BAND = 3.0      # %p — 속도 변화가 이 안이면 '유지'
 PHASE_FLAT = 2.0      # % — 속도가 이 안이고 가속도 '유지'면 '정체'(늘지도 줄지도 않음)
@@ -642,6 +720,9 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
                             "m12": sum(((src_ex.get(h) or {}).get("usd") or {}).get(_mshift(last, i), 0) for i in range(12))} for h in hs_list],
                     "sub12": par.get("sub12") or [], "dest12": par.get("dest12") or []}
         sig.append({"k": "수출", "v": exp_info["m3_g"], "unit": "%", "at": last, "note": "관세청 통관 수출(HS %s), 최근 3개월 합의 전년 대비" % " · ".join(hs_list)})
+        # 하위탭 '수출 먼저' — 분기 수출(석 달 합)의 전년 대비를 섹터 매출 증가율(같은 표본)과 분기마다 맞대고,
+        # 아직 공시 안 된 다음 분기는 나온 달만으로 수출을 내어 과거 직선(수출 → 매출)으로 매출 방향을 짚는다.
+        exp_info.update(_exports_q(exp_series, qrows, latest_q, since))
         if up is not None:
             sig.append({"k": "수출 단가", "v": _r1(up), "unit": "%", "at": last, "note": "HS %s 달러/kg, 3개월 전년 대비" % hs_list[0]})
     for h, nm in stc.get("hs_extra") or []:
@@ -762,7 +843,7 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
         mem_rows.append({"code": c, "name": u.get("name") or (P.co.get(c) or {}).get("name"), "seg": seg_name,
                          "cap": raw, "adj": adj, "rev_ttm": rev_t, "op_ttm": op_t, "_ni": ni_adj,
                          "opm": _r1(op_t / rev_t * 100) if rev_t and op_t is not None else None,
-                         "rev_g": _r1(g1.get("rev_g")), "op_g": _r1(g1.get("op_g")), "op_turn": g1.get("op_turn"),
+                         "rev_g": _r1(g1.get("rev_g")), "op_g": _r1(g1.get("op_g")), "op_turn": g1.get("op_turn"), "opm_b": _r1(g1.get("opm_b")),
                          "per": _r1(raw / own_ni) if own_ni and own_ni > 0 and not seg_name else None,
                          "ret1y": _r1(cp.get("ret1y")), "cons": cons,
                          "note": SEC.MEMBER_NOTE.get(c) or ("상장 자회사 · 관계회사 지분 가치가 시가총액보다 커서 자기 몫 시총이 0 으로 잡힌다(지주 할인)"
@@ -791,6 +872,18 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
         m.pop("_ni", None)
     rev_tot = ttm.get("rev") or 0
     top = mem_rows[:12] + [m for m in mem_rows[12:] if rev_tot and (m["rev_ttm"] or 0) >= 0.05 * rev_tot]
+    # 섹터 안 전 종목 업황(하위탭 '섹터 안 종목') — 회사마다 섹터와 같은 식(속도 = 최근 2분기 분기 매출 전년 대비 평균, 가속 = 앞 2분기 대비)
+    # 분기 전년 대비는 섹터 증가율과 같은 '같은 구조' 기준(_growth, 한 회사). 라벨은 _phase 그대로.
+    members_all = []
+    q12 = quarters[-12:]
+    for m in mem_rows:
+        c = m["code"]
+        rows_c = [{"q": q, "rev_yoy": _r1((_growth(P, [c], key, [q], [_qprev(q)]) or {}).get("rev_g"))} for q in q12]
+        ph = _phase(rows_c)
+        members_all.append({k: m.get(k) for k in ("code", "name", "seg", "cap", "adj", "share", "rev_ttm", "op_ttm", "opm", "opm_b",
+                                                   "rev_g", "op_g", "op_turn", "per", "ret1y", "note")}
+                           | {"speed": ph and ph["speed"], "accel": ph and ph["accel"], "label": ph and ph["label"],
+                              "trail": (ph or {}).get("trail") or [], "yq": [r["rev_yoy"] for r in rows_c[-4:]]})
 
     # 컨센서스 합(주축 기업 중 캐시가 있는 곳만)
     cc = [m for m in mem_rows if m.get("cons")]
@@ -808,6 +901,7 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
     if key in SEC.ORDER_DRIVEN:
         tot = tot_b = rev_cov = 0.0
         n = 0
+        blog_rows = []
         for m in mem_rows:
             c = m["code"]
             pts = blog.get(c) or {}
@@ -832,9 +926,15 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
                 tot_b += v_b
             if m["rev_ttm"]:
                 rev_cov += m["rev_ttm"]
+            b_yoy = _r1(_yoy(v, v_b)) if v_b and v_b > 0 else None
+            blog_rows.append({"code": c, "name": m["name"], "value": v, "at": st, "yoy": b_yoy,
+                              "years": _r1(v / m["rev_ttm"], 1) if m["rev_ttm"] else None, "rev_g": m["rev_g"],
+                              "gap": _r1(b_yoy - m["rev_g"]) if b_yoy is not None and m["rev_g"] is not None else None,
+                              "ret1y": m["ret1y"], "adj": m["adj"]})
         if n:
             backlog = {"value": tot, "n": n, "years": _r1(tot / rev_cov, 1) if rev_cov else None,
-                       "yoy": _r1(_yoy(tot, tot_b)) if tot_b else None}
+                       "yoy": _r1(_yoy(tot, tot_b)) if tot_b else None,
+                       "rows": sorted(blog_rows, key=lambda r: -(r["value"] or 0))}
 
     # 5) 외부 자료(시장 규모 · 전망 · 동인)
     ex_s = ((EXT or {}).get("sectors") or {}).get(key) or {}
@@ -898,16 +998,24 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
             "monthly": {"prod": {k: v for k, v in (prod_series or {}).items() if k >= "2019"},
                         "exp": {k: v for k, v in exp_series.items() if k >= "2019"},
                         "xp": {k: v for k, v in (xp_series or {}).items() if k >= "2019"}},
-            "cap": cap, "val": val, "members": top, "n_members_cap": len(mem_rows), "cons": cons, "backlog": backlog,
+            "cap": cap, "val": val, "members": top, "members_all": members_all, "n_members_cap": len(mem_rows), "cons": cons, "backlog": backlog,
             "world_now": world_now, "world_main": main, "fc_main": fc_main,
             "world": [_gb(i) for i in ex_s.get("world") or []], "korea": [_gb(i) for i in ex_s.get("korea") or []], "leaders": ex_s.get("leaders") or [],
             "definition": ex_s.get("definition"), "drivers": ex_s.get("drivers"), "watch": ex_s.get("watch") or [],
             "kiet": kiet, "forecast": fc, "notes": notes + SECTOR_NOTES.get(key, [])}
 
 
-def _backlog_points():
-    """{code: {'YYYY-MM': 잔고(원)}} — .cache/수주 의 접수번호를 색인으로 시점에 잇는다."""
-    ix = _load(os.path.join(CACHE, "색인.json")) or {}
+def _backlog_points(index=None):
+    """{code: {'YYYY-MM': 잔고(원)}} — .cache/수주 의 접수번호를 색인으로 시점에 잇는다.
+    index = 서버가 이미 가진 색인(dict). 없으면 .cache/색인.json(133MB)을 읽는데, 32비트 파이썬 서버 안에서는 그것을 한 번 더 올리다
+    MemoryError 가 나서 잔고가 전부 비던 문제(2026-10-08)가 있었다 — 서버는 꼭 넘긴다. 못 읽으면 ({}, 사유)."""
+    ix = index if isinstance(index, dict) and index.get("companies") else None
+    if ix is None:
+        try:
+            with open(os.path.join(CACHE, "색인.json"), "r", encoding="utf-8") as fh:
+                ix = json.load(fh)
+        except Exception as e:
+            return {}, "색인을 못 읽어 수주잔고를 잇지 못했다(%s: %s)" % (type(e).__name__, e)
     stamp = {}
     for c in ix.get("companies") or []:
         for r in c.get("reports") or []:
@@ -924,10 +1032,10 @@ def _backlog_points():
                 pts[stamp[rc]] = v["value"]
         if pts:
             out[f[:-5]] = pts
-    return out
+    return out, None
 
 
-def build(progress=None):
+def build(progress=None, index=None):
     t0 = time.time()
     say = progress or (lambda *_: None)
     panel = _load(os.path.join(DIR, "panel.json"))
@@ -941,7 +1049,9 @@ def build(progress=None):
     univ, snap = _universe()
     caps = _caps(univ, snap)
     say("수주잔고 읽는 중")
-    blog = _backlog_points()
+    blog, blog_err = _backlog_points(index)
+    if blog_err:
+        P.notes.append(blog_err)
     mem = _members(P)
     # 가장 최근 분기 — 12월 결산 회사의 80%↑가 그 분기를 보고했고, 바로 앞 분기에 보고한 회사 수의 80%↑인 분기
     cnt = {}

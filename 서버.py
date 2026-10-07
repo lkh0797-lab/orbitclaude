@@ -8893,7 +8893,7 @@ def _vocal_auto_loop():
 # 섹터별 매출 · 영업이익(상장사, 자회사 중복 제거) · 생산 · 가동률 · 수출 · 가격 · 시장 규모 · 시가총액 · 전망을 한 표로.
 # 계산은 산업.py → .cache/산업/_result.json. 재료는 산업_패널.py(회사 패널 · 연결 구조) · 산업_부문.py(섞인 회사의 부문) ·
 # 산업_통계.py(KOSIS · ECOS · 관세청) · 산업_외부자료.json(세계 시장 · 기관 전망, 출처 확인한 숫자만). 매일 07:40 재료부터 다시.
-IND_V = 1
+IND_V = 2     # 2: 하위탭 자료(members_all · exports.q · backlog.rows) — 산업.py V 와 같이 올린다 (2026-10-08)
 IND_DIR = os.path.join(CACHE_DIR, "산업")
 IND = {"running": False, "done": 0, "total": 0, "phase": "", "at": 0, "data": None}
 IND_LOCK = threading.Lock()
@@ -8932,7 +8932,8 @@ def _run_industry(refresh=False):
         def prog(msg, i=None, n=None):
             with IND_LOCK:
                 IND.update(phase=msg, done=i or 0, total=n or 0)
-        res = _ind_mod().build(prog)
+        # 색인은 서버가 이미 가진 것을 넘긴다 — 32비트 파이썬에서 133MB 를 한 번 더 올리면 MemoryError 로 수주잔고가 비었다(2026-10-08)
+        res = _ind_mod().build(prog, index=INDEX)
         with IND_LOCK:
             IND.update(data=res, at=res.get("at") or time.time(), phase="")
     except Exception as e:
@@ -8964,8 +8965,147 @@ def industry_view(force=False):
     for k, v in d.items():
         if k not in out:
             out[k] = v
-    for s in out.get("sectors") or []:
-        s.pop("quarters_all", None)
+    # 큰 칸(42분기 · 섹터 안 전 종목)은 하위탭 API 가 따로 준다 — 캐시 dict 를 직접 pop 하면 첫 호출 뒤 사라지므로(2026-10-08) 얕은 복사
+    out["sectors"] = [{k: v for k, v in s.items() if k not in ("quarters_all", "members_all")} for s in out.get("sectors") or []]
+    bt = _clock_bt()
+    if bt:
+        out["clock_bt"] = {"labels": {k: (v.get("h12") or {}).get("eq") for k, v in (bt.get("labels") or {}).items()}, "at": bt.get("at")}
+    return out
+
+
+# ---------------------------------------------------------------- 산업 성장률 하위탭 — 섹터 안 종목 · 시계 성적표 · 일감 · 수출 먼저 (2026-10-08)
+# 설계: docs/superpowers/specs/2026-10-08-industry-subtabs-design.md. 요약 화면은 /api/industry, 섹터 상세는 /api/industry/sub?tab=&sector=
+_INDF = {}
+
+
+def _ind_file(name, path):
+    """작은 결과 파일(백테스트 성적표 등)을 mtime 으로 캐시해 읽는다. 없으면 None."""
+    try:
+        mt = os.path.getmtime(path)
+    except OSError:
+        return None
+    c = _INDF.get(name)
+    if not c or c[0] != mt:
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                _INDF[name] = c = (mt, json.load(fh))
+        except Exception:
+            return None
+    return c[1]
+
+
+def _clock_bt():
+    return _ind_file("clock_bt", os.path.join(IND_DIR, "clock_bt.json"))
+
+
+def _ind_contract_counts(days=90):
+    """최근 days 일 단일판매ㆍ공급계약체결 공시 건수 {종목코드: n} — .cache/공시목록/I_*.jsonl(거래소 공시 목록, 금액 없음), 기재정정은 뺀다."""
+    base = os.path.join(CACHE_DIR, "공시목록")
+    since = (dt.date.today() - dt.timedelta(days=days)).strftime("%Y%m%d")
+    key = ("contract", since)
+    c = _INDF.get(key)
+    try:
+        fs = sorted(f for f in os.listdir(base) if f.startswith("I_") and f.endswith(".jsonl"))[-3:]
+        mt = max(os.path.getmtime(os.path.join(base, f)) for f in fs) if fs else 0
+    except OSError:
+        return {}
+    if c and c[0] == mt:
+        return c[1]
+    out = {}
+    for f in fs:
+        try:
+            with open(os.path.join(base, f), "r", encoding="utf-8") as fh:
+                for ln in fh:
+                    if "공급계약" not in ln or "기재정정" in ln:
+                        continue
+                    j = json.loads(ln)
+                    if (j.get("rcept_dt") or "") >= since and j.get("stock_code"):
+                        out[j["stock_code"]] = out.get(j["stock_code"], 0) + 1
+        except Exception:
+            continue
+    _INDF[key] = (mt, out)
+    return out
+
+
+def industry_sub(tab, sector):
+    """하위탭 자료. tab = stocks(섹터 안 종목) · clock(시계 성적표) · orders(일감) · exports(수출 먼저)."""
+    with IND_LOCK:
+        d = IND["data"]
+    if d is None:
+        industry_view()
+        with IND_LOCK:
+            d = IND["data"]
+    secs = (d or {}).get("sectors") or []
+    s = next((x for x in secs if x.get("key") == sector), None)
+    out = {"tab": tab, "sector": sector, "latest_q": (d or {}).get("latest_q")}
+    if tab == "clock":
+        bt = _clock_bt()
+        out["bt"] = bt
+        if s:
+            out["phase"] = s.get("phase")
+        return out
+    if tab == "stocks":
+        acc = _ind_file("bt_accel", os.path.join(CACHE_DIR, "druck", "bt_accel.json")) or {}
+        ev = acc.get("ev_all") or {}
+        out["bt"] = {"B_up": ev.get("B_up"), "B_dn": ev.get("B_dn"), "regime": (acc.get("regime") or {}).get("B"),
+                     "whip": (acc.get("whip") or {}).get("B"), "order": {k: v for k, v in (acc.get("ev_order") or {}).items() if k in ("B_up", "B_dn")},
+                     "n": acc.get("n"), "firms": acc.get("firms")}
+        if s:
+            out.update(phase=s.get("phase"), cap=s.get("cap"), val=s.get("val"), ttm=s.get("ttm"), ytd=s.get("ytd"), fc_main=s.get("fc_main"),
+                       members=s.get("members_all") or [], desc=s.get("desc"))
+        else:
+            out["sectors"] = [{"key": x["key"], "phase": x.get("phase"), "cap": x.get("cap"), "ttm": x.get("ttm"), "n": x.get("n_members_cap")} for x in secs]
+        return out
+    if tab == "orders":
+        rep = _ind_file("qtr_bt", os.path.join(CACHE_DIR, "quarter", "bt_report.json")) or {}
+        rules = rep.get("rules") or {}
+        syn = _ind_file("syn_bt", os.path.join(CACHE_DIR, "시너지", "bt_report.json")) or {}
+        out["bt"] = {"up": (rules.get("잔고 > 매출 +15%p") or {}).get("ex12m"), "dn": (rules.get("잔고 < 매출 −15%p") or {}).get("ex12m"),
+                     "stages": {k: v for k, v in (syn.get("stages") or {}).items()}}
+        cnt = _ind_contract_counts()
+        if s:
+            b = dict(s.get("backlog") or {})
+            rows = []
+            for r in b.get("rows") or []:
+                rows.append(dict(r, filings90=cnt.get(r["code"], 0)))
+            b["rows"] = rows
+            out.update(backlog=b, phase=s.get("phase"), ttm=s.get("ttm"), cap=s.get("cap"), ytd=s.get("ytd"), fc_main=s.get("fc_main"), desc=s.get("desc"),
+                       order_driven=sector in ("조선", "방산·항공우주", "전력기기", "건설", "기계"))
+        else:
+            out["sectors"] = [{"key": x["key"], "phase": x.get("phase"), "backlog": {k: v for k, v in (x.get("backlog") or {}).items() if k != "rows"},
+                               "ttm": x.get("ttm"), "filings90": sum(cnt.get(m["code"], 0) for m in x.get("members_all") or [])}
+                              for x in secs if x["key"] in ("조선", "방산·항공우주", "전력기기", "건설", "기계")]
+        return out
+    if tab == "exports":
+        xr = _ind_file("exp_track", os.path.join(CACHE_DIR, "수출추적", "result.json")) or {}
+        items = {i["code"]: i for i in xr.get("items") or [] if i.get("status") == "ok"}
+        val = _ind_file("exp_val", os.path.join(CACHE_DIR, "수출추적", "검증.json")) or {}
+        out["bt"] = {"ic": val.get("ic") or val.get("summary") or None, "month": xr.get("month")}
+        if s:
+            E = s.get("exports") or {}
+            co = []
+            for m in s.get("members_all") or []:
+                it = items.get(m["code"])
+                if not it:
+                    continue
+                sg, pt, vd = it.get("signals") or {}, it.get("partial") or {}, it.get("validation") or {}
+                co.append({"code": m["code"], "name": m["name"], "grade": it.get("grade"), "state": sg.get("state"), "y3": sg.get("y3"), "acc": sg.get("acc"),
+                           "partial": pt.get("yoy"), "p_months": pt.get("months") or [], "corr": vd.get("corr"), "cov": vd.get("coverage"),
+                           "rev_g": m.get("rev_g"), "ret1y": m.get("ret1y"), "adj": m.get("adj"), "label": m.get("label")})
+            co.sort(key=lambda r: ({"A": 0, "B": 1, "C": 2}.get(r["grade"], 3), -(r["adj"] or 0)))
+            out.update(exports=E, monthly=(s.get("monthly") or {}).get("exp"), quarters=[{"q": r["q"], "rev_yoy": r.get("rev_yoy")} for r in s.get("quarters_all") or []],
+                       phase=s.get("phase"), ttm=s.get("ttm"), cap=s.get("cap"), ytd=s.get("ytd"), fc_main=s.get("fc_main"), desc=s.get("desc"), companies=co)
+        else:
+            rows = []
+            for x in secs:
+                E = x.get("exports") or {}
+                n_ok = sum(1 for m in x.get("members_all") or [] if m["code"] in items)
+                n_ab = sum(1 for m in x.get("members_all") or [] if (items.get(m["code"]) or {}).get("grade") in ("A", "B"))
+                last_rev = next((r.get("rev_yoy") for r in reversed(x.get("quarters_all") or []) if r.get("rev_yoy") is not None), None)
+                rows.append({"key": x["key"], "phase": x.get("phase"), "exports": {k: E.get(k) for k in ("last", "m3_g", "m12_g", "unit_price_g", "now_q", "fit", "share")} if E else None,
+                             "last_rev": last_rev, "n_ok": n_ok, "n_ab": n_ab})
+            out["sectors"] = rows
+        return out
     return out
 
 
@@ -9836,6 +9976,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, vocal_view(q.get("force") == "1"))
             if path == "/api/industry":
                 return self._send(200, industry_view(q.get("force") == "1"))
+            if path == "/api/industry/sub":
+                return self._send(200, industry_sub(q.get("tab", "stocks"), q.get("sector", "")))
             if path == "/api/reports":
                 d = reports_view(q.get("code", ""))
                 return self._send(200 if d else 404, d or {"error": "회사 없음"})
