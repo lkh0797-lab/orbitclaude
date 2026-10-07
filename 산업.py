@@ -926,8 +926,10 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
                 tot_b += v_b
                 tot_w += v            # 섹터 1년 변화는 전년 점이 있는 회사끼리(같은 표본) — 안 그러면 전년 점이 없는 큰 회사가 증가율을 부풀린다
                 n_b += 1
-            # 부문 회사(현대로템 등)의 잔고는 회사 전체 값이라 분모 · 기준도 회사 전체 매출로 — 부문 매출로 나누면 년수 · 차이가 부푼다
-            if m["seg"]:
+            # 부문 회사 가운데 잔고가 회사 전체 값인 곳(SEC.BACKLOG_WHOLE, 현대로템)은 분모 · 기준도 회사 전체 매출로 — 부문 매출로 나누면 년수 · 차이가 부푼다.
+            # 삼성물산처럼 잔고 표가 부문(건설)만의 값이면 부문 매출 그대로.
+            whole = bool(m["seg"]) and c in SEC.BACKLOG_WHOLE
+            if whole:
                 rc = sum(((P.per(c, q) or {}).get("rev") or 0) for q in t4)
                 rcb = sum(((P.per(c, q) or {}).get("rev") or 0) for q in b4)
                 rev_c, rev_gc = (rc or None), (_r1(_yoy(rc, rcb)) if rc and rcb else None)
@@ -936,7 +938,7 @@ def _sector(key, desc, P, mem, caps, univ, ST, EXT, idx_stamp, blog, latest_q):
             if rev_c:
                 rev_cov += rev_c
             b_yoy = _r1(_yoy(v, v_b)) if v_b and v_b > 0 else None
-            blog_rows.append({"code": c, "name": m["name"], "seg": m["seg"], "value": v, "at": st, "yoy": b_yoy,
+            blog_rows.append({"code": c, "name": m["name"], "seg": m["seg"], "whole": whole, "value": v, "at": st, "yoy": b_yoy,
                               "years": _r1(v / rev_c, 1) if rev_c else None, "rev_g": rev_gc,
                               "gap": _r1(b_yoy - rev_gc) if b_yoy is not None and rev_gc is not None else None,
                               "ret1y": m["ret1y"], "adj": m["adj"]})

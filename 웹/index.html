@@ -5026,7 +5026,8 @@ function grClockBt(body, x, d, p){
   if(!bt){ body.appendChild(el('div','empty','시계 성적표가 아직 없다 — python 도구/업황시계_백테스트.py 를 돌리면 .cache/산업/clock_bt.json 이 생긴다')); return; }
   const H=S.grBtH||'h12', W=S.grBtW||'eq', HN={h3:'3개월',h6:'6개월',h12:'12개월'}[H], WN=W==='eq'?'동일 가중':'시총 가중';
   const g=(o)=>o&&o[H]&&o[H][W]; const sg=v=>grPp(v).replace('%p','');
-  body.appendChild(el('h4','grH','업황 시계 라벨대로 그때 섹터를 샀다면')); body.lastChild.appendChild(el('span',null,'섹터 20 × 분기 '+(bt.from||'')+'~'+((bt.to||{})[H]||'')+' · 라벨은 그 분기까지의 숫자로 다시 매김 · 진입 = 그 분기 보고서 마감 다음 거래일 · 초과수익 = 섹터 바구니 − 같은 가중의 전 종목(시세 캐시 '+((bt.calendar||{}).n_price||'')+'곳) 수익 · 바구니에 든 회사 '+(bt.firms_used||'')+'곳'));
+  const nSec=Object.values(bt.sectors||{}).filter(x=>Object.keys(x.by_label||{}).length).length, exSec=Object.entries(bt.members||{}).filter(([k,n])=>n<((bt.params||{}).min_members||5)).map(([k])=>k);
+  body.appendChild(el('h4','grH','업황 시계 라벨대로 그때 섹터를 샀다면')); body.lastChild.appendChild(el('span',null,'섹터 '+(nSec||20)+'개(구성원 '+((bt.params||{}).min_members||5)+'곳↑'+(exSec.length?' — '+exSec.join(' · ')+' 제외':'')+') × 분기 '+(bt.from||'')+'~'+((bt.to||{})[H]||'')+' · 라벨은 그 분기까지의 숫자로 다시 매김 · 진입 = 그 분기 보고서 마감 다음 거래일 · 초과수익 = 섹터 바구니 − 같은 가중의 전 종목(시세 캐시 '+((bt.calendar||{}).n_price||'')+'곳) 수익 · 바구니에 든 회사 '+(bt.firms_used||'')+'곳'));
   const bar=el('div','grBar'); const s1=el('div','seg'); [['h3','3개월'],['h6','6개월'],['h12','12개월']].forEach(([k,t])=>{ const b=el('button',k===H?'on':'',t); b.onclick=()=>{ S.grBtH=k; viewGrowth(p); }; s1.appendChild(b); }); bar.appendChild(s1);
   const s2=el('div','seg'); [['eq','동일 가중'],['cap','시총 가중']].forEach(([k,t])=>{ const b=el('button',k===W?'on':'',t); b.onclick=()=>{ S.grBtW=k; viewGrowth(p); }; s2.appendChild(b); }); bar.appendChild(s2);
   const allPos=Object.keys(GR_PHASE).every(k=>{ const v=g((bt.labels||{})[k]); return !v||v.med==null||v.med>0; });
@@ -5057,13 +5058,13 @@ function grClockBt(body, x, d, p){
   // 쏠림 — 지금처럼 18/20 이 확장인 때
   const cr=bt.crowded||{}, pl=cr.pooled||{};
   if((cr.expand||[]).length){ body.appendChild(el('h4','grH','섹터 15개↑가 확장(가속+유지)이던 때')); body.lastChild.appendChild(el('span',null,'지금('+((cr.now||{}).q||'')+')은 '+((cr.now||{}).expand||'')+'/'+((cr.now||{}).of||'')+' — 과거 그런 분기의 확장 바구니 성적과 그날 시장'));
-    const tt=el('table','tbl dipTbl'); tt.innerHTML='<tr><th>분기</th><th class="r">확장 섹터</th><th class="r">3개월</th><th class="r">6개월</th><th class="r">12개월</th><th class="r">12개월 시총 가중</th><th class="r">그 뒤 12개월 시장 자체</th></tr>';
+    const tt=el('table','tbl dipTbl'); tt.innerHTML='<tr><th>분기</th><th class="r">확장 섹터</th><th class="r">3개월</th><th class="r">6개월</th><th class="r">12개월</th><th class="r">12개월 시총 가중</th><th class="r">그 뒤 12개월 시장(동일 가중 평균)</th></tr>';
     cr.expand.forEach(e=>{ const tr=el('tr'); tr.appendChild(el('td',null,e.q)); const td=(s,cls)=>{ const c=el('td','num'+(cls?' '+cls:'')); c.textContent=s; tr.appendChild(c); };
       td(e.k+'/'+e.of); ['h3','h6','h12'].forEach(h=>{ const o=e[h]||{}; td(o.med!=null?grPp(o.med)+' ('+o.n+')':'—',grT(o.med)); }); td(e.h12&&e.h12.med_cap!=null?grPp(e.h12.med_cap):'—',grT((e.h12||{}).med_cap)); td(e.h12&&e.h12.mkt!=null?grP(e.h12.mkt):'아직',grT((e.h12||{}).mkt)); tt.appendChild(tr); });
     const w2=el('div','grWrap'); w2.appendChild(tt); body.appendChild(w2);
-    const a=(pl.expand_crowded||{})[H]||{}, b=(pl.expand_scattered||{})[H]||{};
-    if(a.n){ const dd=(a.med||0)-(b.med||0); const vt=dd<=-1?'쏠렸다고 더 좋지 않았다':dd>=1?'쏠린 쪽이 조금 나았다':'쏠리든 아니든 비슷했다';
-      body.appendChild(el('p','grAsOf','모아서('+HN+') — 쏠린 분기의 확장 '+grPp(a.med)+'('+a.n+'건, 이긴 '+Math.round(a.hit||0)+'%) vs 흩어진 분기의 확장 '+grPp(b.med)+'('+b.n+'건) — '+vt+'. 2021년 류의 쏠림 뒤엔 시장 자체가 빠졌다(표의 \'그 뒤 12개월 시장 자체\' — 초과수익이 양수여도 절대수익은 마이너스였다).')); } }
+    const a=(pl.expand_crowded||{})[H]||{}, b=(pl.expand_scattered||{})[H]||{}, mk=W==='eq'?'med':'med_cap';
+    if(a.n){ const dd=(a[mk]||0)-(b[mk]||0); const vt=dd<=-1?'쏠렸다고 더 좋지 않았다':dd>=1?'쏠린 쪽이 조금 나았다':'쏠리든 아니든 비슷했다';
+      body.appendChild(el('p','grAsOf','모아서('+HN+' · '+WN+') — 쏠린 분기의 확장 '+grPp(a[mk])+'('+a.n+'건'+(W==='eq'?', 이긴 '+Math.round(a.hit||0)+'%':'')+') vs 흩어진 분기의 확장 '+grPp(b[mk])+'('+b.n+'건) — '+vt+'. 2021년 류의 쏠림 뒤엔 시장 자체가 빠졌다(표의 \'그 뒤 12개월 시장\' — 초과수익이 양수여도 절대수익은 마이너스였다).')); } }
   // 전이표
   const T=bt.transition; if(T){ body.appendChild(el('h4','grH','라벨은 2분기 뒤 어디로 갔나')); body.lastChild.appendChild(el('span',null,'행 = 그때 라벨, 칸 = 2분기 뒤 라벨의 비율(%) · 굵게 = 40%↑'));
     const ks=Object.keys(GR_PHASE); const tt=el('table','tbl dipTbl grTrans'); tt.innerHTML='<tr><th></th>'+ks.map(k=>'<th class="r">'+k+'</th>').join('')+'<th class="r">n</th></tr>';
@@ -5119,7 +5120,7 @@ function grOrders(body, x, d, p){
   const wrap=el('div'); body.appendChild(wrap);
   const zone=r=>r.gap==null?null:r.gap>=15?'매출이 따라올 여지':r.gap<=-15?'둔화가 먼저':'같이 감';
   const cols=[
-    ['회사',r=>r.name,r=>{ const c=el('span'); c.appendChild(grLink(r.code,r.name,'qtr')); c.appendChild(el('small',null,' '+r.code+' · '+(r.at||'')+(r.seg?' · 회사 전체 잔고 ÷ 회사 전체 매출':''))); if(r.seg){ const i=el('small',null,' ⓘ'); i.title='부문 회사 — 잔고는 회사 전체 값이라 년수 · 잔고 − 매출도 회사 전체 매출로 쟀다(섹터에는 '+r.seg+' 부문만 들어간다)'; i.style.cursor='help'; c.appendChild(i); } return c; },'누르면 분기 변화(수주 → 매출 파이프라인)'],
+    ['회사',r=>r.name,r=>{ const c=el('span'); c.appendChild(grLink(r.code,r.name,'qtr')); c.appendChild(el('small',null,' '+r.code+' · '+(r.at||'')+(r.whole?' · 회사 전체 잔고 ÷ 회사 전체 매출':r.seg?' · '+r.seg+' 부문':''))); if(r.whole){ const i=el('small',null,' ⓘ'); i.title='부문 회사 — 보고서 잔고가 회사 전체 값이라 년수 · 잔고 − 매출도 회사 전체 매출로 쟀다(섹터에는 '+r.seg+' 부문만 들어간다)'; i.style.cursor='help'; c.appendChild(i); } return c; },'누르면 분기 변화(수주 → 매출 파이프라인)'],
     ['잔고',r=>r.value,r=>grJo(r.value),'분기 말 수주잔고'],
     ['몇 년치',r=>r.years,r=>r.years!=null?r.years+'년':'—','잔고 ÷ 최근 4분기 매출'],
     ['잔고 1년',r=>r.yoy,r=>grP(r.yoy),'1년 전 같은 분기 말 대비',r=>grT(r.yoy)],

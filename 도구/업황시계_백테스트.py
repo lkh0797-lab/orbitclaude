@@ -337,7 +337,7 @@ def stat_block(xs, rng):
     early = [x[2] for x in xs if x[1] < SPLIT]
     late = [x[2] for x in xs if x[1] >= SPLIT]
     ci = boot_med(groups_of(xs), rng)
-    return {"n": len(v), "med": r1(med(v)), "hit": r1(hit(v)), "ci": [r1(ci[0]), r1(ci[1])] if ci else None,
+    return {"n": len(v), "med": r1(med(v)), "hit": r1(hit(v), 2), "ci": [r1(ci[0]), r1(ci[1])] if ci else None,
             "early": r1(med(early)), "late": r1(med(late)), "n_early": len(early), "n_late": len(late),
             "n_sec": len(set(x[0] for x in xs))}
 
@@ -364,7 +364,7 @@ def contrast(recs, rng, a_set, b_set, hs=None):
             ma, mb = med(va), med(vb)
             ci = boot_diff(groups_of(xa), groups_of(xb), rng)
             out[hk][w] = {"n_a": len(va), "n_b": len(vb), "med_a": r1(ma), "med_b": r1(mb),
-                          "hit_a": r1(hit(va)), "hit_b": r1(hit(vb)),
+                          "hit_a": r1(hit(va), 2), "hit_b": r1(hit(vb), 2),
                           "diff": None if ma is None or mb is None else r1(ma - mb),
                           "ci": [r1(ci[0]), r1(ci[1])] if ci else None}
     return out
@@ -398,7 +398,7 @@ def sector_table(PH, recs, mem):
             v = [r["h12"]["eq"] for r in rs.values() if r["label"] == lab and "h12" in r]
             vc = [r["h12"]["cap"] for r in rs.values() if r["label"] == lab and "h12" in r and r["h12"]["cap"] is not None]
             if v:
-                by_label[lab] = {"n": len(v), "med": r1(med(v)), "med_cap": r1(med(vc)), "hit": r1(hit(v))}
+                by_label[lab] = {"n": len(v), "med": r1(med(v)), "med_cap": r1(med(vc)), "hit": r1(hit(v), 2)}
         band = []
         for q in sorted(d):
             lab, sp, ac = d[q]
@@ -427,8 +427,9 @@ def crowded(PH, recs):
             rr = [idx[(s, q)][hk] for s in secs if (s, q) in idx and hk in idx[(s, q)]]
             v = [x["eq"] for x in rr]
             vc = [x["cap"] for x in rr if x["cap"] is not None]
-            o[hk] = {"n": len(v), "med": r1(med(v)), "med_cap": r1(med(vc)), "hit": r1(hit(v)),
-                     "mkt": r1(rr[0]["mkt"]) if rr else None}
+            o[hk] = {"n": len(v), "med": r1(med(v)), "med_cap": r1(med(vc)), "hit": r1(hit(v), 2),
+                     "mkt": r1(rr[0]["mkt_mean"]) if rr else None, "mkt_cap": r1(rr[0]["mkt_cap"]) if rr else None,
+                     "mkt_med": r1(rr[0]["mkt"]) if rr else None}
         return o
 
     for q in qs:
@@ -448,7 +449,7 @@ def crowded(PH, recs):
         for hk in HS:
             v = [r[hk]["eq"] for r in recs if hk in r and pred(r)]
             vc = [r[hk]["cap"] for r in recs if hk in r and r[hk]["cap"] is not None and pred(r)]
-            o[hk] = {"n": len(v), "med": r1(med(v)), "med_cap": r1(med(vc)), "hit": r1(hit(v))}
+            o[hk] = {"n": len(v), "med": r1(med(v)), "med_cap": r1(med(vc)), "hit": r1(hit(v), 2)}
         return o
 
     crowd_lab = {x["q"]: x["label"] for x in same}
@@ -514,7 +515,7 @@ def print_sectors(S):
 
 def print_crowded(C):
     now = C["now"]
-    print("\n[쏠림] 20섹터 중 %d개 이상 같은 라벨인 분기 — 그 라벨 섹터들의 초과수익 중앙값(동일/시총, %%p) · 그날 시장 12개월 중앙값" % CROWD)
+    print("\n[쏠림] 20섹터 중 %d개 이상 같은 라벨인 분기 — 그 라벨 섹터들의 초과수익 중앙값(동일/시총, %%p) · 그날 시장 12개월 평균(동일 가중)" % CROWD)
     print("  지금 %s: %s → 확장(가속+유지) %d/%d" % (now["q"], ", ".join("%s %d" % (l, k) for l, k in sorted(now["count"].items(), key=lambda x: -x[1])), now["expand"], now["of"]))
     for name, rows in (("같은 라벨", C["same"]), ("확장 묶음", C["expand"])):
         print("  (%s)" % name)
@@ -601,7 +602,8 @@ def main():
             "2016~2026 은 경기 사이클 2~3번뿐 — 라벨당 수십 건이라 90% 구간이 넓다",
             "기준은 시세 캐시 988곳의 같은 통계(동일 가중 = 전 종목 평균, 시총 가중 = 전 종목 시총 가중 평균) — 코스피 지수와 다르다",
             "부문 회사(삼성전자 등 %d곳)는 바구니에서 뺐다 — 주가는 회사 전체라 부문 섹터에 못 붙인다" % len(seg),
-            "구성원 5곳 미만인 섹터-분기는 뺐다. 최근 분기(2026Q2)는 보고서가 다 안 모였을 수 있다(_result.json 그대로)",
+            "구성원 5곳 미만인 섹터-분기는 뺐다(%s — 모든 분기에서 빠진다). 최근 분기(%s)는 보고서가 다 안 모였을 수 있다(_result.json 그대로)"
+            % (" · ".join(k for k, v in mem.items() if len(v) < MIN_MEMBERS) or "없음", (crowd.get("now") or {}).get("q", "")),
         ],
     }
     os.makedirs(DIR, exist_ok=True)
