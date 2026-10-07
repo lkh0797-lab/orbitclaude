@@ -320,7 +320,7 @@ def theme_strength(P, gi, mode, pool=None):
                 n_pool += 1
             if B["c"][j - 5] > 0:
                 r5.append(B["c"][j] / B["c"][j - 5] - 1)
-            if B["c"][j] >= max(B["h"][j - 59:j + 1]):
+            if B["c"][j] >= max(B["h"][j - 59:j]):       # 오늘 고가를 넣으면 '고가 = 종가'인 날만 세게 된다
                 nh += 1
         row.update(r5=st.median(r5) * 100 if r5 else None, nh=nh, n=n)
         if n < 2:
@@ -329,8 +329,11 @@ def theme_strength(P, gi, mode, pool=None):
     cand = [r for r in rows if r["strong"]]
     for key in ("ratio", "r5", "nh"):
         order = sorted((r for r in cand if r.get(key) is not None), key=lambda r: -r[key])
-        for k, r in enumerate(order):
-            r["_" + key] = k + 1
+        rank, prev = 0, None
+        for k, r in enumerate(order):                 # 같은 값은 같은 순위(신고가 0곳이 흔하다)
+            if r[key] != prev:
+                rank, prev = k + 1, r[key]
+            r["_" + key] = rank
     for r in cand:
         r["score"] = sum(r.get("_" + k, len(cand)) for k in ("ratio", "r5", "nh"))
     rows.sort(key=lambda r: (not r["strong"], r.get("score", 10 ** 6), -r["ratio"]))
@@ -378,9 +381,9 @@ def leaders(P, theme, start, gi):
     rank_ret = {r["code"]: k + 1 for k, r in enumerate(by_ret)}
     by_tv = sorted(rows, key=lambda r: -r["tv_sum"])
     out = []
-    for r in by_tv:
+    for r in by_tv[:2]:                              # 거래대금 합 1 · 2위만 — 돈이 안 몰린 종목은 수익률이 높아도 대장이 아니다
         r["ret_rank"] = rank_ret.get(r["code"])
-        if r["ret_rank"] is not None and r["ret_rank"] <= 2 and len(out) < 2:
+        if r["ret_rank"] is not None and r["ret_rank"] <= 2:
             r["role"] = "대장" if not out else "부대장"
             out.append(r)
     return out
@@ -398,7 +401,7 @@ def funnel(B, j, in_rank, mode):
     seg = h[w0:j + 1]
     H = max(seg)
     hk = w0 + len(seg) - 1 - seg[::-1].index(H)
-    if hk < BASE_WIN // 2 or H <= 0:
+    if hk < BASE_WIN or H <= 0:                       # 고점 앞 60봉이 다 있어야 '바닥'을 잴 수 있다(상장 초엔 None)
         return None
     b0 = max(0, hk - BASE_WIN)
     base_lo = min(l[b0:hk]) if hk > b0 else None
@@ -424,9 +427,12 @@ def funnel(B, j, in_rank, mode):
     # ⑤ 눌림
     days = j - hk
     depth = 1 - c[j] / H
+    depth_min = 1 - min(c[hk + 1:j + 1]) / H if j > hk else None     # 눌림 중 가장 낮은 종가 기준
     pl = min(l[hk + 1:j + 1]) if j > hk else None
+    plk = hk + 1 + l[hk + 1:j + 1].index(pl) if pl is not None else None
     retrace = (H - pl) / (H - base_lo) if pl is not None and H > base_lo else None
-    out.update(days=days, depth=depth * 100, pl=pl, retrace=retrace * 100 if retrace is not None else None)
+    out.update(days=days, depth=depth * 100, depth_min=depth_min * 100 if depth_min is not None else None, pl=pl,
+               pl_d=str(d[plk]) if plk is not None else None, retrace=retrace * 100 if retrace is not None else None)
     if days == 0:
         out["why"] = "오늘이 고점"
         return out
@@ -439,20 +445,23 @@ def funnel(B, j, in_rank, mode):
     if depth > M["pull_hi"]:
         out["stage"], out["why"] = 0, "고점 대비 −%.0f%% — 눌림 넘어 하락" % (depth * 100)
         return out
-    if days < M["days_lo"] or depth < M["pull_lo"]:
-        out["why"] = "눌림 기다리는 중(%d봉 · −%.1f%%)" % (days, depth * 100)
+    if days < M["days_lo"] or depth_min < M["pull_lo"]:
+        out["why"] = "눌림 기다리는 중(%d봉 · −%.1f%%)" % (days, depth_min * 100)
         return out
     out["stage"] = 5
     # ⑥ 지지선 · 거래량 감소
     ma5, ma10, ma20 = ma(B, j, 5), ma(B, j, 10), ma(B, j, 20)
     box_hi = max(h[max(0, lk - BASE_WIN):lk]) if lk > 0 else None
-    levels = [("5일선", ma5), ("10일선", ma10), ("20일선", ma20),
-              ("전고점", box_hi if box_hi and box_hi < H * 0.97 and box_hi > base_lo else None),
+    static = [("전고점", box_hi if box_hi and box_hi < H * 0.97 and box_hi > base_lo else None),
               ("급등봉 시가", o[bk]), ("급등봉 중간", (o[bk] + c[bk]) / 2), ("50% 되돌림", H - 0.5 * (H - base_lo))]
+    levels = [("5일선", ma5), ("10일선", ma10), ("20일선", ma20)] + static
     levels = [(nm, lv) for nm, lv in levels if lv and lv > 0 and lv < H * 0.99]
-    touched = [(nm, lv) for nm, lv in levels if abs(pl / lv - 1) <= TOUCH]
-    prev3 = v[max(hk + 1, j - 3):j]
-    now3 = v[max(hk + 1, j - 2):j + 1]
+    # '닿음'은 눌림 저점이 생긴 날의 선과 견준다(며칠 뒤 선이 움직여 있다) · '지킴'(⑦)은 오늘 선과
+    at_pl = [("5일선", ma(B, plk, 5)), ("10일선", ma(B, plk, 10)), ("20일선", ma(B, plk, 20))] + static
+    touched = [(nm, lv) for nm, lv in at_pl if lv and lv > 0 and lv < H * 0.99 and abs(pl / lv - 1) <= TOUCH]
+    hold_lv = [lv for nm, lv in levels if nm in {t for t, _ in touched} and lv]
+    prev3 = v[j - 3:j]                               # 앞 3봉(급등 봉이 섞이면 말랐을 리 없다 — 그게 맞다)
+    now3 = v[j - 2:j + 1]
     dry = lambda seg_: bool(seg_) and _mean(seg_) <= DRY_PEAK * v[bk] and _mean(seg_) <= DRY_RALLY * out["v_rally"]
     dry_prev, dry_now = dry(prev3), dry(now3)
     out.update(levels=[(nm, lv, (pl / lv - 1) * 100) for nm, lv in levels], touched=[nm for nm, _ in touched],
@@ -462,10 +471,10 @@ def funnel(B, j, in_rank, mode):
     if touched and (dry_now or dry_prev):
         out["stage"] = 6
     # ⑦ 재유입 + 양봉
-    tv_prev = _mean(tv[max(hk + 1, j - 3):j])
+    tv_prev = _mean(tv[j - 3:j])
     reflow = tv_prev is not None and tv_prev > 0 and tv[j] >= REFLOW * tv_prev
     bull = c[j] > o[j] and (c[j] - o[j]) / o[j] >= BODY and c[j] >= c[j - 1]
-    hold = any(l[j] >= lv * (1 - HOLD_BELOW) for _, lv in touched)
+    hold = any(l[j] >= lv * (1 - HOLD_BELOW) for lv in hold_lv)
     above5 = ma5 is not None and c[j] > ma5
     out.update(reflow=reflow, reflow_x=(tv[j] / tv_prev) if tv_prev else None, bull=bull, hold=hold, above5=above5)
     out["sig_nodry"] = bool(out["stage"] >= 5 and touched and reflow and bull and hold and above5)   # 검증용 — ⑥ 거래량 감소를 뺀 신호
@@ -556,7 +565,7 @@ def run_day(P, gi, mode, listing=None, hist=None):
                 seen.add((t, role))
                 lead_u.append([t, role, d])
         f.update(code=code, name=P.names.get(code, code), rank=ranks.get(code), tv=tv.get(code), pool_days=pool[code],
-                 themes=ths[:4], lead=lead_u, lead_now=lead_of.get(code, []), n_theme_days=n_theme)
+                 themes=ths, lead=lead_u, lead_now=lead_of.get(code, []), n_theme_days=n_theme)
         fun.append(f)
     fun.sort(key=lambda f: (-f["stage"], not f["lead"], -(f.get("rr") or 0)))
     entries = [f for f in fun if f["stage"] == 7 and f["lead"] and (f.get("rr") or 0) >= RR_MIN]
@@ -569,7 +578,7 @@ def run_day(P, gi, mode, listing=None, hist=None):
         avg20 = (B["_ts"][j + 1] - B["_ts"][max(0, j - 19)]) / min(20, j + 1)
         top_rows.append({"rank": r, "code": code, "name": P.names.get(code, code), "tv": tv[code], "x20": tv[code] / avg20 if avg20 else None,
                          "chg": (B["c"][j] / B["c"][j - 1] - 1) * 100 if j and B["c"][j - 1] else None, "c": B["c"][j],
-                         "themes": P.theme_of.get(code, [])[:3], "stage": stage_of.get(code, 0), "lead": lead_of.get(code, [])})
+                         "themes": P.theme_of.get(code, []), "stage": stage_of.get(code, 0), "lead": lead_of.get(code, [])})
     return {"date": str(P.gd[gi]), "mode": mode, "top": top_rows, "themes": strong, "themes_all": all_themes[:40], "leaders": lead_rows,
             "funnel": fun, "entries": entries, "n_pool": len(pool), "n_univ": len(tv)}
 

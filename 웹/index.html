@@ -5242,11 +5242,14 @@ async function viewVocal(p, force){
   if(d.error&&!d.results){ body.appendChild(el('div','err',d.error)); return; }
   if(d.error) body.appendChild(el('div','err','마지막 계산 실패: '+d.error+' — 아래는 이전 결과'));
   if(d.running){
-    const pr=el('div','prog');
-    pr.appendChild(el('span',null,(d.phase||'계산 중')+' '+(d.done||0)+'/'+(d.total||0)+(d.results?' — 아래는 이전 결과':' — 처음 한 번은 몇 분')));
-    const b=el('div','bar'); const i=el('i'); i.style.width=(d.total?Math.round((d.done||0)/d.total*100):5)+'%'; b.appendChild(i); pr.appendChild(b);
-    body.appendChild(pr);
-    setTimeout(()=>{ if(box.isConnected && S.tab==='vocal') viewVocal(p,false); }, 5000);
+    const pr=el('div','prog'); const ps=el('span'); pr.appendChild(ps);
+    const b=el('div','bar'); const i=el('i'); b.appendChild(i); pr.appendChild(b);
+    const show=e=>{ ps.textContent=(e.phase||'계산 중')+' '+(e.done||0)+'/'+(e.total||0)+(e.results?' — 아래는 이전 결과':' — 처음 한 번은 몇 분'); i.style.width=(e.total?Math.round((e.done||0)/e.total*100):5)+'%'; };
+    show(d); body.appendChild(pr);
+    // 계산 중엔 진행 줄만 바꾼다 — 표를 통째로 다시 그리면 읽던 자리가 맨 위로 튄다
+    const poll=async()=>{ if(!(box.isConnected && S.tab==='vocal')) return; let e=null; try{ e=await (await fetch('/api/vocal')).json(); }catch(x){ e=null; }
+      if(!box.isConnected) return; if(e&&e.running){ show(e); setTimeout(poll,5000); } else viewVocal(p,false); };
+    setTimeout(poll,5000);
     if(!d.results) return;
   }
   const content=el('div'); body.appendChild(content);
@@ -5373,10 +5376,12 @@ const VCL_COLS=[
 function vclFunnelTbl(root, funnel, redraw){
   const st=vclSt();
   const inTheme=f=>!st.theme||(f.themes||[]).includes(st.theme)||(f.lead||[]).some(l=>l[0]===st.theme);
-  const list=funnel.filter(f=>(+f.stage||0)>=4&&inTheme(f)&&(!st.leadOnly||(f.lead||[]).length));
+  const hasLead=funnel.some(f=>(f.lead||[]).length);   // 오늘 대장 후보가 하나도 없으면 전체를 보인다(빈 표보다 낫다)
+  const list=funnel.filter(f=>(+f.stage||0)>=4&&inTheme(f)&&(!st.leadOnly||!hasLead||(f.lead||[]).length));
   const sec=vclSec(root,'④~⑦','깔때기 — 큰 상승 · 눌림 · 거래량 감소 · 재유입',list.length+'종목'+(st.theme?' · 테마 '+st.theme:''));
   const bar=el('div','csBar'); const rt=el('div','rt');
   const wl=el('label','csWarn'); const cb=el('input'); cb.type='checkbox'; cb.checked=!!st.leadOnly; cb.onchange=()=>{ st.leadOnly=cb.checked; redraw(); };
+  if(st.leadOnly&&!hasLead&&funnel.length) wl.title='지금은 급등 구간에 대장이었던 종목이 없어 전체를 보인다';
   wl.appendChild(cb); wl.appendChild(document.createTextNode(' 대장·부대장만')); wl.title='상승 중 어느 날이든 강한 테마의 대장·부대장이었던 종목만(lead). 끄면 풀 전체에서 ④ 넘은 종목';
   rt.appendChild(wl); bar.appendChild(el('div','lt')); bar.appendChild(rt); sec.appendChild(bar);
   const key=st.sort[st.mode]||['stage',-1];
@@ -5443,8 +5448,9 @@ function vclThemes(root, R, redraw){
   const t=el('table','tbl csTbl vclTbl vclAllT');
   t.innerHTML='<tr><th>테마</th><th class="r">점유율 배수</th><th class="r">점유율</th><th class="r">5일</th><th class="r">신고가</th><th class="r">멤버(풀/전체)</th><th class="r">점수</th><th class="r">강함</th></tr>';
   [...t.querySelectorAll('th')].forEach(h=>{ h.style.cursor='default'; });
+  const strongSet=new Set(themes.map(t=>t.theme));
   all.forEach(x=>{ const tr=el('tr',x.strong===false?'weak':''); const a=el('td'); const b=el('a',null,x.theme||'—'); b.href='#'; b.onclick=e=>{ e.preventDefault(); st.theme=st.theme===x.theme?null:x.theme; redraw(); }; a.appendChild(b); tr.appendChild(a);
-    [vclX(x.ratio),vclPc(x.share),vclP(x.r5),vclI(x.nh),vclI(x.n_pool)+'/'+vclI(x.n),vclN(x.score,1),x.strong===false?'':'✓'].forEach((v,i)=>tr.appendChild(el('td','num'+(i===2&&x.r5>0?' up':i===2&&x.r5<0?' dn':''),v)));
+    [vclX(x.ratio),vclPc(x.share),vclP(x.r5),vclI(x.nh),vclI(x.n_pool)+'/'+vclI(x.n),vclN(x.score,1),strongSet.has(x.theme)?'✓':(x.strong?'문턱 통과':'')].forEach((v,i)=>tr.appendChild(el('td','num'+(i===2&&x.r5>0?' up':i===2&&x.r5<0?' dn':''),v)));
     t.appendChild(tr); });
   if(!all.length){ const tr=el('tr'); const td=el('td','emptyRow','테마 자료가 없다'); td.colSpan=8; tr.appendChild(td); t.appendChild(tr); }
   det.appendChild(el('div','tblwrap')).appendChild(t); sec.appendChild(det);
@@ -5546,17 +5552,19 @@ function vclRules(rules, mode){
   const st=vclSt(), det=el('details','dipEvd vclRule'); det.open=!!st.ruleOpen; det.addEventListener('toggle',()=>{ st.ruleOpen=det.open; });
   const m=((rules||{}).modes||{})[mode]||{}, C=(rules||{}).consts||{};
   const v=(x,u)=>vclOk(x)?String(parseFloat(Number(x).toFixed(2)))+(u||''):'—';
+  const pc=x=>vclOk(x)?String(parseFloat((Number(x)*100).toFixed(1)))+'%':'—';          // 서버 상수는 0.30 같은 비율
   const c=(k,u)=>v(C[k],u)+'('+k+')';
+  const cp=k=>pc(C[k])+'('+k+')';
   det.appendChild(el('summary',null,'규칙 — '+(m.name||mode)+' 모드 · 8단계 문턱'));
   const ol=el('ol','vclSteps');
   [['① 거래대금 상위','오늘 거래대금 '+v(m.top)+'위 안. 최근 '+c('POOL_DAYS','일')+' 안에 한 번이라도 든 종목이 풀 — 큰 상승은 순위에 들었던 날 근처에서 생긴다.'],
    ['② 강한 테마','풀 안 점유율이 전체 종목 안 점유율의 '+c('THEME_RATIO','배')+' 넘고 멤버 '+c('THEME_MIN','곳')+' 이상인 테마, 강한 순 '+c('THEME_TOP','개')+'까지. 시작일 = 점유율이 올라선 첫날.'],
-   ['③ 테마 대장주','테마 시작일부터 거래대금 합 1위 = 대장, 2위 = 부대장. 수익률 순위는 참고만.'],
-   ['④ 큰 상승 확인','최근 '+c('RALLY_WIN','봉')+' 안, 앞 '+c('BASE_WIN','봉')+' 바닥에서 +'+v(m.gain,'%')+' 이상 올랐고 오르는 데 '+c('RISE_MAX','봉')+' 안. 급등 대량봉 = 상승 구간 거래량 최대 봉.'],
-   ['⑤ 눌림','고점 뒤 '+v(m.days_lo)+'~'+v(m.days_hi)+'봉 · 고점에서 −'+v(m.pull_lo)+'~−'+v(m.pull_hi)+'% · 상승폭 되돌림 '+c('RETRACE_MAX','%')+' 안.'],
-   ['⑥ 지지선에서 거래량 감소','지지선 후보(바닥 · 급등봉 시가·종가 · 5·10·20일선 · 직전 고점) '+c('TOUCH','%')+' 안에 닿고, 아래 마감 허용 '+c('HOLD_BELOW')+'. 최근 3봉 거래량이 급등 대량봉의 '+c('DRY_PEAK','배')+' · 급등 구간 평균의 '+c('DRY_RALLY','배')+' 아래.'],
-   ['⑦ 거래대금 재유입 + 양봉','오늘 거래대금이 앞 봉 평균의 '+c('REFLOW','배')+' 이상 · 몸통 '+c('BODY','%')+' 이상 양봉 · 5일선 위.'],
-   ['⑧ 진입','다음 날 시가. 손절 = 눌림 저점 · 목표 = 고점 · 손익비 '+c('RR_MIN')+' 이상 · 시가 갭 '+c('GAP_SKIP','%')+' 넘으면 건너뜀 · 최대 보유 '+v(m.hold,'봉')+'.']].forEach(([a,b])=>{ const li=el('li'); li.appendChild(el('b',null,a)); li.appendChild(document.createTextNode(' '+b)); ol.appendChild(li); });
+   ['③ 테마 대장주','테마 시작일(점유율이 '+c('THEME_RATIO','배')+'를 처음 넘은 날)부터 거래대금 합 1위 = 대장, 2위 = 부대장 — 그 기간 수익률이 테마 안 2위 안이어야. 급등 구간(바닥~오늘)에 하루라도 대장이었으면 ⑧ 후보.'],
+   ['④ 큰 상승 확인','최근 '+c('RALLY_WIN','봉')+' 안 고점이 그 앞 '+c('BASE_WIN','봉')+' 저점보다 +'+pc(m.gain)+' 이상, 바닥 마지막 터치 → 고점 '+c('RISE_MAX','봉')+' 안, 상승 중 거래대금 순위 안 2일 이상. 급등 대량봉 = 상승 구간 거래량 최대 봉.'],
+   ['⑤ 눌림','고점 뒤 '+v(m.days_lo)+'~'+v(m.days_hi)+'봉 · 눌림 중 최저 종가가 고점 대비 −'+pc(m.pull_lo)+' 넘게, 오늘 종가는 −'+pc(m.pull_hi)+' 안 · 상승폭 되돌림 '+cp('RETRACE_MAX')+' 안.'],
+   ['⑥ 지지선에서 거래량 감소','지지선 후보(5 · 10 · 20일선 · 전고점 · 급등봉 시가 · 중간값 · 50% 되돌림)에 눌림 저가가 ±'+cp('TOUCH')+' 안이면 닿음(이동평균은 저점이 생긴 날 값). 앞 3봉 거래량이 급등 대량봉의 '+c('DRY_PEAK','배')+' · 급등 구간 평균의 '+c('DRY_RALLY','배')+' 아래.'],
+   ['⑦ 거래대금 재유입 + 양봉','오늘 거래대금이 앞 3봉 평균의 '+c('REFLOW','배')+' 이상 · 몸통 '+cp('BODY')+' 이상 양봉 · 종가 ≥ 전일 종가 · 저가가 닿은 지지선 −'+cp('HOLD_BELOW')+' 안 · 종가 > 5일선.'],
+   ['⑧ 진입','다음 날 시가. 손절 = 눌림 저점 · 목표 = 고점 · 손익비 '+c('RR_MIN')+' 이상 · 시가가 +'+cp('GAP_SKIP')+' 넘게 뜨면 못 삼 · 최대 보유 '+v(m.hold,'봉')+'.']].forEach(([a,b])=>{ const li=el('li'); li.appendChild(el('b',null,a)); li.appendChild(document.createTextNode(' '+b)); ol.appendChild(li); });
   det.appendChild(ol);
   det.appendChild(el('p','vclLimit','한계 — 일봉뿐: ⑦은 마감 봉으로 판정, 진입은 다음 날 시가 · 테마 소속은 오늘 분류표를 과거에도 씀 · 지금 상장사만(생존 편향) · 같은 규칙을 서버와 검증 도구가 공유.'));
   return det;
@@ -5588,6 +5596,7 @@ async function vcPop(F){
   document.body.appendChild(bg); cb.focus();
   let d;
   try{ d=await (await fetch('/api/ohlcv?code='+encodeURIComponent(F.code||'')+'&n=250')).json(); }catch(e){ d=null; }
+  if(d&&d.d&&F.spark&&F.spark.d&&F.spark.d.length){ const last=F.spark.d[F.spark.d.length-1]; const n=d.d.filter(x=>x<=last).length; if(n&&n<d.d.length) ['d','o','h','l','c','v'].forEach(k=>{ if(d[k]) d[k]=d[k].slice(0,n); }); }   // 장중 반쪽 봉은 신호 계산에 없었다
   if(!bg.isConnected) return;
   if(!d||!(d.c||[]).length||!d.d||!d.o||!d.h||!d.l||!d.v){ fig.innerHTML=''; fig.appendChild(el('div','err','시세를 불러오지 못했습니다')); return; }
   const ma=n=>{ const o=[]; let s=0; d.c.forEach((x,i)=>{ s+=x; if(i>=n) s-=d.c[i-n]; o.push(i+1>=n?s/n:null); }); return o; };
@@ -5602,7 +5611,7 @@ async function vcPop(F){
   const touched=new Set(F.touched||[]);
   const lv=(F.levels||[]).filter(l=>touched.has(l[0])&&vclOk(l[1]));
   const draw=N=>{
-    S.vclRng=N; [...rg.children].forEach(b=>b.classList.toggle('on',+b.dataset.n===N));
+    S.vclRng=N; const onB=[...rg.children].find(b=>+b.dataset.n>=N)||rg.lastChild; [...rg.children].forEach(b=>b.classList.toggle('on',b===onB));
     fig.innerHTML='';
     const T0=Math.max(0,d.c.length-N), idx=[]; for(let i=T0;i<d.c.length;i++) idx.push(i);
     const W=880,L=8,R=66,T=12,H1=300,G=8,H2=80,B=22,H=T+H1+G+H2+B;

@@ -9,6 +9,7 @@
          5 · 10 · 20일 초과수익(진입가 대비, 같은 날 전 시장 중앙값 빼고) · 앞(~2019) / 뒤(2020~) · 해마다.
   단계별 기여 — 전체 규칙(대장 · 거래량 감소 · 손익비 1.5↑) / 테마 필터 없이(풀 전체) / 대장 조건 없이(강한 테마 멤버면) /
                 거래량 감소 없이 / 손익비 조건 없이. 지지선 종류별.
+  같은 종목이 보유 중에 다시 신호를 내면 '겹침'으로 빼고 센다(한 눌림에 거래 하나). 시가가 목표 위 · 손절 아래로 뜨면 못 산 것으로. 자료 끝에 걸려 보유 한도를 못 채우는 신호는 뺀다.
 한계 — 오늘 테마 분류표를 과거에 적용(2015년엔 없던 테마가 과거에도 있는 셈) · 지금 상장사만(급등주 상폐 누락 → 실제보다 좋게) ·
        수수료 · 슬리피지 없음 · 일봉뿐. 숫자는 규칙끼리 견주는 용도.
 
@@ -51,22 +52,30 @@ def panel(V):
 
 
 def trade(B, j, stop, target, hold, gap_skip):
-    """신호봉 j → 다음 날 시가 진입, 규칙 청산. None = 못 샀다(다음 봉 없음 · 시가 급등)."""
+    """신호봉 j → 다음 날 시가 진입, 규칙 청산. skip = 못 샀다 — gap(시가 +15%↑) · above_target(시가가 목표 위) · below_stop(시가가 손절 아래) ·
+    partial(보유 한도까지 봉이 없다 — 자료 끝). 청산 순서: 보유 한도(종가) → 시가가 목표 위면 시가 → 고가가 목표에 닿으면 목표 → 종가가 손절 아래면 다음 날 시가."""
     o, h, c = B["o"], B["h"], B["c"]
-    if j + 1 >= len(c):
-        return None
+    if j + 1 + hold > len(c) - 1:
+        return {"skip": "partial"}
     entry = o[j + 1]
-    if not entry or entry / c[j] - 1 > gap_skip:
-        return {"skip": "gap", "gap": (entry / c[j] - 1) * 100 if entry else None}
-    for k in range(j + 1, min(j + hold, len(c) - 1) + 1):
+    if not entry:
+        return {"skip": "partial"}
+    if entry / c[j] - 1 > gap_skip:
+        return {"skip": "gap", "gap": (entry / c[j] - 1) * 100}
+    if entry >= target:
+        return {"skip": "above_target"}
+    if entry < stop:
+        return {"skip": "below_stop"}
+    for k in range(j + 1, j + hold + 1):
+        if k - j >= hold:
+            return {"entry": entry, "exit": c[k], "days": k - j, "why": "time"}
+        if k > j + 1 and o[k] >= target:
+            return {"entry": entry, "exit": o[k], "days": k - j, "why": "target"}
         if h[k] >= target:
             return {"entry": entry, "exit": target, "days": k - j, "why": "target"}
         if c[k] < stop:
-            px = o[k + 1] if k + 1 < len(c) else c[k]
-            return {"entry": entry, "exit": px, "days": k - j + (1 if k + 1 < len(c) else 0), "why": "stop"}
-        if k - j >= hold:
-            return {"entry": entry, "exit": c[k], "days": k - j, "why": "time"}
-    return {"entry": entry, "exit": c[min(j + hold, len(c) - 1)], "days": min(hold, len(c) - 1 - j), "why": "time"}
+            return {"entry": entry, "exit": o[k + 1], "days": k - j + 1, "why": "stop"}
+    return {"entry": entry, "exit": c[j + hold], "days": hold, "why": "time"}
 
 
 _MKT = {}
@@ -94,6 +103,7 @@ def build(V, P):
     sigs = []
     t0 = dt.datetime.now()
     hist = {mode: V.LeadHistory(P, mode) for mode in V.MODES}
+    open_until = {}                                   # (mode, code) → 보유가 끝나는 gi. 보유 중 다시 나온 신호는 '겹침'으로 빼고 센다
     for gi in range(g0, D - 1):
         for mode, M in V.MODES.items():
             pool = P.pool(gi, M["top"])
@@ -110,6 +120,10 @@ def build(V, P):
                 if not f or not f.get("sig_nodry"):
                     continue
                 tr = trade(B, j, f["stop"], f["target"], M["hold"], V.GAP_SKIP)
+                if gi <= open_until.get((mode, code), -1):
+                    tr = {"skip": "open"}
+                elif tr and "entry" in tr:
+                    open_until[(mode, code)] = gi + tr["days"]
                 lead, n_theme = hist[mode].during(code, int(f["lk"]), P.gd[gi], P.theme_of.get(code, ()))
                 row = {"mode": mode, "code": code, "gi": gi, "date": str(P.gd[gi]), "lead": bool(lead), "lead_days": len(lead),
                        "in_theme": n_theme > 0, "theme_days": n_theme, "dry": bool(f["dry_prev"]),
@@ -138,9 +152,16 @@ def fmt(v, d=1):
     return "—" if v is None else "%+.*f" % (d, v)
 
 
+def fpf(x):
+    """손익비 — 손실이 하나도 없으면 ∞."""
+    return "∞" if x.get("pf") is None and x.get("n") and not x.get("n_loss") else fmt(x.get("pf"), 2)
+
+
 def stats(rows):
     tr = [r for r in rows if r.get("ret") is not None]
-    out = {"n_signals": len(rows), "n_filled": len(tr), "n_skipped_gap": sum(1 for r in rows if (r.get("trade") or {}).get("skip") == "gap")}
+    sk = [(r.get("trade") or {}).get("skip") for r in rows]
+    out = {"n_signals": len(rows), "n_filled": len(tr), "n_skipped_gap": sk.count("gap"),
+           "skipped": {k: sk.count(k) for k in ("gap", "above_target", "below_stop", "partial", "open")}}
     if not tr:
         out["trades"] = {"n": 0}
         return out
@@ -154,7 +175,7 @@ def stats(rows):
     sub = lambda rs: {"n": len(rs), "win": sum(1 for r in rs if r["ret"] > 0) / len(rs) * 100 if rs else None,
                       "avg": sum(r["ret"] for r in rs) / len(rs) if rs else None}
     out["trades"] = {"n": len(tr), "win": len(wins) / len(tr) * 100, "avg": sum(rets) / len(rets), "med": st.median(rets),
-                     "pf": (sum(wins) / -sum(loss)) if loss and sum(loss) < 0 else None,
+                     "pf": (sum(wins) / -sum(loss)) if loss and sum(loss) < 0 else None, "n_loss": len(loss),
                      "avg_win": sum(wins) / len(wins) if wins else None, "avg_loss": sum(loss) / len(loss) if loss else None,
                      "max_loss_streak": best, "avg_days": sum(r["trade"]["days"] for r in tr) / len(tr),
                      "exit": {k: sum(1 for r in tr if r["trade"]["why"] == k) for k in ("stop", "target", "time")},
@@ -173,7 +194,7 @@ def small(rows):
     rets = [r["ret"] for r in tr]
     wins, loss = [x for x in rets if x > 0], [x for x in rets if x <= 0]
     return {"n": len(tr), "win": len(wins) / len(tr) * 100, "avg": sum(rets) / len(rets), "med": st.median(rets),
-            "pf": (sum(wins) / -sum(loss)) if loss and sum(loss) < 0 else None}
+            "pf": (sum(wins) / -sum(loss)) if loss and sum(loss) < 0 else None, "n_loss": len(loss)}
 
 
 def report(V, sigs, P=None):
@@ -200,20 +221,21 @@ def report(V, sigs, P=None):
         S["by_year"] = {k: small(v) for k, v in sorted(yrs.items())}
         rep["modes"][mode] = S
         T = S.get("trades") or {}
-        print("\n== %s(거래대금 %d위) — 신호 %d · 체결 %d · 시가 급등으로 못 삼 %d" % (M["name"], M["top"], S["n_signals"], S["n_filled"], S["n_skipped_gap"]))
+        print("\n== %s(거래대금 %d위) — 신호 %d · 체결 %d · 못 삼 %s" % (M["name"], M["top"], S["n_signals"], S["n_filled"],
+                                                            " ".join("%s %d" % kv for kv in S["skipped"].items())))
         if T.get("n"):
             print("  승률 %.0f%% · 평균 %s · 중앙 %s · 손익비 %s · 평균 이익 %s · 평균 손실 %s · 최대 연속 손실 %d · 평균 %.1f봉 · 청산 손절 %d / 목표 %d / 시간 %d"
-                  % (T["win"], fmt(T["avg"]), fmt(T["med"]), fmt(T["pf"], 2), fmt(T["avg_win"]), fmt(T["avg_loss"]), T["max_loss_streak"], T["avg_days"],
+                  % (T["win"], fmt(T["avg"]), fmt(T["med"]), fpf(T), fmt(T["avg_win"]), fmt(T["avg_loss"]), T["max_loss_streak"], T["avg_days"],
                      T["exit"]["stop"], T["exit"]["target"], T["exit"]["time"]))
             print("  앞(~2019) n %d 승률 %s 평균 %s · 뒤(2020~) n %d 승률 %s 평균 %s" % (
                 T["early"]["n"], fmt(T["early"]["win"], 0), fmt(T["early"]["avg"]), T["late"]["n"], fmt(T["late"]["win"], 0), fmt(T["late"]["avg"])))
             print("  초과수익 중앙(진입가 대비 − 전 시장): " + " · ".join("%d일 %s(이긴 %s)" % (int(h), fmt(x["ex"]), fmt(x["hit"], 0)) for h, x in S["fwd"].items()))
         print("  단계별:")
         for k, v in S["variants"].items():
-            print("    %-34s n %5d · 승률 %s · 평균 %s · 중앙 %s · 손익비 %s" % (k, v["n"], fmt(v.get("win"), 0), fmt(v.get("avg")), fmt(v.get("med")), fmt(v.get("pf"), 2)))
+            print("    %-34s n %5d · 승률 %s · 평균 %s · 중앙 %s · 손익비 %s" % (k, v["n"], fmt(v.get("win"), 0), fmt(v.get("avg")), fmt(v.get("med")), fpf(v)))
         print("  지지선별:")
         for k, v in S["by_support"].items():
-            print("    %-12s n %5d · 승률 %s · 평균 %s · 손익비 %s" % (k, v["n"], fmt(v.get("win"), 0), fmt(v.get("avg")), fmt(v.get("pf"), 2)))
+            print("    %-12s n %5d · 승률 %s · 평균 %s · 손익비 %s" % (k, v["n"], fmt(v.get("win"), 0), fmt(v.get("avg")), fpf(v)))
         print("  해마다: " + " · ".join("%s n %d %s" % (k, v["n"], fmt(v.get("avg"))) for k, v in S["by_year"].items()))
     json.dump(rep, open(os.path.join(OUT, "bt_report.json"), "w", encoding="utf-8"), ensure_ascii=False, default=str)
     return rep

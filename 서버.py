@@ -8727,7 +8727,8 @@ except Exception as _e:
 VOCAL_V = 1
 VOCAL_DIR = os.path.join(CACHE_DIR, "vocal")
 VOCAL_PATH = os.path.join(VOCAL_DIR, "_result.json")
-VOCAL = {"running": False, "done": 0, "total": 0, "phase": "", "at": 0, "date": None, "results": None, "n_univ": 0, "listing_date": None}
+VOCAL = {"running": False, "done": 0, "total": 0, "phase": "", "at": 0, "date": None, "results": None, "n_univ": 0, "listing_date": None,
+         "error": None, "_loaded": False}
 VOCAL_LOCK = threading.Lock()
 VOCAL_DAILY_AT = (7, 0)
 _VBT = {"mt": None, "d": None}
@@ -8751,18 +8752,22 @@ def _vocal_bt():
 def _run_vocal(refresh=True):
     try:
         with VOCAL_LOCK:
-            VOCAL.update(done=0, total=0, phase="전 시장 목록")
+            VOCAL.update(done=0, total=0, phase="전 시장 목록", error=None)
         L = VOC.load_listing()
         if not L:
+            with VOCAL_LOCK:
+                VOCAL["error"] = "전 시장 목록을 받지 못했다(네이버 시총 API)"
             return
-        codes = sorted(L["stocks"])
+        codes = sorted(k for k, v in L["stocks"].items() if not v.get("stop"))     # 거래정지는 뺀다
+        # 마지막 장 마감(평일 15:40) 뒤 받은 일봉만 믿는다 — 장중이면 오늘 반쪽 봉은 빼고 어제까지로 잰다(저평가V2 와 같다).
+        # now 는 한 번만 잰다 — 받는 동안 15:40 을 넘겨도 받은 봉은 반쪽이다.
+        now = dt.datetime.now()
+        lc = now.replace(hour=15, minute=40, second=0, microsecond=0)
+        while lc > now or lc.weekday() >= 5:
+            lc -= dt.timedelta(days=1)
+            lc = lc.replace(hour=15, minute=40)
+        live = now.weekday() < 5 and (now.hour, now.minute) < (15, 40)
         if refresh:
-            # 마지막 장 마감(평일 15:40) 뒤 받은 일봉만 믿는다 — 장중이면 오늘 반쪽 봉은 빼고 어제까지로 잰다(저평가V2 와 같다)
-            now = dt.datetime.now()
-            lc = now.replace(hour=15, minute=40, second=0, microsecond=0)
-            while lc > now or lc.weekday() >= 5:
-                lc -= dt.timedelta(days=1)
-                lc = lc.replace(hour=15, minute=40)
             with VOCAL_LOCK:
                 VOCAL.update(phase="전 종목 일봉", total=len(codes))
 
@@ -8770,8 +8775,6 @@ def _run_vocal(refresh=True):
                 with VOCAL_LOCK:
                     VOCAL.update(done=a, total=b)
             VOC.fetch_all_bars(codes, progress=prog, max_age=max(60, (now - lc).total_seconds()))
-        now = dt.datetime.now()
-        live = now.weekday() < 5 and (now.hour, now.minute) < (15, 40)
         with VOCAL_LOCK:
             VOCAL.update(phase="패널", done=0, total=len(codes))
 
@@ -8782,6 +8785,8 @@ def _run_vocal(refresh=True):
         P = VOC.load_panel(codes, {k: v["name"] for k, v in L["stocks"].items()}, {k: (smap.get(k) or {}).get("themes") for k in codes},
                            drop=now.strftime("%Y%m%d") if live else None, progress=prog2)
         if len(P.bars) < 500:
+            with VOCAL_LOCK:
+                VOCAL["error"] = "일봉이 %d곳뿐 — 시세를 못 받았다" % len(P.bars)
             return
         gi = len(P.gd) - 1
         with VOCAL_LOCK:
@@ -8805,9 +8810,11 @@ def _run_vocal(refresh=True):
         os.makedirs(VOCAL_DIR, exist_ok=True)
         with open(VOCAL_PATH, "w", encoding="utf-8") as fh:
             json.dump(data, fh, ensure_ascii=False)
-    except Exception:
+    except Exception as e:
         import traceback
         traceback.print_exc()
+        with VOCAL_LOCK:
+            VOCAL["error"] = "%s: %s" % (type(e).__name__, e)
     finally:
         with VOCAL_LOCK:
             VOCAL.update(running=False, phase="")
@@ -8817,7 +8824,8 @@ def vocal_view(force=False):
     if VOC is None or FIN is None:
         return {"error": "보컬 모듈이 없습니다."}
     with VOCAL_LOCK:
-        if VOCAL["results"] is None and not VOCAL["at"]:
+        if not VOCAL["_loaded"]:
+            VOCAL["_loaded"] = True
             try:
                 with open(VOCAL_PATH, "r", encoding="utf-8") as fh:
                     old = json.load(fh)
@@ -8826,11 +8834,12 @@ def vocal_view(force=False):
                                  listing_date=old.get("listing_date"))
             except Exception:
                 pass
-        stale = force or not VOCAL["results"] or time.time() - VOCAL["at"] > 26 * 3600     # 매일 07:00 _vocal_auto_loop 가 미리 센다
+        # 매일 07:00 _vocal_auto_loop 가 미리 센다. 실패한 뒤엔 '다시 계산'을 눌러야 다시 돈다(5초마다 다시 시작하지 않게)
+        stale = force or (not VOCAL["results"] and not VOCAL["error"]) or (VOCAL["results"] and time.time() - VOCAL["at"] > 26 * 3600)
         if stale and not VOCAL["running"]:
-            VOCAL["running"] = True
+            VOCAL.update(running=True, error=None)
             threading.Thread(target=_run_vocal, daemon=True).start()
-        out = {k: VOCAL.get(k) for k in ("running", "done", "total", "phase", "at", "date", "results", "n_univ", "listing_date")}
+        out = {k: VOCAL.get(k) for k in ("running", "done", "total", "phase", "at", "date", "results", "n_univ", "listing_date", "error")}
     out["bt"] = _vocal_bt()
     out["rules"] = {"modes": VOC.MODES, "consts": {k: getattr(VOC, k) for k in (
         "POOL_DAYS", "RALLY_WIN", "BASE_WIN", "RISE_MAX", "RETRACE_MAX", "TOUCH", "HOLD_BELOW", "DRY_PEAK", "DRY_RALLY", "REFLOW", "BODY",
@@ -8846,10 +8855,16 @@ def _vocal_auto_loop():
         try:
             old = (time.time() - os.path.getmtime(VOCAL_PATH)) if os.path.exists(VOCAL_PATH) else 1e9
             if not first or old > 20 * 3600:
+                for _ in range(240):                  # 저평가(06:30)가 주가를 받는 동안은 기다린다 — 같은 캐시 파일을 둘이 쓰지 않게(최대 2시간)
+                    with VAL_LOCK:
+                        busy = VAL["running"]
+                    if not busy:
+                        break
+                    time.sleep(30)
                 with VOCAL_LOCK:
                     go = not VOCAL["running"]
                     if go:
-                        VOCAL["running"] = True
+                        VOCAL.update(running=True, error=None)
                 if go:
                     _run_vocal(True)
         except Exception as e:
