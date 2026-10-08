@@ -8889,6 +8889,132 @@ def _vocal_auto_loop():
         time.sleep(max(60, (nxt - n).total_seconds()))
 
 
+# ---------------------------------------------------------------- 차트 발굴 — Tech(chart_screener) 리포트를 '보컬' 탭 자리에 (2026-10-09)
+# 설계: docs/superpowers/specs/2026-10-09-tech-tab-design.md. Tech 는 pandas 2.x 가 필요해 64비트 venv 에서 돌고(이 서버는 32비트),
+# 그래서 별도 프로세스로 `python -m chart_screener scan` 을 창 없이 띄우고, 나온 output/scan_*.html 을 iframe 으로 보인다.
+# 보컬 규칙은 Tech 의 패턴 'vocal'(칩 '보컬')로 옮겼다 — 예전 보컬 탭 · /api/vocal 은 코드만 남고 자동 계산은 껐다.
+TECH_DIR = os.environ.get("CHART_SCREENER_DIR") or os.path.normpath(os.path.join(BASE, "..", "..", "Tech"))
+TECH_PY = os.environ.get("CHART_SCREENER_PY") or os.path.join(os.path.expanduser("~"), ".venvs", "chart_screener", "Scripts", "pythonw.exe")
+TECH_OUT = os.path.join(TECH_DIR, "output", "viewer")   # 뷰어가 띄운 전 종목 스캔만(손으로 돌린 일부 패턴 스캔 · 조각과 섞이지 않게)
+TECH_LOG = os.path.join(TECH_OUT, "viewer_scan.log")
+TECH_RISK = os.path.join(CACHE_DIR, "공시목록", "공시위험.json")   # 보컬 잡주 거르기(작전주 꼴 · 상폐 절차 · 자금조달 잦음 …)
+TECH = {"proc": None, "started": 0, "phase": "", "error": None}
+TECH_LOCK = threading.Lock()
+TECH_DAILY_AT = (16, 0)          # 평일 장 마감(15:30) · 일봉 확정(15:45) 뒤
+
+
+def _tech_reports():
+    """Tech output 의 스캔 리포트 [(mtime, 이름)] — 새것부터."""
+    try:
+        fs = [f for f in os.listdir(TECH_OUT) if f.startswith("scan_") and f.endswith(".html")]
+    except OSError:
+        return []
+    return sorted(((os.path.getmtime(os.path.join(TECH_OUT, f)), f) for f in fs), reverse=True)
+
+
+def _tech_running():
+    p = TECH["proc"]
+    return p is not None and p.poll() is None
+
+
+def _tech_log_tail(n=12):
+    try:
+        with open(TECH_LOG, "r", encoding="utf-8", errors="replace") as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return []
+    # 진행률(\r 로 덮어쓰는 줄)은 마지막 조각만
+    return [ln.split("\r")[-1] for ln in lines[-n:] if ln.strip()]
+
+
+def tech_run():
+    """Tech 스캔을 창 없이 띄운다(이미 돌면 그대로). 반환: tech_status()."""
+    with TECH_LOCK:
+        if _tech_running():
+            return tech_status()
+        if not os.path.isdir(TECH_DIR):
+            TECH["error"] = "Tech 폴더가 없습니다: %s (환경변수 CHART_SCREENER_DIR 로 바꿀 수 있다)" % TECH_DIR
+            return tech_status()
+        exe = TECH_PY if os.path.exists(TECH_PY) else None
+        if exe is None:
+            TECH["error"] = ("Tech 용 64비트 파이썬이 없습니다: %s — Tech 폴더에서 venv 를 만들고 "
+                             "pip install -r requirements.txt (환경변수 CHART_SCREENER_PY 로 바꿀 수 있다)" % TECH_PY)
+            return tech_status()
+        si = None
+        if os.name == "nt":
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = 0          # SW_HIDE — 작업 중인 화면에 창이 뜨면 안 된다
+        os.makedirs(TECH_OUT, exist_ok=True)
+        log = open(TECH_LOG, "w", encoding="utf-8")
+        log.write("== 차트 발굴 스캔 %s\n" % dt.datetime.now().isoformat(timespec="seconds"))
+        log.flush()
+        try:
+            env = dict(os.environ, PYTHONIOENCODING="utf-8")
+            if os.path.exists(TECH_RISK):
+                env.setdefault("CHART_SCREENER_RISK_JSON", TECH_RISK)
+            TECH["proc"] = subprocess.Popen(
+                [exe, "-m", "chart_screener", "scan", "--out", TECH_OUT], cwd=TECH_DIR,
+                stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                env=env, startupinfo=si,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        except Exception as e:
+            log.close()
+            TECH["error"] = "스캔을 띄우지 못했습니다: %s" % e
+            return tech_status()
+        log.close()                     # 자식 프로세스가 핸들을 물고 있다
+        TECH.update(started=time.time(), error=None)
+    return tech_status()
+
+
+def tech_status():
+    rep = _tech_reports()
+    p = TECH["proc"]
+    rc = p.poll() if p is not None else None
+    out = {"running": _tech_running(), "started": TECH["started"], "error": TECH["error"],
+           "exit": rc, "log": _tech_log_tail(), "dir": TECH_DIR,
+           "report": {"name": rep[0][1], "at": rep[0][0]} if rep else None, "n_reports": len(rep)}
+    if rc not in (None, 0) and not TECH["error"]:
+        out["error"] = "스캔이 오류로 끝났습니다(종료 코드 %s) — 아래 기록을 보세요." % rc
+    return out
+
+
+def tech_report_html(name=""):
+    """name 이 주어지면 그 리포트(output 안 scan_*.html 만), 아니면 가장 새것. 없으면 None."""
+    rep = _tech_reports()
+    names = {f for _, f in rep}
+    f = name if name in names else (rep[0][1] if rep else None)
+    if not f:
+        return None
+    with open(os.path.join(TECH_OUT, f), "rb") as fh:
+        return fh.read()
+
+
+def _tech_auto_loop():
+    """평일 16:00 · 뷰어를 켰을 때(10분 뒤) — 마지막 리포트가 가장 최근 거래일 장 마감(15:45, 주말은 금요일) 전 것이면 한 번.
+    16:00 를 뷰어가 꺼져 놓쳤으면 다음에 켤 때 따라잡는다(휴장일은 따로 보지 않는다 — 다시 세어도 해는 없다)."""
+    time.sleep(600)
+    while True:
+        try:
+            n = dt.datetime.now()
+            lc = n.replace(hour=15, minute=45, second=0, microsecond=0)
+            while lc > n or lc.weekday() >= 5:
+                lc -= dt.timedelta(days=1)
+            rep = _tech_reports()
+            last = dt.datetime.fromtimestamp(rep[0][0]) if rep else None
+            if last is None or last < lc:
+                tech_run()
+        except Exception as e:
+            print("차트 발굴 자동 스캔: %s" % e, flush=True)
+        n = dt.datetime.now()
+        nxt = n.replace(hour=TECH_DAILY_AT[0], minute=TECH_DAILY_AT[1], second=0, microsecond=0)
+        if nxt <= n:
+            nxt += dt.timedelta(days=1)
+        while nxt.weekday() >= 5:
+            nxt += dt.timedelta(days=1)
+        time.sleep(max(60, (nxt - n).total_seconds()))
+
+
 # ---------------------------------------------------------------- 산업 성장률 (2026-10-06)
 # 섹터별 매출 · 영업이익(상장사, 자회사 중복 제거) · 생산 · 가동률 · 수출 · 가격 · 시장 규모 · 시가총액 · 전망을 한 표로.
 # 계산은 산업.py → .cache/산업/_result.json. 재료는 산업_패널.py(회사 패널 · 연결 구조) · 산업_부문.py(섞인 회사의 부문) ·
@@ -9979,6 +10105,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, value2_view(q.get("force") == "1"))
             if path == "/api/vocal":
                 return self._send(200, vocal_view(q.get("force") == "1"))
+            if path == "/api/tech":
+                return self._send(200, tech_run() if q.get("run") == "1" else tech_status())
+            if path == "/tech/report":
+                body = tech_report_html(q.get("f", ""))
+                if body is None:
+                    return self._send(404, "<p style='font:14px sans-serif;color:#888;padding:24px'>아직 차트 발굴 리포트가 없습니다 — '다시 계산'을 누르세요.</p>",
+                                      "text/html; charset=utf-8")
+                return self._send(200, body, "text/html; charset=utf-8")
             if path == "/api/industry":
                 return self._send(200, industry_view(q.get("force") == "1"))
             if path == "/api/industry/sub":
@@ -10115,8 +10249,11 @@ def main():
         threading.Thread(target=_vc_auto_loop, daemon=True).start()
         threading.Thread(target=_rep_auto_loop, daemon=True).start()
         threading.Thread(target=_ind_auto_loop, daemon=True).start()
-    if VOC is not None:
-        threading.Thread(target=_vocal_auto_loop, daemon=True).start()
+        threading.Thread(target=_tech_auto_loop, daemon=True).start()
+    # 예전 보컬 탭은 '차트 발굴'(Tech)로 바뀌어 매일 07:00 전 시장 일봉 · 깔때기 계산을 껐다(2026-10-09, 사용자 결정).
+    # /api/vocal 은 그대로 살아 있다(부르면 그때 센다). 다시 켜려면 아래 줄을 되살린다.
+    # if VOC is not None:
+    #     threading.Thread(target=_vocal_auto_loop, daemon=True).start()
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:

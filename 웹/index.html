@@ -2234,6 +2234,15 @@ table.csTbl td.emptyRow{color:var(--faint);text-align:center;padding:26px 0}
 .csPage button{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:2px 10px;cursor:pointer;color:var(--ink)}
 .csPage button:disabled{opacity:.35;cursor:default}
 .csDefs{margin-top:10px;font-size:12px;line-height:1.6;color:var(--dim)}.csDefs p{margin:0 0 6px}.csDefs b{color:var(--ink);margin-right:2px}
+/* ---------- 차트 발굴 — Tech(chart_screener) 리포트 iframe (2026-10-09) ---------- */
+.tchBox{display:flex;flex-direction:column;gap:8px}
+.tchHead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tchHead>b{font:700 19px 'Noto Serif KR',serif;color:var(--ink)}
+.tchHead>span{font-size:12.5px;color:var(--dim)}
+.tchHead .tchMeta{margin-left:auto;font:12px var(--mono);color:var(--faint)}
+.tchHead a.ghost{text-decoration:none;display:inline-block}
+.tchFrame{width:100%;height:calc(100vh - 200px);min-height:640px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.tchLog{font:11.5px/1.5 var(--mono);color:var(--dim);background:var(--line2);border-radius:6px;padding:8px 10px;max-height:220px;overflow:auto;white-space:pre-wrap;margin:6px 0 0}
 /* ---------- 보컬 — 거래대금 · 테마 대장주 · 눌림목 (2026-10-08) ---------- */
 /* ---------- 보컬 — 거래대금 · 테마 대장주 · 눌림목 (2026-10-08) ----------
    클래스는 vcl* (vc* 는 밸류체인 탭이 쓴다). 레일·카드·표·쪽·팝업은 저평가V2(cs*, v2*) 를 같이 쓴다.
@@ -2885,7 +2894,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
       <div class="tabs" id="tabs" hidden>
         <button data-t="val">저평가</button>
         <button data-t="val2">저평가V2</button>
-        <button data-t="vocal">보컬</button>
+        <button data-t="tech">차트 발굴</button>
         <button data-t="orbit" class="on">궤도</button>
         <button data-t="land">풍경</button>
         <button data-t="brief">변화 브리핑</button>
@@ -2909,6 +2918,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
           왼쪽 위 검색창에 기업명을 넣으면 최근 15년 보고서가 전부 열립니다.
           <div style="margin-top:14px"><button class="ghost" onclick="S.tab='val';jump('val')">저평가 종목 보기 — 가치는 지켰는데 주가가 빠진 회사</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='grow';jump('grow')">산업 성장률 — 섹터별 매출 · 이익 · 생산 · 수출 추이와 시장 규모 · 시가총액 · 전망</button></div>
+          <div style="margin-top:8px"><button class="ghost" onclick="S.tab='tech';jump('tech')">차트 발굴 — 전 종목 차트 패턴(CAN SLIM · VCP · 컵앤핸들 · 300억 눌림목 · 보컬)</button></div>
         </div>
       </div>
     </main>
@@ -3099,7 +3109,7 @@ function show(t){
   ({orbit:viewOrbit, land:viewLand, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, rep:viewReports, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue, val2:viewValue2, vocal:viewVocal, grow:viewGrowth}[t])(p);
+    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue, val2:viewValue2, vocal:viewVocal, tech:viewTech, grow:viewGrowth}[t])(p);
 }
 
 // ---------------------------------------------------------- 분기 변화 — 보고서가 나올 때마다 직전 공시(3개월 전)와 맞댄다
@@ -5591,6 +5601,43 @@ const vclD=s=>s&&String(s).length>=8?String(s).slice(2,4)+'.'+String(s).slice(4,
 const vclHM=t=>{ if(!t) return ''; const a=new Date(t*1000), z=n=>String(n).padStart(2,'0'); return z(a.getMonth()+1)+'.'+z(a.getDate())+' '+z(a.getHours())+':'+z(a.getMinutes()); };
 const vclUpDn=v=>v>0?'up':v<0?'dn':'';
 const vclSt=()=>{ S.vc=S.vc||{mode:'pull',sort:{},leadOnly:true,junkOff:true,theme:null,page:0,topPage:0,btOpen:false,ruleOpen:false,allOpen:false}; return S.vc; };
+
+// ---------------------------------------------------------- 차트 발굴 — Tech(chart_screener) 리포트(/api/tech · /tech/report, 2026-10-09)
+// '보컬' 탭 자리. Tech 가 만든 리포트 HTML 을 iframe 으로 그대로 보인다 — 보컬 규칙은 그 안의 '보컬' 칩(포켓 피벗 옆).
+// 서버가 평일 16:00 에 창 없이 다시 스캔하고, '다시 계산'은 지금 스캔한다(처음 2~3분, 그 뒤 30초 안팎).
+function viewTech(p, run){
+  p.innerHTML='';
+  const box=el('div','tchBox'); p.appendChild(box);
+  const hd=el('div','tchHead');
+  hd.appendChild(el('b',null,'차트 발굴'));
+  hd.appendChild(el('span',null,'전 종목 일봉으로 CAN SLIM · VCP · 컵앤핸들 · 300억 장대양봉 눌림목 · 보컬 등 차트 패턴을 찾는다 (Tech · chart_screener)'));
+  const meta=el('span','tchMeta'); hd.appendChild(meta);
+  const rf=el('button','ghost','다시 계산'); hd.appendChild(rf);
+  const nw=el('a','ghost','새 창으로'); nw.target='_blank'; nw.rel='noopener'; nw.href='/tech/report'; hd.appendChild(nw);
+  box.appendChild(hd);
+  const msg=el('div'); box.appendChild(msg);
+  const fr=el('iframe','tchFrame'); fr.title='차트 발굴 리포트'; box.appendChild(fr);
+  let shown=null, timer=null;
+  const fmt=t=>{ const d=new Date(t*1000); return (d.getMonth()+1)+'.'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+  const load=async(runIt)=>{
+    clearTimeout(timer);
+    let st; try{ st=await (await fetch('/api/tech'+(runIt?'?run=1':''))).json(); }catch(e){ st={error:'상태를 불러오지 못했습니다'}; }
+    if(!box.isConnected||S.tab!=='tech') return;
+    meta.textContent=(st.report?'리포트 '+fmt(st.report.at):'리포트 없음')+(st.running?' · 계산 중…':'');
+    rf.disabled=!!st.running;
+    msg.innerHTML='';
+    if(st.error) msg.appendChild(el('div','err',st.error));
+    if(st.running){ const pr=el('div','prog'); pr.appendChild(el('span',null,'Tech 스캔 중 — '+((st.log||[]).slice(-1)[0]||'시작'))); msg.appendChild(pr); }
+    if(st.error&&!st.running&&(st.log||[]).length){ const pre=el('pre','tchLog'); pre.textContent=st.log.join('\n'); msg.appendChild(pre); }
+    if(!st.report&&!st.running&&!st.error) msg.appendChild(el('div','empty','아직 리포트가 없다 — 다시 계산을 눌러라.'));
+    if(st.report){ const key=st.report.name+'@'+st.report.at;
+      if(shown!==key){ shown=key; fr.src='/tech/report?f='+encodeURIComponent(st.report.name)+'&t='+Math.round(st.report.at); nw.href=fr.src; } }
+    fr.hidden=!st.report;
+    if(st.running) timer=setTimeout(()=>load(false),5000);
+  };
+  rf.onclick=()=>load(true);
+  load(!!run);
+}
 
 async function viewVocal(p, force){
   p.innerHTML='';
