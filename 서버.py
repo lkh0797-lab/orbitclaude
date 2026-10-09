@@ -3482,7 +3482,7 @@ def invest_view(c, rep, lite=False):
     except Exception:
         out["arc"] = []
     out["regimes"] = _inv_regimes(c["code"])
-    out["series"] = _inv_prices(c["code"])
+    out["series"] = _inv_prices(c["code"], ohlc=True)
     return out
 
 
@@ -4804,8 +4804,10 @@ def _guru_hit_for(code):
     return {k: d.get(k) for k in ("n", "firms", "from", "to", "gurus", "kinds")} | {"mine": (d.get("by_code") or {}).get(code)}
 
 
-def _inv_prices(code):
-    """일별 종가(액면분할·병합 보정)를 [날짜들], [종가들] 두 줄로. 없으면 None."""
+def _inv_prices(code, ohlc=False):
+    """일별 종가(액면분할·병합 보정)를 [날짜들], [종가들] 두 줄로. 없으면 None.
+    ohlc=True 면 일봉 차트용 시가 · 고가 · 저가 · 거래량도 같은 비율로 보정해 붙인다(변화 브리핑 차트만 —
+    전 종목을 도는 화면은 네이버를 한 번 더 부르지 않게 끈다)."""
     if FIN is None:
         return None
     try:
@@ -4817,7 +4819,55 @@ def _inv_prices(code):
     ds = sorted(pr)
     adj = SYN._adjusted(pr, ds) if SYN is not None else [pr[d] for d in ds]
     # p = 보정 종가(선 그리기·수익률), r = 그날 실제 종가(화면에 적는 '그날 주가')
-    return {"d": [int(d) for d in ds], "p": [round(v, 1) for v in adj], "r": [pr[d] for d in ds]}
+    out = {"d": [int(d) for d in ds], "p": [round(v, 1) for v in adj], "r": [pr[d] for d in ds]}
+    if ohlc:
+        try:
+            ov = FIN.fetch_ohlcv(code) or {}
+        except Exception:
+            ov = {}
+        if ov:
+            o, h, lo, v = [], [], [], []
+            for d, a in zip(ds, adj):
+                row, raw = ov.get(d), pr[d]
+                k = a / raw if raw else 1.0
+                if row and row[3]:
+                    # 종가가 시세 캐시와 다르면(하루 차이로 받은 캐시) 그날 종가에 맞춰 비율만 쓴다
+                    s = a / row[3]
+                    o.append(round(row[0] * s, 1)); h.append(round(max(row[1] * s, a), 1))
+                    lo.append(round(min(row[2] * s, a), 1)); v.append(int(row[4] / k) if k else int(row[4]))
+                else:
+                    o.append(round(a, 1)); h.append(round(a, 1)); lo.append(round(a, 1)); v.append(0)
+            out.update({"o": o, "h": h, "l": lo, "v": _inv_vol_splits(v)})
+    return out
+
+
+def _inv_vol_splits(v):
+    """네이버 일봉은 가격만 분할 보정되고 거래량은 그때 주식 수 그대로다(삼성전자 2018 50:1 앞은 50분의 1).
+    분할 · 병합은 거래 정지(거래량 0)가 2일 넘게 이어진 뒤 거래량 수준이 몇 배로 바뀌는 것으로 잡아
+    그 앞 거래량에 같은 비율을 곱한다. 거래량만으로 비율이 분명한 큰 분할(10 · 20 · 25 · 50 · 100배, 1.25배 안)만 —
+    2~5배는 거래량 자체가 그만큼 오르내려 비율을 못 정한다(LS일렉트릭 2026 5:1 이 2배로 잡혔다) → 원자료 그대로."""
+    import math
+    nice = [10, 20, 25, 50, 100]
+    nice = nice + [1 / x for x in nice]
+    v = list(v)
+    n, i = len(v), 0
+    while i < n:
+        if v[i]:
+            i += 1
+            continue
+        j = i
+        while j < n and not v[j]:
+            j += 1
+        if j - i >= 2 and i >= 20 and j + 20 <= n:
+            bef = sorted(x for x in v[max(0, i - 60):i] if x)
+            aft = sorted(x for x in v[j:j + 60] if x)
+            if len(bef) >= 15 and len(aft) >= 15:
+                r = aft[len(aft) // 2] / bef[len(bef) // 2]
+                f = min(nice, key=lambda x: abs(math.log(r / x)))
+                if abs(math.log(r / f)) < math.log(1.25):   # NAVER 2018 5:1 은 7.4배 — 10배로 잘못 잡지 않게
+                    v[:i] = [int(x * f) for x in v[:i]]
+        i = j
+    return v
 
 
 def _inv_regimes(code):

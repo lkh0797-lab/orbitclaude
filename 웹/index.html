@@ -1028,6 +1028,20 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .invCol{transition:opacity .2s}
 .invCol.on .invBody{opacity:.38}
 .invplate.anim .invCol{animation:spRise .5s var(--d,0ms) cubic-bezier(.2,.8,.2,1) both}
+/* TradingView 모양(일봉) — 아래 칸 SVG(보고서 캔들 · 원 · 띠) → 투명한 차트 캔버스 → 위 칸 SVG(수익률 · 틀 · 주석) */
+.invTvHold{position:relative;margin-top:6px}
+.invTv .invTvChart{position:absolute;left:0;right:0;top:0;z-index:1}
+.invTvUnder,.invTvOver,.invTvStrip{position:absolute;left:0;top:0;pointer-events:none;overflow:hidden}
+.invTvStrip{pointer-events:auto}
+.invTvUnder{z-index:0}
+.invTvOver{z-index:2}
+.invTvSep{stroke:rgba(255,255,255,.09);stroke-width:1;stroke-dasharray:2 3}
+.invTvBody{fill-opacity:.13;stroke-opacity:.42;stroke-width:1}
+.invTvWick{stroke-width:1.2;opacity:.3}
+.invTvCol.on .invTvBody{fill-opacity:.22;stroke-opacity:.8}
+.invTvVeil{fill:rgba(14,19,25,.55)}
+.invTv.tvGo .invTvChart,.invTv.tvGo .invTvChart *,.invTv.tvGo .invTvStrip{cursor:pointer!important}
+.invPxLegend i.tvc{width:8px;height:12px;border-radius:1px;background:linear-gradient(90deg,#e5534b 50%,#3987e5 50%)}
 /* 원탁 성적표 */
 .invTrack{margin-top:26px}
 .invTrackBody{margin-top:10px;position:relative}
@@ -10397,6 +10411,47 @@ function invPeriods(S, A){
   return P;
 }
 
+// 일봉 차트 라이브러리 — TradingView lightweight-charts 4.2.3(Apache-2.0, 차트 왼쪽 아래 TV 로고는 라이선스 표시라 둔다).
+// 처음 그릴 때 한 번 불러온다. 인터넷이 없으면 null → 예전 SVG 보고서 캔들로 그린다.
+let INV_LWC=null;
+function invLwc(){
+  if(window.LightweightCharts) return Promise.resolve(window.LightweightCharts);
+  if(INV_LWC) return INV_LWC;
+  const urls=['https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js',
+              'https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js'];
+  INV_LWC=new Promise(res=>{
+    const next=i=>{
+      if(i>=urls.length){ INV_LWC=null; res(null); return; }
+      const s=document.createElement('script'); let done=false;
+      const fail=()=>{ if(done) return; done=true; s.remove(); next(i+1); };
+      const to=setTimeout(fail,6000);
+      s.onload=()=>{ if(done) return; done=true; clearTimeout(to); if(window.LightweightCharts) res(window.LightweightCharts); else next(i+1); };
+      s.onerror=()=>{ clearTimeout(to); fail(); };
+      s.src=urls[i]; document.head.appendChild(s);
+    };
+    next(0);
+  });
+  return INV_LWC;
+}
+// 다른 보고서로 — 차트 함수 안에서는 S 가 일봉 자료라 화면 상태(S)를 여기서 바꾼다
+function invGo(rcept){ S.briefRcept=rcept; show('brief'); }
+
+// 말풍선 — 값이 먼저(두 그리기 방식이 같이 쓴다)
+function invTipFill(tip, p, cur, X, regOf){
+  const a=p.a;
+  tip.innerHTML='';
+  const v=el('div','invTipV'); const b=el('b',null,iPct(p.ret,1)); b.style.color=p.ret>=0?INV_UP:INV_DN; v.appendChild(b);
+  v.appendChild(el('span',null,invDate(a.date)+' → '+(p.open?'오늘':invDate(X.d[p.ke])))); tip.appendChild(v);
+  const h=el('div','invTipR'); h.appendChild(el('b',null,a.stamp+' '+a.label)); h.appendChild(el('small',null,cur?'지금 보는 보고서':'누르면 이 보고서로')); tip.appendChild(h);
+  const g=el('div','spTipG');
+  [['공시일 주가',Math.round(X.r[p.ks]).toLocaleString('ko-KR')+'원'],[p.open?'오늘 주가':'다음 공시 전날',Math.round(X.r[p.ke]).toLocaleString('ko-KR')+'원'],
+   ['구간 최고',iPct((p.hi/p.o-1)*100,0)+' · '+invDate(X.d[p.khi]).slice(5)],['구간 최저',iPct((p.lo/p.o-1)*100,0)+' · '+invDate(X.d[p.klo]).slice(5)],
+   ['새로 쓴 분량',a.x!=null?a.x.toFixed(2)+'× · '+(a.tier||''):'—'],['TTM 국면',regOf(a)||'—']]
+    .forEach(([k2,v2])=>{ const c=el('div'); c.appendChild(el('span',null,k2)); c.appendChild(el('b',null,v2)); g.appendChild(c); });
+  tip.appendChild(g);
+  tip.hidden=false;
+}
+
 function invArc(d, rep){
   const S=d.series;
   if(!S||!S.d||S.d.length<30) return null;
@@ -10416,7 +10471,7 @@ function invArc(d, rep){
   S_inv.range=S_inv.range||'5';
   [['all','전체'],['5','5년'],['2','2년'],['1','1년']].forEach(([k,t])=>{
     const b=el('button','spChip'+(S_inv.range===k?' on':''),t);
-    b.onclick=()=>{ S_inv.range=k; box.replaceWith(invArc(d, rep)); };
+    b.onclick=()=>{ S_inv.range=k; if(box._dispose) box._dispose(); box.replaceWith(invArc(d, rep)); };
     rng.appendChild(b); });
   top.appendChild(rng);
   box.appendChild(top);
@@ -10456,6 +10511,170 @@ function invArc(d, rep){
   const V=P.filter(p=>p.t1>t0);
   if(!V.length) return null;
 
+  const hold=el('div','invTvHold'); box.appendChild(hold);
+  const tip=el('div','spTip invPxTip'); tip.hidden=true; box.appendChild(tip);
+  const c={X:S, P, V, t0, tEnd, d, rep, regOf, hd, lg};
+  // 일봉(시가 · 고가 · 저가)이 있으면 TradingView 모양, 없거나 라이브러리를 못 불러오면 예전 SVG
+  if(!(S.o&&S.o.length===S.d.length)){ invCdlSvg(box, hold, tip, c); return box; }
+  hold.classList.add('invTv'); hold.style.height=(INV_TV.H+INV_TV.SH)+'px';
+  invLwc().then(LW=>{
+    if(box._gone) return;
+    if(LW){ try{ invTv(LW, box, hold, tip, c); return; }catch(e){ console.warn('invTv', e); hold.replaceChildren(); } }
+    hold.classList.remove('invTv'); hold.style.height=''; invCdlSvg(box, hold, tip, c);
+  });
+  return box;
+}
+
+// TradingView 모양 — 일봉 캔들 · 거래량 · 오른쪽 가격축 · 십자선. 보고서 구간은 일봉 뒤의 옅은 큰 캔들,
+// 수익률 · 지금 보는 보고서 틀 · 주석은 위 칸 SVG, 새로 쓴 분량 · TTM 국면은 시간축 아래 띠.
+// 화면은 고정(끌기 · 휠 확대 없음) — 기간은 칩으로만 바꾼다.
+const INV_TV={H:380, SH:84};   // 차트(시간축 포함) · 아래 띠 높이
+function invTv(LW, box, hold, tip, c){
+  const {X, P, t0, d, rep, regOf, hd, lg}=c;
+  const n=X.d.length, T=X.d.map(invDate);
+  const cs=getComputedStyle(box), cv=(k,f)=>(cs.getPropertyValue(k)||'').trim()||f;
+  const dim=cv('--p-dim','#9aa4b0'), font=cv('--f-num',"'IBM Plex Mono',Consolas,monospace");
+  const {H, SH}=INV_TV;
+  const M={cT:.11, cB:.21, vT:.82, vB:0};                       // 가격 칸 안: 캔들 11~79% · 거래량 82% 아래
+  const B={cap1:12, bub:31, cap2:58, rib:64, ribH:11};          // 아래 띠(px)
+  let k0=0; while(k0<n-1&&invDay(X.d[k0])<t0) k0++;
+  let lo0=Infinity, hi0=-Infinity; for(let k=k0;k<n;k++){ if(X.l[k]<lo0) lo0=X.l[k]; if(X.h[k]>hi0) hi0=X.h[k]; }
+  const logy=lo0>0&&hi0/lo0>4;
+  const isCur=p=>p.a.date===d.filed&&p.a.stamp===rep.stamp;
+
+  hd.querySelector('em').textContent='FILING CANDLES · 옅은 큰 캔들 하나 = 공시일부터 다음 보고서 공시 전날까지 · 그 위 일봉';
+  const lk=el('span','tv'); lk.appendChild(el('i','tvc')); lk.appendChild(document.createTextNode('일봉 · 거래량 (빨강 상승 · 파랑 하락)'+(logy?' · 로그 눈금':''))); lg.insertBefore(lk, lg.firstChild);
+
+  const under=svgEl('svg',{class:'invTvUnder','aria-hidden':'true'}), over=svgEl('svg',{class:'invTvOver','aria-hidden':'true'});
+  const strip=svgEl('svg',{class:'invTvStrip','aria-hidden':'true'}); strip.style.top=H+'px';
+  const host=el('div','invTvChart'); host.style.height=H+'px'; host.setAttribute('role','img'); host.setAttribute('aria-label','일봉과 보고서 구간 차트');
+  hold.style.height=(H+SH)+'px';
+  hold.append(under, host, over, strip);
+  const grid='rgba(255,255,255,.045)', axis='rgba(255,255,255,.12)';
+  const chart=LW.createChart(host,{width:hold.clientWidth||900, height:H,
+    layout:{background:{type:'solid',color:'transparent'}, textColor:dim, fontFamily:font, fontSize:11},
+    grid:{vertLines:{color:grid}, horzLines:{color:grid}},
+    rightPriceScale:{borderColor:axis, scaleMargins:{top:M.cT,bottom:M.cB}, mode:logy?1:0},
+    timeScale:{borderColor:axis, rightOffset:0, minBarSpacing:.01},   // 기본 하한 0.5px 이면 좁은 화면 · '전체'에서 앞 기간이 잘린다
+    crosshair:{mode:0, vertLine:{color:'rgba(236,234,228,.4)',labelBackgroundColor:'#2b333e'}, horzLine:{color:'rgba(236,234,228,.4)',labelBackgroundColor:'#2b333e'}},
+    handleScroll:false, handleScale:false, kineticScroll:{mouse:false,touch:false},
+    localization:{locale:'ko-KR', dateFormat:'yyyy-MM-dd', priceFormatter:x=>Math.round(x).toLocaleString('ko-KR')},
+  });
+  const cdl=chart.addCandlestickSeries({upColor:INV_UP, downColor:INV_DN, borderUpColor:INV_UP, borderDownColor:INV_DN, wickUpColor:INV_UP, wickDownColor:INV_DN,
+    priceLineStyle:2, priceLineWidth:1});
+  cdl.setData(T.map((t,k)=>({time:t, open:X.o[k], high:X.h[k], low:X.l[k], close:X.p[k]})));
+  const vol=chart.addHistogramSeries({priceScaleId:'vol', priceFormat:{type:'volume'}, lastValueVisible:false, priceLineVisible:false});
+  chart.priceScale('vol').applyOptions({scaleMargins:{top:M.vT,bottom:M.vB}, visible:false});
+  vol.setData(T.map((t,k)=>({time:t, value:X.v[k]||0, color:X.p[k]>=X.o[k]?'rgba(229,83,75,.38)':'rgba(57,135,229,.38)'})));
+  const ts=chart.timeScale();
+  const fit=()=>ts.setVisibleLogicalRange({from:k0-.5, to:n-1+3});
+  fit();
+
+  const pAt=k=>{ for(const p of P) if(k>=p.ks&&k<=p.ke) return p; return null; };
+  let geo=[], cur=null, ph=0, pw=0, raf=0;
+  const veil=svgEl('g',{class:'invTvVeil'}), veil2=svgEl('g',{class:'invTvVeil'});
+
+  function lay(){
+    const w=ts.width(), h=H-ts.height();
+    if(!(w>0&&h>0)) return;
+    pw=w; ph=h;
+    [[under,h],[over,h],[strip,SH]].forEach(([s,hh])=>{ s.setAttribute('width',w); s.setAttribute('height',hh); s.setAttribute('viewBox','0 0 '+w+' '+hh); s.replaceChildren(); });
+    const xOf=k=>ts.logicalToCoordinate(k), sp=xOf(k0+1)-xOf(k0);
+    const yOf=v=>{ const y=cdl.priceToCoordinate(v); return y==null?null:Math.max(-12,Math.min(h*(1-M.cB)+6,y)); };
+    const cap=(y,t,e)=>{ const x=svgEl('text',{x:2,y,class:'invCap'}); x.innerHTML='<tspan class="k"></tspan><tspan class="e" dx="7"></tspan>';
+      x.querySelector('.k').textContent=t; x.querySelector('.e').textContent=e||''; strip.appendChild(x); };
+    geo=[];
+    const vis=P.filter(p=>xOf(p.ke)+sp/2>0);
+    const many=vis.length>14;   // 구간이 촘촘하면 큰 움직임에만 수익률을 적는다
+    vis.forEach(p=>{
+      let x0=xOf(p.ks)-sp/2, x1=xOf(p.ke)+sp/2;
+      const cut=x0<0; x0=Math.max(0,x0); x1=Math.min(w,x1);
+      if(x1-x0<1) return;
+      const cu=isCur(p), up=p.ret>=0, col=up?INV_UP:INV_DN, xm=(x0+x1)/2;
+      const yt=yOf(Math.max(p.o,p.c)), yb=yOf(Math.min(p.o,p.c)), yh=yOf(p.hi), yl=yOf(p.lo);
+      const g=svgEl('g',{class:'invTvCol'+(cu?' cur':'')});
+      if(!cut) g.appendChild(svgEl('line',{x1:x0,x2:x0,y1:0,y2:h,class:'invTvSep'}));
+      // 보고서 캔들 — 꼬리 = 구간 최고 · 최저, 몸통 = 공시일 주가 ↔ 다음 공시 전날
+      const wk=svgEl('line',{x1:xm,x2:xm,y1:yh,y2:yl,class:'invTvWick'}); wk.setAttribute('stroke',col); g.appendChild(wk);
+      const body=svgEl('rect',{x:x0+1,y:yt,width:Math.max(1,x1-x0-2),height:Math.max(2,yb-yt),rx:Math.min(4,(x1-x0)/3),class:'invTvBody'});
+      body.setAttribute('fill',col); body.setAttribute('stroke',col); g.appendChild(body);
+      under.appendChild(g);
+      // 아래 띠 — 새로 쓴 분량(공시일 자리의 원) · TTM 국면
+      if(!cut) strip.appendChild(svgEl('line',{x1:x0,x2:x0,y1:0,y2:SH,class:'invTvSep'}));
+      if(p.a.x!=null&&!cut){ const r=2.5+Math.min(p.a.x,3)/3*7;
+        strip.appendChild(svgEl('circle',{cx:x0+Math.min(r+1,(x1-x0)/2),cy:B.bub,r,class:'invBub'+(cu?' cur':p.a.x>=1.5?' hot':'')})); }
+      const rgk=regOf(p.a);
+      const rb=svgEl('rect',{x:x0+1,y:B.rib,width:Math.max(1,x1-x0-2),height:B.ribH,rx:2,class:'invRib'+(rgk?'':' none')}); if(rgk) rb.setAttribute('fill',DRK_RC[rgk].c); strip.appendChild(rb);
+      // 지금 보는 보고서 — 금색 틀
+      if(cu) over.appendChild(svgEl('rect',{x:x0-2,y:yh-6,width:x1-x0+4,height:yl-yh+12,rx:6,class:'invCurFrame'}));
+      // 수익률 — 골라서 적는다
+      if(cu||Math.abs(p.ret)>=(many?35:15)||(x1-x0>70&&Math.abs(p.ret)>=8)){
+        const nearR=xm+34>w, nearL=xm-34<0;
+        const t=svgEl('text',{x:nearR?Math.min(x1,w-2):nearL?Math.max(x0,2):xm,y:yh-(cu?12:8),'text-anchor':nearR?'end':nearL?'start':'middle',class:'invRet'+(cu?' cur':'')});
+        t.innerHTML='<tspan class="g"></tspan><tspan></tspan>';
+        t.firstChild.textContent=up?'▲':'▼'; t.firstChild.setAttribute('fill',col);
+        t.lastChild.textContent=' '+(up?'+':'')+p.ret.toFixed(0)+'%'; over.appendChild(t);
+      }
+      geo.push({p,x0,x1,xm,cur:cu,g});
+    });
+    cap(B.cap1,'새로 쓴 분량','원이 클수록 평소보다 많이'); cap(B.cap2,'TTM 국면','');
+    // 주석 띠 — 지금 보는 보고서
+    const cc=geo.find(q=>q.cur);
+    if(cc){
+      const p=cc.p;
+      const txt='▼ '+invDate(d.filed)+' 공시 '+Math.round(X.r[p.ks]).toLocaleString('ko-KR')+'원 → '+(p.open?'오늘':invDate(X.d[p.ke]))+' '+iPct(p.ret,0);
+      const tw=[...txt].reduce((s,ch)=>s+(/[가-힣]/.test(ch)?12.5:7.3),0)+22;
+      const px=Math.max(2,Math.min(w-tw-2,cc.xm-tw/2));
+      over.appendChild(svgEl('rect',{x:px,y:4,width:tw,height:24,rx:7,class:'invCurPill'}));
+      const t=svgEl('text',{x:px+11,y:20.5,class:'invCurT'}); t.textContent=txt; over.appendChild(t);
+    }
+    over.appendChild(veil); strip.appendChild(veil2);
+    focus(cur, true);
+  }
+  const sched=()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>{ raf=requestAnimationFrame(lay); }); };
+
+  // 마우스가 놓인 구간 — 나머지는 어둡게, 말풍선은 그 구간 오른쪽(넘치면 왼쪽)
+  function focus(p, keep){
+    if(p===cur&&!keep) return;
+    cur=p;
+    const q=p&&geo.find(o=>o.p===p);
+    geo.forEach(o=>o.g.classList.toggle('on',o===q));
+    veil.replaceChildren(); veil2.replaceChildren();
+    hold.classList.toggle('tvGo',!!q&&!q.cur);   // .go 는 전역 버튼 클래스라 피한다
+    if(!q){ tip.hidden=true; return; }
+    [[veil,ph],[veil2,SH]].forEach(([v,hh])=>{
+      if(q.x0>0) v.appendChild(svgEl('rect',{x:0,y:0,width:q.x0,height:hh}));
+      if(q.x1<pw) v.appendChild(svgEl('rect',{x:q.x1,y:0,width:pw-q.x1,height:hh})); });
+    invTipFill(tip, p, q.cur, X, regOf);
+    const hb=hold.getBoundingClientRect(), bx=box.getBoundingClientRect();
+    let lx=(hb.left-bx.left)+q.x1+12; if(lx+tip.offsetWidth>bx.width-4) lx=(hb.left-bx.left)+q.x0-tip.offsetWidth-12;
+    tip.style.left=Math.max(4,lx)+'px'; tip.style.top=((hb.top-bx.top)+ph*M.cT)+'px';
+  }
+  const pOfK=k=>k>=k0&&k<n?pAt(k):null;
+  const pOf=prm=>(!prm||!prm.point||prm.logical==null)?null:pOfK(Math.round(prm.logical));
+  let onStrip=false;   // 차트에서 아래 띠로 내려오면 차트 쪽 '빠져나감'이 늦게 와서 띠의 초점을 지우지 않게
+  chart.subscribeCrosshairMove(prm=>{ if(!onStrip) focus(pOf(prm)); });
+  chart.subscribeClick(prm=>{ const p=pOf(prm); if(p&&!isCur(p)) invGo(p.a.rcept); });
+  // 아래 띠도 같은 구간을 잡는다
+  const stripP=e=>{ const r=strip.getBoundingClientRect(), x=e.clientX-r.left; if(x<0||x>pw) return null; const lg_=ts.coordinateToLogical(x); return lg_==null?null:pOfK(Math.round(lg_)); };
+  strip.addEventListener('pointerenter',()=>{ onStrip=true; });
+  strip.addEventListener('pointerleave',()=>{ onStrip=false; });
+  strip.addEventListener('pointermove',e=>focus(stripP(e)));
+  strip.addEventListener('click',e=>{ const p=stripP(e); if(p&&!isCur(p)) invGo(p.a.rcept); });
+  hold.addEventListener('pointerleave',()=>focus(null));
+
+  // 크기가 바뀌면 같은 기간을 다시 맞추고 위 · 아래 칸을 다시 그린다
+  let lastW=0;
+  const ro=new ResizeObserver(()=>{ const w=hold.clientWidth; if(w>0&&w!==lastW){ lastW=w; chart.applyOptions({width:w}); fit(); sched(); } });
+  ro.observe(hold);
+  ts.subscribeVisibleLogicalRangeChange(sched);
+  box._dispose=()=>{ box._gone=true; ro.disconnect(); cancelAnimationFrame(raf); chart.remove(); };
+  sched();
+}
+
+// 예전 SVG 보고서 캔들 — 일봉이 없거나 차트 라이브러리를 못 불러올 때(오프라인)
+function invCdlSvg(box, hold, tip, c){
+  const {X:S, V, t0, tEnd, d, rep, regOf}=c;
   const W=1000,L=14,R=84;
   const AT=8, AB=36, PT=50, PB=318, BT=336, BB=360, GT=372, GH=12, XA=GT+GH+22;
   const H=XA+(tEnd-t0<=365.25*2.2?24:10);   // 그림 높이는 축 라벨까지만 — 아래 빈 띠를 남기지 않는다
@@ -10546,35 +10765,21 @@ function invArc(d, rep){
     svg.appendChild(svgEl('rect',{x:px,y:AT,width:tw,height:AB-AT-4,rx:7,class:'invCurPill'}));
     const t=svgEl('text',{x:px+11,y:AT+18,class:'invCurT'}); t.textContent=txt; svg.appendChild(t);
   }
-  box.appendChild(svg);
+  hold.appendChild(svg);
 
-  // 말풍선 — 값이 먼저
-  const tip=el('div','spTip invPxTip'); tip.hidden=true; box.appendChild(tip);
   cols.forEach(cl=>{
     const hit=cl.g.querySelector('.invColHit');
     hit.addEventListener('pointerenter',()=>{
       box.classList.add('focusing'); cols.forEach(o=>o.g.classList.toggle('on',o===cl));
-      const p=cl.p, a=p.a;
-      tip.innerHTML='';
-      const v=el('div','invTipV'); const b=el('b',null,iPct(p.ret,1)); b.style.color=p.ret>=0?INV_UP:INV_DN; v.appendChild(b);
-      v.appendChild(el('span',null,invDate(a.date)+' → '+(p.open?'오늘':invDate(S.d[p.ke])))); tip.appendChild(v);
-      const h=el('div','invTipR'); h.appendChild(el('b',null,a.stamp+' '+a.label)); h.appendChild(el('small',null,cl.cur?'지금 보는 보고서':'누르면 이 보고서로')); tip.appendChild(h);
-      const g=el('div','spTipG');
-      [['공시일 주가',Math.round(S.r[p.ks]).toLocaleString('ko-KR')+'원'],[p.open?'오늘 주가':'다음 공시 전날',Math.round(S.r[p.ke]).toLocaleString('ko-KR')+'원'],
-       ['구간 최고',iPct((p.hi/p.o-1)*100,0)+' · '+invDate(S.d[p.khi]).slice(5)],['구간 최저',iPct((p.lo/p.o-1)*100,0)+' · '+invDate(S.d[p.klo]).slice(5)],
-       ['새로 쓴 분량',a.x!=null?a.x.toFixed(2)+'× · '+(a.tier||''):'—'],['TTM 국면',regOf(a)||'—']]
-        .forEach(([k2,v2])=>{ const c=el('div'); c.appendChild(el('span',null,k2)); c.appendChild(el('b',null,v2)); g.appendChild(c); });
-      tip.appendChild(g);
-      tip.hidden=false;
+      invTipFill(tip, cl.p, cl.cur, S, regOf);
       const r=svg.getBoundingClientRect(), bx=box.getBoundingClientRect(), sc=r.width/W;
       let lx=(r.left-bx.left)+cl.x1*sc+12; if(lx+tip.offsetWidth>bx.width-4) lx=(r.left-bx.left)+cl.x0*sc-tip.offsetWidth-12;
       tip.style.left=Math.max(4,lx)+'px'; tip.style.top=((r.top-bx.top)+PT*sc)+'px';
       hit.style.cursor=cl.cur?'default':'pointer';
     });
     hit.addEventListener('pointerleave',()=>{ box.classList.remove('focusing'); cols.forEach(o=>o.g.classList.remove('on')); tip.hidden=true; });
-    hit.addEventListener('click',()=>{ if(!cl.cur){ S.briefRcept=cl.p.a.rcept; show('brief'); } });
+    hit.addEventListener('click',()=>{ if(!cl.cur) invGo(cl.p.a.rcept); });
   });
-  return box;
 }
 
 // 기회 지형도 — 가로 시간 지평(지금 → 구조), 세로 방향(위 기회 · 아래 위험), 크기 무게, 모양 출처
