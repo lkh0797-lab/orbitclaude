@@ -5,7 +5,8 @@
 카드(변곡점.py lenses)의 배지를 그 보고서 공시일 시점 숫자(분기변화_백테스트.py 와 같은 시점 재구성 — 그때까지 나온 재무, 공시 다음 거래일 종가)로 다시 계산한다.
   켄 피셔      배지 = PSR 1.5배↓ · 매출 5년 연 15%↑ · 순이익률 5년 평균 5%↑ 가운데 몇 개(카드의 PRR 은 연구개발비 시점 자료가 없어 뺐다 — 분모는 카드처럼 4)
   드러켄밀러   배지 = 가속(B) +3%p↑ · 분기 영업이익률 직전 분기보다 ↑ · 재고일수 7분기 전보다 ↓ 가운데 몇 개(분모 3)
-               가속(B)는 가속도 캐시(.cache/druck, 지금 VERSION 만)의 같은 분기 키 값(카드와 같은 B) — 캐시가 없는 회사 · 분기는 판정 없음
+               가속(B)는 가속도 캐시(.cache/druck, 지금 VERSION 만)의 같은 분기 키 값(카드와 같은 B) — 캐시가 없는 회사 · 분기, B기준일이
+               공시일 뒤인 B(그날엔 알 수 없던 값)는 판정 없음
   버핏         배지 = ROE 10년 평균 12%↑ · 최저 5%↑ · 영업이익률 변동계수 0.35↓ · 유보이익 1원 테스트 1원↑ 가운데 몇 개(분모 4)
                → 강함(75%↑) = 사라, 보통 = 판정 없음, 약함(45%↓) = 피하라
   린치         배지는 회사 종류라 방향이 없다 — 카드의 PEG(PER ÷ EPS 3년 연평균 성장)로 1 미만 = 사라, 2 이상 = 피하라(린치의 기준)
@@ -86,9 +87,10 @@ def one(c):
         if not r["tag"] and m in S.Q_OF_MONTH:
             lab = "%sQ%d" % (y, S.Q_OF_MONTH[m])
             filed[lab] = min(filed.get(lab, "99999999"), r["rcept"][:8])
-    # 가속(B) — 가속도 캐시(S._druck_read: v 가 지금 DRK.VERSION 일 때만)의 분기 키 n(= qn − 1) 값. 다시 계산하지 않는다
+    # 가속(B) — 가속도 캐시(S._druck_read: v 가 지금 DRK.VERSION 일 때만)의 분기 키 n(= qn − 1) 값과 B기준일. 다시 계산하지 않는다.
+    # 공시일 t 에는 B기준일 ≤ t 인 B 만 쓴다(S.DRK.b_known) — 그 뒤에 나온 자료로 셈한 B 는 그날 카드에 없던 값이다
     dk = S._druck_read(code)
-    acc_b = {p["n"]: p.get("가속B") for p in (dk or {}).get("points") or [] if p.get("n") is not None}
+    acc_b = S.DRK.b_lookup((dk or {}).get("points"))
     out = []
     for lab in labs:
         t = filed.get(lab)
@@ -113,7 +115,7 @@ def one(c):
         f_ok = (psr is not None and psr <= 1.5) + (g5 is not None and g5 >= 15) + (nim5 is not None and nim5 >= 5)
         f_call = grade(f_ok, 4) if psr is not None else None
         # ---- 드러켄밀러(분기 숫자) — 가속은 같은 시점(이 공시의 분기 키) 가속도 캐시의 가속(B), 카드와 같은 문턱(+3%p)
-        acc = acc_b.get(qn(lab) - 1)
+        acc = S.DRK.b_known(acc_b, qn(lab) - 1, t)
         m0, m1 = q_opm(lab), q_opm(sh(lab, 1))
         mchg = m0 - m1 if m0 is not None and m1 is not None else None
         invd = lambda L: (R[L]["inv"] / R[L]["rev_ttm"] * 365) if L in R and R[L].get("inv") and R[L].get("rev_ttm") else None

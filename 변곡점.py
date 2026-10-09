@@ -25,7 +25,12 @@ from collections import Counter
 
 VERSION = 9          # 9: 린치 유형을 풍경 탭 규칙으로. 8: 첫 사업연도(제 1 기) 빼기 · 표 칸 잡음 빼기 · 이익률 흔들림은 추세를 뺀 값 · PEG 하나로 · 카드 이름 정직화
                      # (분기 쪽 — 가속 전환 사건 · 드러켄밀러 카드 — 은 가속도 캐시를 읽으니 서버 inflect 캐시 키에 드러켄밀러.VERSION 도 붙는다)
-DRUCK_BAND = 3.0     # %p — 드러켄밀러.PHASE_BAND(가속(B) 띠)와 같은 값. 카드 배지의 '가속' 문턱
+
+import os as _os
+import sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+# 카드 배지의 '가속' 문턱 = 가속(B) 띠 — 숫자를 따로 두지 않고 드러켄밀러(가속도 탭 · 업황 시계와 한 곳)에서 읽는다(산업.py 와 같은 import)
+from 드러켄밀러 import PHASE_BAND as DRUCK_BAND  # noqa: E402
 
 
 # ---------------------------------------------------------------- 연간 재무

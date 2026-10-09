@@ -8,6 +8,7 @@ t 다음 거래일 종가부터 12개월 초과수익(전 종목 중앙값 대�
   피셔   PSR(시총 ÷ 매출 4분기) 절대 0.75 · 3배, PSR 자기 역사 백분위, 슈퍼 컴퍼니(매출 5년 연 15%↑ · 순이익률 5년 평균 5%↑), 글리치
   드러켄밀러  매출 증가율 · 가속(B) · 설비투자 강도 · 재고일수 — 가속(B)는 가속도 캐시(.cache/druck, 지금 VERSION 만)의 같은 분기 키 값을
              그대로 붙인다(화면 · 가속도 탭과 같은 B, 여기서 다시 계산하지 않는다). 캐시가 없는 회사 · 분기는 그 규칙에서 빠진다(표본 = 캐시 범위)
+             B기준일(그 B 를 셈한 자료가 다 나온 날)이 공시일 뒤면 그 공시엔 B 를 붙이지 않는다(앞날 자료 없음)
   버핏   ROE · ROE 10년 평균/최저 · 영업이익률 흔들림
   린치   PEG · 성장 분류
   멍거   영업CF ÷ 순이익 < 0.6 · 매출채권일수 3년 +20% · 재고일수 3년 +20% · 부채비율 200%↑ · 3년 안 증자 · 3년 중 2년 적자
@@ -55,9 +56,10 @@ def one(c):
     by_q = {qn(l): l for l in labs}
     get = lambda lab, k, back=0: (R.get(by_q.get(qn(lab) - back)) or {}).get(k)
     issue_q = {qn(x["at"]) for x in pr.get("splits") or [] if x.get("kind", "").startswith("증자")}
-    # 가속(B) — 가속도 캐시(S._druck_read: v 가 지금 DRK.VERSION 일 때만)의 분기 키 n(= 연도×4 + 분기 − 1 = qn − 1) 값
+    # 가속(B) — 가속도 캐시(S._druck_read: v 가 지금 DRK.VERSION 일 때만)의 분기 키 n(= 연도×4 + 분기 − 1 = qn − 1) 값과 B기준일.
+    # 공시일 t 에 붙이는 것은 B기준일 ≤ t 인 B 만(S.DRK.b_known) — 뒤 정정 · 늦게 나온 자료로 셈한 B 는 그 공시엔 없던 값이다
     dk = S._druck_read(code)
-    acc_b = {p["n"]: p.get("가속B") for p in (dk or {}).get("points") or [] if p.get("n") is not None}
+    acc_b = S.DRK.b_lookup((dk or {}).get("points"))
     filed = {}
     for r in c["reports"]:
         y, m = r["stamp"].split("-")
@@ -110,6 +112,8 @@ def one(c):
               "debt": debt is not None and eq and eq > 0 and debt / eq > 2,
               "issue": any(qn(lab) - 12 < q <= qn(lab) for q in issue_q),
               "loss": losses >= 2}
+        b_raw = acc_b.get(qn(lab) - 1, (None, None))[0]
+        b_now = S.DRK.b_known(acc_b, qn(lab) - 1, t)
         t1 = W.next_day(code, t)           # 공시 다음 거래일 종가(달력 +1일이면 금요일 공시가 그날 종가로 샀다)
         a = W.ret(code, t1, W.shift(t1, 365)) if t1 else None
         b = W.grp_ret("__all__", t1, W.shift(t1, 365)) if t1 else None
@@ -117,7 +121,7 @@ def one(c):
                     "psr": psr, "psr_pct": psr_pct, "per": per, "per_pct": per_pct, "peg": peg,
                     "g5": g5, "nim5": nim5, "glitch": glitch, "rev_yoy": r.get("rev_yoy"),
                     "acc": (r.get("rev_yoy") - get(lab, "rev_yoy", 1)) if r.get("rev_yoy") is not None and get(lab, "rev_yoy", 1) is not None else None,
-                    "accB": acc_b.get(qn(lab) - 1),
+                    "accB": b_now, "accB_late": b_raw is not None and b_now is None,
                     "capex_int": (r.get("capex_ttm") / rt * 100) if r.get("capex_ttm") and rt else None, "inv_days": id0,
                     "roe": r.get("roe"), "roe_avg": (sum(roes) / len(roes)) if len(roes) >= 5 else None,
                     "roe_min": min(roes) if len(roes) >= 5 else None, "opm_vol": opm_vol, "cfo_ni": cfo_ni,
@@ -172,9 +176,11 @@ def report(panel):
     rep = {"n": len(panel), "rules": {}, "combo": {}, "ic": {}, "base_trap": trap(panel)}
     # 가속(B) 규칙의 표본 = 가속도 캐시가 있는 공시뿐 — 캐시가 전 종목에 다 쌓이기 전엔 잠정 성적이다
     cov = [r for r in panel if r.get("accB") is not None]
+    late = sum(1 for r in panel if r.get("accB_late"))
     rep["accB_cover"] = {"n": len(cov), "firms": len({r["code"] for r in cov}), "n_all": len(panel),
-                         "firms_all": len({r["code"] for r in panel})}
-    print("가속(B) 붙은 공시 %d / %d (회사 %d / %d) — 가속도 캐시 범위" % (len(cov), len(panel), rep["accB_cover"]["firms"], rep["accB_cover"]["firms_all"]))
+                         "firms_all": len({r["code"] for r in panel}), "late": late}
+    print("가속(B) 붙은 공시 %d / %d (회사 %d / %d) — 가속도 캐시 범위 · B기준일이 공시일 뒤라 뺀 공시 %d"
+          % (len(cov), len(panel), rep["accB_cover"]["firms"], rep["accB_cover"]["firms_all"], late))
     print("\n%-38s %6s %5s %7s %7s %7s %16s %7s %7s %7s" % ("규칙 — 12개월 초과수익", "해당", "회사", "해당", "나머지", "차이", "90% 구간", "앞", "뒤", "함정%"))
     for name, fn, in [(n, f) for n, f in RULES] + [(n, f) for n, f in COMBO]:
         t = B.rule_test(panel, fn, "ex12m")

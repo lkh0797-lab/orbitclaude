@@ -618,6 +618,20 @@ def accel(pts, basis="매출"):
     return pts
 
 
+def b_lookup(points):
+    """캐시 점 → {분기 키 n: (가속B, B기준일)} — 검증 도구가 공시마다 붙일 B 와, 그 B 를 셈한 자료가 다 나온 날."""
+    return {p["n"]: (p.get("가속B"), p.get("B기준일")) for p in points or [] if p.get("n") is not None}
+
+
+def b_known(lookup, n, t):
+    """공시일 t(YYYYMMDD)에 알 수 있던 분기 n 의 가속(B) — B기준일 ≤ t 일 때만(엄격). 기준일이 t 뒤(뒤 정정 · 늦게 나온 앞 분기)이거나
+    없으면 None. (구루렌즈_검증 · 구루적중률_백테스트 가 쓴다 — 가속기준_백테스트의 '공시 당시 알 수 있던 것만'과 같은 뜻)"""
+    b, d = lookup.get(n, (None, None))
+    if b is None or not d or str(d) > str(t):
+        return None
+    return b
+
+
 
 # ---------------------------------------------------------------- 분기 주식 수 · 분할 보정 EPS
 # 분기별 주식 수(지배순이익 ÷ EPS)를 거꾸로 구해, 한 분기에 1.8배 넘게 뛰거나 0.56배 밑으로 줄면 분할 · 병합으로 보고

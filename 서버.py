@@ -4631,12 +4631,15 @@ def _qtr_bt():
     return _QBT["d"]
 
 
+EV_PASS = "뚜렷 · 앞뒤 기간 같은 방향"     # 통과 문구 — 90% 구간이 0을 넘고 앞뒤 기간이 같은 방향. 화면(index.html EV_PASS)도 이 문구만 색칠한다
+
+
 def _ev_word(diff, ci, early, late):
     if diff is None:
         return None
     sig = bool(ci) and ci[0] is not None and ci[1] is not None and (ci[0] > 0 or ci[1] < 0)
     same = early is not None and late is not None and (early > 0) == (late > 0) == (diff > 0)
-    return "뚜렷 · 앞뒤 기간 같은 방향" if sig and same else "뚜렷하나 기간마다 달랐다" if sig else "통계적으로 뚜렷하지 않음"
+    return EV_PASS if sig and same else "뚜렷하나 기간마다 달랐다" if sig else "통계적으로 뚜렷하지 않음"
 
 
 def _qtr_ev(rule=None, cat=None):
@@ -4940,6 +4943,13 @@ def _lens_ev(name):
             "trap": t.get("trap"), "word": _ev_word(t["diff"], t.get("ci"), t.get("early"), t.get("late"))}
 
 
+def _checked_call(tone, text, ev):
+    """과거 성적(ev)이 통과(EV_PASS)일 때만 방향 색(tone)을 단다. 아니면 'nu' + ' (검증 안 됨)' — 통과 못 한 규칙이 초록으로 보이지 않게."""
+    if (ev or {}).get("word") == EV_PASS:
+        return {"tone": tone, "text": text, "ev": ev}
+    return {"tone": "nu", "text": text + " (검증 안 됨)", "ev": ev}
+
+
 def lens_value(code):
     """지금 이 회사의 값 위치 · 가속 · 멍거 경고와, 그 판정의 과거 성적. 렌즈 카드마다 큰 표본 성적."""
     c = company_by_code(code)
@@ -4996,9 +5006,8 @@ def lens_value(code):
     if psr is not None and psr >= 3:
         calls.append({"tone": "dn", "text": "PSR %.1f배 — 매출의 3배를 넘는 값" % psr, "ev": _lens_ev("피셔 · PSR 3배↑(절대)")})
     if acc is not None and acc >= DRK.PHASE_BAND:
-        calls.append({"tone": "up", "text": "매출 가속(B) %+.1f%%p(%s 속도 %+.0f%%, %s)" % (
-                          acc, lastp.get("label", ""), lastp.get("속도") or 0, lastp.get("국면") or "국면 판단 전"),
-                      "ev": _lens_ev(DRUCK_LENS)})
+        calls.append(_checked_call("up", "매출 가속(B) %+.1f%%p(%s 속도 %+.0f%%, %s)" % (
+                         acc, lastp.get("label", ""), lastp.get("속도") or 0, lastp.get("국면") or "국면 판단 전"), _lens_ev(DRUCK_LENS)))
     if peg is not None and peg < 1:
         calls.append({"tone": "nu", "text": "PEG %.1f — 성장 대비 싸다(2020년 뒤에만 통했다)" % peg, "ev": _lens_ev("린치 · PEG < 1")})
     out["calls"] = calls

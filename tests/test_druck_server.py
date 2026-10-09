@@ -388,6 +388,33 @@ def test_dip_points_cache_first_then_short_series_keeps_gap_points(monkeypatch, 
     assert [p["label"] for p in SRV._dip_points(screen_co)] == ["2025Q1", "2025Q2"] and got == {(2025, 1): "20250515"}
 
 
+def test_checked_call_is_coloured_only_for_the_pass_wording():
+    ok = {"word": SRV.EV_PASS, "diff": 2.0}
+    assert SRV._checked_call("up", "가속", ok) == {"tone": "up", "text": "가속", "ev": ok}
+    for ev in ({"word": "뚜렷하나 기간마다 달랐다"}, {"word": "통계적으로 뚜렷하지 않음"}, None):
+        c = SRV._checked_call("up", "가속", ev)
+        assert c["tone"] == "nu" and c["text"] == "가속 (검증 안 됨)" and c["ev"] is ev
+    assert SRV._ev_word(1.0, [0.2, 2.0], 0.5, 0.7) == SRV.EV_PASS
+
+
+def test_lens_value_b_call_neutral_when_lens_fails(monkeypatch):
+    c = {"code": "000001", "name": "가짜", "reports": []}
+    monkeypatch.setattr(SRV, "company_by_code", lambda code: c)
+    monkeypatch.setattr(SRV, "corp_code_of", lambda code: "00000001")
+    monkeypatch.setattr(SRV, "matrix_cached", lambda *a, **kw: {})
+    monkeypatch.setattr(SRV, "_guru_hit_for", lambda code: None)
+    R = {"2026Q2": {"shares": 10.0, "rev_ttm": 1000.0, "eps_ttm": 10.0}}
+    monkeypatch.setattr(SRV, "_pipe_rows", lambda *a, **kw: {"labs": ["2026Q2"], "rows": R, "px": {"p": [50.0], "d": [20261008]}})
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: {"points": [qp(2026, 2, 가속B=4.8, 속도=34.0, 국면="확장 가속")]})
+    bt = {"rules": {SRV.DRUCK_LENS: {"n_on": 4093, "diff": 1.2, "ci": [-0.2, 2.9], "early": 1.4, "late": 1.4}}}
+    monkeypatch.setattr(SRV, "_lens_bt", lambda: bt)
+    call = next(x for x in SRV.lens_value("000001")["calls"] if "가속(B)" in x["text"])
+    assert call["tone"] == "nu" and call["text"].endswith(" (검증 안 됨)")
+    bt["rules"][SRV.DRUCK_LENS]["ci"] = [0.3, 2.9]                                    # 통과 — 초록
+    call = next(x for x in SRV.lens_value("000001")["calls"] if "가속(B)" in x["text"])
+    assert call["tone"] == "up" and "검증 안 됨" not in call["text"]
+
+
 def test_lens_rule_name_is_b():
     assert SRV.LENS_RULES["스탠리 드러켄밀러"][0] == SRV.DRUCK_LENS == "드러켄밀러 · 가속(B) +3%p↑"
 

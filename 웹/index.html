@@ -8386,6 +8386,21 @@ const DRK_REG=[
   {k:'역성장 심화', en:'CONTRACTING',  c:'#6b7480', a:'var(--reg-con)', d:'줄고, 줄어드는 속도도 빨라진다'},
 ];
 const DRK_RC=Object.fromEntries(DRK_REG.map(r=>[r.k,r]));
+// 7국면(가속도 캐시 · 업황 시계 공용 이름, 서버 _inv_regimes · ttm.reg) 색 — 산업 탭 GR_PHASE 클래스가 업황 시계(.grClock .pt.*)에서
+// 실제로 칠하는 테마 변수 · 투명도를 그대로 읽는다. 변화 브리핑 캔들 띠 · 범례 · 국면별 통계용 최소 보호(화면 개편은 Task 8)
+const GR_FILL={pos2:['--add',1],pos:['--add',.75],warn:['--warn',1],flat:['--faint',1],acc:['--accent',1],neg:['--del',.75],neg2:['--del',1]};
+const RC_NONE='#8b95a3';
+// 국면 이름 → {c: 색, k: 이름}. 옛 4국면(DRK_RC) · 7국면(GR_PHASE) · 그 밖은 회색 — 모르는 이름에 .c 를 읽다 터지지 않게
+function rcOf(k){
+  if(k&&DRK_RC[k]) return {c:DRK_RC[k].c,k};
+  const f=k&&GR_PHASE[k]&&GR_FILL[GR_PHASE[k][0]];
+  if(!f) return {c:RC_NONE,k:k||null};
+  let c=''; try{ c=getComputedStyle(document.documentElement).getPropertyValue(f[0]).trim(); }catch(e){}
+  if(!/^#[0-9a-f]{6}$/i.test(c)) return {c:c||RC_NONE,k};
+  return {c:f[1]<1?c+Math.round(f[1]*255).toString(16).padStart(2,'0'):c,k};
+}
+// 변화 브리핑의 국면 차례 — 7국면(지금 정의) 다음 옛 4국면(옛 캐시가 남은 경우)
+const RC_KEYS=[...Object.keys(GR_PHASE),...DRK_REG.map(r=>r.k)];
 const DRK_READ={
   '가속 성장':'성장과 가속이 같이 간다. 드러켄밀러가 비중을 싣는 국면이다 — 재고·채권이 받쳐주는지만 확인하라.',
   '바닥 통과':'역성장이지만 2차 미분이 먼저 돌았다. 드러켄밀러가 먼저 들어가는 자리다 — 다음 분기에도 가속이 이어지는지가 확인 포인트.',
@@ -9296,8 +9311,8 @@ function invArgs(d, v){
   });
   const fp=k=>fin[k]&&fin[k].pct!=null?fin[k].pct:null, fv=k=>fin[k]?fin[k].value:null;
   if(ttm.a!=null && Math.abs(ttm.a)>=.5)
-    A.push({id:null,syn:'ttm',type:'momentum',sign:Math.sign(ttm.a),w:Math.min(.9,Math.abs(ttm.a)/3*.8+.2),label:'TTM 가속 '+(ttm.a>=0?'+':'')+ttm.a.toFixed(1)+'%p',
-            text:'최근 4분기 매출 '+iPct(ttm.g,0)+', 그 증가율이 분기당 '+(ttm.a>=0?'+':'')+ttm.a.toFixed(1)+'%p', hz:.1});
+    A.push({id:null,syn:'ttm',type:'momentum',sign:Math.sign(ttm.a),w:Math.min(.9,Math.abs(ttm.a)/3*.8+.2),label:'가속(B) '+(ttm.a>=0?'+':'')+ttm.a.toFixed(1)+'%p',
+            text:'최근 4분기 매출 '+iPct(ttm.g,0)+', 가속(B) '+(ttm.a>=0?'+':'')+ttm.a.toFixed(1)+'%p'+(ttm.reg?' · '+ttm.reg:''), hz:.1});
   const rev=fp('매출액');
   if(rev!=null&&ttm.g!=null&&Math.abs(rev-ttm.g)>15)
     A.push({id:null,syn:'ttm',type:'momentum',sign:rev>ttm.g?1:-1,w:.55,label:'분기 vs TTM',
@@ -9999,7 +10014,7 @@ function invOnePager(d, sigs, fin, lead, pos, neg){
   const seenM=new Set();
   const GOODK=['수주','증설','신사업','R&D','고객','M&A'];
   pos.forEach(s=>{ const k=s.label.split(' · ')[0]; if(GOODK.includes(k)&&INV_MON[k]&&!seenM.has(k)&&seenM.size<2){ seenM.add(k); li(u4,'더 믿게 될 때 — '+INV_MON[k],s); } });
-  if(d.ttm&&d.ttm.a!=null) li(u4,d.ttm.a>0?'더 믿게 될 때 — 최근 4분기 매출 가속이 다음 분기에도 이어진다(지금 '+(d.ttm.a>=0?'+':'')+d.ttm.a.toFixed(1)+'%p/분기)':'더 믿게 될 때 — 매출 감속이 멈추고 가속으로 돈다');
+  if(d.ttm&&d.ttm.a!=null) li(u4,d.ttm.a>0?'더 믿게 될 때 — 매출 가속이 다음 분기에도 이어진다(지금 가속(B) '+(d.ttm.a>=0?'+':'')+d.ttm.a.toFixed(1)+'%p)':'더 믿게 될 때 — 매출 감속이 멈추고 가속으로 돈다');
   // 접게 될 조건은 뜻이 분명한 것만 — 소송·제재, 자금조달·희석, 특수관계 거래(방향 낱말만으로 음수가 된 문장은 뺀다)
   const DIL=/유상증자|전환사채|신주인수권|교환사채|감자|물적\s*분할/;
   nonSmall.filter(s=>s.src==='new'&&(s.gov||/^(리스크|자금조달)/.test(s.label)||DIL.test(s.text))).slice(0,2).forEach(s=>li(u4,'접게 될 때 — '+(s.gov?'특수관계 거래가 늘거나 거래 가격·조건이 회사에 불리하게 드러난다 ('+s.label.split(' · ').pop()+')'
@@ -10153,9 +10168,11 @@ function invArc(d, rep){
   stat('크게 다시 쓴 보고서 뒤',hM==null?'—':iPct(hM,0),'1.5×↑ '+hot.length+'번 · 평소 보고서 뒤 '+(cM==null?'—':iPct(cM,0)), hM!=null&&cM!=null?(hM>cM?'up':'dn'):'');
   const rgs=el('div','s rg'); rgs.appendChild(el('span',null,'TTM 국면별 (중앙값 · 횟수)'));
   const rl=el('div','rl');
-  DRK_REG.forEach(r=>{ const ps=done.filter(p=>regOf(p.a)===r.k); if(!ps.length) return;
+  // 국면 이름은 서버가 준 그대로(7국면, 옛 캐시면 4국면) — 이 차례로 있는 것만
+  const regKs=RC_KEYS.filter(k=>Object.values(regBy).some(r=>r.reg===k));
+  regKs.forEach(k=>{ const r=rcOf(k); const ps=done.filter(p=>regOf(p.a)===k); if(!ps.length) return;
     const m=invMed(ps.map(p=>p.ret)); const it=el('span'); const i=el('i'); i.style.background=r.c; it.appendChild(i);
-    it.appendChild(el('em',null,r.k)); it.appendChild(el('b',null,iPct(m,0))); it.appendChild(el('small',null,'×'+ps.length)); rl.appendChild(it); });
+    it.appendChild(el('em',null,k)); it.appendChild(el('b',null,iPct(m,0))); it.appendChild(el('small',null,'×'+ps.length)); rl.appendChild(it); });
   rgs.appendChild(rl); st.appendChild(rgs);
   box.appendChild(st);
 
@@ -10165,7 +10182,7 @@ function invArc(d, rep){
   key('cdl',"상승 구간",INV_UP); key('cdl',"하락 구간",INV_DN); key('cur','지금 보는 보고서');
   key('bub','새로 쓴 분량(원 크기)'); key('bub hot','1.5× 이상');
   const rg=el('span','rgs'); rg.appendChild(document.createTextNode('TTM 국면'));
-  DRK_REG.forEach(r=>{ const x=el('span'); const i=el('i','rb'); i.style.background=r.c; x.appendChild(i); x.appendChild(document.createTextNode(r.k)); rg.appendChild(x); });
+  (regKs.length?regKs:Object.keys(GR_PHASE)).forEach(k=>{ const x=el('span'); const i=el('i','rb'); i.style.background=rcOf(k).c; x.appendChild(i); x.appendChild(document.createTextNode(k)); rg.appendChild(x); });
   lg.appendChild(rg);
   box.appendChild(lg);
 
@@ -10270,7 +10287,7 @@ function invTv(LW, box, hold, tip, c){
       if(p.a.x!=null&&!cut){ const r=2.5+Math.min(p.a.x,3)/3*7;
         strip.appendChild(svgEl('circle',{cx:x0+Math.min(r+1,(x1-x0)/2),cy:B.bub,r,class:'invBub'+(cu?' cur':p.a.x>=1.5?' hot':'')})); }
       const rgk=regOf(p.a);
-      const rb=svgEl('rect',{x:x0+1,y:B.rib,width:Math.max(1,x1-x0-2),height:B.ribH,rx:2,class:'invRib'+(rgk?'':' none')}); if(rgk) rb.setAttribute('fill',DRK_RC[rgk].c); strip.appendChild(rb);
+      const rb=svgEl('rect',{x:x0+1,y:B.rib,width:Math.max(1,x1-x0-2),height:B.ribH,rx:2,class:'invRib'+(rgk?'':' none')}); if(rgk) rb.setAttribute('fill',rcOf(rgk).c); strip.appendChild(rb);
       // 지금 보는 보고서 — 금색 틀
       if(cu) over.appendChild(svgEl('rect',{x:x0-2,y:yh-6,width:x1-x0+4,height:yl-yh+12,rx:6,class:'invCurFrame'}));
       // 수익률 — 골라서 적는다
@@ -10411,7 +10428,7 @@ function invCdlSvg(box, hold, tip, c){
       g.appendChild(svgEl('circle',{cx:x0+Math.min(r+1,(x1-x0)/2),cy:(BT+BB)/2+2,r,class:'invBub'+(cur?' cur':p.a.x>=1.5?' hot':'')})); }
     // TTM 국면 띠
     const rgk=regOf(p.a);
-    const rb=svgEl('rect',{x:x0,y:GT,width:x1-x0,height:GH,rx:2,class:'invRib'+(rgk?'':' none')}); if(rgk) rb.setAttribute('fill',DRK_RC[rgk].c); g.appendChild(rb);
+    const rb=svgEl('rect',{x:x0,y:GT,width:x1-x0,height:GH,rx:2,class:'invRib'+(rgk?'':' none')}); if(rgk) rb.setAttribute('fill',rcOf(rgk).c); g.appendChild(rb);
     // 칸 전체가 잡히는 자리
     const hitR=svgEl('rect',{x:x0-1,y:PT-6,width:x1-x0+2,height:GT+GH-PT+8,class:'invColHit'}); g.appendChild(hitR);
     svg.appendChild(g);
@@ -10612,7 +10629,7 @@ function invMemo(d, sigs, fin, council){
   const seenM=new Set();
   sigs.forEach(s=>{ const k=(s.label.split(' · ')[0]); if(INV_MON[k]&&!seenM.has(k)&&seenM.size<5){ seenM.add(k); li(mou,s,INV_MON[k]); } });
   if(sigs.some(s=>s.key==='레버리지'||s.key==='영업이익률')&&seenM.size<5) li(mou,null,'마진이 원가·환율 변화에도 유지되는지');
-  if(d.ttm&&d.ttm.a!=null&&seenM.size<6) li(mou,null, d.ttm.a>0?'TTM 가속이 다음 분기에도 이어지는지 (지금 '+(d.ttm.a>=0?'+':'')+d.ttm.a.toFixed(1)+'%p/분기)':'TTM 감속이 멈추는지 — 2차 미분이 플러스로 도는 분기');
+  if(d.ttm&&d.ttm.a!=null&&seenM.size<6) li(mou,null, d.ttm.a>0?'매출 가속이 다음 분기에도 이어지는지 (지금 가속(B) '+(d.ttm.a>=0?'+':'')+d.ttm.a.toFixed(1)+'%p)':'TTM 감속이 멈추는지 — 2차 미분이 플러스로 도는 분기');
   if(!mou.children.length) li(mou,null,'다음 보고서의 매출·마진 방향.');
   return box;
 }
@@ -12372,6 +12389,9 @@ function infClock(d, pc){
 }
 
 // 값 판단 요약 — 렌즈를 큰 표본(공시 2.3만 건 · 946곳 · 2015~2025)으로 다시 잰 뒤 뚜렷했던 것만 판정에 쓴다(서버 lens_value)
+// 통과 = 서버 _ev_word 의 이 문구 하나(90% 구간이 0을 넘고 앞뒤 기간 같은 방향). '뚜렷하나 기간마다 달랐다'는 통과가 아니다 — 색을 칠하지 않는다
+const EV_PASS='뚜렷 · 앞뒤 기간 같은 방향';
+const evTone=e=>e&&e.word===EV_PASS?(e.diff>0?'pos':'neg'):'nu';
 const lensEvTxt=e=>{ if(!e) return ''; const f=v=>v==null?'—':(v>=0?'+':'')+v.toFixed(1);
   return '과거 '+(e.n||0).toLocaleString('ko-KR')+'건: 12개월 초과수익 '+f(e.diff)+'%p'+(e.ci&&e.ci[0]!=null?' ['+f(e.ci[0])+' ~ '+f(e.ci[1])+']':'')+
     (e.trap!=null?' · 가치 함정(−30%↓) '+e.trap.toFixed(0)+'%':'')+' — '+(e.word||''); };
@@ -12392,7 +12412,7 @@ function infValueCard(code){
     S.lensEv=d.lens_ev||{};
     document.querySelectorAll('.inflens').forEach(cd=>{ const g=cd.dataset.guru, ev=(S.lensEv||{})[g]; const slot=cd.querySelector('.lensbt'); if(!slot||!ev) return;
       slot.innerHTML=''; slot.appendChild(el('em',null,'비슷한 규칙의 큰 표본 성적(분기 기준 · 시장 대비 12개월 · 표본 편향 있음)'));
-      ev.forEach(e=>{ const r=el('div','lbr '+(e.word&&e.word.startsWith('뚜렷')?(e.diff>0?'pos':'neg'):'nu')); r.appendChild(el('b',null,e.rule.split(' · ').slice(1).join(' · ')||e.rule)); r.appendChild(el('span',null,lensEvTxt(e))); slot.appendChild(r); }); });
+      ev.forEach(e=>{ const r=el('div','lbr '+evTone(e)); r.appendChild(el('b',null,e.rule.split(' · ').slice(1).join(' · ')||e.rule)); r.appendChild(el('span',null,lensEvTxt(e))); slot.appendChild(r); }); });
     S.guruHit={code, d:d.guru_hit}; const gh=document.querySelector('.guruhit'); if(gh) renderGuruHit(gh);
   }).catch(()=>{ box.innerHTML=''; box.appendChild(el('div','empty','값 판단 요약을 불러오지 못했다')); });
   return box;
@@ -12490,7 +12510,7 @@ function infLenses(d, pc){
     const q=el('div','infq'); q.appendChild(el('span',null,'구루의 질문')); q.appendChild(document.createTextNode(Lz.q||'')); c.appendChild(q);
     const bt=el('div','lensbt'); const ev=(S.lensEv||{})[Lz.guru];
     if(ev){ bt.appendChild(el('em',null,'비슷한 규칙의 큰 표본 성적(분기 기준 · 시장 대비 12개월 · 표본 편향 있음)'));
-      ev.forEach(e=>{ const r=el('div','lbr '+(e.word&&e.word.startsWith('뚜렷')?(e.diff>0?'pos':'neg'):'nu')); r.appendChild(el('b',null,e.rule.split(' · ').slice(1).join(' · ')||e.rule)); r.appendChild(el('span',null,lensEvTxt(e))); bt.appendChild(r); }); }
+      ev.forEach(e=>{ const r=el('div','lbr '+evTone(e)); r.appendChild(el('b',null,e.rule.split(' · ').slice(1).join(' · ')||e.rule)); r.appendChild(el('span',null,lensEvTxt(e))); bt.appendChild(r); }); }
     c.appendChild(bt);
     grid.appendChild(c);
   });

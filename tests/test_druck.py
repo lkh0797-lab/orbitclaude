@@ -1192,3 +1192,17 @@ def test_series_passes_amend_only_for_amended_quarters(monkeypatch):
     monkeypatch.setattr(DRK, "period_data", pd)
     DRK.series("C", "000000", [2025], meta={"amend": {(2025, 2): "20251020"}})
     assert dict(seen) == {(2025, 1): {}, (2025, 2): {"amend": "20251020"}, (2025, 3): {}, (2025, 4): {}}
+
+
+# ---------------------------------------------------------------- 검증 도구의 B 붙이기 — 공시일에 알 수 있던 B 만(Task 7 고침)
+def test_b_lookup_joins_by_quarter_key_and_gates_on_b_date():
+    pts = [{"n": 8063, "가속B": 4.0, "B기준일": "20160330"},
+           {"n": 8064, "가속B": 5.0, "B기준일": "20160516"},          # 012450 2015Q4 꼴 — 공시 20160330, 앞 분기 정정으로 B기준일이 뒤
+           {"n": 8065, "가속B": None, "B기준일": None}, {"품질": ["gap"]}]
+    lk = DRK.b_lookup(pts)
+    assert lk == {8063: (4.0, "20160330"), 8064: (5.0, "20160516"), 8065: (None, None)}
+    assert DRK.b_known(lk, 8063, "20160330") == 4.0                 # 같은 날 — 그날 알 수 있다
+    assert DRK.b_known(lk, 8064, "20160330") is None                # B기준일이 공시일 뒤 — 앞날 자료
+    assert DRK.b_known(lk, 8064, "20160516") == 5.0
+    assert DRK.b_known(lk, 8065, "20991231") is None and DRK.b_known(lk, 9999, "20991231") is None
+    assert DRK.b_known(DRK.b_lookup([{"n": 1, "가속B": 3.0}]), 1, "20991231") is None     # 기준일 없음 — 알 수 있었는지 모른다
