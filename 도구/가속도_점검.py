@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""가속도 개편 점검 — (pipe) _pipe_rows 분할 보정이 리팩터 앞뒤로 같은가 · (cases) 회귀 사례 · (api) 소비처 응답.
-실행: python 도구/가속도_점검.py pipe --save before.json  /  python 도구/가속도_점검.py pipe --compare before.json"""
+"""가속도 개편 점검 — (pipe) _pipe_rows 분할 보정이 리팩터 앞뒤로 같은가 · (def) accel 의 B 가 옛 백테스트 B 와 같은가 · (cases) 회귀 사례 · (api) 소비처 응답.
+실행: python 도구/가속도_점검.py pipe --save before.json  /  python 도구/가속도_점검.py pipe --compare before.json  /  python 도구/가속도_점검.py def"""
 import os, sys, json, importlib.util as ilu
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
@@ -37,7 +37,42 @@ def pipe(S):
     return out
 
 
+def defcheck():
+    """품질 · 재작성 · 결산월을 끈 accel 의 B 가 옛 signals() 의 B 와 bt_series 전 회사 · 전 분기에서 같은가.
+    입력을 같게 맞춘다 — 매출YoY 는 옛 yoy() 와 같은 식(기저 > 0, 이번 분기 값은 음수도 그대로), 재작성 값(YoY_r)은 없음."""
+    sp = ilu.spec_from_file_location("bt", os.path.join(BASE, "도구", "가속기준_백테스트.py"))
+    BT = ilu.module_from_spec(sp); sp.loader.exec_module(BT)
+    sp = ilu.spec_from_file_location("드러켄밀러", os.path.join(BASE, "드러켄밀러.py"))
+    DRK = ilu.module_from_spec(sp); sp.loader.exec_module(DRK)
+    with open(os.path.join(BASE, ".cache", "druck_bt", "bt_series.json"), encoding="utf-8") as fh:
+        ser = json.load(fh)
+    bad = 0; tot = 0; firms = 0
+    for code, co in ser.items():
+        rev = {n: v for n, v, _ in co["pts"] if v is not None}
+        if not rev:
+            continue
+        firms += 1
+        old = BT.signals(co["pts"])
+        pts = [{"n": n, "year": n // 4, "q": n % 4 + 1, "label": "%dQ%d" % (n // 4, n % 4 + 1), "품질": [], "YoY_r": None,
+                "매출YoY": ((rev[n] / rev[n - 4] - 1) * 100 if rev.get(n - 4) and rev[n - 4] > 0 and n in rev else None)}
+               for n in range(min(rev), max(rev) + 1)]
+        DRK.accel(pts)
+        for p in pts:
+            b0 = (old.get(p["n"]) or {}).get("B")
+            if b0 is None and p["가속B"] is None:
+                continue
+            tot += 1
+            if b0 is None or p["가속B"] is None or abs(b0 - p["가속B"]) > 1e-9:
+                bad += 1
+                if bad <= 5:
+                    print("  다름:", code, p["n"], b0, p["가속B"])
+    print("회사 %d · B 대조 %d칸 중 다름 %d" % (firms, tot, bad))
+    return bad
+
+
 if __name__ == "__main__":
+    if sys.argv[1] == "def":
+        sys.exit(1 if defcheck() else 0)
     S = load_server()
     if sys.argv[1] == "pipe":
         res = pipe(S)

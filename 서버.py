@@ -21,6 +21,7 @@ import datetime as dt
 import difflib
 import threading
 import subprocess
+import shlex
 import webbrowser
 import urllib.parse
 from collections import Counter, defaultdict
@@ -1629,6 +1630,141 @@ def _druck_kick_stale(code):
         DRUCK_STALE_KICKED.add(code)
     druck(code, True, wait=False)
     return True
+
+
+# ---------------------------------------------------------------- 가속도 밤 미리 계산 · 기저율(2026-10-10, 가속도 개편 6)
+# 매일 02:00 전 종목 druck 를 캐시 우선(offline — 없는 원장 분기만 DART 에서 받되 한 번에 DRUCK_NET_BUDGET 까지)으로 쌓고, 끝나면
+# 64비트 파이썬으로 도구/가속기준_백테스트.py --from-cache 를 돌려 .cache/druck_bt/bt_accel.json(기저율) · events.json(회사별 사건)을 다시 낸다.
+# 06:00 이 되면 멈춘다(06:30 저평가 · DART 한도 보호) — 다음 밤에는 지금 sig 인 캐시를 바로 건너뛰므로 자연히 이어서 쌓는다.
+DRUCK_PRE = {"at": None, "done": 0, "total": 0, "net": 0, "running": False}
+DRUCK_PRE_LOCK = threading.Lock()
+DRUCK_NET_BUDGET = 2000       # 한 번 돌 때 DART 원장 새로 받기 상한 — 캐시 파일이 없는 분기만 센다(DRK.NET)
+DRUCK_PRE_AT = (2, 0)         # 00:10 수집 뒤 · 06:30 저평가 전
+DRUCK_PRE_STOP = 6            # 시 — 시작한 뒤 처음 오는 06:00 에 멈춘다
+BT_PY = os.environ.get("ORBIT_BT_PY") or "py -3.13"     # 64비트 파이썬 실행기(명령 문자열) — 서버 모듈 + 전 종목 주가를 한 번에 올린다
+
+
+def _bt_cmd(spec=None):
+    """실행기 명령 문자열('py -3.13' · '"C:\\Python313\\python.exe"') → argv 앞부분. Windows 경로의 \\ 를 지키려고 posix=False 로 쪼개고
+    감싼 따옴표만 벗긴다. 비면 서버 자신의 파이썬."""
+    parts = shlex.split(spec if spec is not None else BT_PY, posix=(os.name != "nt"))
+    return [p[1:-1] if len(p) >= 2 and p[0] == p[-1] and p[0] in "\"'" else p for p in parts] or [sys.executable]
+
+
+def _druck_order(companies, has_cache):
+    """밤 미리 계산 순서 — 캐시 파일이 이미 있는 회사(누가 연 적 있다) 먼저, 그 안팎에서 최근에 공시한 회사(마지막 rcept 내림차순) 먼저,
+    보고서가 없는 회사는 끝. has_cache(code) → bool."""
+    last = lambda c: max((r.get("rcept") or "" for r in c.get("reports") or []), default="")     # noqa: E731
+    by_recent = sorted(companies, key=last, reverse=True)
+    return sorted(by_recent, key=lambda c: 0 if has_cache(c.get("code")) else 1)       # 안정 정렬 — 최근 순서를 지킨다
+
+
+def _druck_deadline(start, hour=DRUCK_PRE_STOP):
+    """start 뒤 처음 오는 hour:00 — 밤 미리 계산을 멈출 때(02:00 시작이면 같은 날 06:00, 낮에 손으로 돌리면 다음 날 06:00)."""
+    dl = start.replace(hour=hour, minute=0, second=0, microsecond=0)
+    return dl if dl > start else dl + dt.timedelta(days=1)
+
+
+def _druck_run_bt():
+    """기저율 · 사건 파일 — BT_PY(ORBIT_BT_PY)로 도구/가속기준_백테스트.py --from-cache. 출력은 .cache/druck_bt/bt_run.log.
+    실행기를 못 찾을 때(FileNotFoundError)만 서버 자신의 파이썬으로 다시 돈다 — 32비트면 메모리가 빠듯할 수 있다."""
+    script = os.path.join(BASE, "도구", "가속기준_백테스트.py")
+    log = os.path.join(CACHE_DIR, "druck_bt", "bt_run.log")
+    os.makedirs(os.path.dirname(log), exist_ok=True)
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+    t0, res = time.time(), {"py": None, "rc": None}
+    with open(log, "w", encoding="utf-8") as fh:
+        fh.write("== %s\n" % dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        fh.flush()
+        for cmd in (_bt_cmd(), [sys.executable]):
+            try:
+                p = subprocess.run(cmd + [script, "--from-cache"], cwd=BASE, stdout=fh, stderr=subprocess.STDOUT, env=env,
+                                   timeout=3 * 3600, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                res = {"py": " ".join(cmd), "rc": p.returncode}
+                break
+            except FileNotFoundError as e:
+                fh.write("실행기 없음 %s: %s — 서버 파이썬으로 다시\n" % (" ".join(cmd), e))
+                fh.flush()
+            except Exception as e:
+                res = {"py": " ".join(cmd), "rc": None, "error": _no_secret("%s: %s" % (type(e).__name__, e))}
+                break
+    res.update(secs=round(time.time() - t0), at=dt.datetime.now().isoformat(timespec="seconds"))
+    if res.get("rc") != 0:
+        print("가속도 기저율 백테스트 실패:", res, "— 로그", log, flush=True)
+    return res
+
+
+def _druck_prebuild(now=dt.datetime.now, run_bt=True):
+    """전 종목 druck(offline) — _druck_order 순서로, 시작 뒤 처음 오는 06:00 에 멈춘다. 끝나면(멈춰도) 기저율 백테스트를 돌린다.
+    DRUCK_PRE: done/total(회사) · fresh(이미 지금 sig) · built(새로 씀) · transient(일시 오류 · DART 예산 끝 — 안 씀) · failed · net(DART 받은 수)
+    · per_co(새로 쌓은 회사당 초) · stopped('06:00' 이면 시간에 멈춤) · bt(백테스트 결과). 이미 돌고 있으면 False."""
+    with DRUCK_PRE_LOCK:
+        if DRUCK_PRE["running"] or DRK is None:
+            return False
+        DRUCK_PRE["running"] = True
+    t0, work = time.time(), 0.0
+    try:
+        start = now()
+        stop = _druck_deadline(start)
+        comps = list(INDEX["companies"])
+        DRUCK_PRE.update(started=start.isoformat(timespec="seconds"), stop_at=stop.isoformat(timespec="seconds"), done=0, total=len(comps),
+                         net=0, fresh=0, built=0, transient=0, failed=0, per_co=None, stopped=None, bt=None, code=None)
+        comps = _druck_order(comps, lambda code: bool(code) and os.path.exists(_druck_path(code)))     # 파일 확인 988번 — 드라이브라 몇 초 걸린다
+        DRK.NET.update(budget=DRUCK_NET_BUDGET, used=0)
+        for c in comps:
+            if now() >= stop:
+                DRUCK_PRE["stopped"] = "%02d:00" % DRUCK_PRE_STOP
+                break
+            code = c.get("code")
+            DRUCK_PRE["code"] = code
+            try:
+                cur = _druck_read(code) if code else None
+                if cur is not None and cur.get("sig") == _druck_sig(c):
+                    DRUCK_PRE["fresh"] += 1
+                else:
+                    t1 = time.time()
+                    res = druck(code, offline=True) if code else None
+                    work += time.time() - t1
+                    if not res or res.get("error"):
+                        DRUCK_PRE["failed"] += 1
+                    elif res.get("transient"):
+                        DRUCK_PRE["transient"] += 1
+                    else:
+                        DRUCK_PRE["built"] += 1
+                    n = DRUCK_PRE["built"] + DRUCK_PRE["transient"] + DRUCK_PRE["failed"]
+                    DRUCK_PRE["per_co"] = round(work / n, 2) if n else None
+            except Exception as e:
+                DRUCK_PRE["failed"] += 1
+                print("가속도 밤 미리 계산 실패:", code, _no_secret("%s: %s" % (type(e).__name__, e)), flush=True)
+            DRUCK_PRE["done"] += 1
+            DRUCK_PRE["net"] = DRK.NET["used"]
+        DRUCK_PRE["code"] = None
+        if run_bt:
+            DRUCK_PRE["bt"] = {"running": True}
+            DRUCK_PRE["bt"] = _druck_run_bt()
+    finally:
+        DRK.NET.update(budget=None, used=0)
+        DRUCK_PRE.update(running=False, at=now().isoformat(timespec="seconds"), secs=round(time.time() - t0))
+    return True
+
+
+def _druck_auto_loop():
+    """매일 02:00(00:10 수집 뒤 · 06:30 저평가 전) — 색인을 새로 읽고(뷰어는 00:05 에 다시 켜져 수집 전 색인을 들고 있다)
+    전 종목 가속도를 캐시 우선으로 미리 계산한 뒤 기저율 · 사건 파일을 다시 낸다."""
+    while True:
+        now = dt.datetime.now()
+        nxt = now.replace(hour=DRUCK_PRE_AT[0], minute=DRUCK_PRE_AT[1], second=0, microsecond=0)
+        if nxt <= now:
+            nxt += dt.timedelta(days=1)
+        time.sleep(max(60, (nxt - now).total_seconds()))
+        try:
+            build_index()
+        except Exception as e:
+            print("가속도 밤 미리 계산 — 색인 실패(전 색인으로 돈다): %s" % e, flush=True)
+        try:
+            _druck_prebuild()
+        except Exception as e:
+            print("가속도 밤 미리 계산: %s" % e, flush=True)
 
 
 def catalyst_view(days, level="sector", force=False, minw=2):
@@ -9146,7 +9282,7 @@ def industry_sub(tab, sector):
             out["phase"] = s.get("phase")
         return out
     if tab == "stocks":
-        acc = _ind_file("bt_accel", os.path.join(CACHE_DIR, "druck", "bt_accel.json")) or {}
+        acc = _ind_file("bt_accel", os.path.join(CACHE_DIR, "druck_bt", "bt_accel.json")) or {}
         ev = acc.get("ev_all") or {}
         out["bt"] = {"B_up": ev.get("B_up"), "B_dn": ev.get("B_dn"), "regime": (acc.get("regime") or {}).get("B"),
                      "whip": (acc.get("whip") or {}).get("B"), "order": {k: v for k, v in (acc.get("ev_order") or {}).items() if k in ("B_up", "B_dn")},
@@ -10034,6 +10170,11 @@ class Handler(BaseHTTPRequestHandler):
                 if SYN is None or FIN is None or BACK is None:
                     return self._send(500, {"error": "시너지 모듈 없음"})
                 return self._send(200, synergy_view(q.get("force") == "1"))
+            if path == "/api/druck/pre":
+                # 밤 미리 계산 상태. run=1 이면 지금 한 번 돌린다(이미 돌고 있으면 그대로)
+                if q.get("run") == "1" and not DRUCK_PRE["running"]:
+                    threading.Thread(target=_druck_prebuild, daemon=True).start()
+                return self._send(200, dict(DRUCK_PRE))
             if path == "/api/druck":
                 # 기본은 지금처럼 다 쌓을 때까지 기다린다. bg=1 이면 없을 때 {building, done, total} 를 바로 주고 뒤에서 쌓는다
                 code_ = q.get("code", "")
@@ -10232,6 +10373,7 @@ def main():
         threading.Thread(target=_rep_auto_loop, daemon=True).start()
         threading.Thread(target=_ind_auto_loop, daemon=True).start()
         threading.Thread(target=_tech_auto_loop, daemon=True).start()
+        threading.Thread(target=_druck_auto_loop, daemon=True).start()
     # 예전 보컬 탭은 '차트 발굴'(Tech)로 바뀌어 매일 07:00 전 시장 일봉 · 깔때기 계산을 껐다(2026-10-09, 사용자 결정).
     # /api/vocal 은 그대로 살아 있다(부르면 그때 센다). 다시 켜려면 아래 줄을 되살린다.
     # if VOC is not None:

@@ -117,3 +117,82 @@ def test_druck_write_failure_returns_uncached(fake_co, monkeypatch, capsys):
     out = SRV.druck("000001")
     assert out["transient"] == 0 and len(out["points"]) == 2
     assert "000001" in capsys.readouterr().out and SRV._druck_read("000001") is None
+
+
+# ---------------------------------------------------------------- 밤 미리 계산(_druck_prebuild)
+import datetime as _dt
+
+
+def test_bt_cmd_splits_launcher_and_quoted_windows_path():
+    assert SRV._bt_cmd("py -3.13") == ["py", "-3.13"]
+    exe = r"C:\Program Files\Python313\python.exe"
+    assert SRV._bt_cmd('"%s" -X utf8' % exe) == [exe, "-X", "utf8"]
+    assert SRV._bt_cmd("") == [sys.executable]
+
+
+def _co(code, *rcepts):
+    return {"code": code, "name": code, "reports": [{"rcept": r, "stamp": "2025-03", "label": "분기보고서", "tag": ""} for r in rcepts]}
+
+
+def test_druck_order_cached_first_then_recent_filers_then_no_reports():
+    comps = [_co("A", "20240101000001"), _co("B", "20250301000001", "20250515000002"), _co("C"), _co("D", "20250601000001"),
+             _co("E", "20230101000001")]
+    order = SRV._druck_order(comps, lambda code: code in ("A", "E"))
+    assert [c["code"] for c in order] == ["A", "E", "D", "B", "C"]
+
+
+def test_druck_deadline_is_next_six_oclock():
+    d = _dt.datetime
+    assert SRV._druck_deadline(d(2026, 10, 10, 2, 0)) == d(2026, 10, 10, 6, 0)
+    assert SRV._druck_deadline(d(2026, 10, 10, 0, 50)) == d(2026, 10, 10, 6, 0)
+    assert SRV._druck_deadline(d(2026, 10, 10, 6, 0)) == d(2026, 10, 11, 6, 0)
+    assert SRV._druck_deadline(d(2026, 10, 10, 14, 0)) == d(2026, 10, 11, 6, 0)
+
+
+@pytest.fixture
+def prebuild(monkeypatch, tmp_path):
+    """가짜 색인 다섯 회사 · 가짜 druck — 시계는 호출마다 1시간씩 간다(02:00 → 03:00 → …)."""
+    comps = [_co(c, "2025060%d000001" % i) for i, c in enumerate(("A", "B", "C", "D", "E"), 1)]
+    monkeypatch.setattr(SRV, "INDEX", {"companies": comps})
+    monkeypatch.setattr(SRV, "CACHE_DIR", str(tmp_path))
+    monkeypatch.setattr(SRV, "DRUCK_PRE", {"at": None, "done": 0, "total": 0, "net": 0, "running": False})
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: {"sig": SRV._druck_sig(SRV.company_by_code(code))} if code == "E" else None)
+    calls, budgets = [], []
+
+    def fake_druck(code, force=False, offline=False, wait=True):
+        calls.append((code, offline))
+        budgets.append(DRK.NET["budget"])
+        DRK.NET["used"] += 3
+        return {"B": {"transient": 1}, "C": {"error": "x"}}.get(code, {"points": []})
+    monkeypatch.setattr(SRV, "druck", fake_druck)
+    monkeypatch.setattr(DRK, "NET", {"budget": None, "used": 0})
+    t = [_dt.datetime(2026, 10, 10, 2, 0)]
+
+    def clock():
+        t[0] += _dt.timedelta(hours=1)
+        return t[0]
+    return comps, calls, budgets, clock
+
+
+def test_prebuild_counts_and_restores_budget(prebuild):
+    comps, calls, budgets, _ = prebuild
+    clock = lambda: _dt.datetime(2026, 10, 10, 2, 30)          # noqa: E731 — 시간이 안 간다
+    assert SRV._druck_prebuild(now=clock, run_bt=False) is True
+    P = SRV.DRUCK_PRE
+    assert [c for c, _ in calls] == ["E", "D", "C", "B", "A"][1:] and all(off for _, off in calls)     # E 는 이미 지금 sig — 건너뜀
+    assert set(budgets) == {SRV.DRUCK_NET_BUDGET}
+    assert (P["done"], P["total"], P["fresh"], P["built"], P["transient"], P["failed"], P["net"]) == (5, 5, 1, 2, 1, 1, 12)
+    assert P["running"] is False and P["stopped"] is None and P["at"] and DRK.NET == {"budget": None, "used": 0}
+
+
+def test_prebuild_stops_at_six(prebuild):
+    comps, calls, budgets, clock = prebuild
+    assert SRV._druck_prebuild(now=clock, run_bt=False) is True
+    # start 03:00 → 마감 06:00. 회사마다 시계를 한 번 본다: 04:00 · 05:00 → 두 회사, 06:00 에 멈춤
+    assert SRV.DRUCK_PRE["stopped"] == "06:00" and SRV.DRUCK_PRE["done"] == 2 and len(calls) == 1      # 첫 회사 E 는 fresh
+    assert SRV.DRUCK_PRE["running"] is False
+
+
+def test_prebuild_not_reentrant(prebuild):
+    SRV.DRUCK_PRE["running"] = True
+    assert SRV._druck_prebuild(run_bt=False) is False
