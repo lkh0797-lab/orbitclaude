@@ -475,3 +475,53 @@ def test_druck_card_how_reads_lens_bt_or_drops_sentence():
     ev = {"n": 1234, "diff": 1.8, "ci": [-0.4, 3.9], "word": "통계적으로 뚜렷하지 않음"}
     how = _druck_card(qs, {"druck_ev": ev})["clock"]["how"]
     assert "공시 1,234건" in how and "+1.8%p" in how and "(90% 구간 -0.4 ~ +3.9)" in how and "통계적으로 뚜렷하지 않음" in how
+
+
+# ---------------------------------------------------------------- 가속도 탭 — 기저율(/api/druck/bt) · 사건(/api/druck/events)
+def _write_json(path, obj):
+    import json
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(obj, fh, ensure_ascii=False)
+
+
+BT_FILE = {"at": "20261010", "n": 8269, "firms": 309, "base": {"ex12": 0.6}, "base_any": 0.6,
+           "ev_all": {"B_up": {"n": 821, "firms": 291, "med": 2.0}, "B_dn": {"n": 829, "firms": 285, "med": 0.9}},
+           "regime": {"B": {"확장 가속": {"n": 2450, "firms": 302, "med": 2.0, "dG4": 1.6}}},
+           "phase7": {"labels": ["확장 가속"]}, "whip": {"B": {"pct": 23.0}}, "asfiled": {"n": 3003}}
+
+
+def test_druck_bt_view_keeps_only_screen_keys_and_firm_counts_from_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(SRV, "CACHE_DIR", str(tmp_path))
+    monkeypatch.setattr(SRV, "_INDF", {})
+    assert SRV.druck_bt_view() == {"regime": None, "ev_all": None, "base_any": None, "firms": None, "n": None, "at": None}
+    _write_json(os.path.join(str(tmp_path), "druck_bt", "bt_accel.json"), BT_FILE)
+    v = SRV.druck_bt_view()
+    assert set(v) == {"regime", "ev_all", "base_any", "firms", "n", "at"}
+    assert v["regime"] == BT_FILE["regime"]["B"] and v["ev_all"] == BT_FILE["ev_all"]          # 7국면 칸은 regime.B 를 펴서
+    assert (v["firms"], v["n"], v["base_any"], v["at"]) == (309, 8269, 0.6, "20261010")
+
+
+def test_druck_bt_view_rereads_when_file_changes(monkeypatch, tmp_path):
+    monkeypatch.setattr(SRV, "CACHE_DIR", str(tmp_path))
+    monkeypatch.setattr(SRV, "_INDF", {})
+    p = os.path.join(str(tmp_path), "druck_bt", "bt_accel.json")
+    _write_json(p, BT_FILE)
+    assert SRV.druck_bt_view()["firms"] == 309
+    _write_json(p, dict(BT_FILE, firms=877))
+    os.utime(p, (time.time() + 5, time.time() + 5))                                            # mtime 이 바뀌면 다시 읽는다
+    assert SRV.druck_bt_view()["firms"] == 877
+
+
+def test_druck_events_returns_that_company_or_empty_lists(monkeypatch, tmp_path):
+    monkeypatch.setattr(SRV, "CACHE_DIR", str(tmp_path))
+    monkeypatch.setattr(SRV, "_INDF", {})
+    assert SRV.druck_events("005930") == {"turns": [], "periods": []}                         # 파일 없음
+    ev = {"005930": {"turns": [{"n": 8103, "dir": "▲", "date": "20260310", "ex6": 56.0, "ex12": None, "state": "진행 중"}],
+                     "periods": [{"n": 8105, "d": "20260814", "d2": None, "ex": -2.2, "state": "진행 중"}]},
+          "000660": {"turns": [], "periods": [{"n": 8104, "d": "20260515", "d2": "20260814", "ex": 3.0, "state": "done"}]}}
+    _write_json(os.path.join(str(tmp_path), "druck_bt", "events.json"), ev)
+    assert SRV.druck_events("005930") == ev["005930"]
+    assert SRV.druck_events("000660") == {"turns": [], "periods": ev["000660"]["periods"]}
+    assert SRV.druck_events("999999") == {"turns": [], "periods": []}
+    assert SRV.druck_events("") == {"turns": [], "periods": []}

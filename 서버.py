@@ -1636,6 +1636,27 @@ def _druck_kick_stale(code):
     return True
 
 
+def _druck_bt_path(name):
+    return os.path.join(CACHE_DIR, "druck_bt", name)
+
+
+def druck_bt_view():
+    """가속도 탭 기저율 줄 · 변곡 기록 위 두 칸 — 밤 64비트 백테스트의 bt_accel.json 에서 화면이 쓰는 칸만(mtime 캐시).
+    regime = 7국면별 칸(regime.B), ev_all = ▲ · ▼ 변곡(B_up · B_dn), base_any = 같은 표본 아무 분기 12개월 시장 대비 중앙.
+    회사 수 · 표본 수는 파일 값 그대로(고정 문구 없음). 파일이 없으면 값이 모두 None — 화면이 '계산 전'으로 읽는다."""
+    acc = _ind_file("bt_accel", _druck_bt_path("bt_accel.json")) or {}
+    return {"regime": (acc.get("regime") or {}).get("B"), "ev_all": acc.get("ev_all"), "base_any": acc.get("base_any"),
+            "firms": acc.get("firms"), "n": acc.get("n"), "at": acc.get("at")}
+
+
+def druck_events(code):
+    """이 회사의 변곡 · 보고서 구간 시장 대비 수익률 — events.json 의 그 code 항목(mtime 캐시, 4MB 남짓이라 한 번만 올린다).
+    {turns: [{n, dir, date, ex6, ex12, state}], periods: [{n, d, d2, ex, state}]}. 없으면 빈 목록."""
+    ev = _ind_file("druck_events", _druck_bt_path("events.json")) or {}
+    got = ev.get(code) if isinstance(ev, dict) else None
+    return {"turns": (got or {}).get("turns") or [], "periods": (got or {}).get("periods") or []}
+
+
 # ---------------------------------------------------------------- 가속도 밤 미리 계산 · 기저율(2026-10-10, 가속도 개편 6)
 # 매일 02:00 전 종목 druck 를 캐시 우선(offline — 없는 원장 분기만 DART 에서 받되 한 번에 DRUCK_NET_BUDGET 까지)으로 쌓고, 끝나면
 # 64비트 파이썬으로 도구/가속기준_백테스트.py --from-cache 를 돌려 .cache/druck_bt/bt_accel.json(기저율) · events.json(회사별 사건)을 다시 낸다.
@@ -10201,6 +10222,10 @@ class Handler(BaseHTTPRequestHandler):
                 if q.get("run") == "1" and not DRUCK_PRE["running"]:
                     threading.Thread(target=_druck_prebuild, daemon=True).start()
                 return self._send(200, dict(DRUCK_PRE))
+            if path == "/api/druck/bt":
+                return self._send(200, druck_bt_view())
+            if path == "/api/druck/events":
+                return self._send(200, druck_events(q.get("code", "")))
             if path == "/api/druck":
                 # 기본은 지금처럼 다 쌓을 때까지 기다린다. bg=1 이면 없을 때 {building, done, total} 를 바로 주고 뒤에서 쌓는다
                 code_ = q.get("code", "")
