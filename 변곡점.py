@@ -24,6 +24,8 @@ import difflib
 from collections import Counter
 
 VERSION = 9          # 9: 린치 유형을 풍경 탭 규칙으로. 8: 첫 사업연도(제 1 기) 빼기 · 표 칸 잡음 빼기 · 이익률 흔들림은 추세를 뺀 값 · PEG 하나로 · 카드 이름 정직화
+                     # (분기 쪽 — 가속 전환 사건 · 드러켄밀러 카드 — 은 가속도 캐시를 읽으니 서버 inflect 캐시 키에 드러켄밀러.VERSION 도 붙는다)
+DRUCK_BAND = 3.0     # %p — 드러켄밀러.PHASE_BAND(가속(B) 띠)와 같은 값. 카드 배지의 '가속' 문턱
 
 
 # ---------------------------------------------------------------- 연간 재무
@@ -310,6 +312,20 @@ def _pct(v, d=0):
     return "—" if v is None else ("%+." + str(d) + "f%%") % v
 
 
+def _q_by(quarters):
+    """분기 점(가속도 캐시 points) → {분기 키 n: 점}."""
+    return {q["n"]: q for q in quarters if q.get("n") is not None}
+
+
+def _last_quarters(quarters, key, k=8):
+    """key 값이 있는 마지막 분기에서 거슬러 k 분기(분기 키 n) — 그 사이 빈 분기 점도 자리를 차지한다.
+    값 있는 점만 골라 [-8:] 하면 빈 분기를 건너뛰어 8분기보다 먼 과거를 끌어온다."""
+    last = next((q for q in reversed(quarters) if q.get(key) is not None and q.get("n") is not None), None)
+    if last is None:
+        return []
+    return [q for q in quarters if q.get("n") is not None and last["n"] - k < q["n"] <= last["n"]]
+
+
 def _won(v):
     if v is None:
         return "—"
@@ -413,16 +429,16 @@ def events(funds, quarters, feats, came, gone, rcept_of):
                 "매출은 %s 늘었는데 순이익률 %.1f%% — 직전 평균 %.1f%%의 절반 아래. 피셔는 이런 '글리치'에서 PSR이 낮으면 샀다" % (
                     _pct(d["rev_yoy"]), d["ni"] / d["rev"] * 100, _avg(nm_past)))
 
-    # 분기 — 최근 8개 분기의 가속 전환(드러켄밀러)
-    qs = [q for q in quarters if q.get("매출가속") is not None][-8:]
-    for a, b in zip(qs, qs[1:]):
-        if a["매출가속"] <= 0 < b["매출가속"] and (b.get("매출YoY") or 0) > 0:
+    # 분기 — 최근 8개 분기(분기 키)의 가속 전환(드러켄밀러). 가속도 탭과 같은 판정: 가속(B)가 띠(±3%p) 반대쪽에서 넘어온 분기(변곡 ▲)
+    qby = _q_by(quarters)
+    for b in _last_quarters(quarters, "가속B"):
+        if b.get("가속B") is not None and b.get("변곡") == "▲" and (b.get("속도") or 0) > 0:
             y = b.get("year")
+            pq = qby.get(b["n"] - 1) or {}
             ev.append({"year": y, "stamp": "%s-%02d" % (y, b.get("q", 4) * 3), "lane": "방향·투자",
                        "guru": "", "tone": "up", "title": "분기 매출 가속 전환 (%s)" % b.get("label", ""),
-                       "detail": "매출 증가율 %s, 가속 %+.1f%%p (직전 분기 %+.1f%%p)" % (
-                           _pct(b.get("매출YoY")), b["매출가속"], a["매출가속"]),
-                       "rcept": b.get("rcept"), "prev_rcept": a.get("rcept")})
+                       "detail": "속도 %s, 가속(B) %+.1f%%p — 띠(±3%%p) 반대쪽에서 넘어옴" % (_pct(b.get("속도")), b["가속B"]),
+                       "rcept": b.get("rcept"), "prev_rcept": pq.get("rcept")})
     # 문장 — 사업 정의가 바뀐 해. 글자 배열이 아니라 '쓴 낱말'이 바뀌었는지 본다
     # (문단 순서·서식만 바뀐 해를 걸러낸다). 가장 크게 바뀐 3개 해만.
     shifts = []
@@ -524,29 +540,36 @@ def lenses(funds, quarters, price_info):
         "q": "남들이 틀리게 믿고 있는 것은 무엇인가? — 그리고 내 뇌는 지금 나를 속이고 있지 않은가?",
     })
 
-    # 드러켄밀러 — 변화율의 변화
-    qs = [q for q in quarters if q.get("매출YoY") is not None][-8:]
+    # 드러켄밀러 — 변화율의 변화. 가속은 가속도 탭과 같은 B(속도 = 분기 YoY 2분기 평균, 가속(B) = 그 변화) · 같은 띠(±3%p)
+    qs = _last_quarters(quarters, "매출YoY")       # 매출 YoY 가 있는 마지막 분기까지 8분기(분기 키) — 빈 분기도 자리를 지킨다
     last = qs[-1] if qs else {}
-    acc = [q.get("매출가속") for q in qs if q.get("매출가속") is not None]
+    acc = [q.get("가속B") for q in qs if q.get("가속B") is not None]
     capi = [d["capex_int"] for d in F[-4:] if d.get("capex_int") is not None]
     invd = [q.get("재고일수") for q in qs if q.get("재고일수") is not None]
-    good = (1 if last.get("매출가속") and last["매출가속"] > 0 else 0) + \
+    good = (1 if last.get("가속B") is not None and last["가속B"] >= DRUCK_BAND else 0) + \
            (1 if last.get("이익률변화") and last["이익률변화"] > 0 else 0) + \
            (1 if len(invd) >= 2 and invd[-1] <= invd[0] else 0)
     flips = sum(1 for a, b in zip(acc, acc[1:]) if (a > 0) != (b > 0))
+    # 큰 표본 성적 — 서버가 lens_bt.json(도구/구루렌즈_검증.py)에서 읽어 넘긴 값으로만 쓴다. 없으면 문장을 뺀다(옛 +5%p 성적을 박아 두지 않는다)
+    dev = price_info.get("druck_ev") or {}
+    ci = dev.get("ci") or [None, None]
+    ev_txt = (" 큰 표본(공시 %s건)에서 가속(B) +3%%p↑ 뒤 12개월 시장 대비 %+.1f%%p%s — %s." % (
+        "{:,}".format(dev["n"]) if dev.get("n") else "?", dev["diff"],
+        " (90%% 구간 %+.1f ~ %+.1f)" % (ci[0], ci[1]) if ci[0] is not None and ci[1] is not None else "",
+        dev.get("word") or "판정 없음")) if dev.get("diff") is not None else ""
     L.append({
         "guru": "스탠리 드러켄밀러", "name": "실적 가속(분기)", "who": "드러켄밀러의 '수준보다 변화의 방향' 질문",
         "en": "Revenue acceleration", "tag": None,
         "clock": {"speed": "fast", "h": "공시 전", "key": "rev_yoy",
-                  "how": "실적 가속은 잠정실적·업황 뉴스로 보고서보다 먼저 값에 든다. 큰 표본에서 가속 +5%p↑는 약하게 맞았지만 같은 업종 안에서는 거의 0 — "
-                         "회사를 고르는 신호가 아니라 '업종이 가속하는가'의 확인용. 유동성 · 거시 · 18개월 앞 같은 그의 핵심은 계산하지 않는다." +
-                         (" 이 회사는 최근 %d분기 사이 가속의 부호가 %d번 바뀌었다 — 한 분기 값은 잡음이 크다." % (len(acc), flips) if len(acc) >= 4 and flips >= len(acc) // 2 else "")},
+                  "how": "실적 가속은 잠정실적·업황 뉴스로 보고서보다 먼저 값에 든다." + ev_txt +
+                         " 유동성 · 거시 · 18개월 앞 같은 그의 핵심은 계산하지 않는다." +
+                         (" 이 회사는 최근 %d분기 사이 가속(B)의 부호가 %d번 바뀌었다 — 한 분기 값은 잡음이 크다." % (len(acc), flips) if len(acc) >= 4 and flips >= len(acc) // 2 else "")},
         "idea": "숫자의 수준보다 변화의 방향. 18~24개월 뒤 컨센서스를 앞지를 실적 가속, 설비투자 변곡, 재고 주기.",
         "metrics": [
             {"k": "최근 분기 매출", "v": None if last.get("매출YoY") is None else _pct(last["매출YoY"], 1),
              "note": last.get("label", ""), "series": [{"y": q.get("label"), "v": q.get("매출YoY")} for q in qs]},
-            {"k": "매출 가속", "v": None if last.get("매출가속") is None else "%+.1f%%p" % last["매출가속"],
-             "note": "전년 동기 증가율의 변화", "series": [{"y": q.get("label"), "v": q.get("매출가속")} for q in qs]},
+            {"k": "매출 가속(B)", "v": None if last.get("가속B") is None else "%+.1f%%p" % last["가속B"],
+             "note": "속도(분기 YoY 2분기 평균)의 변화", "series": [{"y": q.get("label"), "v": q.get("가속B")} for q in qs]},
             {"k": "설비투자 강도", "v": None if not capi else "%.1f%%" % capi[-1], "note": "CAPEX ÷ 매출(연간)",
              "series": ser("capex_int")},
             {"k": "재고일수", "v": None if not invd else "%.0f일" % invd[-1],
@@ -693,14 +716,16 @@ def _fisher_verdict(psr, prr, g, nm, glitch, pn):
 
 
 def _druck_verdict(last, invd):
+    """서술형 — 속도 · 가속(B) · 7국면(가속도 탭과 같은 이름)을 적을 뿐 사라/피하라를 말하지 않는다(B 렌즈 성적은 카드의 how 문장)."""
     if not last:
         return "분기 실적 자료가 부족하다."
-    s = "최근 분기(%s) 매출 %s, 가속 %s." % (last.get("label", ""), _pct(last.get("매출YoY"), 1),
-                                        "—" if last.get("매출가속") is None else "%+.1f%%p" % last["매출가속"])
-    if last.get("매출가속") is not None:
-        s += " 변화의 방향이 위를 향한다." if last["매출가속"] > 0 else " 변화의 방향이 꺾였다."
+    s = "최근 분기(%s) 속도 %s, 가속(B) %s — %s." % (last.get("label", ""), _pct(last.get("속도"), 1),
+                                              "—" if last.get("가속B") is None else "%+.1f%%p" % last["가속B"],
+                                              last.get("국면") or "국면 판단 전")
+    if last.get("엇갈림"):
+        s += " 이번 분기 단독은 반대로 움직였다."
     if len(invd) >= 2:
-        s += " 재고일수 %.0f일 → %.0f일%s." % (invd[0], invd[-1], " (재고가 가벼워짐)" if invd[-1] < invd[0] else " (재고가 쌓임)")
+        s += " 재고일수 %.0f일 → %.0f일." % (invd[0], invd[-1])
     return s
 
 

@@ -76,7 +76,7 @@ def filed_meta(reports):
     """series() 의 meta — {filed: {n: 원본(정정 아닌) 보고서 접수일 YYYYMMDD — 여럿이면 가장 이른 날}, fy_bad: {연도}}.
     reports = [{stamp: 'YYYY-MM', label, tag, rcept}](서버 회사 색인의 보고서). 12월 결산 정기보고서(분기 03 · 반기 06 · 분기 09 · 사업 12)가
     아닌 보고서가 하나라도 있는 해는 fy_bad — 결산월이 달라 분기 키가 어긋나니 그해는 받지 않는다.
-    amend = {(연도, 분기): 그 분기 정정(태그 달린) 보고서 가운데 가장 늦은 접수일} — 원장 캐시보다 뒤면 series 가 그 분기를 다시 받는다."""
+    amend = {(연도, 분기): 그 분기 정정(태그 달린) 보고서 가운데 가장 늦은 접수일} — 원장 캐시 날짜와 같거나 뒤면 series 가 그 분기를 다시 받는다."""
     filed, fy_bad, amend = {}, set(), {}
     for r in reports:
         y, mth = r["stamp"].split("-")
@@ -241,7 +241,7 @@ NCI_PICK = {"비지배순이익": ([FIN.NI_PARTS["nci"]], r"^비지배")}
 IS_FIELDS = (("thstrm_amount", ""), ("thstrm_add_amount", "_누적"), ("frmtrm_q_amount", "_전"),
              ("frmtrm_add_amount", "_전누적"), ("frmtrm_amount", "_전연"))
 
-NET = {"budget": None, "used": 0}   # offline 빌드의 네트워크 예산 — 캐시 파일이 없을 때만 센다
+NET = {"budget": None, "used": 0}   # offline 빌드의 네트워크 예산 — 캐시 파일이 없을 때 · 정정 공시로 다시 받을 때 · 013 다시 묻기를 센다(_fetch)
 
 
 def _ymd(ts):
@@ -267,12 +267,13 @@ def _will_reask_013(path, year, reprt, mt):
 
 
 def _fetch(corp_code, year, reprt, fs_div, offline, amend=None):
-    """원장 한 장. 네트워크를 쓰는 경우 — 캐시 파일이 없다 · 정정 공시(amend, YYYYMMDD)가 캐시 파일 날짜보다 뒤다(force 로 다시 받음, online 도) ·
-    013 캐시를 FIN 이 다시 물을 때. offline 이면 그 셋을 NET 예산에 세고, 바닥나면 받지 않고 일시 오류(transient)로 돌려준다."""
+    """원장 한 장. 네트워크를 쓰는 경우 — 캐시 파일이 없다 · 정정 공시(amend, YYYYMMDD)가 캐시 파일 날짜와 같거나 뒤다(force 로 다시 받음, online 도) ·
+    013 캐시를 FIN 이 다시 물을 때. offline 이면 그 셋을 NET 예산에 세고, 바닥나면 받지 않고 일시 오류(transient)로 돌려준다.
+    같은 날도 다시 받는다 — 접수번호엔 시각이 없어, 원장을 받은 그날 낮에 나온 기재정정을 '뒤'로 못 가른다(그날은 한 번 더 받을 수 있다)."""
     path = os.path.join(FIN.FIN_DIR, "%s_%s_%s_%s.json" % (corp_code, year, reprt, fs_div))
     exists = os.path.exists(path) if (offline or amend) else True
     mt = os.path.getmtime(path) if exists and (offline or amend) else None
-    force = bool(amend and mt is not None and amend > _ymd(mt))
+    force = bool(amend and mt is not None and amend >= _ymd(mt))
     if offline:
         net = not exists or force or (mt is not None and _will_reask_013(path, year, reprt, mt))
         if net:
@@ -344,7 +345,7 @@ def _n(y, q):
 def series(corp_code, stock_code, years, prices=None, meta=None, offline=False, progress=None):
     """분기 시계열 v2 — n 오름차순 조밀 격자(첫 자료 분기 ~ 끝 자료 분기, 빈 분기 포함).
     meta = {filed: {n: 원본 공시일}, fy_bad: {연도}, amend: {(연도, 분기): 마지막 정정 공시일}, fin: bool}. fy_bad 연도는 받지 않고 'fy' 빈 칸으로만 낸다.
-    amend 의 날짜가 원장 캐시 파일 날짜보다 뒤면 그 분기 원장을 다시 받는다(_fetch).
+    amend 의 날짜가 원장 캐시 파일 날짜와 같거나 뒤면 그 분기 원장을 다시 받는다(_fetch).
     progress(done, total) 가 있으면 분기 하나를 받을 때마다 부른다(total = 연도 수 × 4, fy_bad 연도는 네 칸을 한 번에 센다) — 서버 진행률.
     끝나면 LAST(스레드별)에 transient · fy_bad · error 를 남긴다 — transient > 0 이면 일시 오류로 빠진 분기가 있다는 뜻이다."""
     meta = meta or {}

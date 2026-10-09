@@ -4,7 +4,8 @@
 
 카드(변곡점.py lenses)의 배지를 그 보고서 공시일 시점 숫자(분기변화_백테스트.py 와 같은 시점 재구성 — 그때까지 나온 재무, 공시 다음 거래일 종가)로 다시 계산한다.
   켄 피셔      배지 = PSR 1.5배↓ · 매출 5년 연 15%↑ · 순이익률 5년 평균 5%↑ 가운데 몇 개(카드의 PRR 은 연구개발비 시점 자료가 없어 뺐다 — 분모는 카드처럼 4)
-  드러켄밀러   배지 = 분기 매출 가속 > 0 · 분기 영업이익률 직전 분기보다 ↑ · 재고일수 7분기 전보다 ↓ 가운데 몇 개(분모 3)
+  드러켄밀러   배지 = 가속(B) +3%p↑ · 분기 영업이익률 직전 분기보다 ↑ · 재고일수 7분기 전보다 ↓ 가운데 몇 개(분모 3)
+               가속(B)는 가속도 캐시(.cache/druck, 지금 VERSION 만)의 같은 분기 키 값(카드와 같은 B) — 캐시가 없는 회사 · 분기는 판정 없음
   버핏         배지 = ROE 10년 평균 12%↑ · 최저 5%↑ · 영업이익률 변동계수 0.35↓ · 유보이익 1원 테스트 1원↑ 가운데 몇 개(분모 4)
                → 강함(75%↑) = 사라, 보통 = 판정 없음, 약함(45%↓) = 피하라
   린치         배지는 회사 종류라 방향이 없다 — 카드의 PEG(PER ÷ EPS 3년 연평균 성장)로 1 미만 = 사라, 2 이상 = 피하라(린치의 기준)
@@ -33,7 +34,7 @@ YEARS = list(range(2012, 2027))
 GURUS = [("f", "켄 피셔"), ("d", "스탠리 드러켄밀러"), ("b", "워런 버핏"), ("l", "피터 린치"), ("m", "찰리 멍거")]
 RULE_TXT = {
     "f": ("배지 강함(PSR 1.5↓ · 매출 5년 15%↑ · 순이익률 5%↑ 중 3개)", "배지 약함(1개↓)"),
-    "d": ("배지 강함(매출 가속↑ · 이익률↑ · 재고일수↓ 모두)", "배지 약함(1개↓)"),
+    "d": ("배지 강함(가속(B) +3%p↑ · 이익률↑ · 재고일수↓ 모두)", "배지 약함(1개↓)"),
     "b": ("배지 강함(ROE 평균 12%↑ · 최저 5%↑ · 이익률 안정 · 유보이익 1원 중 3개↑)", "배지 약함(1개↓)"),
     "l": ("PEG 1 미만", "PEG 2 이상"),
     "m": ("이상 없음(경고 0)", "경고 1개↑"),
@@ -74,10 +75,6 @@ def one(c):
     capi = S._mseries(mb, S._mrow(mb, ("t:IssuedCapital",), r"^자본금$"))
     sh = lambda lab, k: S._qshift(lab, k)
 
-    def q_yoy(lab):
-        a, b = rq.get(lab), rq.get(sh(lab, 4))
-        return (a / b - 1) * 100 if a is not None and b and b > 0 and a >= 0 else None
-
     def q_opm(lab):
         a, b = oq.get(lab), rq.get(lab)
         v = a / b * 100 if a is not None and b and b > 0 else None
@@ -89,6 +86,9 @@ def one(c):
         if not r["tag"] and m in S.Q_OF_MONTH:
             lab = "%sQ%d" % (y, S.Q_OF_MONTH[m])
             filed[lab] = min(filed.get(lab, "99999999"), r["rcept"][:8])
+    # 가속(B) — 가속도 캐시(S._druck_read: v 가 지금 DRK.VERSION 일 때만)의 분기 키 n(= qn − 1) 값. 다시 계산하지 않는다
+    dk = S._druck_read(code)
+    acc_b = {p["n"]: p.get("가속B") for p in (dk or {}).get("points") or [] if p.get("n") is not None}
     out = []
     for lab in labs:
         t = filed.get(lab)
@@ -112,15 +112,14 @@ def one(c):
         nim5 = sum(nims) / len(nims) if nims else None
         f_ok = (psr is not None and psr <= 1.5) + (g5 is not None and g5 >= 15) + (nim5 is not None and nim5 >= 5)
         f_call = grade(f_ok, 4) if psr is not None else None
-        # ---- 드러켄밀러(분기 숫자)
-        y0, y1 = q_yoy(lab), q_yoy(sh(lab, 1))
-        acc = y0 - y1 if y0 is not None and y1 is not None else None
+        # ---- 드러켄밀러(분기 숫자) — 가속은 같은 시점(이 공시의 분기 키) 가속도 캐시의 가속(B), 카드와 같은 문턱(+3%p)
+        acc = acc_b.get(qn(lab) - 1)
         m0, m1 = q_opm(lab), q_opm(sh(lab, 1))
         mchg = m0 - m1 if m0 is not None and m1 is not None else None
         invd = lambda L: (R[L]["inv"] / R[L]["rev_ttm"] * 365) if L in R and R[L].get("inv") and R[L].get("rev_ttm") else None
         i0 = invd(lab)
         i7 = next((invd(sh(lab, k)) for k in (7, 6, 5, 4) if invd(sh(lab, k)) is not None), None)
-        d_ok = (acc is not None and acc > 0) + (mchg is not None and mchg > 0) + (i0 is not None and i7 is not None and i0 <= i7)
+        d_ok = (acc is not None and acc >= 3) + (mchg is not None and mchg > 0) + (i0 is not None and i7 is not None and i0 <= i7)
         d_call = grade(d_ok, 3) if acc is not None else None
         # ---- 버핏
         roes = [get(lab, "roe", k) for k in range(0, 40, 4) if get(lab, "roe", k) is not None]

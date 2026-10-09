@@ -1142,10 +1142,19 @@ def test_fetch_keeps_cache_newer_than_amendment_or_without_one(monkeypatch, fin_
     calls = []
     monkeypatch.setattr(DRK.FIN, "fetch_statement", lambda *a, **kw: calls.append((a, kw)) or stmt([]))
     _aged(_cache_file(fin_dir, "C", 2025, "11012"), "20251021")
-    DRK._fetch("C", 2025, "11012", "CFS", True, amend="20251020")         # 정정 뒤에 받은 파일
+    DRK._fetch("C", 2025, "11012", "CFS", True, amend="20251020")         # 정정 다음 날 받은 파일
     DRK._fetch("C", 2025, "11012", "CFS", True)                           # 정정 없음
-    DRK._fetch("C", 2025, "11012", "CFS", True, amend="20251021")         # 같은 날 — '뒤'가 아니다
-    assert [kw for _, kw in calls] == [{}, {}, {}] and DRK.NET["used"] == 0
+    assert [kw for _, kw in calls] == [{}, {}] and DRK.NET["used"] == 0
+
+
+def test_fetch_refetches_when_amendment_is_same_day_as_file(monkeypatch, fin_dir):
+    # 접수번호엔 시각이 없다 — 원장을 받은 그날 낮에 나온 기재정정도 다시 받아야 한다(같은 날 = 다시 받음, 예산에 센다)
+    calls = []
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", lambda *a, **kw: calls.append((a, kw)) or stmt([]))
+    _aged(_cache_file(fin_dir, "C", 2025, "11012"), "20251021")
+    monkeypatch.setitem(DRK.NET, "budget", 5)
+    DRK._fetch("C", 2025, "11012", "CFS", True, amend="20251021")
+    assert calls[-1][1] == {"force": True} and DRK.NET["used"] == 1
 
 
 def test_fetch_amended_over_budget_is_transient(monkeypatch, fin_dir):

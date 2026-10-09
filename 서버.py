@@ -1319,10 +1319,12 @@ def inflect(code, force=False):
         return {"error": "DART 고유번호를 찾지 못했습니다."}
     # 하루에 한 번 다시 — 카드의 '지금' 값(PSR · PEG · 경고)이 캐시 만든 날 가격에 묶이지 않게
     sig = (c["reports"][-1]["rcept"] if c["reports"] else "") + "_v%d_%s" % (INF.VERSION, dt.date.today().strftime("%Y%m%d"))
+    sig = "%s:%d" % (sig, DRK.VERSION if DRK is not None else 0)     # 가속도 계산이 바뀌면(DRK.VERSION) 분기 사건 · 드러켄밀러 카드도 다시
     cache = os.path.join(CACHE_DIR, "inflect", code + ".json")
     if not force and os.path.exists(cache):
         try:
-            old = json.load(open(cache, encoding="utf-8"))
+            with open(cache, encoding="utf-8") as fh:
+                old = json.load(fh)
             if old.get("sig") == sig:
                 return old
         except Exception:
@@ -1420,6 +1422,7 @@ def inflect(code, force=False):
     except Exception as e:
         print("변곡점 가격 %s: %s" % (code, e), flush=True)
 
+    price_info["druck_ev"] = _lens_ev(DRUCK_LENS)       # 드러켄밀러 카드의 '큰 표본' 문장 — 없으면 카드가 문장을 뺀다
     ev = INF.events(funds, quarters, feats, came, gone, rcept_of)
     # 지금 값의 경고 — 연말 PSR 만 보는 사건 규칙은 오늘의 PSR 3배↑를 놓친다('경고 0'으로 읽히던 것). 큰 표본에서 가장 단단했던 피할 신호.
     pn_ = price_info.get("psr_now") or {}
@@ -1495,7 +1498,7 @@ def _druck_fresh(code, sig, bg=False):
 
 def _druck_meta(c):
     """DRK.series 의 meta {filed, fy_bad, amend} — 규칙은 DRK.filed_meta(서버 없이 시험한다). amend(분기별 마지막 정정 공시일)가
-    원장 캐시 파일보다 뒤면 그 분기만 다시 받는다."""
+    원장 캐시 파일 날짜와 같거나 뒤면 그 분기만 다시 받는다."""
     return DRK.filed_meta(c["reports"])
 
 
@@ -1639,7 +1642,7 @@ def _druck_kick_stale(code):
 # 06:00 이 되면 멈춘다(06:30 저평가 · DART 한도 보호) — 다음 밤에는 지금 sig 인 캐시를 바로 건너뛰므로 자연히 이어서 쌓는다.
 DRUCK_PRE = {"at": None, "done": 0, "total": 0, "net": 0, "running": False}
 DRUCK_PRE_LOCK = threading.Lock()
-DRUCK_NET_BUDGET = 2000       # 한 번 돌 때 DART 원장 새로 받기 상한 — 캐시 파일이 없는 분기만 센다(DRK.NET)
+DRUCK_NET_BUDGET = 2000       # 한 번 돌 때 DART 원장 받기 상한(DRK.NET) — 캐시 파일이 없는 분기 · 정정 공시로 다시 받는 분기 · 013 다시 묻기를 센다
 DRUCK_PRE_AT = (2, 0)         # 00:10 수집 뒤 · 06:30 저평가 전
 DRUCK_PRE_STOP = 6            # 시 — 시작한 뒤 처음 오는 06:00 에 멈춘다
 BT_PY = os.environ.get("ORBIT_BT_PY") or "py -3.13"     # 64비트 파이썬 실행기(명령 문자열) — 서버 모듈 + 전 종목 주가를 한 번에 올린다
@@ -1975,7 +1978,8 @@ def earnings(c, mode="q", span=10):
     # 네이버는 실적 3년 + 추정 1년만 준다. 그 앞 구간은 DART 원장으로 채운다.
     this = dt.date.today().year
     years = list(range(this - span + 1, this + 1))
-    pts = [p for p in DRK.series(corp, c["code"], years) if p.get("매출액")]
+    # 빈 분기 점도 그대로 받는다(분기 키 격자) — 값이 하나도 없는 분기만 실적 칸을 비운다
+    pts = DRK.series(corp, c["code"], years, meta=_druck_meta(c), offline=True)
 
     def key_of(p):
         return "%d%02d" % (p["year"], p["q"] * 3) if mode == "q" else "%d12" % p["year"]
@@ -1983,9 +1987,9 @@ def earnings(c, mode="q", span=10):
     actual = {}
     if mode == "q":
         for p in pts:
-            actual[key_of(p)] = {"매출액": p.get("매출액"),
-                                 "영업이익": p.get("영업이익"),
-                                 "EPS": p.get("EPS")}
+            vals = {"매출액": p.get("매출액"), "영업이익": p.get("영업이익"), "EPS": p.get("EPS")}
+            if any(v is not None for v in vals.values()):
+                actual[key_of(p)] = vals
     else:
         # 사업보고서의 연간 값을 직접 읽는다. 분기 4개를 더하면 분기 데이터가
         # 없는 해(2015)가 통째로 빠진다.
@@ -2050,18 +2054,17 @@ def earnings(c, mode="q", span=10):
         })
 
     # 지표별 전년 대비 증감률. 차트에서 수준과 변화를 같이 보여주려고 붙인다.
-    # 분기는 4칸 전(전년 동기), 연간은 1칸 전이 기준이다.
-    back = 4 if mode == "q" else 1
-    for i, r in enumerate(rows):
+    # 기준은 키로 찾는다 — 분기는 전년 같은 분기(YYYYMM 의 해 − 1), 연간은 전년. 칸 순번(4칸 전)은 빠진 분기가 있으면 다른 분기를 집는다.
+    row_of = {r["key"]: r for r in rows}
+    for r in rows:
         yy = {}
+        prev_r = row_of.get("%d%s" % (int(r["key"][:4]) - 1, r["key"][4:]))
         for k in ("매출액", "영업이익", "EPS"):
             cur = (r["actual"] or {}).get(k)
             if cur is None:
                 cur = (r["estimate"] or {}).get(k)
-            j = i - back
-            if cur is None or j < 0:
+            if cur is None or prev_r is None:
                 continue
-            prev_r = rows[j]
             base = (prev_r["actual"] or {}).get(k)
             if base is None:
                 base = (prev_r["estimate"] or {}).get(k)
@@ -2101,6 +2104,7 @@ SCREEN_YEARS = 4          # 가속도는 전년 동기가 필요하다. 4년이�
 SCREEN = {"rows": [], "done": 0, "total": 0, "running": False,
           "years": SCREEN_YEARS, "built": 0}
 SCREEN_LOCK = threading.Lock()
+SCORE_NOTE = "가중 50/30/20 — 검증 안 됨"     # score_rows 가중(가속(B) · 마진변화 · 재고감소)은 과거 성적으로 고른 값이 아니다
 
 
 def screen_row(c):
@@ -2110,37 +2114,37 @@ def screen_row(c):
         return None
     this_year = dt.date.today().year
     years = list(range(this_year - SCREEN_YEARS, this_year + 1))
-    pts = DRK.series(corp, c["code"], years)
-    pts = [p for p in pts if p.get("매출액")]
-    if len(pts) < 2:
+    # 가속도 캐시(지금 버전)가 있으면 그것 — 가속(B) · 국면 · 변곡과 분할 보정 PER 이 가속도 탭과 같다.
+    # 없으면 같은 순서(series → per_share → accel → attach_prices)로 여기서 짧게(최근 SCREEN_YEARS 년) 쌓는다. 캐시는 쓰지 않는다
+    d_ = _druck_read(c["code"])
+    if d_:
+        pts = d_.get("points") or []
+    else:
+        meta = _druck_meta(c)
+        pts = DRK.series(corp, c["code"], years, meta=meta, offline=True)
+        DRK.per_share(pts, _share_events(c["code"]))
+        DRK.accel(pts)
+        dates = {(p["year"], p["q"]): meta["filed"][p["n"]] for p in pts if meta["filed"].get(p["n"])}
+        DRK.attach_prices(pts, c["code"], dates)
+    # 순번이 아니라 분기 키(n)로 — 빈 분기 점(gap · fy)이 끼어도 '직전 분기' · '1년 전'이 다른 분기를 집지 않는다
+    by = {p["n"]: p for p in pts if p.get("n") is not None}
+    have = [p for p in pts if p.get("매출액") and p.get("n") is not None]
+    if len(have) < 2:
         return None
-
-    dates = {}
-    for r in c["reports"]:
-        y, mth = r["stamp"].split("-")
-        q = Q_OF_MONTH.get(mth)
-        if q and (not r["tag"] or (int(y), q) not in dates):
-            dates[(int(y), q)] = rcept_dt_of(r)
-    DRK.attach_prices(pts, c["code"], dates)
-
-    cur, prev = pts[-1], pts[-2]
-    # 4분기 합 순이익 — 연속된 네 분기일 때만
-    w4 = pts[-4:]
+    cur = have[-1]
+    prev = by.get(cur["n"] - 1) or {}
+    # 4분기 합 순이익 — 연속된 네 분기(키)일 때만
+    w4 = [by.get(m) for m in range(cur["n"] - 3, cur["n"] + 1)]
     ni_ttm = (sum(x["당기순이익"] for x in w4)
-              if len(w4) == 4 and all(x.get("당기순이익") is not None for x in w4)
-              and all(b["year"] * 4 + b["q"] - a["year"] * 4 - a["q"] == 1 for a, b in zip(w4, w4[1:])) else None)
+              if all(x is not None and x.get("당기순이익") is not None for x in w4) else None)
     inv_delta = None
     if cur.get("재고일수") is not None and prev.get("재고일수") is not None:
         inv_delta = cur["재고일수"] - prev["재고일수"]
 
-    turned = (cur.get("매출가속") is not None
-              and prev.get("매출가속") is not None
-              and prev["매출가속"] < 0 <= cur["매출가속"])
-    # 가속 전환은 '덜 나빠짐'도 잡는다. 역성장 중인 회사와 성장 회사가
-    # 같은 배지를 달면 오해하니 갈라놓는다.
-    kind = None
-    if turned:
-        kind = "성장" if (cur.get("매출YoY") or 0) >= 0 else "역성장완화"
+    # 가속 전환 = 가속(B)이 띠(±3%p) 반대쪽에서 넘어온 분기(변곡 ▲) — 가속도 탭 · 업황 시계와 같은 판정.
+    # '덜 나빠짐'도 잡으니 역성장 중인 회사(속도 < 0)와 성장 회사는 갈라놓는다.
+    turned = cur.get("변곡") == "▲"
+    kind = ("성장" if (cur.get("속도") or 0) >= 0 else "역성장완화") if turned else None
 
     # 이익률이 무의미해지는 경우가 둘이다. 이유가 다르니 구분해서 알려준다.
     #   1) 지주회사 — 영업이익에 지분법이익이 잡히는데 매출은 지주사 자체 매출뿐
@@ -2157,13 +2161,14 @@ def screen_row(c):
         "이익률_사유": why,
         "code": c["code"], "name": c["name"], "quarter": cur["label"],
         "매출액": cur.get("매출액"),
-        "매출YoY": cur.get("매출YoY"), "매출가속": cur.get("매출가속"),
+        "매출YoY": cur.get("매출YoY"), "매출가속": cur.get("매출가속"),     # 매출가속 = 분기 YoY 의 전분기 차(C) — 시너지 rev_accel 이 읽는다
         "전분기가속": prev.get("매출가속"),
+        "가속B": cur.get("가속B"), "속도": cur.get("속도"), "국면": cur.get("국면"), "변곡": cur.get("변곡"),
         "영업이익률": cur.get("영업이익률"), "마진변화": cur.get("이익률변화"),
         "이익률_비정상": bad,
         "재고일수": cur.get("재고일수"), "재고일수변화": inv_delta,
         "PER_TTM": cur.get("PER_TTM"), "순이익_TTM": ni_ttm,
-        "매출_TTM_1년전": pts[-5].get("매출_TTM") if len(pts) >= 5 else None,
+        "매출_TTM_1년전": (by.get(cur["n"] - 4) or {}).get("매출_TTM"),
         "매출_TTM": cur.get("매출_TTM"), "영업이익_TTM": cur.get("영업이익_TTM"),
         "전환": turned,
     }
@@ -2184,7 +2189,8 @@ def _pct_rank(vals):
 
 
 def score_rows(rows):
-    """매출가속 / 마진변화 / 재고일수 감소를 백분위로 환산해 가중합."""
+    """가속(B) / 마진변화 / 재고일수 감소를 백분위로 환산해 가중합(50/30/20 — 이 가중은 검증하지 않았다, SCORE_NOTE).
+    행의 '매출가속'(C)은 순위에 쓰지 않는다(시너지용으로만 남는다)."""
     if len(rows) < 3:
         for r in rows:
             r["score"] = None
@@ -2194,14 +2200,14 @@ def score_rows(rows):
         return None if r.get("이익률_비정상") else r.get("마진변화")
 
     ranks = {
-        "매출가속": _pct_rank([r.get("매출가속") for r in rows]),
+        "가속B": _pct_rank([r.get("가속B") for r in rows]),
         "마진변화": _pct_rank([margin_of(r) for r in rows]),
         # 재고일수는 줄어드는 쪽이 좋다. 부호를 뒤집어 순위를 매긴다.
         "재고감소": _pct_rank([(-r["재고일수변화"])
                             if r.get("재고일수변화") is not None else None
                             for r in rows]),
     }
-    W = {"매출가속": 0.50, "마진변화": 0.30, "재고감소": 0.20}
+    W = {"가속B": 0.50, "마진변화": 0.30, "재고감소": 0.20}
     for r in rows:
         tot, wsum = 0.0, 0.0
         for key, w in W.items():
@@ -2256,7 +2262,8 @@ def screen(force=False):
             threading.Thread(target=_run_screen, daemon=True).start()
         return {"rows": SCREEN["rows"], "done": SCREEN["done"],
                 "total": SCREEN["total"] or len(INDEX["companies"]),
-                "running": SCREEN["running"], "years": SCREEN_YEARS}
+                "running": SCREEN["running"], "years": SCREEN_YEARS,
+                "score_note": SCORE_NOTE}
 
 
 # ---------------------------------------------------------------- 시너지 발굴
@@ -3377,37 +3384,31 @@ def _inv_nums(b):
     return out
 
 
+def _ttm_growth(by, p):
+    """분기 키 n 의 최근 4분기 매출 합이 1년 전(n − 4)보다 몇 % — 둘 중 하나라도 없으면 None."""
+    b = by.get(p["n"] - 4) if p.get("n") is not None else None
+    return (p["매출_TTM"] / b["매출_TTM"] - 1) * 100 if p.get("매출_TTM") and b and b.get("매출_TTM") and b["매출_TTM"] > 0 else None
+
+
 def _inv_ttm(code, stamp):
-    """가속도 캐시가 있으면 이 분기의 TTM 성장률·가속(2분기 평균). 없으면 None — 여기서 새로 쌓지 않는다."""
-    path = os.path.join(CACHE_DIR, "druck", code + ".json")
-    if not os.path.exists(path):
+    """가속도 캐시(지금 버전)로 이 분기의 TTM 성장률(g) · 속도(s) · 가속(B)(a) · 7국면(reg) · 변곡(turn). 없으면 None — 여기서 새로 쌓지 않는다."""
+    d = _druck_read(code)
+    if not d:
         return None
-    try:
-        with open(path, "r", encoding="utf-8") as fh:
-            pts = json.load(fh).get("points") or []
-    except Exception:
-        return None
+    pts = d.get("points") or []
     y, m = stamp.split("-")
     lab = "%sQ%d" % (y, Q_OF_MONTH.get(m, 0))
     idx = next((i for i, p in enumerate(pts) if p.get("label") == lab), None)
     if idx is None:
         return None
-
-    def g(i):
-        if i < 4 or i >= len(pts):
-            return None
-        a, b = pts[i].get("매출_TTM"), pts[i - 4].get("매출_TTM")
-        return (a / b - 1) * 100 if a and b and b > 0 else None
-    gi, g2 = g(idx), g(idx - 2)
-    acc = (gi - g2) / 2 if gi is not None and g2 is not None else None
-    reg = None
-    if gi is not None and acc is not None:
-        reg = ("가속 성장" if acc > 0 else "감속 성장") if gi > 0 else ("바닥 통과" if acc > 0 else "역성장 심화")
-    # 자기 역사 대비 PER 백분위 — 이 분기까지의 과거만 본다(앞날 자료 없음)
-    per = pts[idx].get("PER_TTM")
-    hist = [p.get("PER_TTM") for p in pts[:idx + 1] if p.get("PER_TTM") and p.get("PER_TTM") > 0]
+    p = pts[idx]
+    by = {x["n"]: x for x in pts if x.get("n") is not None}
+    # 자기 역사 대비 PER 백분위 — 이 분기까지의 과거만 본다(앞날 자료 없음). 분할 보정을 못 한 분기(cut)는 견주지 않는다
+    per = p.get("PER_TTM")
+    hist = [x.get("PER_TTM") for x in pts[:idx + 1] if (x.get("PER_TTM") or 0) > 0 and "cut" not in (x.get("품질") or [])]
     per_pct = (sum(1 for v in hist if v <= per) / len(hist) * 100) if per and per > 0 and len(hist) >= 8 else None
-    return {"label": lab, "g": gi, "a": acc, "reg": reg, "price": pts[idx].get("주가"), "per": per, "per_pct": per_pct}
+    return {"label": lab, "g": _ttm_growth(by, p), "s": p.get("속도"), "a": p.get("가속B"), "reg": p.get("국면"), "turn": p.get("변곡"),
+            "price": p.get("주가"), "per": per, "per_pct": per_pct}
 
 
 # ---- 중요도 · 같은 사건 묶기 · 지배구조 — 월가가 먼저 묻는 '그래서 얼마나 큰가' (2026-10-01)
@@ -4901,12 +4902,13 @@ def _qtr_pipe(c, steps):
 # ---------------------------------------------------------------- 값 판단 요약 — 구루 렌즈를 큰 표본 검증으로 다시 읽는다 (2026-10-02)
 # 도구/구루렌즈_검증.py(공시 23,233건 · 946곳 · 2015~2025, 공시일 기준)에서 뚜렷했던 것만 판정에 쓰고, 나머지는 성적만 보인다.
 #   맞았다  PSR · PER 자기 역사 하위 30%(+2.0~2.4%p, 가치 함정 10% — 전체 15%) · 상위 30%(−2.5%p, 함정 18%) · PSR 3배↑(−4.3%p, 함정 23%)
-#           매출 가속 +5%p↑(+2.3%p, 앞뒤 기간 같은 방향)
+#   매출 가속(B) +3%p↑ — 가속도 탭과 같은 B(속도 2분기 평균의 변화) · 같은 띠. 성적은 lens_bt.json(가속도 캐시가 있는 공시만)
 #   안 맞았다  ROE 15%↑ · 슈퍼 컴퍼니 · 글리치 · 고성장, 싸다 + 품질(ROE · 현금화) 조합
 #   거꾸로   멍거 경고(현금화 · 매출채권 · 재고 · 부채) — 걸린 회사가 오히려 +3~5%p, 함정 비율도 평균 → 피할 신호로 쓰지 않는다
+DRUCK_LENS = "드러켄밀러 · 가속(B) +3%p↑"      # 도구/구루렌즈_검증.py RULES 의 같은 이름 — 문턱은 DRK.PHASE_BAND
 LENS_RULES = {   # 렌즈 → 성적을 보일 규칙(도구/구루렌즈_검증.py RULES 이름)
     "켄 피셔": ["피셔 · PSR 자기 역사 하위 30%", "피셔 · PSR 자기 역사 상위 30%", "피셔 · PSR 3배↑(절대)", "피셔 · 슈퍼 컴퍼니"],
-    "스탠리 드러켄밀러": ["드러켄밀러 · 가속 +5%p↑", "드러켄밀러 · 매출 +20%↑", "드러켄밀러 · 설비투자 강도 10%↑"],
+    "스탠리 드러켄밀러": [DRUCK_LENS, "드러켄밀러 · 매출 +20%↑", "드러켄밀러 · 설비투자 강도 10%↑"],
     "워런 버핏": ["버핏 · ROE 15%↑", "버핏 · ROE 10년 평균 15%↑ · 최저 10%↑", "버핏 · 이익률 흔들림 낮음(0.2↓)"],
     "피터 린치": ["린치 · PEG < 1", "린치 · 고성장(매출 5년 20%↑)"],
     "찰리 멍거": ["멍거 · 경고 2개↑", "멍거 · 3년 안 증자", "멍거 · 3년 중 2년 적자"],
@@ -4957,7 +4959,7 @@ def lens_value(code):
     if not pr or not pr.get("px"):
         return out
     labs, R, px = pr["labs"], pr["rows"], pr["px"]
-    last, prev = R[labs[-1]], R[labs[-2]] if len(labs) > 1 else {}
+    last = R[labs[-1]]
     p, sh, rt = px["p"][-1], last.get("shares"), last.get("rev_ttm")
     psr = p * sh / rt if p and sh and rt and rt > 0 else None
     qn_ = lambda k: int(k[:4]) * 4 + int(k[5])
@@ -4972,7 +4974,10 @@ def lens_value(code):
     eh = [R[l]["per"] for l in labs[-41:-1] if (R[l].get("per") or 0) > 0]
     g = last.get("ni_yoy")
     peg = per / min(max(g, 1.0), 100.0) if per and g is not None and g > 0 else None
-    acc = (last["rev_yoy"] - prev["rev_yoy"]) if last.get("rev_yoy") is not None and prev.get("rev_yoy") is not None else None
+    # 가속은 가속도 탭과 같은 B — 캐시(지금 버전)의 가속(B)가 있는 마지막 분기. 캐시가 없으면 없음(여기서 쌓지 않는다)
+    dk = _druck_read(code)
+    lastp = next((q for q in reversed((dk or {}).get("points") or []) if q.get("가속B") is not None), None)
+    acc = lastp.get("가속B") if lastp else None
     psr_pct, per_pct = pct(psr, ph), pct(per, eh)
     out.update(date=str(px["d"][-1]), psr=psr, psr_pct=psr_pct, per=per, per_pct=per_pct, peg=peg, acc=acc,
                rev_yoy=last.get("rev_yoy"), quarter=labs[-1], mcap=(p * sh) if p and sh else None, rev_ttm=rt)
@@ -4990,9 +4995,10 @@ def lens_value(code):
         calls.append({"tone": "nu", "text": "중간 — " + where + ". 자기 역사 가운데라 값만으로는 기울지 않는다", "ev": None})
     if psr is not None and psr >= 3:
         calls.append({"tone": "dn", "text": "PSR %.1f배 — 매출의 3배를 넘는 값" % psr, "ev": _lens_ev("피셔 · PSR 3배↑(절대)")})
-    if acc is not None and acc >= 5:
-        calls.append({"tone": "up", "text": "매출 가속 %+.0f%%p(최근 4분기 증가율 %+.0f%%)" % (acc, last["rev_yoy"]),
-                      "ev": _lens_ev("드러켄밀러 · 가속 +5%p↑")})
+    if acc is not None and acc >= DRK.PHASE_BAND:
+        calls.append({"tone": "up", "text": "매출 가속(B) %+.1f%%p(%s 속도 %+.0f%%, %s)" % (
+                          acc, lastp.get("label", ""), lastp.get("속도") or 0, lastp.get("국면") or "국면 판단 전"),
+                      "ev": _lens_ev(DRUCK_LENS)})
     if peg is not None and peg < 1:
         calls.append({"tone": "nu", "text": "PEG %.1f — 성장 대비 싸다(2020년 뒤에만 통했다)" % peg, "ev": _lens_ev("린치 · PEG < 1")})
     out["calls"] = calls
@@ -5083,25 +5089,11 @@ def _inv_vol_splits(v):
 
 
 def _inv_regimes(code):
-    """가속도 캐시로 분기별 TTM 국면. 캐시가 없으면 빈 목록."""
-    path = os.path.join(CACHE_DIR, "druck", code + ".json")
-    try:
-        with open(path, "r", encoding="utf-8") as fh:
-            pts = json.load(fh).get("points") or []
-    except Exception:
-        return []
-    g = []
-    for i, p in enumerate(pts):
-        a, b = p.get("매출_TTM"), (pts[i - 4].get("매출_TTM") if i >= 4 else None)
-        g.append((a / b - 1) * 100 if a and b and b > 0 else None)
-    out = []
-    for i, p in enumerate(pts):
-        acc = (g[i] - g[i - 2]) / 2 if i >= 2 and g[i] is not None and g[i - 2] is not None else None
-        reg = None
-        if g[i] is not None and acc is not None:
-            reg = ("가속 성장" if acc > 0 else "감속 성장") if g[i] > 0 else ("바닥 통과" if acc > 0 else "역성장 심화")
-        out.append({"label": p.get("label"), "g": g[i], "reg": reg})
-    return out
+    """가속도 캐시(지금 버전)로 분기별 7국면 — [{label, g(TTM 성장률), s(속도), a(가속(B)), reg}]. 캐시가 없으면 빈 목록."""
+    pts = (_druck_read(code) or {}).get("points") or []
+    by = {p["n"]: p for p in pts if p.get("n") is not None}
+    return [{"label": p.get("label"), "g": _ttm_growth(by, p), "s": p.get("속도"), "a": p.get("가속B"), "reg": p.get("국면")}
+            for p in pts]
 
 
 # ---------------------------------------------------------------- 전문검색: 무엇을 물어야 할지 모를 때
@@ -6292,18 +6284,23 @@ def landscape_build(c, prog=None):
     except Exception:
         dk = {}
     P = [p for p in dk.get("points", []) if p.get("year")]
+    # 4분기 창 · 1년 전 · 직전 분기는 순번이 아니라 분기 키(n = 연도×4 + 분기 − 1)로 — 빈 분기 점이 끼어도 다른 분기를 집지 않는다
+    nkey = lambda p: p["year"] * 4 + p["q"] - 1      # noqa: E731
+    Pby = {nkey(p): p for p in P}
     qs = []
-    for k, p in enumerate(P):
-        win = P[k - 3:k + 1] if k >= 3 else []
-        ni4 = sum(x["당기순이익"] for x in win) if len(win) == 4 and all(x.get("당기순이익") is not None for x in win) else None
+    for p in P:
+        n = nkey(p)
+        win = [Pby.get(m) for m in range(n - 3, n + 1)]
+        ni4 = sum(x["당기순이익"] for x in win) if all(x is not None and x.get("당기순이익") is not None for x in win) else None
         op4 = p.get("영업이익_TTM")
         sa = S_adj.get(p["year"]) or S_adj.get(min(S_adj, key=lambda y: abs(y - p["year"]))) if S_adj else None
         eps = ni4 / sa if (ni4 is not None and sa) else None
         qd = "%d%s" % (p["year"], LAND_Q_END[p["q"]])
         dd = p.get("주가일")                   # 보고서 접수일(그날 알 수 있던 값) — 결단 시점에 쓴다
-        qs.append({"label": p["label"], "year": p["year"], "q": p["q"], "end": qd, "filed": dd,
+        qs.append({"label": p["label"], "year": p["year"], "q": p["q"], "n": n, "end": qd, "filed": dd,
                    "ni4": ni4, "op4": op4, "eps": eps, "rev4": p.get("매출_TTM"),
                    "inv_days": p.get("재고일수"), "px_end": px_on(qd), "px_filed": prices.get(dd) if dd else None})
+    qby = {q["n"]: q for q in qs}
     for q in qs:
         q["per"] = q["px_end"] / q["eps"] if (q["px_end"] and q["eps"] and q["eps"] > 0) else None
         if q["per"] is not None and not (0.5 <= q["per"] <= 300):
@@ -6378,12 +6375,12 @@ def landscape_build(c, prog=None):
         if quality and pct is not None and pct <= 25:
             hits.append(("버핏", "좋은 회사가 싸다", "ROE 12%% 넘은 해가 %d/%d, PER이 그때까지 자기 역사 하위 %.0f%%" % (
                 sum(1 for v in roes if v >= 12), len(roes), pct)))
-        prev4 = qs[k - 4] if k >= 4 else None
+        prev4 = qby.get(q["n"] - 4)
         g = (q["eps"] / prev4["eps"] - 1) * 100 if (prev4 and prev4.get("eps") and prev4["eps"] > 0 and q["eps"] > 0) else None
         if typ == "고성장" and g and g >= 20 and per_f and per_f / g <= 1.0:
             hits.append(("린치", "고성장주가 PEG 1 아래", "주당이익 1년 %+.0f%%, PER %.1f → PEG %.2f" % (g, per_f, per_f / g)))
-        if typ in ("경기순환", "적자", "회생") and k >= 3:
-            o = [x.get("op4") for x in qs[k - 3:k + 1]]
+        if typ in ("경기순환", "적자", "회생"):
+            o = [(qby.get(m) or {}).get("op4") for m in range(q["n"] - 3, q["n"] + 1)]
             # 순환주는 이익 바닥에서 PER이 가장 비싸 보인다(린치) — 그래서 PER 대신 5년 평균 이익으로 그은 선의 두 배를
             # 넘었는지로 과열을 본다. 넘었으면 회복이 이미 값에 든 것으로 보고 세지 않는다
             e5 = [yrow[y]["eps"] for y in range(q["year"] - 5, q["year"]) if y in yrow and yrow[y].get("eps") is not None]
@@ -6393,15 +6390,16 @@ def landscape_build(c, prog=None):
             if None not in o and o[0] > o[1] > o[2] and o[3] > o[2] and not hot:
                 hits.append(("린치", "순환주 이익 바닥 통과" if o[3] > 0 else "회생 — 적자가 줄기 시작",
                              "4분기 영업이익이 두 분기 줄다가 %s → %s 로 돌아섰다" % (_won_txt(o[2]), _won_txt(o[3]))))
-        if k >= 2 and q["ni4"] is not None and q["ni4"] > 0 and all(
-                x["ni4"] is not None and x["ni4"] < 0 for x in qs[k - 2:k]):
-            hits.append(("린치", "회생 — 흑자 전환", "4분기 순이익 %s → %s" % (_won_txt(qs[k - 1]["ni4"]), _won_txt(q["ni4"]))))
+        w2 = [qby.get(q["n"] - 2), qby.get(q["n"] - 1)]
+        if q["ni4"] is not None and q["ni4"] > 0 and all(
+                x is not None and x["ni4"] is not None and x["ni4"] < 0 for x in w2):
+            hits.append(("린치", "회생 — 흑자 전환", "4분기 순이익 %s → %s" % (_won_txt(w2[-1]["ni4"]), _won_txt(q["ni4"]))))
         if typ in ("대형우량", "저성장") and pct is not None and pct <= 15 and not quality:
             hits.append(("린치", "우량주가 이익선 아래", "PER 자기 역사 하위 %.0f%%" % pct))
         for who, what, why in hits:
-            if last_at.get(who) is not None and k - last_at[who] < 4:      # 같은 구루는 1년에 한 번
+            if last_at.get(who) is not None and q["n"] - last_at[who] < 4:      # 같은 구루는 1년(네 분기)에 한 번
                 continue
-            last_at[who] = k
+            last_at[who] = q["n"]
             moments.append({"who": who, "what": what, "why": why, "d": d, "label": q["label"], "px": prices[d],
                             "r1": fwd(d, 365), "r3": fwd(d, 365 * 3), "pct": round(pct, 1) if pct is not None else None})
 
@@ -6657,7 +6655,8 @@ def landscape_build(c, prog=None):
     # 린치 — 유형이 사고파는 규칙을 정한다
     eps_hist = [q["eps"] for q in qs if q.get("eps") is not None]
     eps_peak = bool(eps_now and eps_hist and eps_now >= max(eps_hist) * 0.95 and len(eps_hist) >= 8)
-    o4 = [q.get("op4") for q in qs[-4:]]
+    lq4 = next((q for q in reversed(qs) if q.get("op4") is not None), None)     # 끝에 빈 분기 점(fy 등)이 붙어도 마지막 실적 분기에서 본다
+    o4 = [(qby.get(m) or {}).get("op4") for m in range(lq4["n"] - 3, lq4["n"] + 1)] if lq4 else []
     turning = len(o4) == 4 and None not in o4 and o4[0] > o4[1] > o4[2] and o4[3] > o4[2]
     peg = per_now / g_now if (per_now and g_now and g_now > 0) else None
     if last_type == "고성장":
@@ -7478,11 +7477,15 @@ def narrative_view(code, term):
     rerate = None
     try:
         dk = druck(code) or {}
-        P = [p for p in dk.get("points", []) if p.get("주가일")]
+        allp = [p for p in dk.get("points", []) if p.get("year")]
+        Pby = {p["year"] * 4 + p["q"] - 1: p for p in allp}
+        P = [p for p in allp if p.get("주가일")]
         ni = {}
         for k, p in enumerate(P):
-            w4 = P[k - 3:k + 1] if k >= 3 else []
-            ni[k] = sum(x["당기순이익"] for x in w4) if len(w4) == 4 and all(x.get("당기순이익") is not None for x in w4) else None
+            # 4분기 합은 분기 키 창으로 — 주가일로 거른 목록의 순번 창은 주가를 못 붙인 분기를 건너뛰어 다른 네 분기를 더했다
+            n = p["year"] * 4 + p["q"] - 1
+            w4 = [Pby.get(m) for m in range(n - 3, n + 1)]
+            ni[k] = sum(x["당기순이익"] for x in w4) if all(x is not None and x.get("당기순이익") is not None for x in w4) else None
         k0 = max((k for k, p in enumerate(P) if p["주가일"] <= d0), default=None)
         k1 = max((k for k, p in enumerate(P) if p["주가일"] <= d1), default=None)
         if pr is not None and k0 is not None and k1 is not None and k1 > k0:
@@ -7896,26 +7899,18 @@ def _grp_ret(idx, g, d0, d1, skip=None):
 
 
 def _dip_points(c):
+    """저평가 관문 ②⑤의 분기 점 — 가속도 캐시(지금 버전), 없으면 최근 SCREEN_YEARS 년 series(빈 분기 점 포함 · 원본 공시일 주가).
+    분기 키 격자 그대로 돌려준다 — 쓰는 쪽(_dip_company)은 n 으로 찾는다."""
     corp = corp_code_of(c["code"])
     if not corp or DRK is None:
         return []
-    cached = os.path.join(CACHE_DIR, "druck", c["code"] + ".json")
-    if os.path.exists(cached):
-        try:
-            with open(cached, "r", encoding="utf-8") as fh:
-                pts = json.load(fh).get("points") or []
-            if pts:
-                return [p for p in pts if p.get("year")]
-        except Exception:
-            pass
+    d = _druck_read(c["code"])
+    if d and d.get("points"):
+        return [p for p in d["points"] if p.get("year")]
     this_year = dt.date.today().year
-    pts = [p for p in DRK.series(corp, c["code"], list(range(this_year - SCREEN_YEARS, this_year + 1))) if p.get("매출액")]
-    dates = {}
-    for r in c["reports"]:
-        y, mth = r["stamp"].split("-")
-        q = Q_OF_MONTH.get(mth)
-        if q and (not r["tag"] or (int(y), q) not in dates):
-            dates[(int(y), q)] = rcept_dt_of(r)
+    meta = _druck_meta(c)
+    pts = DRK.series(corp, c["code"], list(range(this_year - SCREEN_YEARS, this_year + 1)), meta=meta, offline=True)
+    dates = {(p["year"], p["q"]): meta["filed"][p["n"]] for p in pts if meta["filed"].get(p["n"])}
     try:
         DRK.attach_prices(pts, c["code"], dates)
     except Exception:
@@ -7942,12 +7937,15 @@ def _dip_company(r, trend, idx, ind_of):
         "북투빌 %s" % ("%.2f" % btb if btb is not None else "—"))
     # ② 돈 — 분기 실적은 최근 4년만(스크리너와 같은 계산, 재무 캐시를 그대로 쓴다). 15년 가속도 캐시를 새로 만들면 회사당 30초가 넘는다
     P = _dip_points(c)
-    ni4 = []
-    for k, p in enumerate(P):
-        w4 = P[k - 3:k + 1] if k >= 3 else []
-        ni4.append(sum(x["당기순이익"] for x in w4) if len(w4) == 4 and all(x.get("당기순이익") is not None for x in w4) else None)
-    op_now = P[-1].get("영업이익_TTM") if P else None
-    ni_now = ni4[-1] if ni4 else None
+    # 분기 키(n)로 — 4분기 창 · 1년 전 · '지금'(매출이 있는 마지막 분기)이 빈 분기 점(gap · fy)에 밀려 다른 분기를 집지 않게
+    Pby = {p["n"]: p for p in P if p.get("n") is not None}
+
+    def ni4_at(p):
+        w4 = [Pby.get(m) for m in range(p["n"] - 3, p["n"] + 1)] if p and p.get("n") is not None else [None]
+        return sum(x["당기순이익"] for x in w4) if all(x is not None and x.get("당기순이익") is not None for x in w4) else None
+    cur = next((p for p in reversed(P) if p.get("매출액") and p.get("n") is not None), None)
+    op_now = cur.get("영업이익_TTM") if cur else None
+    ni_now = ni4_at(cur)
     add(2, "최근 4분기 영업이익·순이익 흑자", bool(op_now and op_now > 0 and ni_now and ni_now > 0),
         "영업이익 %s · 순이익 %s" % (_won_txt(op_now) if op_now else "—", _won_txt(ni_now) if ni_now else "—"))
     fy = dt.date.today().year
@@ -7969,9 +7967,10 @@ def _dip_company(r, trend, idx, ind_of):
     add(2, "매출이 줄지 않았다(-5% 이내)", rev_yoy is None or rev_yoy >= -5, "매출 1년 %s" % ("%+.0f%%" % rev_yoy if rev_yoy is not None else "—"))
     add(2, "이익률이 무너지지 않았다(저가 수주 아님)", md is None or md >= -5, "영업이익률 1년 %s" % ("%+.1f%%p" % md if md is not None else "—"))
     ar_up = None
-    if len(P) >= 5:
-        a0 = (P[-5].get("매출채권일수") or 0) + (P[-5].get("재고일수") or 0)
-        a1 = (P[-1].get("매출채권일수") or 0) + (P[-1].get("재고일수") or 0)
+    p4 = Pby.get(cur["n"] - 4) if cur else None
+    if p4:
+        a0 = (p4.get("매출채권일수") or 0) + (p4.get("재고일수") or 0)
+        a1 = (cur.get("매출채권일수") or 0) + (cur.get("재고일수") or 0)
         ar_up = (a1 / a0 - 1) * 100 if a0 > 0 and a1 > 0 else None
     add(2, "매출채권·재고가 매출보다 빨리 불지 않았다", ar_up is None or ar_up <= 35,
         "채권+재고 일수 1년 %s" % ("%+.0f%%" % ar_up if ar_up is not None else "자료 없음"), hard=False)
@@ -7999,13 +7998,14 @@ def _dip_company(r, trend, idx, ind_of):
     # ⑤ 억울함 — 하락 동안 이익은 버텼나, 시장·업종도 빠졌나
     e_chg = rerate = None
     if hi_d and P:
-        k0 = max((k for k, p in enumerate(P) if (p.get("주가일") or "") <= hi_d), default=None)
-        if k0 is not None:
-            e0, e1 = ni4[k0], ni_now
+        # 고점 무렵 = 고점일까지 공시된(주가일 ≤ 고점일) 마지막 분기. 주가를 못 붙인 빈 분기 점은 고르지 않는다
+        p0 = max((p for p in P if p.get("주가일") and p["주가일"] <= hi_d and p.get("n") is not None), key=lambda p: p["n"], default=None)
+        if p0 is not None:
+            e0, e1 = ni4_at(p0), ni_now
             if e0 and e1 and e0 > 0 and e1 > 0:
                 e_chg = (e1 / e0 - 1) * 100
             else:
-                o0 = P[k0].get("영업이익_TTM")
+                o0 = p0.get("영업이익_TTM")
                 if o0 and op_now and o0 > 0 and op_now > 0:
                     e_chg = (op_now / o0 - 1) * 100
     if e_chg is not None and dd is not None:

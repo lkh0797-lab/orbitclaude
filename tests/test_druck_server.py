@@ -254,3 +254,197 @@ def test_run_bt_no_fallback_on_slow_failure_or_success(monkeypatch, tmp_path):
     monkeypatch.setattr(SRV, "BT_QUICK_FAIL", 20)
     monkeypatch.setattr(SRV.subprocess, "run", lambda cmd, **kw: ran.append(cmd[0]) or _P(0))
     assert SRV._druck_run_bt()["rc"] == 0 and ran == ["py"]
+
+
+# ---------------------------------------------------------------- 소비처 — 같은 B · 분기 키(Task 7)
+def qp(y, q, **kw):
+    """가속도 캐시 점 하나(분기 키 n 포함)."""
+    return dict({"year": y, "q": q, "label": "%dQ%d" % (y, q), "n": y * 4 + q - 1, "품질": []}, **kw)
+
+
+def test_inv_ttm_reads_druck_cache_by_quarter_key(monkeypatch):
+    # 2024Q2 가 목록에서 빠진(조밀하지 않은) 캐시 — 순번 i − 4 는 2024Q1 을 집지만 키 n − 4 는 2024Q2 가 없어 g 를 내지 않는다
+    pts = [qp(2024, 1, 매출_TTM=100.0), qp(2024, 3, 매출_TTM=110.0), qp(2024, 4, 매출_TTM=120.0),
+           qp(2025, 1, 매출_TTM=125.0), qp(2025, 2, 매출_TTM=140.0, 속도=12.0, 가속B=4.5, 국면="확장 가속", 변곡="▲", PER_TTM=9.0, 주가=1000.0),
+           qp(2025, 3, 매출_TTM=150.0)]
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: {"points": pts})
+    t = SRV._inv_ttm("000001", "2025-06")
+    assert (t["label"], t["s"], t["a"], t["reg"], t["turn"], t["price"], t["per"]) == ("2025Q2", 12.0, 4.5, "확장 가속", "▲", 1000.0, 9.0)
+    assert t["g"] is None and t["per_pct"] is None                                   # PER 기록 8개 미만
+    assert SRV._inv_ttm("000001", "2025-09")["g"] == pytest.approx((150 / 110 - 1) * 100)   # 2024Q3 은 키로 있다
+    assert SRV._inv_ttm("000001", "2023-12") is None
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: None)                       # 옛 버전 · 없음 — 쌓지 않는다
+    assert SRV._inv_ttm("000001", "2025-06") is None and SRV._inv_regimes("000001") == []
+
+
+def test_inv_ttm_per_pct_skips_cut_quarters(monkeypatch):
+    pts = [qp(2023 + i // 4, i % 4 + 1, PER_TTM=float(v)) for i, v in enumerate([1, 2, 3, 4, 5, 6, 7, 8, 9])]
+    pts[0]["품질"] = ["cut"]                                                            # 분할 보정 못 한 분기 — 견주지 않는다
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: {"points": pts})
+    t = SRV._inv_ttm("000001", "2025-03")                                             # 9번째 점(2025Q1, PER 9)
+    assert t["per_pct"] == 100.0                                                      # 나머지 8개 가운데 가장 높다
+
+
+def test_inv_regimes_are_seven_phase_names_with_key_growth(monkeypatch):
+    pts = [qp(2024, 1, 매출_TTM=100.0), qp(2024, 2), qp(2024, 3), qp(2024, 4),
+           qp(2025, 1, 매출_TTM=130.0, 속도=10.0, 가속B=-4.0, 국면="둔화"), qp(2025, 2, 품질=["fy"])]
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: {"points": pts})
+    r = SRV._inv_regimes("000001")
+    assert len(r) == 6 and r[4] == {"label": "2025Q1", "g": pytest.approx(30.0), "s": 10.0, "a": -4.0, "reg": "둔화"}
+    assert r[5]["reg"] is None and r[5]["g"] is None
+
+
+@pytest.fixture
+def screen_co(monkeypatch):
+    c = {"code": "000001", "name": "가짜", "reports": []}
+    monkeypatch.setattr(SRV, "corp_code_of", lambda code: "00000001")
+    return c
+
+
+def test_screen_row_from_cache_uses_quarter_keys_and_b(monkeypatch, screen_co):
+    pts = [qp(2024, 2, 매출액=90.0, 매출_TTM=380.0, 당기순이익=5.0),
+           qp(2024, 3, 매출액=95.0, 당기순이익=6.0, 재고일수=50.0, 매출가속=-2.0),
+           qp(2024, 4, 품질=["gap"]),                                                     # 4분기 빈칸 — 순이익 4분기 합은 못 낸다
+           qp(2025, 1, 매출액=100.0, 당기순이익=7.0, 재고일수=48.0, 매출가속=1.0),
+           qp(2025, 2, 매출액=110.0, 당기순이익=8.0, 재고일수=45.0, 매출가속=3.0, 매출YoY=20.0, 매출_TTM=420.0,
+              가속B=5.0, 속도=-1.0, 국면="회복", 변곡="▲", PER_TTM=12.0),
+           qp(2025, 3, 품질=["fy"]), qp(2025, 4, 품질=["fy"])]                         # 끝에 붙은 빈 fy 점 — '지금'이 아니다
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: {"points": pts})
+    r = SRV.screen_row(screen_co)
+    assert r["quarter"] == "2025Q2" and r["가속B"] == 5.0 and r["속도"] == -1.0 and r["국면"] == "회복" and r["변곡"] == "▲"
+    assert r["전환"] is True and r["전환종류"] == "역성장완화"                          # 속도 < 0 이면 '덜 나빠짐'
+    assert r["매출가속"] == 3.0 and r["전분기가속"] == 1.0                              # C 키는 그대로(시너지)
+    assert r["재고일수변화"] == -3.0 and r["매출_TTM_1년전"] == 380.0 and r["순이익_TTM"] is None
+    assert r["PER_TTM"] == 12.0
+
+
+def test_screen_row_turn_needs_band_crossing_not_c_sign(monkeypatch, screen_co):
+    pts = [qp(2025, 1, 매출액=100.0, 매출가속=-1.0), qp(2025, 2, 매출액=110.0, 매출가속=2.0, 가속B=2.0, 속도=5.0, 변곡=None)]
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: {"points": pts})
+    r = SRV.screen_row(screen_co)
+    assert r["전환"] is False and r["전환종류"] is None                                # 옛 판정(C 가 − → +)이면 전환이었다
+
+
+def test_screen_row_without_cache_builds_series_per_share_accel_prices(monkeypatch, screen_co):
+    screen_co["reports"] = [{"stamp": "2025-06", "label": "반기보고서", "tag": "", "rcept": "20250814000001"}]
+    calls = []
+    raw = [qp(2024, q, 매출액=100.0 + q, 매출YoY=10.0) for q in (1, 2, 3, 4)] + [qp(2025, q, 매출액=120.0 + q, 매출YoY=25.0) for q in (1, 2)]
+    for p in raw:
+        p["YoY_r"] = p["매출YoY"]
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: None)
+    monkeypatch.setattr(SRV, "_share_events", lambda code: [("20250101", "주식분할결정")])
+    monkeypatch.setattr(DRK, "series", lambda corp, code, years, meta=None, offline=False: calls.append(("series", offline, dict(meta["filed"]))) or raw)
+    monkeypatch.setattr(DRK, "per_share", lambda pts, sev: calls.append(("per_share", sev)) or pts)
+
+    def prices(pts, code, dates):
+        calls.append(("prices", dates))
+        return pts
+    monkeypatch.setattr(DRK, "attach_prices", prices)
+    r = SRV.screen_row(screen_co)
+    assert [x[0] for x in calls] == ["series", "per_share", "prices"]
+    assert calls[0][1] is True and calls[0][2] == {2025 * 4 + 1: "20250814"}             # offline · 원본 공시일 meta
+    assert calls[1][1] == [("20250101", "주식분할결정")] and calls[2][1] == {(2025, 2): "20250814"}
+    assert r["가속B"] == pytest.approx(15.0) and r["국면"] == "확장 가속"                  # 진짜 accel: 속도 25 − 앞 2분기 10
+
+
+def test_score_rows_ranks_b_not_c():
+    rows = [{"가속B": 10.0, "매출가속": -9.0}, {"가속B": 0.0, "매출가속": 0.0}, {"가속B": -10.0, "매출가속": 9.0}]
+    SRV.score_rows(rows)
+    assert rows[0]["score"] > rows[1]["score"] > rows[2]["score"]
+
+
+def test_screen_response_says_weights_unvalidated(monkeypatch):
+    monkeypatch.setattr(SRV, "SCREEN", {"rows": [{"x": 1}], "done": 1, "total": 1, "running": False, "years": 4, "built": 1})
+    assert SRV.screen()["score_note"] == "가중 50/30/20 — 검증 안 됨"
+
+
+def test_earnings_yoy_matches_same_quarter_by_key(monkeypatch, screen_co):
+    class _F:
+        fetch_consensus = staticmethod(lambda code, period: {"cols": [], "rows": {}})
+        consensus_history = staticmethod(lambda code, period: {})
+    monkeypatch.setattr(SRV, "FIN", _F)
+    seen = {}
+
+    def series(corp, code, years, meta=None, offline=False):
+        seen.update(offline=offline, meta=meta)
+        return [qp(2024, 1, 매출액=100.0), qp(2024, 2, 품질=["gap"]), qp(2024, 3, 매출액=120.0), qp(2024, 4, 매출액=130.0),
+                qp(2025, 1, 매출액=110.0), qp(2025, 2, 매출액=150.0)]
+    monkeypatch.setattr(DRK, "series", series)
+    out = SRV.earnings(screen_co, "q", 10)
+    yy = {r["key"]: (r["yoy"] or {}).get("매출액") for r in out["rows"]}
+    assert "202406" not in yy                                                          # 값 없는 분기는 칸을 만들지 않는다
+    assert yy["202503"] == pytest.approx(10.0) and yy["202506"] is None               # 순번 4칸 전이면 2024Q1(+50%)을 집었다
+    assert seen["offline"] is True and set(seen["meta"]) == {"filed", "fy_bad", "amend"}
+
+
+def test_dip_points_cache_first_then_short_series_keeps_gap_points(monkeypatch, screen_co):
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: {"points": [qp(2025, 1, 매출액=1.0), {"품질": []}]})
+    assert [p["label"] for p in SRV._dip_points(screen_co)] == ["2025Q1"]
+    screen_co["reports"] = [{"stamp": "2025-03", "label": "분기보고서", "tag": "", "rcept": "20250515000001"}]
+    monkeypatch.setattr(SRV, "_druck_read", lambda code: None)
+    monkeypatch.setattr(DRK, "series", lambda corp, code, years, meta=None, offline=False: [qp(2025, 1, 매출액=1.0), qp(2025, 2, 품질=["gap"])])
+    got = {}
+    monkeypatch.setattr(DRK, "attach_prices", lambda pts, code, dates: got.update(dates) or pts)
+    assert [p["label"] for p in SRV._dip_points(screen_co)] == ["2025Q1", "2025Q2"] and got == {(2025, 1): "20250515"}
+
+
+def test_lens_rule_name_is_b():
+    assert SRV.LENS_RULES["스탠리 드러켄밀러"][0] == SRV.DRUCK_LENS == "드러켄밀러 · 가속(B) +3%p↑"
+
+
+def test_inflect_cache_key_carries_druck_version(monkeypatch, tmp_path):
+    c = {"code": "000001", "name": "가짜", "reports": [{"rcept": "20250814000001"}]}
+    monkeypatch.setattr(SRV, "CACHE_DIR", str(tmp_path))
+    monkeypatch.setattr(SRV, "company_by_code", lambda code: c)
+    monkeypatch.setattr(SRV, "corp_code_of", lambda code: "00000001")
+    monkeypatch.setattr(SRV, "FIN", object())
+    sig = "20250814000001_v%d_%s:%d" % (SRV.INF.VERSION, SRV.dt.date.today().strftime("%Y%m%d"), DRK.VERSION)
+    os.makedirs(os.path.join(str(tmp_path), "inflect"))
+    with open(os.path.join(str(tmp_path), "inflect", "000001.json"), "w", encoding="utf-8") as fh:
+        SRV.json.dump({"sig": sig, "hit": True}, fh)
+    assert SRV.inflect("000001") == {"sig": sig, "hit": True}                       # DRK.VERSION 이 바뀌면 이 캐시는 안 맞는다
+
+
+# ---------------------------------------------------------------- 변곡점 — 가속 전환 사건 · 드러켄밀러 카드(같은 B)
+INF = SRV.INF
+
+
+def test_inflect_event_is_b_turn_up_with_positive_speed():
+    qs = [qp(2024, 1, 가속B=-5.0, 속도=8.0, rcept="r1"), qp(2024, 2, 가속B=4.0, 속도=9.0, 변곡="▲", rcept="r2"),
+          qp(2024, 3, 가속B=-6.0, 속도=-2.0, 변곡="▼", rcept="r3"), qp(2024, 4, 가속B=5.0, 속도=-1.0, 변곡="▲", rcept="r4")]
+    ev = [e for e in INF.events([], qs, [], [], [], {}) if e["title"].startswith("분기 매출 가속 전환")]
+    assert len(ev) == 1 and ev[0]["title"] == "분기 매출 가속 전환 (2024Q2)"           # 속도 < 0 인 ▲ 은 사건이 아니다
+    assert ev[0]["rcept"] == "r2" and ev[0]["prev_rcept"] == "r1" and "가속(B) +4.0%p" in ev[0]["detail"]
+
+
+def test_last_quarters_is_a_key_window():
+    qs = [qp(2023, q, 매출YoY=1.0) for q in (1, 2, 3, 4)] + [qp(2024, q) for q in (1, 2)] + \
+         [qp(2024, q, 매출YoY=2.0) for q in (3, 4)] + [qp(2025, 1, 품질=["fy"])]
+    w = INF._last_quarters(qs, "매출YoY")
+    assert [q["label"] for q in w] == ["2023Q1", "2023Q2", "2023Q3", "2023Q4", "2024Q1", "2024Q2", "2024Q3", "2024Q4"]
+    assert INF._last_quarters([qp(2024, 1)], "매출YoY") == []
+
+
+def _druck_card(quarters, price_info=None):
+    return next(L for L in INF.lenses([], quarters, price_info or {}) if L["guru"] == "스탠리 드러켄밀러")
+
+
+def test_druck_card_badge_series_and_descriptive_verdict():
+    qs = [qp(2025, 1, 매출YoY=10.0, 가속B=2.5, 재고일수=60.0), qp(2025, 2, 매출YoY=20.0, 가속B=3.0, 속도=15.0, 국면="확장 가속",
+                                                           엇갈림=True, 이익률변화=1.0, 재고일수=50.0)]
+    card = _druck_card(qs)
+    m = next(x for x in card["metrics"] if x["k"] == "매출 가속(B)")
+    assert m["v"] == "+3.0%p" and [s["v"] for s in m["series"]] == [2.5, 3.0]
+    assert card["grade"] == "강함"                                                     # B 3↑ · 이익률↑ · 재고일수↓ 셋 다
+    assert card["verdict"] == "최근 분기(2025Q2) 속도 +15.0%, 가속(B) +3.0%p — 확장 가속. 이번 분기 단독은 반대로 움직였다. 재고일수 60일 → 50일."
+    qs[1]["가속B"] = 2.9
+    assert _druck_card(qs)["grade"] == "보통"                                           # 띠 안(+3%p 미만)은 가속이 아니다
+
+
+def test_druck_card_how_reads_lens_bt_or_drops_sentence():
+    qs = [qp(2025, 2, 매출YoY=20.0, 가속B=3.0, 속도=15.0, 국면="확장 가속")]
+    how = _druck_card(qs)["clock"]["how"]
+    assert "+5%p" not in how and "큰 표본" not in how                                   # 성적 파일이 없으면 문장을 뺀다
+    ev = {"n": 1234, "diff": 1.8, "ci": [-0.4, 3.9], "word": "통계적으로 뚜렷하지 않음"}
+    how = _druck_card(qs, {"druck_ev": ev})["clock"]["how"]
+    assert "공시 1,234건" in how and "+1.8%p" in how and "(90% 구간 -0.4 ~ +3.9)" in how and "통계적으로 뚜렷하지 않음" in how
