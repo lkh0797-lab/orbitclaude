@@ -31,6 +31,10 @@ _spec.loader.exec_module(FIN)
 
 CACHE_DIR = os.path.join(BASE, ".cache", "druck")
 
+VERSION = 2          # 2: 분기 키 · 재작성 비교 · 기준일 · 품질 · 분할 보정 EPS · B(2026-10-09). 계산을 바꾸면 올린다 — 캐시가 전부 다시 계산된다
+LAST = {"transient": 0, "fy_bad": []}
+KEYS_IS = ("매출액", "영업이익", "당기순이익", "지배순이익", "EPS")
+
 Q_BY_REPRT = {"11013": 1, "11012": 2, "11014": 3, "11011": 4}
 REPRT_BY_Q = {1: "11013", 2: "11012", 3: "11014", 4: "11011"}
 
@@ -163,106 +167,127 @@ def period_data(corp_code, year, q, offline=False):
     return d
 
 
-def series(corp_code, stock_code, years, prices=None):
-    """분기 시계열. years 는 [2011, ... 2026] 같은 오름차순 연도 목록."""
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    pts = []
+def _n(y, q):
+    return y * 4 + q - 1
+
+
+def series(corp_code, stock_code, years, prices=None, meta=None, offline=False):
+    """분기 시계열 v2 — n 오름차순 조밀 격자. meta = {filed: {n: 원본 공시일}, fy_bad: {연도}, fin: bool}."""
+    meta = meta or {}
+    filed, fy_bad = meta.get("filed") or {}, set(meta.get("fy_bad") or ())
+    LAST.update(transient=0, fy_bad=sorted(fy_bad))
+    raw = {}
     for y in years:
         for q in (1, 2, 3, 4):
             try:
-                d = period_data(corp_code, y, q)
+                d = period_data(corp_code, y, q, offline=offline)
             except Exception:
-                d = None
-            if not d:
+                d = {"_transient": True}
+            if d and d.get("_transient"):
+                LAST["transient"] += 1
                 continue
-            pts.append({"year": y, "q": q, "label": "%dQ%d" % (y, q), "raw": d})
-
-    # 4분기 단독 = 연간 − 3분기 누적
-    by_key = {(p["year"], p["q"]): p for p in pts}
-    for p in pts:
-        raw = p["raw"]
-        if p["q"] != 4:
-            for k in ("매출액", "영업이익", "당기순이익", "EPS"):
-                p[k] = raw.get(k)
+            if d:
+                raw[_n(y, q)] = d
+    if not raw:
+        return []
+    n0, n1 = min(raw), max(raw)
+    pts = []
+    for n in range(n0, n1 + 1):
+        y, q = n // 4, n % 4 + 1
+        p = {"year": y, "q": q, "label": "%dQ%d" % (y, q), "n": n, "품질": []}
+        d = raw.get(n)
+        if y in fy_bad:
+            p["품질"].append("fy")
+            d = None
+        if d is None:
+            if "fy" not in p["품질"]:
+                p["품질"].append("gap")
+            pts.append(p)
             continue
-        q3 = by_key.get((p["year"], 3), {}).get("raw", {})
-        for k in ("매출액", "영업이익", "당기순이익"):
-            ann, cum9 = raw.get(k), q3.get(k + "_누적")
-            p[k] = (ann - cum9) if (ann is not None and cum9 is not None) else None
-        eps_a, eps_c = raw.get("EPS"), q3.get("EPS_누적")
-        # 3분기 누적 EPS 가 없으면 4분기 단독은 모른다 — 연간 EPS 를 대신 넣으면 4분기 합 · 전년 대비가 연간과 분기를 섞어 부푼다(2026-10-07)
-        p["EPS"] = (eps_a - eps_c) if (eps_a is not None and eps_c is not None) else None
+        p["fs"] = d.get("_fs")
+        if q != 4:
+            for k in KEYS_IS:
+                p[k] = d.get(k)
+                p[k + "_전"] = d.get(k + "_전")
+        else:
+            q3 = raw.get(n - 1) or {}
+            same_fs = q3.get("_fs") == d.get("_fs")
+            # 범위 검사 — 사업보고서 비교연도 ÷ 전년 사업보고서, Q3 비교 누적 ÷ 전년 Q3 누적 이 2% 넘게 다르면 연말 재작성
+            pa, p3 = raw.get(n - 4) or {}, raw.get(n - 5) or {}
+            scope_ok = True
+            ra = (d.get("매출액_전연") / pa["매출액"]) if d.get("매출액_전연") and pa.get("매출액") else None
+            r3 = (q3.get("매출액_전누적") / p3["매출액_누적"]) if q3.get("매출액_전누적") and p3.get("매출액_누적") else None
+            if ra is not None and r3 is not None and abs(ra / r3 - 1) > 0.02:
+                scope_ok = False
+            for k in KEYS_IS:
+                ann, cum9 = d.get(k), q3.get(k + "_누적")
+                ok = same_fs and scope_ok and ann is not None and cum9 is not None
+                p[k] = (ann - cum9) if ok else None
+                pa_, pc_ = d.get(k + "_전연"), q3.get(k + "_전누적")
+                p[k + "_전"] = (pa_ - pc_) if (ok and pa_ is not None and pc_ is not None) else None
+            if d.get("매출액") is not None and p.get("매출액") is None:
+                p["품질"].append("basis")
+        for k in ("재고자산", "매출채권", "유형자산", "자본총계"):
+            p[k] = d.get(k)
+        cx, cx_prev = d.get("CAPEX"), (raw.get(n - 1) or {}).get("CAPEX") if q != 1 else 0
+        p["CAPEX"] = (cx - cx_prev) if (cx is not None and cx_prev is not None) else None
+        f0 = filed.get(n)
+        rc = d.get("_rcept")
+        p["기준일"] = max(x for x in (f0, rc) if x) if (f0 or rc) else None
+        if f0 and rc and rc > f0:
+            p["품질"].append("amended")
+        pts.append(p)
+    by = {p["n"]: p for p in pts}
+    # 이상값 — 그 분기와 앞 분기들만 본다
     for p in pts:
-        for k in ("재고자산", "매출채권", "유형자산", "자본총계", "CAPEX"):
-            p[k] = p["raw"].get(k)
-        del p["raw"]
-
-    pts.sort(key=lambda p: (p["year"], p["q"]))
-
-    # 전년 동기 대비 증감률 -> 가속도
-    idx = {(p["year"], p["q"]): i for i, p in enumerate(pts)}
-    for i, p in enumerate(pts):
-        j = idx.get((p["year"] - 1, p["q"]))
+        v = p.get("매출액")
+        if v is None:
+            continue
+        prev = by.get(p["n"] - 1) or {}
+        hist = [by[m]["매출액"] for m in range(p["n"] - 4, p["n"]) if m in by and by[m].get("매출액")]
+        med = sorted(hist)[len(hist) // 2] if hist else None
+        if v <= 0 or (med is not None and med > 0 and v < 0):
+            p["매출액"] = None; p["품질"].append("neg")
+        elif prev.get("매출액") is not None and prev["매출액"] == v:
+            p["매출액"] = None; p["품질"].append("dup")
+    # 전년 대비 — 공시 당시(매출YoY) · 재작성(YoY_r)
+    for p in pts:
+        b = by.get(p["n"] - 4) or {}
         for k, tag in (("매출액", "매출"), ("영업이익", "영업이익")):
+            a, v = b.get(k), p.get(k)
             p[tag + "YoY"] = None
-            if j is None:
-                continue
-            a, b = pts[j].get(k), p.get(k)
-            if a is None or b is None or a <= 0:
-                continue
-            # 기저가 거의 0이면 증감률은 의미가 없다. 적자에서 흑자로 돌면
-            # 수천 %가 찍히는데 차트도 판단도 망가진다. 이익은 매출의 1% 미만
-            # 기저를 버리고, 대신 영업이익률 변화(%p)로 본다.
-            if tag == "영업이익":
-                base_rev = pts[j].get("매출액")
-                if base_rev and a < base_rev * 0.01:
+            if a is not None and v is not None and a > 0:
+                if tag == "영업이익" and b.get("매출액") and a < b["매출액"] * 0.01:
                     p[tag + "YoY_무의미"] = True
-                    continue
-            p[tag + "YoY"] = (b - a) / abs(a) * 100
+                else:
+                    p[tag + "YoY"] = (v - a) / abs(a) * 100
+            pr = p.get(k + "_전")
+            key_r = "YoY_r" if tag == "매출" else "영업이익YoY_r"
+            p[key_r] = (v - pr) / abs(pr) * 100 if (v is not None and pr is not None and pr > 0) else None
         if p.get("매출액") and p.get("영업이익") is not None:
             p["영업이익률"] = p["영업이익"] / p["매출액"] * 100
-            # 지주회사는 영업이익에 지분법이익이 잡히는데 매출은 지주사 자체
-            # 매출뿐이라 비율이 수천 %로 튄다. 순위에 넣으면 안 되는 값이다.
             if abs(p["영업이익률"]) > 100:
                 p["이익률_비정상"] = True
-
-    for i, p in enumerate(pts):
-        prev = pts[i - 1] if i else None
+    for p in pts:
+        prev = by.get(p["n"] - 1) or {}
         for tag in ("매출", "영업이익"):
-            p[tag + "가속"] = None
-            if prev and p.get(tag + "YoY") is not None \
-                    and prev.get(tag + "YoY") is not None:
-                p[tag + "가속"] = p[tag + "YoY"] - prev[tag + "YoY"]
-        p["이익률변화"] = None
-        if prev and p.get("영업이익률") is not None \
-                and prev.get("영업이익률") is not None:
-            p["이익률변화"] = p["영업이익률"] - prev["영업이익률"]
-
-    # 회전일수 — 분모는 TTM 매출이다.
-    # 단일 분기 매출로 나누면 매출이 출렁이는 회사에서 지표가 망가진다.
-    # (한미반도체 2026Q1 매출 509억 -> Q2 2,512억. 재고는 그대로인데
-    #  재고일수가 309일 -> 52일로 찍힌다. 재고가 준 게 아니라 분모가 커진 것.)
-    for i, p in enumerate(pts):
-        win = pts[max(0, i - 3):i + 1]
-        p["매출_TTM"] = (sum(w["매출액"] for w in win)
-                       if len(win) == 4 and all(w.get("매출액") for w in win) else None)
-        daily = (p["매출_TTM"] / 365.0) if p["매출_TTM"] else None
+            a, b_ = p.get(tag + "YoY"), prev.get(tag + "YoY")
+            p[tag + "가속"] = (a - b_) if (a is not None and b_ is not None) else None
+        p["이익률변화"] = (p["영업이익률"] - prev["영업이익률"]) if (p.get("영업이익률") is not None and prev.get("영업이익률") is not None) else None
+    # TTM · 회전일수 · CAPEX 강도 — 연속 네 분기(키)일 때만
+    for p in pts:
+        win = [by.get(m) or {} for m in range(p["n"] - 3, p["n"] + 1)]
+        p["매출_TTM"] = sum(w["매출액"] for w in win) if all(w.get("매출액") for w in win) else None
+        p["영업이익_TTM"] = sum(w["영업이익"] for w in win) if all(w.get("영업이익") is not None for w in win) else None
+        if p["매출_TTM"] and len({w.get("fs") for w in win}) > 1:
+            p["품질"].append("basis")
+        daily = p["매출_TTM"] / 365.0 if p["매출_TTM"] else None
         p["재고일수"] = (p["재고자산"] / daily) if (daily and p.get("재고자산")) else None
         p["매출채권일수"] = (p["매출채권"] / daily) if (daily and p.get("매출채권")) else None
-        rev = p.get("매출액")
-        p["CAPEX강도"] = (p["CAPEX"] / rev * 100) if (rev and p.get("CAPEX")) else None
-
-    # TTM 과 그 시점 PER
-    for i, p in enumerate(pts):
-        win = pts[max(0, i - 3):i + 1]
-        if len(win) == 4 and all(w.get("EPS") is not None for w in win):
-            p["EPS_TTM"] = sum(w["EPS"] for w in win)
-        else:
-            p["EPS_TTM"] = None
-        if len(win) == 4 and all(w.get("영업이익") is not None for w in win):
-            p["영업이익_TTM"] = sum(w["영업이익"] for w in win)
-        else:
-            p["영업이익_TTM"] = None
+        cw = [w.get("CAPEX") for w in win]
+        p["CAPEX강도"] = (sum(cw) / p["매출_TTM"] * 100) if (p["매출_TTM"] and all(c is not None for c in cw)) else None
+    for p in pts:
+        p["품질"] = sorted(set(p["품질"]))
     return pts
 
 
