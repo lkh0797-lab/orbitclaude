@@ -8384,6 +8384,10 @@ def _run_value():
                 json.dump({"at": VAL["at"], "score_spec": "score.json weights (2026-10-03, 6항목)", "rows": snap}, fh, ensure_ascii=False)
         except Exception as e:
             print("실전 기록 실패: %s" % e, flush=True)
+        try:
+            _val_export_tech(rows)
+        except Exception as e:
+            print("차트 발굴 내보내기 실패: %s" % e, flush=True)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -8433,10 +8437,64 @@ def _disc_refresh():
                 fh.write("실패: %s\n" % e)
 
 
+# 증권사(한국투자증권) 공식 종목 상태 — 차트 발굴(Tech) 스캔이 KIS 로 받아 남기는 스냅샷을 읽는다(이 서버는 32비트라 KIS 를 직접 부르지 않는다).
+# 관리종목 · 거래정지 · 정리매매 · 투자위험이면 저평가 등급을 주지 않는다. 투자경고 · 단기과열 · 증거금 100%(신용 불가)는 표시만.
+_KSNAP = {"mt": None, "d": None}
+KIS_SNAP_MAX_AGE = 5 * 86400
+
+
+def _kis_snapshot():
+    p = os.path.join(TECH_DIR, "cache", "kis", "snapshot.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return None
+    if time.time() - mt > KIS_SNAP_MAX_AGE:
+        return None
+    if _KSNAP["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                _KSNAP.update(d=json.load(fh), mt=mt)
+        except Exception:
+            return _KSNAP["d"]
+    return _KSNAP["d"]
+
+
+def _kis_tags(st):
+    """KIS 상태 한 종목 → (등급을 내릴 사유 목록, 표시 태그 목록)."""
+    if not st:
+        return [], []
+    stat = str(st.get("stat") or "")
+    warn = str(st.get("warn") or "00")
+    bad, tags = [], []
+    if st.get("mang") or stat == "51":
+        bad.append("관리종목")
+    if st.get("halt") or stat == "58":
+        bad.append("거래정지")
+    if st.get("sltr"):
+        bad.append("정리매매")
+    if warn == "03" or stat == "52":
+        bad.append("투자위험")
+    if warn == "02" or stat == "53":
+        tags.append("투자경고")
+    elif warn == "01" or stat == "54":
+        tags.append("투자주의")
+    if st.get("short_over") or stat == "59":
+        tags.append("단기과열")
+    try:
+        if float(st.get("marg") or 0) >= 100 or stat == "57":
+            tags.append("증거금100%")
+    except (TypeError, ValueError):
+        pass
+    return bad, bad + tags
+
+
 def _val_apply_risk(rows):
-    """행 복사본에 공시 위험을 붙이고, 빨강 · 주황이면 저평가 → 관찰. 보는 때마다 최신 공시위험.json 으로(계산 결과는 그대로 둔다)."""
+    """행 복사본에 공시 위험 · 증권사 상태를 붙이고, 빨강 · 주황(공시)이거나 관리종목 · 거래정지 · 정리매매 · 투자위험(증권사)이면 저평가 → 관찰.
+    보는 때마다 최신 공시위험.json · kis 스냅샷으로(계산 결과는 그대로 둔다)."""
     d = _disc_risk() or {}
     codes = d.get("codes") or {}
+    ks = ((_kis_snapshot() or {}).get("status")) or {}
     out = []
     for r in rows:
         r = dict(r)
@@ -8447,9 +8505,44 @@ def _val_apply_risk(rows):
                 r["tier"] = "관찰"
                 what = " · ".join("%s %d날" % (h["name"], h["days"]) for h in rk.get("hits") or [])
                 r["tier_why"] = list(r.get("tier_why") or []) + ["공시 위험: " + rk["level"] + ((" — " + what) if what else "")]
+        bad, tags = _kis_tags(ks.get(r.get("code")))
+        if tags:
+            r["kst"] = tags
+        if bad and r.get("tier") == "저평가":
+            r["tier"] = "관찰"
+            r["tier_why"] = list(r.get("tier_why") or []) + ["증권사 상태: " + " · ".join(bad)]
         out.append(r)
     out.sort(key=lambda r: (r.get("tier") != "저평가", -(r.get("score") or -1)))
     return out
+
+
+VAL_TECH_EXPORT = os.path.join(VAL_DIR, "tech_export.json")
+
+
+def _val_export_tech(rows=None):
+    """차트 발굴(Tech) 리포트의 '저평가 종목' 칩 · 탭이 읽는 목록(Tech 의 CHART_SCREENER_VALUE_JSON, 스키마 v1). 저평가 계산이 끝날 때마다."""
+    if rows is None:
+        with VAL_LOCK:
+            rows = list(VAL["rows"])
+        at = VAL["at"]
+    else:
+        at = VAL["at"] or time.time()
+    keep = ("code", "name", "tier", "score", "per", "per_then", "per_pct", "dd", "roe", "debt_eq", "ni_yoy", "px_yoy", "industry", "tier_why")
+    out = []
+    for r in _val_apply_risk(rows):
+        if r.get("tier") not in ("저평가", "관찰"):
+            continue
+        x = {k: r.get(k) for k in keep}
+        x["risk"] = (r.get("risk") or {}).get("level")
+        x["kst"] = r.get("kst") or []
+        out.append(x)
+    data = {"v": 1, "at": at, "date": dt.datetime.fromtimestamp(at).strftime("%Y%m%d") if at else None,
+            "source": "기업추적 저평가", "rows": out}
+    tmp = VAL_TECH_EXPORT + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, ensure_ascii=False)
+    os.replace(tmp, VAL_TECH_EXPORT)
+    return len(out)
 
 
 def value_view(force=False):
@@ -8485,221 +8578,15 @@ def value_view(force=False):
     return out
 
 
-# ---------------------------------------------------------------- 저평가V2: 차트 셋업 스크리너 (2026-10-07, 첫 판 2026-10-03)
-# 전 종목(색인 회사) 일봉으로 오닐 · 미너비니 · 와인스타인 셋업(기술.setup · PRESETS)을 재고, 전 종목 순위로 RS(1~99)를 매긴다.
-# 실적 모멘텀은 확정 분기 EPS(드러켄밀러.series), 목표가 상향은 텔레그램 증권사 리포트(_rep_rows)를 붙인다.
-# 저평가 등급(value_view)은 범위 필터와 표시로 — '저평가 가운데 차트가 좋은 자리'를 한 번에 거를 수 있게.
-# 셋업마다 과거 성과(도구/차트셋업_백테스트.py → .cache/value/v3_report.json)를 붙여 카드에 '검증됨'을 단다.
-try:
-    _tspec = _ilu.spec_from_file_location("기술", os.path.join(BASE, "기술.py"))
-    TECH = _ilu.module_from_spec(_tspec)
-    _tspec.loader.exec_module(TECH)
-except Exception as _e:
-    TECH = None
-    print("기술 모듈 로드 실패:", _e)
-V2_V = 2
-V2_PATH = os.path.join(VAL_DIR, "v3_result.json")
-V2 = {"running": False, "done": 0, "total": 0, "at": 0, "rows": [], "bar_d": None, "phase": ""}
-V2_LOCK = threading.Lock()
-_V3R = {"mt": None, "d": None}
-
-
-def _v3_report():
-    p = os.path.join(VAL_DIR, "v3_report.json")
-    try:
-        mt = os.path.getmtime(p)
-    except OSError:
-        return None
-    if _V3R["mt"] != mt:
-        try:
-            with open(p, "r", encoding="utf-8") as fh:
-                _V3R.update(d=json.load(fh), mt=mt)
-        except Exception:
-            return None
-    return _V3R["d"]
-
-
-def _v3_verdict(rep):
-    """셋업별 과거 성과 → 카드 판정. 차트 셋업은 3~6개월 타이밍 도구라 6개월 초과수익으로 본다:
-    중앙값 +1%p↑ · 회사 단위 90% 구간 아래끝 > 0 · 앞(~2019) · 뒤(2020~) 모두 + → '검증됨'. 구간 위끝 < 0 → '과거 부진'.
-    저평가 범위(후보 · 등급)는 그 범위 전체보다 나았나로 본다 — 저평가 자체의 덤을 셋업 몫으로 세지 않게."""
-    keys = ("n", "firms", "months", "ex1m", "ex3m", "ex6m", "ex12m", "hit_ex6m", "ci_ex6m", "early_ex6m", "late_ex6m",
-            "hit_ex12m", "ci_ex12m", "early_ex12m", "late_ex12m")
-    out = {}
-    rep = rep or {}
-    P, SC, NX = rep.get("presets") or {}, rep.get("scopes") or {}, rep.get("noext") or {}
-
-    def judge(s, base=None):
-        b = base or {}
-        m6, ci = s.get("ex6m"), s.get("ci_ex6m") or [None, None]
-        e, l_ = s.get("early_ex6m"), s.get("late_ex6m")
-        b6, be, bl = b.get("ex6m") or 0, b.get("early_ex6m") or 0, b.get("late_ex6m") or 0
-        ok = m6 is not None and ci[0] is not None and e is not None and l_ is not None and \
-            m6 - b6 >= 1 and ci[0] > b6 and e > be and l_ > bl
-        weak = ci[1] is not None and ci[1] < b6
-        return ok, weak
-    for k, nm, desc, _, src in (TECH.PRESETS if TECH else []):
-        s = P.get(k) or {}
-        ok, weak = judge(s)
-        o = dict({kk: s.get(kk) for kk in keys}, key=k, name=nm, desc=desc, src=src, ok=ok, weak=weak, tested="ex6m" in s and s.get("ex6m") is not None)
-        o["scopes"] = {}
-        for sc in ("cand", "tier"):
-            x = (SC.get(sc) or {}).get(k) or {}
-            if x.get("ex6m") is not None:
-                ok2, weak2 = judge(x, SC.get(sc + "_base"))
-                o["scopes"][sc] = dict({kk: x.get(kk) for kk in keys}, ok=ok2, weak=weak2, base6=(SC.get(sc + "_base") or {}).get("ex6m"))
-            elif x:
-                o["scopes"][sc] = {"n": x.get("n")}
-        if NX.get(k):
-            o["noext"] = {kk: NX[k].get(kk) for kk in ("n", "ex6m", "ci_ex6m", "early_ex6m", "late_ex6m")}
-        out[k] = o
-    return out
-
-
-def _v3_fund(c):
-    """확정 분기 EPS — 마지막 분기 전년 같은 분기 대비 · 그 앞 분기 · 4분기 합 1년 · 분기 매출 전년 대비 · PER 재료(EPS 4분기 합).
-    마지막 분기 보고서가 150일 넘게 묵었으면 None — 검증 도구(eps_at)와 같은 문턱(공시를 멈춘 회사가 '실적 모멘텀'에 걸리지 않게)."""
-    corp = corp_code_of(c["code"])
-    if not corp or DRK is None:
-        return None
-    filed = {}
-    for r in c["reports"]:
-        y_, m_ = r["stamp"].split("-")
-        if not r["tag"] and m_ in Q_OF_MONTH:
-            k_ = "%sQ%d" % (y_, Q_OF_MONTH[m_])
-            filed[k_] = min(filed.get(k_, "99999999"), r["rcept"][:8])
-    y = dt.date.today().year
-    pts = [p for p in DRK.series(corp, c["code"], [y - 3, y - 2, y - 1, y]) if p.get("EPS") is not None]
-    if not pts:
-        return None
-    by = {(p["year"], p["q"]): p for p in pts}
-
-    def yoy(p, k):
-        a = by.get((p["year"] - 1, p["q"]), {}).get(k)
-        b = p.get(k)
-        return (b / a - 1) * 100 if a and b is not None and a > 0 else None
-    last = pts[-1]
-    fd = filed.get(last["label"])
-    if not fd or (dt.date.today() - dt.datetime.strptime(fd, "%Y%m%d").date()).days > 150:
-        return None
-    prev = by.get((last["year"] - (last["q"] == 1), 4 if last["q"] == 1 else last["q"] - 1))
-    return {"q": last["label"], "eps": last.get("EPS"), "eps_yoy": yoy(last, "EPS"), "eps_yoy_prev": yoy(prev, "EPS") if prev else None,
-            "ttm_yoy": yoy(last, "EPS_TTM"), "eps_ttm": last.get("EPS_TTM"), "rev_yoy": last.get("매출YoY"), "op_yoy": yoy(last, "영업이익")}
-
-
-def _v3_rep(code, ohlcv, price):
-    """최근 30일 증권사 목표가 — 상향 · 하향 건수, 마지막 상향(증권사 · 이전→새), 그 리포트 날부터 주가 변화, 새 목표가까지 여력."""
-    rows = _rep_rows()["by_code"].get(code) or []
-    since = (dt.date.today() - dt.timedelta(days=30)).isoformat()
-    up, dn, last = 0, 0, None
-    for r in rows:
-        if r["date"][:10] < since or not r.get("tp"):
-            continue
-        raised = r.get("change") == "상향" or (r.get("tp_prev") and r["tp"] > r["tp_prev"])
-        cut = r.get("change") == "하향" or (r.get("tp_prev") and r["tp"] < r["tp_prev"])
-        up += bool(raised)
-        dn += bool(cut and not raised)
-        if raised and (last is None or r["date"] > last["date"]):
-            last = r
-    if not up and not dn:
-        return None
-    out = {"up": up, "dn": dn}
-    if last:
-        d0 = last["date"][:10].replace("-", "")
-        ks = sorted(k for k in ohlcv if k < d0)       # 리포트 '앞날' 종가 — 리포트는 대개 장 전에 나와 그날 종가엔 반응이 이미 들어 있다
-        p0 = ohlcv[ks[-1]][3] if ks else None
-        out.update(broker=last.get("broker"), date=last["date"][:10], tp=last["tp"], tp_prev=last.get("tp_prev"),
-                   move=(price / p0 - 1) * 100 if p0 and price else None, room=(last["tp"] / price - 1) * 100 if price else None)
-    return out
-
-
-def _run_v2():
-    try:
-        for _ in range(120):                      # 뷰어를 막 켰으면 색인이 아직 비어 있다 — 빈 결과를 저장하면 하루 동안 안 다시 센다
-            if INDEX["companies"]:
-                break
-            time.sleep(5)
-        cos = [c for c in INDEX["companies"] if c.get("code")]
-        if not cos:
-            return
-        univ, snap = _universe_info()
-        smap = (sector_map() or {}).get("stocks", {})
-        with V2_LOCK:
-            V2.update(done=0, total=len(cos), phase="일봉 · 확정 실적")
-        from concurrent.futures import ThreadPoolExecutor
-
-        # 마지막 장 마감(평일 15:40) 뒤에 받은 일봉만 믿는다 — 장중에 받아 둔 반쪽 봉이 하루 동안 캐시에 남지 않게.
-        # 장중에 돌면 오늘 반쪽 봉은 빼고 어제 봉까지로 잰다(반쪽 거래량이 돌파 · 마름 판정을 흔든다).
-        now = dt.datetime.now()
-        lc = now.replace(hour=15, minute=40, second=0, microsecond=0)
-        while lc > now or lc.weekday() >= 5:
-            lc -= dt.timedelta(days=1)
-            lc = lc.replace(hour=15, minute=40)
-        max_age = max(60, (now - lc).total_seconds())
-        today = now.strftime("%Y%m%d")
-        live = now.weekday() < 5 and (now.hour, now.minute) < (15, 40)
-
-        def one(c):
-            code = c["code"]
-            d = FIN.fetch_ohlcv(code, max_age=max_age)
-            if live and today in d:
-                d = {k: v for k, v in d.items() if k != today}
-            B = TECH.bars_from(d, min_n=21)
-            if not B:
-                return None
-            n = len(B["c"])
-            x = TECH.setup(B, n - 1)
-            if not x:
-                return None
-            x.update(code=code, name=c["name"], industry=(smap.get(code.upper(), {}) or {}).get("industry") or "",
-                     market=(univ.get(code) or {}).get("market"))
-            cap0 = (univ.get(code) or {}).get("cap")
-            ks = [k for k in sorted(d) if snap and k <= snap]
-            x["cap"] = cap0 * B["c"][-1] / d[ks[-1]][3] if cap0 and ks and d[ks[-1]][3] else cap0
-            x["spark"] = {"c": B["c"][max(0, n - 120):], "v": B["v"][max(0, n - 120):]}
-            try:
-                x["fund"] = _v3_fund(c)
-            except Exception:
-                x["fund"] = None
-            fd = x["fund"] or {}
-            x["per"] = B["c"][-1] / fd["eps_ttm"] if fd.get("eps_ttm") and fd["eps_ttm"] > 0 else None
-            try:
-                x["rep"] = _v3_rep(code, d, B["c"][-1]) if REP is not None else None
-            except Exception:
-                x["rep"] = None
-            return x
-        out = []
-        with ThreadPoolExecutor(max_workers=4) as ex:
-            for k, x in enumerate(ex.map(one, cos), 1):
-                if x:
-                    out.append(x)
-                with V2_LOCK:
-                    V2["done"] = k
-        if len(out) < 50:                         # 시세를 거의 못 받았다(네트워크) — 이전 결과를 지킨다
-            return
-        rk = TECH.rank99({x["code"]: x["rs_raw"] for x in out})
-        r1 = TECH.rank99({x["code"]: x["rs1_raw"] for x in out})
-        for x in out:
-            x["rs"], x["rs1"] = rk.get(x["code"]), r1.get(x["code"])
-        bar_d = max((x["d"] for x in out), default=None)
-        at = time.time()
-        with V2_LOCK:
-            V2.update(rows=out, at=at, bar_d=bar_d)
-        with open(V2_PATH, "w", encoding="utf-8") as fh:
-            json.dump({"v": V2_V, "at": at, "bar_d": bar_d, "rows": out}, fh, ensure_ascii=False)
-    except Exception:
-        import traceback
-        traceback.print_exc()
-    finally:
-        with V2_LOCK:
-            V2["running"] = False
+# 저평가V2(차트 셋업 스크리너) 탭은 2026-10-09 에 걷어냈다 — 같은 형식이 차트 발굴(Tech) 리포트의 '저평가 종목' 칩 · 탭으로 옮겨 갔다.
+# 엔진(기술.py) · 검증 도구(도구/차트셋업_백테스트.py · 저평가V2_백테스트.py) · 옛 결과 파일(.cache/value/v3_*)은 남긴다.
 
 
 VAL_DAILY_AT = (6, 30)    # 밤 공시 수집(00:10) 뒤 · 장 열기 전 — 전 종목 주가를 받아 1시간 가까이 걸려 미리 돌린다
 
 
 def _val_auto_loop():
-    """저평가 → 저평가V2 를 매일 06:30 미리 센다. 뷰어를 켰을 때 결과가 20시간 넘게 묵었으면 10분 뒤 한 번(색인 · 수출 추적이 먼저)."""
+    """저평가를 매일 06:30 미리 센다(끝에 차트 발굴용 tech_export.json 도 쓴다). 뷰어를 켰을 때 결과가 20시간 넘게 묵었으면 10분 뒤 한 번(색인 · 수출 추적이 먼저)."""
     time.sleep(600)
     first = True
     while True:
@@ -8709,12 +8596,6 @@ def _val_auto_loop():
             if not first or old > 20 * 3600:
                 _disc_refresh()                   # 공시 목록 → 공시 위험 먼저(저평가 등급이 읽는다)
                 value_view(True)
-                while True:                       # 저평가가 끝나야 V2 를 센다
-                    time.sleep(30)
-                    with VAL_LOCK:
-                        if not VAL["running"]:
-                            break
-                value2_view(True)
         except Exception as e:
             print("저평가 자동 갱신: %s" % e, flush=True)
         first = False
@@ -8723,45 +8604,6 @@ def _val_auto_loop():
         if nxt <= n:
             nxt += dt.timedelta(days=1)
         time.sleep(max(60, (nxt - n).total_seconds()))
-
-
-def value2_view(force=False):
-    if TECH is None or FIN is None:
-        return {"error": "기술 모듈이 없습니다."}
-    base = value_view(False)
-    with V2_LOCK:
-        if not V2["rows"] and not V2["at"]:
-            try:
-                with open(V2_PATH, "r", encoding="utf-8") as fh:
-                    old = json.load(fh)
-                if old.get("v") == V2_V:
-                    V2.update(rows=old["rows"], at=old["at"], bar_d=old.get("bar_d"))
-            except Exception:
-                pass
-        stale = force or not V2["at"] or not V2["rows"] or time.time() - V2["at"] > 26 * 3600     # 매일 06:30 _val_auto_loop 가 미리 센다
-        if stale and not V2["running"]:
-            V2["running"] = True
-            threading.Thread(target=_run_v2, daemon=True).start()
-        out = {k: V2.get(k) for k in ("running", "done", "total", "at", "bar_d", "phase")}
-        src = list(V2["rows"])
-    tiers = {r["code"]: r.get("tier") for r in base.get("rows") or []}
-    ver = _v3_verdict(_v3_report())
-    rows = []
-    for x in src:
-        y = dict(x, tier=tiers.get(x["code"]))
-        y["sets"] = TECH.presets_of(y)
-        if y["sets"] or y["tier"]:                     # 셋업에 걸렸거나 저평가 후보인 종목만 보낸다(전 종목 일봉은 무겁다)
-            rows.append(y)
-    out["rows"] = rows
-    out["n_all"] = len(src)
-    out["presets"] = [ver[k] for k, *_ in TECH.PRESETS]
-    out["warn_names"] = TECH.WARN
-    rep = _v3_report() or {}
-    out["bt"] = {k: rep.get(k) for k in ("made", "n", "firms", "dates", "ref", "warn")}
-    out["bt"]["scope_base"] = {k: (rep.get("scopes") or {}).get(k + "_base") for k in ("cand", "tier")}
-    out["base_running"], out["base_at"] = base.get("running"), base.get("at")
-    out["n_tier"] = {t: sum(1 for v in tiers.values() if v == t) for t in set(tiers.values()) if t}
-    return out
 
 
 # ---------------------------------------------------------------- 보컬: 거래대금 · 강한 테마 · 테마 대장주 · 눌림목 깔때기 (2026-10-08)
@@ -8977,8 +8819,17 @@ def _tech_log_tail(n=12):
     return [ln.split("\r")[-1] for ln in lines[-n:] if ln.strip()]
 
 
-def tech_run():
-    """Tech 스캔을 창 없이 띄운다(이미 돌면 그대로). 반환: tech_status()."""
+def _tech_supports(flag):
+    """Tech CLI 가 그 옵션을 아는가(저장소가 옛 판이면 모르는 옵션으로 스캔이 죽지 않게)."""
+    try:
+        with open(os.path.join(TECH_DIR, "chart_screener", "__main__.py"), "r", encoding="utf-8") as fh:
+            return flag in fh.read()
+    except OSError:
+        return False
+
+
+def tech_run(auto=False):
+    """Tech 스캔을 창 없이 띄운다(이미 돌면 그대로). auto = 자동 실행(휴장일이면 Tech 가 스스로 건너뛴다). 반환: tech_status()."""
     with TECH_LOCK:
         if _tech_running():
             return tech_status()
@@ -9003,8 +8854,18 @@ def tech_run():
             env = dict(os.environ, PYTHONIOENCODING="utf-8")
             if os.path.exists(TECH_RISK):
                 env.setdefault("CHART_SCREENER_RISK_JSON", TECH_RISK)
+            if not os.path.exists(VAL_TECH_EXPORT) and VAL.get("rows"):
+                try:
+                    _val_export_tech()
+                except Exception:
+                    pass
+            if os.path.exists(VAL_TECH_EXPORT):
+                env.setdefault("CHART_SCREENER_VALUE_JSON", VAL_TECH_EXPORT)    # '저평가 종목' 칩 · 탭
+            cmd = [exe, "-m", "chart_screener", "scan", "--out", TECH_OUT]
+            if auto and _tech_supports("--skip-holiday"):
+                cmd.append("--skip-holiday")
             TECH["proc"] = subprocess.Popen(
-                [exe, "-m", "chart_screener", "scan", "--out", TECH_OUT], cwd=TECH_DIR,
+                cmd, cwd=TECH_DIR,
                 stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                 env=env, startupinfo=si,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -9042,7 +8903,7 @@ def tech_report_html(name=""):
 
 def _tech_auto_loop():
     """평일 16:00 · 뷰어를 켰을 때(10분 뒤) — 마지막 리포트가 가장 최근 거래일 장 마감(15:45, 주말은 금요일) 전 것이면 한 번.
-    16:00 를 뷰어가 꺼져 놓쳤으면 다음에 켤 때 따라잡는다(휴장일은 따로 보지 않는다 — 다시 세어도 해는 없다)."""
+    16:00 를 뷰어가 꺼져 놓쳤으면 다음에 켤 때 따라잡는다. 휴장일(공휴일)은 Tech 가 증권사 휴장일 조회로 스스로 건너뛴다(--skip-holiday)."""
     time.sleep(600)
     while True:
         try:
@@ -9053,7 +8914,7 @@ def _tech_auto_loop():
             rep = _tech_reports()
             last = dt.datetime.fromtimestamp(rep[0][0]) if rep else None
             if last is None or last < lc:
-                tech_run()
+                tech_run(auto=True)
         except Exception as e:
             print("차트 발굴 자동 스캔: %s" % e, flush=True)
         n = dt.datetime.now()
@@ -10151,8 +10012,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, dip_view(q.get("force") == "1"))
             if path == "/api/value":
                 return self._send(200, value_view(q.get("force") == "1"))
-            if path == "/api/value2":
-                return self._send(200, value2_view(q.get("force") == "1"))
             if path == "/api/vocal":
                 return self._send(200, vocal_view(q.get("force") == "1"))
             if path == "/api/tech":
