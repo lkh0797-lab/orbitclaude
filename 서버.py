@@ -3761,8 +3761,9 @@ def _mfill(m, *rows):
 
 
 _SHEV = {"mt": None, "d": None}
-SHEV_ADJ = re.compile(r"무상증자결정|유무상증자결정|주식분할결정|주식병합결정|감자결정")     # 주가 자료(수정주가)도 같이 보정되는 사건
-SHEV_MIX = re.compile(r"회사합병결정|유상증자결정|주식교환|분할합병")                      # 주가 보정 없이 주식 수만 바뀌는 사건
+# 정의는 드러켄밀러.py(가속도와 같이 쓴다). 그 모듈이 안 뜬 때(DRK None)는 서버가 죽지 않게 아무것도 안 맞는 식을 둔다
+SHEV_ADJ = DRK.SHEV_ADJ if DRK is not None else re.compile(r"(?!)")     # 주가 자료(수정주가)도 같이 보정되는 사건
+SHEV_MIX = DRK.SHEV_MIX if DRK is not None else re.compile(r"(?!)")     # 주가 보정 없이 주식 수만 바뀌는 사건
 
 
 def _share_events(code):
@@ -4159,76 +4160,21 @@ def _pipe_rows(c, mi, mb, mc, px=None, blog_pts=None, orders=None, macro=None):
     # 액면분할 · 병합 — 분기마다 주식 수(지배주주 순이익 ÷ EPS)를 거꾸로 구해, 한 분기에 1.8배 넘게 뛰거나 0.56배 밑으로 줄면
     # 분할 · 병합으로 보고 그 전 EPS 를 지금 주식 수 기준으로 나눈다(LS일렉트릭 2026.2분기 5:1 — 주가 자료는 이미 지금 기준이라
     # EPS 만 옛 기준으로 남아 PER 이 5배 작게 나왔다). 빈 분기(4분기 단독을 못 뗀 해 등)는 순이익 ÷ 가까운 분기 주식 수로 채운다.
-    qn = lambda k: int(k[:4]) * 4 + int(k[5])
     sh = {lab: ni[lab] / eps[lab] for lab in labs if ni.get(lab) and eps.get(lab) and ni[lab] / eps[lab] > 0}
-    ks = sorted(sh, key=qn)
-    # 한 분기만 튀었다 바로 돌아온 값(HD현대일렉트릭 2018.4분기 21배 → 다음 분기 0.09배)은 자료 오류 — 버린다
-    for i in range(1, len(ks) - 1):
-        a_, b_, c_ = sh.get(ks[i - 1]), sh.get(ks[i]), sh.get(ks[i + 1])
-        if a_ and b_ and c_ and not (0.56 < b_ / a_ < 1.8) and 0.8 <= c_ / a_ <= 1.25:
-            sh.pop(ks[i], None)
-    ks = [k for k in ks if k in sh]
-
+    # 규칙 본체(한 분기 튐 제거 · 1.8/0.56 · 공시 확인 시 1.25/0.8 · 증자 섞임 cut · 분할 같은가)는 DRK.share_basis — 가속도(DRK.per_share)와 같이 쓴다
     sev = _share_events(c["code"])
+    rx_ = re.compile(r"액면\s*분할|주식\s*분할|액면\s*병합|주식\s*병합|무상\s*증자")
 
-    def qend(lab):
-        return int("%s%s" % (lab[:4], {1: "0331", 2: "0630", 3: "0930", 4: "1231"}[int(lab[5])]))
-
-    def events_between(after, at):
-        """after 분기 말 90일 전 ~ at 분기 말 사이의 주식 수 사건 공시 — (주가 보정 사건, 주가 보정 없는 사건)"""
-        lo = int((dt.datetime.strptime(str(qend(after)), "%Y%m%d") - dt.timedelta(days=90)).strftime("%Y%m%d"))
-        hi = qend(at)
-        ev = [nm for d_, nm in sev if d_ and lo <= int(d_) <= hi]
-        return [x for x in ev if SHEV_ADJ.search(x)], [x for x in ev if SHEV_MIX.search(x)]
-
-    def split_like(after, at, r_):
-        """주식 수가 크게 바뀐 게 분할 · 병합 · 무상증자(주가 자료도 같이 보정됨)인가, 유상증자(주가는 그대로)인가.
-        먼저 공시 목록(무상증자 · 주식분할 · 병합 · 감자 결정)으로 정하고(2026-10-05 — 1:1 · 1:2 무상증자 · 16:1 감자를 '증자 등'으로 잘못 보던 것),
-        공시가 없을 때만 회사의 개요(자본금 변동 표) 낱말 · 정수 비율로 본다."""
-        adj_, _mix = events_between(after, at)
-        if adj_:
-            return True
-        rx = re.compile(r"액면\s*분할|주식\s*분할|액면\s*병합|주식\s*병합|무상\s*증자")
-
-        def cnt(lab):
-            st_ = "%s-%02d" % (lab[:4], int(lab[5]) * 3)
-            rep = next((r for r in c["reports"] if r["stamp"] == st_ and not r["tag"]), None)
-            if not rep:
-                return None
-            n = 0
-            for sec in rep["sections"]:
-                if "개요" in sec["title"]:
-                    n += len(rx.findall(read_section(c, rep, sec["file"])))
-            return n
-        a_n, b_n = cnt(after), cnt(at)
-        if a_n is not None and b_n is not None and b_n > a_n:
-            return True
-        k = r_ if r_ >= 1 else 1 / r_
-        return k >= 4.5 and abs(k - round(k)) <= 0.15
-    fac = {k: 1.0 for k in ks}             # 이 분기 뒤에 일어난 분할 비율의 곱
-    splits = []
-    cut = None                              # 분할과 합병 신주가 겹친 곳 — 그 앞 PER 기록은 지금 기준으로 맞출 수 없어 자기 역사에서 뺀다
-    for a, b in zip(ks, ks[1:]):
-        r_ = sh[b] / sh[a]
-        adj_, mix_ = events_between(a, b) if (r_ >= 1.25 or r_ <= 0.8) else ([], [])
-        # 공시로 확인된 분할 · 무상증자는 1.25배(0.8배)부터 — 1:0.5 무상증자(헥토) · 두 분기에 걸친 100% 무상증자(노바렉스)
-        if (r_ >= 1.8 or r_ <= 0.56) or adj_:
-            kk = r_ if r_ >= 1 else 1 / r_
-            if adj_:
-                kind = "분할·병합"
-                if mix_ and abs(kk - round(kk)) > 0.15:
-                    # 분할 · 감자와 합병 신주 · 유상증자가 한 창에 겹쳤다(동원산업 5:1 분할 + 합병 = 10.6배, 미래산업 16:1 감자 + 증자) —
-                    # 전체 비율로 보정하되, 그 앞 PER 기록은 정확히 맞출 수 없어 자기 역사에서 뺀다
-                    kind = "분할·병합(증자 섞임 — 앞 기록 제외)"
-                    cut = qn(a) if cut is None else max(cut, qn(a))
-            else:
-                kind = "분할·병합" if split_like(a, b, r_) else "증자 등(주가 보정 없음)"
-            splits.append({"after": a, "at": b, "ratio": round(r_, 2), "kind": kind})
-            if kind.startswith("분할·병합"):
-                for k in ks:
-                    if qn(k) <= qn(a):
-                        fac[k] *= r_
-    sh_now = {k: sh[k] * fac[k] for k in ks}      # 지금 기준 주식 수
+    def cnt(lab):
+        """그 분기 보고서 개요(자본금 변동 표)의 분할 · 병합 · 무상증자 낱말 수 — 보고서가 없으면 None"""
+        st_ = "%s-%02d" % (lab[:4], int(lab[5]) * 3)
+        rep = next((r for r in c["reports"] if r["stamp"] == st_ and not r["tag"]), None)
+        if not rep:
+            return None
+        return sum(len(rx_.findall(read_section(c, rep, sec["file"]))) for sec in rep["sections"] if "개요" in sec["title"])
+    sb = DRK.share_basis(sh, sev, cnt)
+    sh_now, splits, cut = sb["now"], sb["splits"], sb["cut"]      # 지금 기준 주식 수 · 분할 목록 · 앞 기록 제외 기준
+    qn = lambda k: int(k[:4]) * 4 + int(k[5])
     for lab in labs:
         if ni.get(lab) is None:
             continue

@@ -716,3 +716,39 @@ def test_op_basis_small_base_skipped():
     DRK.accel(pts, basis="영업이익")
     assert pts[4]["Y"] is None
     assert round(pts[5]["Y"], 6) == 20.0
+
+
+def test_share_basis_mid_year_split():
+    # LS일렉트릭: 2026Q1 까지 약 2,940만 주, 2026Q2 부터 1.47억 주(5:1)
+    sh = {"2025Q3": 29.4e6, "2025Q4": 29.4e6, "2026Q1": 29.4e6, "2026Q2": 147e6}
+    out = DRK.share_basis(sh, [("20260410", "주식분할결정")])
+    assert abs(out["now"]["2026Q1"] - 147e6) < 1 and abs(out["now"]["2026Q2"] - 147e6) < 1
+    assert out["splits"][0]["kind"].startswith("분할")
+
+
+def test_share_basis_one_quarter_spike_dropped():
+    sh = {"2024Q1": 10e6, "2024Q2": 210e6, "2024Q3": 10e6}
+    out = DRK.share_basis(sh, [])
+    assert "2024Q2" not in out["now"] and not out["splits"]
+
+
+def test_per_share_eps_ttm_same_basis():
+    pts = grid([0] * 4, start=(2025, 3))
+    ni = [131e8, 164e8, 1190e8, 1158e8]
+    eps = [447, 560, 4052, 797]                  # 앞 세 분기는 분할 전 기준(약 2,930만 주), 2026Q2 만 새 기준(약 1.45억 주)
+    for p, a, b in zip(pts, ni, eps):
+        p["지배순이익"], p["EPS"], p["매출액"] = a, b, 1e12
+    DRK.per_share(pts, [("20260410", "주식분할결정")])
+    last = pts[-1]
+    want = sum(p["지배순이익"] for p in pts) / 145.3e6      # 네 분기 모두 지금 주식 수로
+    assert abs(last["EPS_TTM"] / want - 1) < 0.05
+    assert last["EPS_TTM_raw"] == sum(eps)                  # 원래 합(기준 섞임)은 따로 남는다
+
+
+def test_per_share_unit_error():
+    pts = grid([0] * 5)
+    for p in pts:
+        p["지배순이익"], p["EPS"], p["매출액"] = 100e8, 1000, 1e12
+    pts[2]["EPS"] = 1000 * 1e6
+    DRK.per_share(pts, [])
+    assert "unit" in pts[2]["품질"] and abs(pts[2]["EPS_adj"] - 1000) < 1

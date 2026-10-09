@@ -481,3 +481,121 @@ def accel(pts, basis="매출"):
     for p in pts:
         p["품질"] = sorted(set(p["품질"]))
     return pts
+
+
+
+# ---------------------------------------------------------------- 분기 주식 수 · 분할 보정 EPS
+# 분기별 주식 수(지배순이익 ÷ EPS)를 거꾸로 구해, 한 분기에 1.8배 넘게 뛰거나 0.56배 밑으로 줄면 분할 · 병합으로 보고
+# 그 전 분기를 지금 주식 수 기준으로 맞춘다(LS일렉트릭 2026.2분기 5:1 — 주가 자료는 이미 지금 기준이라 EPS 만 옛 기준으로 남아 PER 이 5배 작게 나왔다).
+# 서버 _pipe_rows 와 가속도(per_share)가 같이 쓴다.
+import datetime as _dt
+SHEV_ADJ = re.compile(r"무상증자결정|유무상증자결정|주식분할결정|주식병합결정|감자결정")     # 주가 자료(수정주가)도 같이 보정되는 사건
+SHEV_MIX = re.compile(r"회사합병결정|유상증자결정|주식교환|분할합병")                      # 주가 보정 없이 주식 수만 바뀌는 사건
+
+
+def _qn(k):
+    """분기 이름 → 연도×4 + 분기. 5번째 글자가 분기 숫자인 이름이면 된다('2026Q2' · '2026.2Q' 둘 다)."""
+    return int(k[:4]) * 4 + int(k[5])
+
+
+def _qend(lab):
+    return int("%s%s" % (lab[:4], {1: "0331", 2: "0630", 3: "0930", 4: "1231"}[int(lab[5])]))
+
+
+def share_basis(sh, sev, cnt=None):
+    """분기별 역산 주식 수 {label: 주식 수} → 지금 기준 주식 수. 서버 _pipe_rows 와 가속도가 같이 쓴다.
+    sev = 그 회사의 주식 수 사건 공시 [(YYYYMMDD, 제목)], cnt(label) = 그 분기 보고서 개요의 분할 · 병합 · 무상증자 낱말 수(없으면 None — 정수 비율만 본다).
+    {"now": {label: 지금 기준 주식 수}, "splits": [{after, at, ratio, kind}], "cut": 이 분기(_qn) 앞 기록은 지금 기준으로 맞출 수 없음 | None}"""
+    sh = dict(sh)
+    ks = sorted(sh, key=_qn)
+    # 한 분기만 튀었다 바로 돌아온 값(HD현대일렉트릭 2018.4분기 21배 → 다음 분기 0.09배)은 자료 오류 — 버린다
+    for i in range(1, len(ks) - 1):
+        a_, b_, c_ = sh.get(ks[i - 1]), sh.get(ks[i]), sh.get(ks[i + 1])
+        if a_ and b_ and c_ and not (0.56 < b_ / a_ < 1.8) and 0.8 <= c_ / a_ <= 1.25:
+            sh.pop(ks[i], None)
+    ks = [k for k in ks if k in sh]
+
+    def events_between(after, at):
+        """after 분기 말 90일 전 ~ at 분기 말 사이의 주식 수 사건 공시 — (주가 보정 사건, 주가 보정 없는 사건)"""
+        lo = int((_dt.datetime.strptime(str(_qend(after)), "%Y%m%d") - _dt.timedelta(days=90)).strftime("%Y%m%d"))
+        hi = _qend(at)
+        ev = [nm for d_, nm in (sev or []) if d_ and lo <= int(d_) <= hi]
+        return [x for x in ev if SHEV_ADJ.search(x)], [x for x in ev if SHEV_MIX.search(x)]
+
+    def split_like(after, at, r_):
+        """주식 수가 크게 바뀐 게 분할 · 병합 · 무상증자(주가 자료도 같이 보정됨)인가, 유상증자(주가는 그대로)인가.
+        먼저 공시 목록(무상증자 · 주식분할 · 병합 · 감자 결정)으로 정하고(2026-10-05 — 1:1 · 1:2 무상증자 · 16:1 감자를 '증자 등'으로 잘못 보던 것),
+        공시가 없을 때만 회사의 개요(자본금 변동 표) 낱말 · 정수 비율로 본다."""
+        adj_, _mix = events_between(after, at)
+        if adj_:
+            return True
+        if cnt is not None:
+            a_n, b_n = cnt(after), cnt(at)
+            if a_n is not None and b_n is not None and b_n > a_n:
+                return True
+        k = r_ if r_ >= 1 else 1 / r_
+        return k >= 4.5 and abs(k - round(k)) <= 0.15
+    fac = {k: 1.0 for k in ks}             # 이 분기 뒤에 일어난 분할 비율의 곱
+    splits = []
+    cut = None                              # 분할과 합병 신주가 겹친 곳 — 그 앞 PER 기록은 지금 기준으로 맞출 수 없어 자기 역사에서 뺀다
+    for a, b in zip(ks, ks[1:]):
+        r_ = sh[b] / sh[a]
+        adj_, mix_ = events_between(a, b) if (r_ >= 1.25 or r_ <= 0.8) else ([], [])
+        # 공시로 확인된 분할 · 무상증자는 1.25배(0.8배)부터 — 1:0.5 무상증자(헥토) · 두 분기에 걸친 100% 무상증자(노바렉스)
+        if (r_ >= 1.8 or r_ <= 0.56) or adj_:
+            kk = r_ if r_ >= 1 else 1 / r_
+            if adj_:
+                kind = "분할·병합"
+                if mix_ and abs(kk - round(kk)) > 0.15:
+                    # 분할 · 감자와 합병 신주 · 유상증자가 한 창에 겹쳤다(동원산업 5:1 분할 + 합병 = 10.6배, 미래산업 16:1 감자 + 증자) —
+                    # 전체 비율로 보정하되, 그 앞 PER 기록은 정확히 맞출 수 없어 자기 역사에서 뺀다
+                    kind = "분할·병합(증자 섞임 — 앞 기록 제외)"
+                    cut = _qn(a) if cut is None else max(cut, _qn(a))
+            else:
+                kind = "분할·병합" if split_like(a, b, r_) else "증자 등(주가 보정 없음)"
+            splits.append({"after": a, "at": b, "ratio": round(r_, 2), "kind": kind})
+            if kind.startswith("분할·병합"):
+                for k in ks:
+                    if _qn(k) <= _qn(a):
+                        fac[k] *= r_
+    return {"now": {k: sh[k] * fac[k] for k in ks}, "splits": splits, "cut": cut}
+
+
+def per_share(pts, sev, cnt=None):
+    """분기 주식 수(지배순이익 ÷ EPS) → 지금 기준 EPS_adj · EPS_TTM(보정). 원래 합(분할 전 · 후 기준이 섞임)은 EPS_TTM_raw.
+    EPS 가 원 대신 천 · 백만 원 단위로 적힌 분기는 EPS 를 고쳐 쓰고 품질에 'unit' 을 단다.
+    attach_prices 가 PER_TTM 을 EPS_TTM(보정)으로 계산하므로 순서는 series → per_share → accel → attach_prices."""
+    by = {p["n"]: p for p in pts}
+    imp = {}
+    for p in pts:
+        ni, e = p.get("지배순이익") if p.get("지배순이익") is not None else p.get("당기순이익"), p.get("EPS")
+        if ni and e and p.get("매출액") and abs(ni) >= abs(p["매출액"]) * 0.005 and ni / e > 0:
+            imp[p["label"]] = ni / e
+    if imp:
+        med = sorted(imp.values())[len(imp) // 2]
+        for lab, s in list(imp.items()):
+            if s < med / 300 or s > med * 300:
+                p = next(x for x in pts if x["label"] == lab)
+                for div in (1e3, 1e6):
+                    if med / 1.8 <= s * div <= med * 1.8:
+                        p["EPS"] = p["EPS"] / div
+                        imp[lab] = s * div
+                        break
+                else:
+                    imp.pop(lab)
+                p["품질"] = sorted(set(p.get("품질", []) + ["unit"]))
+    now = share_basis(imp, sev, cnt)["now"] if imp else {}
+    for p in pts:
+        ni = p.get("지배순이익") if p.get("지배순이익") is not None else p.get("당기순이익")
+        s = now.get(p["label"])
+        if s is None and now:
+            qk = p["year"] * 4 + p["q"]                       # _qn 과 같은 척도(연도×4 + 분기)
+            near = min(now, key=lambda k: abs(_qn(k) - qk))
+            s = now[near] if abs(_qn(near) - qk) <= 4 else None
+        p["주식수"] = s
+        p["EPS_adj"] = (ni / s) if (ni is not None and s) else None
+    for p in pts:
+        w = [by.get(m) or {} for m in range(p["n"] - 3, p["n"] + 1)]
+        p["EPS_TTM_raw"] = sum(x["EPS"] for x in w) if all(x.get("EPS") is not None for x in w) else None
+        p["EPS_TTM"] = sum(x["EPS_adj"] for x in w) if all(x.get("EPS_adj") is not None for x in w) else None
+    return pts
