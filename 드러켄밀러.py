@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import json
+import threading
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
@@ -31,8 +32,54 @@ _spec.loader.exec_module(FIN)
 
 CACHE_DIR = os.path.join(BASE, ".cache", "druck")
 
-VERSION = 2          # 2: 분기 키 · 재작성 비교 · 기준일 · 품질 · 분할 보정 EPS · B(2026-10-09). 계산을 바꾸면 올린다 — 캐시가 전부 다시 계산된다
-LAST = {"transient": 0, "fy_bad": []}
+VERSION = 2          # 2: 분기 키 조밀 격자 · Q4 기준/범위 검사 · 재작성 전년 비교(YoY_r) · 기준일 · 품질 표시 · 이상값 (2026-10-09). 계산을 바꾸면 올린다 — 캐시가 전부 다시 계산된다
+
+
+class _Last(threading.local):
+    """series() 가 끝난 뒤 그 회사 결과 {transient: 일시 오류로 건너뛴 분기 수, fy_bad: [연도], error: 마지막 삼킨 예외 "종류: 내용" | None}.
+    서버가 여러 회사를 스레드로 나눠 만들고 series() 직후 같은 스레드에서 읽으므로 스레드마다 따로 둔다 — dict 와 같은 쓰임(get · update · [k] · [k] += 1)."""
+
+    def __init__(self):                    # 스레드가 처음 만질 때마다 불린다
+        self._d = {"transient": 0, "fy_bad": [], "error": None}
+
+    def __getitem__(self, k):
+        return self._d[k]
+
+    def __setitem__(self, k, v):
+        self._d[k] = v
+
+    def __contains__(self, k):
+        return k in self._d
+
+    def __iter__(self):
+        return iter(self._d)
+
+    def __len__(self):
+        return len(self._d)
+
+    def __repr__(self):
+        return "LAST(%r)" % (self._d,)
+
+    def get(self, k, default=None):
+        return self._d.get(k, default)
+
+    def update(self, *args, **kw):
+        self._d.update(*args, **kw)
+
+    def keys(self):
+        return self._d.keys()
+
+    def items(self):
+        return self._d.items()
+
+    def values(self):
+        return self._d.values()
+
+    def copy(self):
+        return dict(self._d)
+
+
+LAST = _Last()
 KEYS_IS = ("매출액", "영업이익", "당기순이익", "지배순이익", "EPS")
 
 Q_BY_REPRT = {"11013": 1, "11012": 2, "11014": 3, "11011": 4}
@@ -172,39 +219,42 @@ def _n(y, q):
 
 
 def series(corp_code, stock_code, years, prices=None, meta=None, offline=False):
-    """분기 시계열 v2 — n 오름차순 조밀 격자. meta = {filed: {n: 원본 공시일}, fy_bad: {연도}, fin: bool}."""
+    """분기 시계열 v2 — n 오름차순 조밀 격자(첫 자료 분기 ~ 끝 자료 분기, 빈 분기 포함).
+    meta = {filed: {n: 원본 공시일}, fy_bad: {연도}, fin: bool}. fy_bad 연도는 받지 않고 'fy' 빈 칸으로만 낸다.
+    끝나면 LAST(스레드별)에 transient · fy_bad · error 를 남긴다 — transient > 0 이면 일시 오류로 빠진 분기가 있다는 뜻이다."""
     meta = meta or {}
     filed, fy_bad = meta.get("filed") or {}, set(meta.get("fy_bad") or ())
-    LAST.update(transient=0, fy_bad=sorted(fy_bad))
+    LAST.update(transient=0, fy_bad=sorted(fy_bad), error=None)
     raw = {}
     for y in years:
+        if y in fy_bad:
+            continue
         for q in (1, 2, 3, 4):
             try:
                 d = period_data(corp_code, y, q, offline=offline)
-            except Exception:
+            except Exception as e:
+                LAST["error"] = "%s: %s" % (type(e).__name__, e)
                 d = {"_transient": True}
             if d and d.get("_transient"):
                 LAST["transient"] += 1
                 continue
             if d:
                 raw[_n(y, q)] = d
-    if not raw:
+    fy_ns = [_n(y, q) for y in years if y in fy_bad for q in (1, 2, 3, 4)]
+    if not raw and not fy_ns:
         return []
-    n0, n1 = min(raw), max(raw)
+    n0, n1 = min(list(raw) + fy_ns), max(list(raw) + fy_ns)
     pts = []
     for n in range(n0, n1 + 1):
         y, q = n // 4, n % 4 + 1
         p = {"year": y, "q": q, "label": "%dQ%d" % (y, q), "n": n, "품질": []}
         d = raw.get(n)
-        if y in fy_bad:
-            p["품질"].append("fy")
-            d = None
         if d is None:
-            if "fy" not in p["품질"]:
-                p["품질"].append("gap")
+            p["품질"].append("fy" if y in fy_bad else "gap")
             pts.append(p)
             continue
         p["fs"] = d.get("_fs")
+        q3, capex_ok = {}, True
         if q != 4:
             for k in KEYS_IS:
                 p[k] = d.get(k)
@@ -220,35 +270,38 @@ def series(corp_code, stock_code, years, prices=None, meta=None, offline=False):
             if ra is not None and r3 is not None and abs(ra / r3 - 1) > 0.02:
                 scope_ok = False
             for k in KEYS_IS:
+                # 3분기 누적이 없으면 4분기 단독은 모른다 — 연간치를 대신 넣으면 4분기 합 · 전년 대비가 연간과 분기를 섞어 부푼다(EPS 로 겪음, 2026-10-07)
                 ann, cum9 = d.get(k), q3.get(k + "_누적")
                 ok = same_fs and scope_ok and ann is not None and cum9 is not None
                 p[k] = (ann - cum9) if ok else None
                 pa_, pc_ = d.get(k + "_전연"), q3.get(k + "_전누적")
                 p[k + "_전"] = (pa_ - pc_) if (ok and pa_ is not None and pc_ is not None) else None
+            capex_ok = same_fs and scope_ok         # CAPEX 의 연간 − 3분기 누적도 같은 기준 · 범위일 때만
             if d.get("매출액") is not None and p.get("매출액") is None:
-                p["품질"].append("basis")
+                # 자료가 모자라면(3분기 없음 · 누적 없음) gap, 기준(CFS/OFS) · 범위가 어긋나면 basis
+                p["품질"].append("gap" if q3.get("매출액_누적") is None else "basis")
         for k in ("재고자산", "매출채권", "유형자산", "자본총계"):
             p[k] = d.get(k)
-        cx, cx_prev = d.get("CAPEX"), (raw.get(n - 1) or {}).get("CAPEX") if q != 1 else 0
-        p["CAPEX"] = (cx - cx_prev) if (cx is not None and cx_prev is not None) else None
+        cx = d.get("CAPEX")
+        cx_prev = 0 if q == 1 else (raw.get(n - 1) or {}).get("CAPEX")      # 현금흐름표는 누적 — 분기 값은 앞 누적과의 차
+        p["CAPEX"] = (cx - cx_prev) if (capex_ok and cx is not None and cx_prev is not None) else None
         f0 = filed.get(n)
-        rc = d.get("_rcept")
-        p["기준일"] = max(x for x in (f0, rc) if x) if (f0 or rc) else None
-        if f0 and rc and rc > f0:
+        rcs = [x for x in (d.get("_rcept"), q3.get("_rcept")) if x]       # 4분기는 3분기 누적 줄도 쓴다 — 그쪽 정정도 기준일에 든다
+        cand = [x for x in [f0] + rcs if x]
+        p["기준일"] = max(cand) if cand else None
+        if f0 and any(x > f0 for x in rcs):
             p["품질"].append("amended")
         pts.append(p)
     by = {p["n"]: p for p in pts}
-    # 이상값 — 그 분기와 앞 분기들만 본다
+    # 이상값 — 그 분기와 바로 앞 분기(지우기 전 값)만 본다. 뒤 분기는 보지 않는다
+    rev0 = {p["n"]: p.get("매출액") for p in pts}
     for p in pts:
         v = p.get("매출액")
         if v is None:
             continue
-        prev = by.get(p["n"] - 1) or {}
-        hist = [by[m]["매출액"] for m in range(p["n"] - 4, p["n"]) if m in by and by[m].get("매출액")]
-        med = sorted(hist)[len(hist) // 2] if hist else None
-        if v <= 0 or (med is not None and med > 0 and v < 0):
+        if v <= 0:
             p["매출액"] = None; p["품질"].append("neg")
-        elif prev.get("매출액") is not None and prev["매출액"] == v:
+        elif rev0.get(p["n"] - 1) == v:
             p["매출액"] = None; p["품질"].append("dup")
     # 전년 대비 — 공시 당시(매출YoY) · 재작성(YoY_r)
     for p in pts:
@@ -257,6 +310,8 @@ def series(corp_code, stock_code, years, prices=None, meta=None, offline=False):
             a, v = b.get(k), p.get(k)
             p[tag + "YoY"] = None
             if a is not None and v is not None and a > 0:
+                # 기저가 거의 0이면 증감률은 의미가 없다. 적자에서 흑자로 돌면 수천 %가 찍히는데 차트도 판단도 망가진다.
+                # 이익은 매출의 1% 미만 기저를 버리고, 대신 영업이익률 변화(%p)로 본다.
                 if tag == "영업이익" and b.get("매출액") and a < b["매출액"] * 0.01:
                     p[tag + "YoY_무의미"] = True
                 else:
@@ -266,6 +321,7 @@ def series(corp_code, stock_code, years, prices=None, meta=None, offline=False):
             p[key_r] = (v - pr) / abs(pr) * 100 if (v is not None and pr is not None and pr > 0) else None
         if p.get("매출액") and p.get("영업이익") is not None:
             p["영업이익률"] = p["영업이익"] / p["매출액"] * 100
+            # 지주회사는 영업이익에 지분법이익이 잡히는데 매출은 지주사 자체 매출뿐이라 비율이 수천 %로 튄다. 순위에 넣으면 안 되는 값이다.
             if abs(p["영업이익률"]) > 100:
                 p["이익률_비정상"] = True
     for p in pts:
@@ -274,7 +330,9 @@ def series(corp_code, stock_code, years, prices=None, meta=None, offline=False):
             a, b_ = p.get(tag + "YoY"), prev.get(tag + "YoY")
             p[tag + "가속"] = (a - b_) if (a is not None and b_ is not None) else None
         p["이익률변화"] = (p["영업이익률"] - prev["영업이익률"]) if (p.get("영업이익률") is not None and prev.get("영업이익률") is not None) else None
-    # TTM · 회전일수 · CAPEX 강도 — 연속 네 분기(키)일 때만
+    # TTM · 회전일수 — 연속 네 분기(키)일 때만. 회전일수의 분모는 TTM 매출이다.
+    # 단일 분기 매출로 나누면 매출이 출렁이는 회사에서 지표가 망가진다.
+    # (한미반도체 2026Q1 매출 509억 -> Q2 2,512억. 재고는 그대로인데 재고일수가 309일 -> 52일로 찍힌다. 재고가 준 게 아니라 분모가 커진 것.)
     for p in pts:
         win = [by.get(m) or {} for m in range(p["n"] - 3, p["n"] + 1)]
         p["매출_TTM"] = sum(w["매출액"] for w in win) if all(w.get("매출액") for w in win) else None
@@ -284,8 +342,8 @@ def series(corp_code, stock_code, years, prices=None, meta=None, offline=False):
         daily = p["매출_TTM"] / 365.0 if p["매출_TTM"] else None
         p["재고일수"] = (p["재고자산"] / daily) if (daily and p.get("재고자산")) else None
         p["매출채권일수"] = (p["매출채권"] / daily) if (daily and p.get("매출채권")) else None
-        cw = [w.get("CAPEX") for w in win]
-        p["CAPEX강도"] = (sum(cw) / p["매출_TTM"] * 100) if (p["매출_TTM"] and all(c is not None for c in cw)) else None
+        # CAPEX 강도 = 그 분기 CAPEX ÷ 그 분기 매출 × 100 (TTM 이 아니다) — 하나라도 없으면 None
+        p["CAPEX강도"] = (p["CAPEX"] / p["매출액"] * 100) if (p.get("CAPEX") is not None and p.get("매출액")) else None
     for p in pts:
         p["품질"] = sorted(set(p["품질"]))
     return pts

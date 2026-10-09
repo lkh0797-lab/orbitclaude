@@ -385,8 +385,11 @@ def test_period_data_over_fetch_statement_network_down(dart, monkeypatch):
 
 
 
-def mk_q(rev, cum=None, prev=None, prev_cum=None, prev_ann=None, rc="20240514", fs="CFS", src="api", op=None, ni=None):
+def mk_q(rev, cum=None, prev=None, prev_cum=None, prev_ann=None, rc="20240514", fs="CFS", src="api", op=None, ni=None,
+         capex=None, **extra):
     d = {"매출액": rev, "_fs": fs, "_src": src, "_rcept": rc, "_transient": False}
+    if capex is not None: d["CAPEX"] = capex
+    d.update(extra)
     if cum is not None: d["매출액_누적"] = cum
     if prev is not None: d["매출액_전"] = prev
     if prev_cum is not None: d["매출액_전누적"] = prev_cum
@@ -437,20 +440,202 @@ def test_restated_yoy_and_amended(monkeypatch):
 def test_negative_and_dup_past_only(monkeypatch):
     t = {(2024, 1): mk_q(100), (2024, 2): mk_q(100), (2024, 3): mk_q(-5)}
     pts = run_series(monkeypatch, t, [2024])
+    q1 = [p for p in pts if p["label"] == "2024Q1"][0]
     q2 = [p for p in pts if p["label"] == "2024Q2"][0]; q3 = [p for p in pts if p["label"] == "2024Q3"][0]
+    assert q1["매출액"] == 100 and q1["품질"] == []        # 앞쪽 분기는 뒤 분기 때문에 지워지지 않는다
     assert q2["매출액"] is None and "dup" in q2["품질"]
     assert q3["매출액"] is None and "neg" in q3["품질"]
 
 
 def test_fy_bad_year_excluded(monkeypatch):
     t = {(2015, 1): mk_q(100), (2015, 2): mk_q(110)}
-    pts = run_series(monkeypatch, t, [2015], meta={"fy_bad": {2015}})
-    assert all(p.get("매출액") is None and "fy" in p["품질"] for p in pts)
+    calls = []
+    monkeypatch.setattr(DRK, "period_data", lambda corp, y, q, offline=False: calls.append((y, q)) or t.get((y, q)))
+    pts = DRK.series("C", "000000", [2015], meta={"fy_bad": {2015}})
+    assert calls == []                                  # fy_bad 연도는 아예 받지 않는다
+    assert [p["label"] for p in pts] == ["2015Q1", "2015Q2", "2015Q3", "2015Q4"]
+    assert all(p.get("매출액") is None and p["품질"] == ["fy"] for p in pts)
+
+
+def test_fy_bad_year_between_good_years(monkeypatch):
+    t = {(2014, 4): mk_q(100), (2015, 1): mk_q(999), (2016, 1): mk_q(130)}
+    calls = []
+    monkeypatch.setattr(DRK, "period_data", lambda corp, y, q, offline=False: calls.append((y, q)) or t.get((y, q)))
+    pts = DRK.series("C", "000000", [2014, 2015, 2016], meta={"fy_bad": {2015}})
+    assert not [c for c in calls if c[0] == 2015]
+    by = {p["label"]: p for p in pts}
+    assert [p["q"] for p in pts if p["year"] == 2015] == [1, 2, 3, 4]
+    assert all(by["2015Q%d" % q]["품질"] == ["fy"] and by["2015Q%d" % q].get("매출액") is None for q in (1, 2, 3, 4))
+    assert by["2016Q1"]["매출액"] == 130 and DRK.LAST["fy_bad"] == [2015]
 
 
 def test_latest_year_without_annual(monkeypatch):
-    t = {(2025, 1): mk_q(100), (2025, 2): mk_q(100), (2025, 3): mk_q(100, cum=300), (2025, 4): mk_q(420),
-         (2026, 1): mk_q(120, prev=100), (2026, 2): mk_q(130, prev=101)}
+    t = {(2025, 1): mk_q(100), (2025, 2): mk_q(105), (2025, 3): mk_q(95, cum=300), (2025, 4): mk_q(420),
+         (2026, 1): mk_q(125, prev=100), (2026, 2): mk_q(130, prev=101)}
     pts = run_series(monkeypatch, t, [2025, 2026])
+    by = {p["label"]: p for p in pts}
+    assert by["2025Q4"]["매출액"] == 420 - 300 == 120        # 4분기 단독 = 연간 − 3분기 누적
+    assert by["2026Q1"]["매출액"] == 125 and by["2026Q1"]["품질"] == []     # 앞 분기(4분기 단독 120)와 값이 달라 dup 이 아니다
     last = pts[-1]
     assert last["label"] == "2026Q2" and last["매출액"] == 130 and last["YoY_r"] is not None
+
+
+# ---- series v2 고침 1 — 대표 동작 · 스레드별 LAST · CAPEX 강도 · 이상값 · 기준일
+
+def year_table(fs_q1="CFS", fs_q4="CFS"):
+    """2024 한 해 — 매출 100 · 110 · 120(3분기 누적 330) · 4분기 연간 460 → 4분기 단독 130. CAPEX 누적 3 · 7 · 12 · 20, 영업이익 분기 10."""
+    return {(2024, 1): mk_q(100, op=10, capex=3, fs=fs_q1, 재고자산=460, 매출채권=230),
+            (2024, 2): mk_q(110, op=10, capex=7),
+            (2024, 3): mk_q(120, cum=330, op=10, capex=12, **{"영업이익_누적": 30}),
+            (2024, 4): mk_q(460, op=40, capex=20, fs=fs_q4, 재고자산=460, 매출채권=230)}
+
+
+def test_version_is_2():
+    assert DRK.VERSION == 2
+
+
+def test_q4_derived_value_and_restated_yoy(monkeypatch):
+    t = {(2023, 3): mk_q(100, cum=270, op=9, **{"영업이익_누적": 27}),
+         (2023, 4): mk_q(1290, op=38),
+         (2024, 3): mk_q(120, cum=330, prev_cum=272, op=11, ni=7, **{"영업이익_누적": 33, "영업이익_전누적": 28, "지배순이익_누적": 18}),
+         (2024, 4): mk_q(1500, prev_ann=1300, op=50, ni=30, **{"영업이익_전연": 40})}
+    pts = run_series(monkeypatch, t, [2023, 2024])
+    by = {p["label"]: p for p in pts}
+    q4 = by["2024Q4"]
+    assert by["2023Q4"]["매출액"] == 1290 - 270 and by["2023Q4"]["영업이익"] == 38 - 27
+    assert q4["매출액"] == 1500 - 330 and q4["영업이익"] == 50 - 33 and q4["지배순이익"] == 30 - 18   # 연간 − 3분기 누적
+    assert "basis" not in q4["품질"]                               # 범위 검사 통과 — 두 비율(전연/전년 연간 · 전누적/전년 누적)이 모두 있다
+    assert round(q4["YoY_r"], 6) == round((1170 / (1300 - 272) - 1) * 100, 6)         # 재작성 비교 = (전연 − 전누적)
+    assert round(q4["매출YoY"], 6) == round((1170 / (1290 - 270) - 1) * 100, 6)       # 공시 당시 = 전년 4분기 단독
+    assert round(q4["영업이익YoY_r"], 6) == round((17 / (40 - 28) - 1) * 100, 6)
+
+
+@pytest.mark.parametrize("prev_ann, scope_ok", [(1015, True), (1025, False)])
+def test_q4_scope_tolerance(monkeypatch, prev_ann, scope_ok):
+    # 전년 사업보고서 연간 1000 · Q3 누적 500, 올해 Q3 의 전년 누적 500 (r3 = 1.0). 올해 사업보고서의 전년 연간이 1.5% / 2.5% 어긋난다
+    t = {(2023, 3): mk_q(250, cum=500), (2023, 4): mk_q(1000),
+         (2024, 3): mk_q(260, cum=540, prev_cum=500), (2024, 4): mk_q(1100, prev_ann=prev_ann)}
+    q4 = [p for p in run_series(monkeypatch, t, [2023, 2024]) if p["label"] == "2024Q4"][0]
+    if scope_ok:
+        assert q4["매출액"] == 1100 - 540 and "basis" not in q4["품질"]
+    else:
+        assert q4["매출액"] is None and "basis" in q4["품질"]
+
+
+def test_q4_missing_q3_is_gap_not_basis(monkeypatch):
+    q4 = run_series(monkeypatch, {(2024, 4): mk_q(460)}, [2024])[-1]
+    assert q4["매출액"] is None and q4["품질"] == ["gap"]                  # 3분기가 없다
+    q4 = run_series(monkeypatch, {(2024, 3): mk_q(120), (2024, 4): mk_q(460)}, [2024])[-1]
+    assert q4["매출액"] is None and q4["품질"] == ["gap"]                  # 3분기에 누적이 없다
+
+
+def test_ttm_and_turnover_days(monkeypatch):
+    pts = run_series(monkeypatch, year_table(), [2024])
+    q4 = pts[3]
+    assert [p["매출액"] for p in pts] == [100, 110, 120, 130]
+    assert q4["매출_TTM"] == 460 and q4["영업이익_TTM"] == 40 and "basis" not in q4["품질"]
+    assert pts[2]["매출_TTM"] is None                                   # 창 앞쪽이 격자 밖
+    assert round(q4["재고일수"], 6) == 365 and round(q4["매출채권일수"], 6) == 182.5   # 분모는 TTM 매출 / 365
+
+
+def test_ttm_basis_on_mixed_fs(monkeypatch):
+    q4 = run_series(monkeypatch, year_table(fs_q1="OFS"), [2024])[3]
+    assert q4["매출_TTM"] == 460 and "basis" in q4["품질"]
+
+
+def test_capex_quarterly_difference_and_intensity(monkeypatch):
+    pts = run_series(monkeypatch, year_table(), [2024])
+    assert [p["CAPEX"] for p in pts] == [3, 4, 5, 8]                       # 누적 차 — 1분기는 그대로, 4분기는 연간 − 3분기 누적
+    want = [c / r * 100 for c, r in ((3, 100), (4, 110), (5, 120), (8, 130))]
+    assert [round(p["CAPEX강도"], 6) for p in pts] == [round(w, 6) for w in want]    # 그 분기 CAPEX ÷ 그 분기 매출 (TTM ÷ TTM 아님)
+
+
+def test_capex_intensity_none_when_missing(monkeypatch):
+    t = year_table()
+    t[(2024, 2)] = mk_q(110, op=10)                                       # 2분기 누적 CAPEX 없음
+    pts = run_series(monkeypatch, t, [2024])
+    assert pts[0]["CAPEX"] == 3
+    assert pts[1]["CAPEX"] is None and pts[1]["CAPEX강도"] is None
+    assert pts[2]["CAPEX"] is None and pts[2]["CAPEX강도"] is None        # 앞 누적이 없어 차를 못 뗀다
+
+
+def test_q4_capex_guarded_like_other_q4_values(monkeypatch):
+    pts = run_series(monkeypatch, year_table(fs_q4="OFS"), [2024])        # 3분기 CFS · 4분기 OFS
+    q4 = pts[3]
+    assert q4["매출액"] is None and "basis" in q4["품질"]
+    assert q4["CAPEX"] is None and q4["CAPEX강도"] is None
+    assert pts[2]["CAPEX"] == 5
+    t = {(2019, 3): mk_q(2400, cum=6956, capex=50), (2019, 4): mk_q(9700, capex=90),     # 같은 기준이어도 범위가 다르면(test_q4_scope_restated)
+         (2020, 3): mk_q(2300, cum=7233, prev_cum=6803, capex=60), (2020, 4): mk_q(1566, prev_ann=1660, capex=100)}
+    q4 = [p for p in run_series(monkeypatch, t, [2019, 2020]) if p["label"] == "2020Q4"][0]
+    assert q4["매출액"] is None and "basis" in q4["품질"] and q4["CAPEX"] is None
+
+
+def test_dup_compares_raw_previous_quarter(monkeypatch):
+    t = {(2024, 1): mk_q(100), (2024, 2): mk_q(100), (2024, 3): mk_q(100)}
+    pts = run_series(monkeypatch, t, [2024])
+    assert pts[0]["매출액"] == 100 and pts[0]["품질"] == []
+    assert all(p["매출액"] is None and p["품질"] == ["dup"] for p in pts[1:])      # 2분기가 지워져도 3분기는 원래 값과 견준다
+    t = year_table(); t[(2025, 1)] = mk_q(460)                                       # 1분기 값 460 은 전년 4분기 단독(130)이 아니라 연간(460)과 같다 — dup 아님
+    p = run_series(monkeypatch, t, [2024, 2025])[-1]
+    assert p["label"] == "2025Q1" and p["매출액"] == 460 and p["품질"] == []
+
+
+def test_q4_reference_date_considers_q3_rcept(monkeypatch):
+    meta = {"filed": {2024 * 4 + 3: "20250320"}}
+    t = {(2024, 3): mk_q(120, cum=330, rc="20241114"), (2024, 4): mk_q(460, rc="20250320")}
+    q4 = run_series(monkeypatch, t, [2024], meta=meta)[-1]
+    assert q4["기준일"] == "20250320" and "amended" not in q4["품질"]
+    t[(2024, 3)] = mk_q(120, cum=330, rc="20250401")                       # 3분기 정정이 사업보고서 뒤에 나왔다 — 4분기 값은 그 누적에 기대고 있다
+    q4 = run_series(monkeypatch, t, [2024], meta=meta)[-1]
+    assert q4["기준일"] == "20250401" and "amended" in q4["품질"]
+
+
+def test_transient_skipped_counted_and_error_recorded(monkeypatch):
+    t = {(2024, 1): {"_transient": True}, (2024, 2): mk_q(100), (2024, 3): RuntimeError("boom"), (2025, 1): mk_q(120)}
+
+    def pd(corp, y, q, offline=False):
+        v = t.get((y, q))
+        if isinstance(v, Exception):
+            raise v
+        return v
+    monkeypatch.setattr(DRK, "period_data", pd)
+    pts = DRK.series("C", "000000", [2024, 2025], meta={})
+    assert DRK.LAST["transient"] == 2 and DRK.LAST["error"] == "RuntimeError: boom"
+    assert [p["label"] for p in pts] == ["2024Q2", "2024Q3", "2024Q4", "2025Q1"]    # 일시 오류 분기는 원장에 없다 — 가운데면 빈 칸
+    assert pts[0]["매출액"] == 100 and pts[1]["품질"] == ["gap"] and pts[1].get("매출액") is None
+    run_series(monkeypatch, {(2024, 2): mk_q(100)}, [2024])                # 다음 호출은 처음부터 다시 센다
+    assert DRK.LAST["transient"] == 0 and DRK.LAST["error"] is None
+
+
+def test_last_dict_api():
+    L = DRK.LAST
+    L.update(transient=0, fy_bad=[], error=None)
+    L["transient"] += 1
+    L["error"] = "X: y"
+    assert L["transient"] == 1 and L.get("transient", 9) == 1 and L.get("없는키", 9) == 9 and L["error"] == "X: y"
+
+
+def test_last_is_thread_local(monkeypatch):
+    import threading
+
+    def pd(corp, y, q, offline=False):
+        if corp == "A":
+            return {"_transient": True} if q <= 3 else mk_q(100)
+        return mk_q(100 + q)
+    monkeypatch.setattr(DRK, "period_data", pd)
+    DRK.LAST.update(transient=99, fy_bad=[7], error="main")
+    gate, seen, errs = threading.Barrier(2, timeout=20), {}, []
+
+    def work(corp):
+        try:
+            DRK.series(corp, "000000", [2024], meta={})
+            gate.wait()                                                       # 두 스레드 모두 series() 를 끝낸 뒤 읽는다
+            seen[corp] = (DRK.LAST["transient"], DRK.LAST["fy_bad"])
+        except Exception as e:                                                # 스레드 안 실패는 pytest 가 못 잡는다
+            errs.append(repr(e))
+    ths = [threading.Thread(target=work, args=(c,)) for c in ("A", "B")]
+    for th in ths: th.start()
+    for th in ths: th.join(30)
+    assert errs == [] and seen == {"A": (3, []), "B": (0, [])}
+    assert DRK.LAST["transient"] == 99 and DRK.LAST["error"] == "main"        # 메인 스레드 값은 그대로
