@@ -67,6 +67,10 @@ def _grab(rows, table, picks, field):
             nm = FIN.NUM_PREFIX.sub("", (r.get("account_nm") or "").strip())
             if "우선주" in nm:
                 continue
+            # 총포괄손익 귀속 줄('지배기업지분' · '비지배지분' — ComprehensiveIncomeAttributableTo…)은 이름이 같아도
+            # 당기순이익 귀속 줄이 아니다(2024 00100601: 이름만 맞춰 총포괄 쪽 -1,125,449,589 를 집었다)
+            if FIN.norm_tag(r.get("account_id")).startswith("ifrs-full_ComprehensiveIncome"):
+                continue
             # 재무.py 와 같은 판정 — 본문 줄('Ⅲ.영업손실')과 잘못 붙은 태그(롯데렌탈)를 가린다
             hit, aid = FIN._account_hit(r, nm, ids, rx)
             if not hit:
@@ -93,6 +97,12 @@ def _capex(rows):
                 return abs(v)
     return None
 
+
+# 지배순이익 대체용 — 당기순이익에서 뺄 비지배 몫(당기순이익 귀속 줄). 태그가 없는 줄은 이름('비지배지분')으로 잡는다
+NCI_PICK = {"비지배순이익": ([FIN.NI_PARTS["nci"]], r"^비지배")}
+# (원장 칸, 키 접미사) — 그 보고서의 값 · 누적 · 전년 같은 분기 · 전년 같은 누적 · 전년 연간
+IS_FIELDS = (("thstrm_amount", ""), ("thstrm_add_amount", "_누적"), ("frmtrm_q_amount", "_전"),
+             ("frmtrm_add_amount", "_전누적"), ("frmtrm_amount", "_전연"))
 
 NET = {"budget": None, "used": 0}   # offline 빌드의 네트워크 예산 — 캐시 파일이 없을 때만 센다
 
@@ -123,10 +133,18 @@ def period_data(corp_code, year, q, offline=False):
     if not rows:
         return None
     d = {}
-    d.update(_grab(rows, ("IS", "CIS"), IS_PICK, "thstrm_amount"))
     d.update(_grab(rows, ("BS",), BS_PICK, "thstrm_amount"))
-    for fld, suf in (("thstrm_add_amount", "_누적"), ("frmtrm_q_amount", "_전"), ("frmtrm_add_amount", "_전누적"), ("frmtrm_amount", "_전연")):
-        for k, v in _grab(rows, ("IS", "CIS"), IS_PICK, fld).items():
+    has_nci = any(_grab(rows, ("IS", "CIS"), NCI_PICK, fld) for fld, _ in IS_FIELDS)
+    for fld, suf in IS_FIELDS:
+        got = _grab(rows, ("IS", "CIS"), IS_PICK, fld)
+        if "지배순이익" not in got and got.get("당기순이익") is not None:
+            # 지배기업 귀속 줄이 없으면 당기순이익 − 비지배 몫(비지배 줄이 아예 없으면 당기순이익 그대로 — 재무._net_income_from 과 같은 규칙)
+            nci = _grab(rows, ("IS", "CIS"), NCI_PICK, fld).get("비지배순이익")
+            if nci is not None:
+                got["지배순이익"] = got["당기순이익"] - nci
+            elif not has_nci:
+                got["지배순이익"] = got["당기순이익"]
+        for k, v in got.items():
             d[k + suf] = v
     if q == 1:
         for k in IS_PICK:
