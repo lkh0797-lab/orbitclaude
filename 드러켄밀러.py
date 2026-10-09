@@ -35,6 +35,17 @@ CACHE_DIR = os.path.join(BASE, ".cache", "druck")
 VERSION = 2          # 2: 분기 키 조밀 격자 · Q4 기준/범위 검사 · 재작성 전년 비교(YoY_r) · 기준일 · 품질 표시 · 이상값 (2026-10-09). 계산을 바꾸면 올린다 — 캐시가 전부 다시 계산된다
 
 
+def read_cache(path):
+    """가속도 캐시 파일 → dict — v 가 지금 VERSION 일 때만. 없는 파일 · 깨진 JSON · 옛 버전은 None(다시 계산할 대상).
+    서버 _druck_read 가 이것만 부른다 — 캐시를 읽는 곳은 모두 이 규칙을 거친다."""
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+    except Exception:
+        return None
+    return d if isinstance(d, dict) and d.get("v") == VERSION else None
+
+
 class _Last(threading.local):
     """series() 가 끝난 뒤 그 회사 결과 {transient: 일시 오류로 건너뛴 분기 수, fy_bad: [연도], error: 마지막 삼킨 예외 "종류: 내용" | None}.
     서버가 여러 회사를 스레드로 나눠 만들고 series() 직후 같은 스레드에서 읽으므로 스레드마다 따로 둔다 — dict 와 같은 쓰임(get · update · [k] · [k] += 1)."""

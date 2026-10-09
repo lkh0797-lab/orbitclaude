@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, sys, importlib.util as ilu
+import os, sys, json, importlib.util as ilu
 import pytest
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
@@ -901,3 +901,35 @@ def test_per_share_no_cut_tag_for_plain_split():
         p["EPS"] = 100e8 / s
     DRK.per_share(pts, [("20260410", "주식분할결정")])
     assert all("cut" not in p["품질"] for p in pts)
+
+
+# ---------------------------------------------------------------- 캐시 읽기(서버 _druck_read 가 이것만 부른다)
+def test_read_cache_missing_file(tmp_path):
+    assert DRK.read_cache(str(tmp_path / "없음.json")) is None
+
+
+def test_read_cache_broken_json(tmp_path):
+    p = tmp_path / "x.json"
+    p.write_text('{"v": 2, "points": [', encoding="utf-8")
+    assert DRK.read_cache(str(p)) is None
+
+
+def test_read_cache_old_version(tmp_path):
+    p = tmp_path / "x.json"
+    p.write_text(json.dumps({"sig": "20260814003699", "points": [{"n": 1}]}), encoding="utf-8")     # v1 — 버전 키 없음
+    assert DRK.read_cache(str(p)) is None
+    p.write_text(json.dumps({"v": DRK.VERSION - 1, "sig": "x", "points": []}), encoding="utf-8")
+    assert DRK.read_cache(str(p)) is None
+
+
+def test_read_cache_not_a_dict(tmp_path):
+    p = tmp_path / "x.json"
+    p.write_text("[1, 2]", encoding="utf-8")
+    assert DRK.read_cache(str(p)) is None
+
+
+def test_read_cache_current_version(tmp_path):
+    p = tmp_path / "x.json"
+    d = {"v": DRK.VERSION, "sig": "v%d:abc" % DRK.VERSION, "points": [{"n": 1, "품질": ["gap"]}]}
+    p.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    assert DRK.read_cache(str(p)) == d
