@@ -2576,8 +2576,17 @@ table.vclYr td.num.up{color:#d24c43}table.vclYr td.num.dn{color:#3a6fd8}
 .lsMk .r{font:600 10px var(--f-num);paint-order:stroke;stroke:#0e1319;stroke-width:3px}
 .lsMk .r.up{fill:#f08a84}.lsMk .r.dn{fill:#8fb8f0}
 .lsplate.anim .lsMk{animation:spPop .5s var(--d,0ms) cubic-bezier(.2,.9,.25,1.15) both;transform-box:fill-box;transform-origin:center}
-.lsNow rect{fill:var(--p-gold)}
-.lsNow text{font:700 11px var(--f-num);fill:#11151b}
+.lsNowR{fill:var(--p-gold)}
+.lsNowT{font:700 11px var(--f-num);fill:#11151b}
+.lsNowS{font:600 10px var(--f-body);fill:var(--p-dim)}
+.lsPxC{fill:none;stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+.lsplate.anim .lsPxZ{animation:spFade .8s 1.9s both}
+.lsOff{font:600 10.5px var(--f-body);fill:var(--p-gold2);paint-order:stroke;stroke:#0e1319;stroke-width:4px;stroke-linejoin:round}
+.lsSw{display:flex;gap:6px;justify-content:flex-end;margin:10px 2px -6px}
+.lsFig.noBand .lsBandG,.lsFig.noBand .lsPxZ{display:none}
+.lsFig.noMk .lsMk{display:none}
+.lsKey span.g{color:var(--p-hi);font-weight:600}
+.lsKey i.hatch{width:16px;height:11px;border:0;background:repeating-linear-gradient(45deg,rgba(229,83,75,.55) 0 2px,transparent 2px 5px)}
 .lsNowDot{fill:var(--p-gold2);stroke:#0e1319;stroke-width:2}
 .lsRoe{font:500 9.5px var(--f-num);fill:var(--p-faint)}
 .lsGuide{stroke:rgba(241,217,160,.5);stroke-width:1;stroke-dasharray:3 4}
@@ -13082,14 +13091,26 @@ function lsPlate(plate, d, c, animate){
   plate.appendChild(hl);
 
   // ── 그림
-  const fig=el('div','lsFig'); plate.appendChild(fig);
+  // 켜고 끄는 칩 — 이익선 · 값 띠 / 버핏 · 린치 표지
+  S.lsShow=S.lsShow||{band:true,mk:true};
+  const fig=el('div','lsFig');
+  const sw=el('div','lsSw');
+  const apply=()=>{ fig.classList.toggle('noBand',!S.lsShow.band); fig.classList.toggle('noMk',!S.lsShow.mk); };
+  [['band','이익선 · 값 띠'],['mk','버핏 · 린치 표지']].forEach(([k,t])=>{
+    const b=el('button','spChip'+(S.lsShow[k]?' on':''),t);
+    b.onclick=()=>{ S.lsShow[k]=!S.lsShow[k]; b.classList.toggle('on',S.lsShow[k]); apply(); };
+    sw.appendChild(b); });
+  plate.appendChild(sw);
+  plate.appendChild(fig); apply();
   lsChart(fig,d,plate);
   const key=el('div','lsKey');
-  key.innerHTML='<span><i style="border-color:#f7f3e9"></i>주가(수정)</span>'+
+  const z=k=>'<span><i style="border-color:'+LS_ZONE[k][1]+';border-top-width:3px"></i>'+LS_ZONE[k][0]+'</span>';
+  key.innerHTML='<span class="g">주가 선 색 = 그때 이익 대비 값</span>'+z('hi').replace('</span>',' (값 띠 위)</span>')+z('mid').replace('</span>',' (띠 안)</span>')+
+    z('lo').replace('</span>',' (값 띠 아래)</span>')+z('na').replace('</span>',' (적자 · 이익선 없음)</span>')+
     '<span><i style="border-color:#f1d9a0;border-top-style:dashed"></i>이익선 = 최근 4분기 주당이익 × 자기 역사 PER 중앙값 '+(d.band.mid?d.band.mid.toFixed(1)+'배':'')+'</span>'+
     '<span><i style="border-color:rgba(214,180,106,.5);border-top-width:8px"></i>값 띠 '+(d.band.lo?d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'')+' (자기 역사 PER 25–75%)</span>'+
-    '<span><b style="background:#d6b46a">B</b>버핏 조건이 맞은 때</span><span><b style="background:#4fc3a1">L</b>린치 조건이 맞은 때</span>'+
-    '<span><i style="border-color:#e5534b;border-top-width:5px"></i>적자</span>';
+    '<span><b style="background:#d6b46a">B</b>버핏 · <b style="background:#4fc3a1">L</b>린치 조건이 맞은 때 — 위 숫자는 그 뒤 1년 주가</span>'+
+    '<span><i class="hatch"></i>적자 분기</span>';
   plate.appendChild(key);
 
   // ── 세 개의 창
@@ -13107,8 +13128,11 @@ function lsPlate(plate, d, c, animate){
   plate.appendChild(ft);
 }
 
+// 주가가 그때 값 띠의 어디에 있었나 — 비쌈(띠 위) · 적정 · 쌈(띠 아래) · 없음(적자 · 이익선 없음)
+const LS_ZONE={hi:['비쌈','#f5a35c'], mid:['적정','#f7f3e9'], lo:['쌈','#7cc4ff'], na:['이익선 없음','#8b95a3']};
+let LS_CLIP=0;
 function lsChart(fig, d, plate){
-  const W=1000, L=58, RR=118, T=42, H1=300, GAP=40, H2=66, B=28;
+  const W=1000, L=58, RR=124, T=42, H1=300, GAP=40, H2=66, B=28;
   const pTop=T, pBot=T+H1, rTop=pBot+GAP, rBot=rTop+H2, H=rBot+B;
   const R=d.rows, M=d.monthly||[], LN=d.line||[];
   // 최근 4분기 칸은 그 분기 말에서 반년 앞(4분기 창의 가운데)에 놓는다
@@ -13116,12 +13140,21 @@ function lsChart(fig, d, plate){
   const rl=R[R.length-1];
   const t0=Date.UTC(R[0].year,0,1), t1=Math.max(M.length?lsT(M[M.length-1].d):0, rl.ttm&&rl.end?lsT(rl.end):Date.UTC(rl.year,11,31));
   const X=t=>L+(t-t0)/(t1-t0)*(W-L-RR);
-  const vals=[...M.map(m=>m.p), ...LN.filter(x=>x.lo).flatMap(x=>[x.lo,x.hi])].filter(v=>v>0);
+  // 세로축은 주가로만 잡는다 — 이익이 0 근처로 줄면 값 띠가 수백 원까지 꽂혀 주가 선이 위쪽에 눌리던 것(코오롱 200~20만)
+  const pv=M.map(m=>m.p).filter(v=>v>0);
+  const vals=pv.length?pv:LN.filter(x=>x.lo).flatMap(x=>[x.lo,x.hi]).filter(v=>v>0);
   let lo=Math.min(...vals), hi=Math.max(...vals);
-  const pad=(Math.log(hi)-Math.log(lo))*.06||.1;
+  const pad=Math.max((Math.log(hi)-Math.log(lo))*.1, .12);
   const l0=Math.log(lo)-pad, l1=Math.log(hi)+pad;
+  const vMin=Math.exp(l0), vMax=Math.exp(l1);
   const Y=v=>pBot-(Math.log(v)-l0)/(l1-l0)*H1;
+  const Yc=v=>Math.max(pTop,Math.min(pBot,Y(v)));
   const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'lsSvg',role:'img','aria-label':'주가와 이익선, 유형의 장(章), 결단 시점'});
+  const cid='lsClip'+(++LS_CLIP), hid='lsHatch'+LS_CLIP;
+  const defs=svgEl('defs',{});
+  defs.innerHTML='<clipPath id="'+cid+'"><rect x="'+L+'" y="'+pTop+'" width="'+(W-L-RR)+'" height="'+H1+'"/></clipPath>'+
+    '<pattern id="'+hid+'" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="rgba(229,83,75,.2)" stroke-width="1.6"/></pattern>';
+  svg.appendChild(defs);
 
   // 장(章) 띠
   const gch=svgEl('g',{});
@@ -13139,63 +13172,121 @@ function lsChart(fig, d, plate){
   });
   svg.appendChild(gch);
 
-  // 격자(로그)
+  // 적자 분기 — 가격 칸에 빨간 빗금(연속 분기는 한 덩어리)
+  const qw=(W-L-RR)/Math.max(1,(t1-t0)/(91.3*864e5));
+  let run=null; const runs=[];
+  LN.forEach(x=>{ if(x.loss){ if(!run) run={a:x,b:x}; else run.b=x; } else if(run){ runs.push(run); run=null; } });
+  if(run) runs.push(run);
+  const gLoss=svgEl('g',{class:'lsLossG'});
+  runs.forEach(rn=>{
+    const a=Math.max(L,X(lsT(rn.a.d))-qw), b=Math.min(W-RR,X(lsT(rn.b.d)));
+    if(b-a<1) return;
+    gLoss.appendChild(svgEl('rect',{x:a,y:pTop,width:b-a,height:H1,fill:'url(#'+hid+')',class:'lsLossH'}));
+  });
+  svg.appendChild(gLoss);
+
+  // 격자(로그) — 범위가 좁으면 1 · 1.5 · 2 · 3 · 5 · 7 눈금
   const gg=svgEl('g',{class:'lsGrid'});
-  const ticks=[];
-  for(let e=Math.floor(Math.log10(Math.exp(l0))); e<=Math.ceil(Math.log10(Math.exp(l1))); e++)
-    [1,2,5].forEach(m=>{ const v=m*Math.pow(10,e); if(Math.log(v)>=l0 && Math.log(v)<=l1) ticks.push(v); });
-  const tk=ticks.length>7 ? ticks.filter((v,i)=>String(v)[0]!=='2' || ticks.length<=10) : ticks;
-  tk.forEach(v=>{ const y=Y(v); gg.appendChild(svgEl('line',{x1:L,x2:W-RR,y1:y,y2:y}));
-    const t=svgEl('text',{x:L-8,y:y+4,'text-anchor':'end',class:'lsTick'}); t.textContent=v>=1e4?(v/1e4)+'만':fmt(v); gg.appendChild(t); });
+  const mk=ms=>{ const o=[]; for(let e=Math.floor(Math.log10(vMin)); e<=Math.ceil(Math.log10(vMax)); e++)
+    ms.forEach(m=>{ const v=m*Math.pow(10,e); if(v>=vMin && v<=vMax) o.push(v); }); return o; };
+  let ticks=mk([1,2,5]);
+  if(ticks.length<5) ticks=mk([1,1.5,2,3,5,7]);
+  if(ticks.length>9) ticks=mk([1,3]);
+  ticks.forEach(v=>{ const y=Y(v); gg.appendChild(svgEl('line',{x1:L,x2:W-RR,y1:y,y2:y}));
+    const t=svgEl('text',{x:L-8,y:y+4,'text-anchor':'end',class:'lsTick'}); t.textContent=v>=1e4?(+(v/1e4).toFixed(1))+'만':fmt(v); gg.appendChild(t); });
   svg.appendChild(gg);
 
-  // 값 띠 · 이익선 — 흑자 구간마다 끊어서
+  // 값 띠 · 이익선 — 흑자 구간마다 끊어서, 가격 칸 밖은 잘라낸다
   const segs=[]; let cur=[];
   LN.forEach(x=>{ if(x.mid){ cur.push(x); } else { if(cur.length>=3) segs.push(cur); cur=[]; } });
   if(cur.length>=3) segs.push(cur);     // 흑자 한두 분기짜리 토막은 이익선으로 긋지 않는다
+  const gBand=svgEl('g',{class:'lsBandG','clip-path':'url(#'+cid+')'});
   const P=(x,k)=>X(lsT(x.d)).toFixed(1)+','+Y(x[k]).toFixed(1);
   segs.forEach(sg=>{
-    if(sg.length>1) svg.appendChild(svgEl('path',{d:'M'+sg.map(x=>P(x,'hi')).join('L')+'L'+sg.slice().reverse().map(x=>P(x,'lo')).join('L')+'Z',class:'lsVal'}));
-    ['lo','hi'].forEach(k=>{ if(sg.length>1) svg.appendChild(svgEl('path',{d:'M'+sg.map(x=>P(x,k)).join('L'),class:'lsLoHi'})); });
-    if(sg.length>1) svg.appendChild(svgEl('path',{d:'M'+sg.map(x=>P(x,'mid')).join('L'),class:'lsMid'}));
+    gBand.appendChild(svgEl('path',{d:'M'+sg.map(x=>P(x,'hi')).join('L')+'L'+sg.slice().reverse().map(x=>P(x,'lo')).join('L')+'Z',class:'lsVal'}));
+    ['lo','hi'].forEach(k=>gBand.appendChild(svgEl('path',{d:'M'+sg.map(x=>P(x,k)).join('L'),class:'lsLoHi'})));
+    gBand.appendChild(svgEl('path',{d:'M'+sg.map(x=>P(x,'mid')).join('L'),class:'lsMid'}));
   });
-  // 적자 분기
-  LN.forEach((x,i)=>{ if(!x.loss) return; const a=X(lsT(x.d))-((W-L-RR)/(LN.length||1))*.9, b=X(lsT(x.d));
-    svg.appendChild(svgEl('rect',{x:Math.max(L,a),y:pBot-5,width:Math.max(2,b-Math.max(L,a)),height:5,class:'lsLoss'})); });
-  // 오른쪽 이름표 — 마지막 흑자 이익선
+  svg.appendChild(gBand);
+  // 이익선이 칸 밖으로 나간 구간 — 이익 토막마다 가장 긴 구간(2분기↑)에 한 번, 이웃 표시와 160px 띄운다
+  const gOff=svgEl('g',{class:'lsBandG'}), offs=[];
+  segs.forEach(sg=>{
+    let best=null, run=null;
+    sg.forEach(x=>{ const s=x.mid<vMin?-1:x.mid>vMax?1:0;
+      if(s && run && run.s===s) run.n++; else run=s?{s,n:1,x}:null;
+      if(run && run.n>=2 && (!best || run.n>best.n)) best={...run}; });
+    if(best) offs.push({s:best.s, x:Math.max(L+60,Math.min(W-RR-60,X(lsT(best.x.d))))});
+  });
+  offs.sort((p_,q_)=>p_.x-q_.x).filter((o,i,a)=>!a.slice(0,i).some(q_=>q_.s===o.s&&Math.abs(q_.x-o.x)<160)).forEach(o=>{
+    const t=svgEl('text',{x:o.x,y:o.s<0?pBot-7:pTop+13,'text-anchor':'middle',class:'lsOff'});
+    t.textContent=o.s<0?'↓ 이익 급감 — 이익선이 칸 아래':'↑ 이익선이 칸 위'; gOff.appendChild(t); });
+  svg.appendChild(gOff);
+
+  // 주가 — 그달의 이익선 · 값 띠 대비 자리
+  const lnAt=m=>{ let q=null; LN.forEach(z=>{ if(lsT(z.d)<=lsT(m.d)+86400000*20) q=z; }); return q; };
+  const zoneOf=m=>{ const q=lnAt(m); if(!q||!q.mid||!q.lo) return 'na'; return m.p>q.hi?'hi':m.p<q.lo?'lo':'mid'; };
+  if(M.length>1){
+    svg.appendChild(svgEl('path',{d:'M'+M.map(m=>X(lsT(m.d)).toFixed(1)+','+Y(m.p).toFixed(1)).join('L'),class:'lsPx'}));
+    // 색 덧칠 — 같은 자리끼리 이어서(앞 점을 하나 겹쳐 끊김 없이)
+    const gz=svgEl('g',{class:'lsPxZ'});
+    let zs=null, pts=[];
+    const flush=()=>{ if(pts.length>1){ const p=svgEl('path',{d:'M'+pts.join('L'),class:'lsPxC'}); p.setAttribute('stroke',LS_ZONE[zs][1]); gz.appendChild(p); } };
+    M.forEach((m,i)=>{ const z=zoneOf(m), pt=X(lsT(m.d)).toFixed(1)+','+Y(m.p).toFixed(1);
+      if(z!==zs){ flush(); pts=i?[X(lsT(M[i-1].d)).toFixed(1)+','+Y(M[i-1].p).toFixed(1)]:[]; zs=z; }
+      pts.push(pt); });
+    flush();
+    svg.appendChild(gz);
+  }
+
+  // 오른쪽 이름표 — 지금 · 비쌈 · 이익선 · 쌈. 겹치면 위아래로 민다
+  const labs=[];
   const lastL=[...LN].reverse().find(x=>x.mid);
+  const mNow=M.length?M[M.length-1]:null;
+  if(mNow){
+    const q=lnAt(mNow), gap=q&&q.mid?(mNow.p/q.mid-1)*100:null;
+    labs.push({y:Y(mNow.p), yd:Y(mNow.p), xd:X(lsT(mNow.d)), now:true, txt:'지금 '+won(mNow.p),
+      sub:gap!==null?'이익선 '+(gap>=0?'+':'')+gap.toFixed(0)+'% · '+LS_ZONE[zoneOf(mNow)][0]:'이익선 없음(적자)'});
+  }
   if(lastL){
     const xe=X(lsT(lastL.d));
-    const lab=(k,txt,cls,dy)=>{ const t=svgEl('text',{x:W-RR+10,y:Y(lastL[k])+4+dy,class:'lsLab '+cls}); t.textContent=txt; svg.appendChild(t);
-      svg.appendChild(svgEl('line',{x1:xe,x2:W-RR+6,y1:Y(lastL[k]),y2:Y(lastL[k])+dy,stroke:'rgba(214,180,106,.35)','stroke-width':1})); };
-    const yh=Y(lastL.hi), ym=Y(lastL.mid), yl=Y(lastL.lo);
-    lab('mid','이익선 '+d.band.mid.toFixed(1)+'배','gold',0);
-    lab('hi','비쌈 '+d.band.hi.toFixed(1)+'배','',Math.min(0,(ym-13)-yh));
-    lab('lo','쌈 '+d.band.lo.toFixed(1)+'배','',Math.max(0,(ym+13)-yl));
+    [['hi','비쌈 '+d.band.hi.toFixed(1)+'배',''],['mid','이익선 '+d.band.mid.toFixed(1)+'배','gold'],['lo','쌈 '+d.band.lo.toFixed(1)+'배','']].forEach(([k,txt,cls])=>{
+      const v=lastL[k]; labs.push({y:Yc(v), yd:Yc(v), xd:xe, txt:txt+(v<vMin?' ↓':v>vMax?' ↑':''), cls, band:true}); });
   }
-  // 주가
-  if(M.length>1) svg.appendChild(svgEl('path',{d:'M'+M.map(m=>X(lsT(m.d)).toFixed(1)+','+Y(m.p).toFixed(1)).join('L'),class:'lsPx'}));
-  // 지금
-  if(M.length){
-    const m=M[M.length-1], x=X(lsT(m.d)), y=Y(m.p);
-    svg.appendChild(svgEl('circle',{cx:x,cy:y,r:4.5,class:'lsNowDot'}));
-    const g=svgEl('g',{class:'lsNow'}); const txt='지금 '+won(m.p);
-    const w=txt.length*6.6+14, bx=x>W-RR-70 ? x-w-10 : Math.min(x+8,W-w-2), by=y-28<pTop ? y+10 : y-28;
-    g.appendChild(svgEl('rect',{x:bx,y:by,width:w,height:18,rx:5}));
-    const t=svgEl('text',{x:bx+7,y:by+13}); t.textContent=txt; g.appendChild(t); svg.appendChild(g);
-  }
-  // 결단 표지 — B 버핏, L 린치. 겹치면 위로 쌓는다
+  labs.sort((a,b)=>a.y-b.y);
+  const hOf=l=>l.now?30:14;
+  for(let i=1;i<labs.length;i++){ const p=labs[i-1], need=p.y+hOf(p)/2+hOf(labs[i])/2+2; if(labs[i].y<need) labs[i].y=need; }
+  const over=labs.length?labs[labs.length-1].y+hOf(labs[labs.length-1])/2-(pBot+8):0;
+  if(over>0) labs.forEach(l=>{ l.y-=over; });
+  for(let i=labs.length-2;i>=0;i--){ const n=labs[i+1], lim=n.y-hOf(n)/2-hOf(labs[i])/2-2; if(labs[i].y>lim) labs[i].y=lim; }
+  const xl=W-RR+10;
+  labs.forEach(l=>{
+    const g=svgEl('g',{class:l.band?'lsBandG':''});
+    g.appendChild(svgEl('line',{x1:l.xd,x2:xl-4,y1:l.yd,y2:l.y,stroke:l.now?'rgba(241,217,160,.55)':'rgba(214,180,106,.35)','stroke-width':1}));
+    if(l.now){
+      const w=Math.max(l.txt.length*7+14, 64);
+      g.appendChild(svgEl('rect',{x:xl-2,y:l.y-15,width:w,height:17,rx:5,class:'lsNowR'}));
+      const t=svgEl('text',{x:xl+5,y:l.y-3,class:'lsNowT'}); t.textContent=l.txt; g.appendChild(t);
+      const s=svgEl('text',{x:xl,y:l.y+12,class:'lsNowS'}); s.textContent=l.sub; g.appendChild(s);
+    } else {
+      const t=svgEl('text',{x:xl,y:l.y+4,class:'lsLab '+l.cls}); t.textContent=l.txt; g.appendChild(t);
+    }
+    svg.appendChild(g);
+  });
+  if(mNow) svg.appendChild(svgEl('circle',{cx:X(lsT(mNow.d)),cy:Y(mNow.p),r:4.5,class:'lsNowDot'}));
+
+  // 결단 표지 — B 버핏, L 린치. 위 숫자 = 그 뒤 1년 주가. 겹치면 위로 쌓는다
   const tip=el('div','spTip lsTip'); tip.hidden=true;
   const placed=[];
   (d.moments||[]).forEach((mo,i)=>{
-    const x=X(lsT(mo.d)); let y=Y(mo.px)-16;
-    while(placed.some(q=>Math.abs(q.x-x)<18 && Math.abs(q.y-y)<18)) y-=19;
+    const x=X(lsT(mo.d)); let y=Y(mo.px)-15;
+    while(placed.some(q=>Math.abs(q.x-x)<34 && Math.abs(q.y-y)<26)) y-=26;
+    if(y<pTop+14) y=Y(mo.px)+18;
     placed.push({x,y});
     const g=svgEl('g',{class:'lsMk'}); g.style.setProperty('--d',(900+i*60)+'ms');
-    g.appendChild(svgEl('line',{x1:x,x2:x,y1:y+8,y2:Y(mo.px)-2,stroke:'rgba(255,255,255,.35)','stroke-width':1}));
-    g.appendChild(svgEl('circle',{cx:x,cy:y,r:8.5,class:mo.who==='버핏'?'b':'l'}));
-    const t=svgEl('text',{x:x,y:y+3.6,'text-anchor':'middle'}); t.textContent=mo.who==='버핏'?'B':'L'; g.appendChild(t);
-    if(mo.r1!==null && mo.r1!==undefined){ const r=svgEl('text',{x:x,y:y-12,'text-anchor':'middle',class:'r '+(mo.r1>=0?'up':'dn')}); r.textContent=lsPct(mo.r1); g.appendChild(r); }
+    g.appendChild(svgEl('line',{x1:x,x2:x,y1:y>Y(mo.px)?y-7:y+7,y2:Y(mo.px)+(y>Y(mo.px)?2:-2),stroke:'rgba(255,255,255,.35)','stroke-width':1}));
+    g.appendChild(svgEl('circle',{cx:x,cy:y,r:7,class:mo.who==='버핏'?'b':'l'}));
+    const t=svgEl('text',{x:x,y:y+3.3,'text-anchor':'middle'}); t.textContent=mo.who==='버핏'?'B':'L'; g.appendChild(t);
+    if(mo.r1!==null && mo.r1!==undefined){ const r=svgEl('text',{x:x,y:y-10.5,'text-anchor':'middle',class:'r '+(mo.r1>=0?'up':'dn')}); r.textContent='1년 '+lsPct(mo.r1); g.appendChild(r); }
     g.addEventListener('pointerenter',()=>{
       tip.innerHTML='';
       const h=el('div','spTipH'); h.appendChild(el('b',null,mo.who+' — '+mo.what)); tip.appendChild(h);
@@ -13236,7 +13327,7 @@ function lsChart(fig, d, plate){
     if(r.ttm && i && X(rx(R[i-1]))>x-26) return;     // 바로 앞 해와 겹치면 숫자 하나만
     const t=svgEl('text',{x,y:H-8,'text-anchor':'middle',class:'lsTick'}); t.textContent=r.ttm?"'"+String(r.ttm).slice(2):"'"+String(r.year).slice(2); svg.appendChild(t); });
 
-  // 따라가는 선 — 날짜·주가·이익선·벌어짐
+  // 따라가는 선 — 날짜 · 주가 · 이익선 · 벌어짐 · 그때 PER · 자리
   const guide=svgEl('line',{class:'lsGuide',y1:pTop,y2:rBot}); guide.style.display='none'; svg.appendChild(guide);
   const hit=svgEl('rect',{x:L,y:pTop,width:W-L-RR,height:H1,fill:'transparent'}); svg.appendChild(hit);
   const tip2=el('div','spTip lsTip'); tip2.hidden=true;
@@ -13245,14 +13336,16 @@ function lsChart(fig, d, plate){
     const tt=t0+(xs-L)/(W-L-RR)*(t1-t0);
     let best=null; M.forEach(m=>{ const dd=Math.abs(lsT(m.d)-tt); if(!best||dd<best.dd) best={m,dd}; });
     if(!best) return;
-    const m=best.m, x=X(lsT(m.d));
-    let ln=null; LN.forEach(q=>{ if(lsT(q.d)<=lsT(m.d)+86400000*20) ln=q; });
+    const m=best.m, x=X(lsT(m.d)), ln=lnAt(m), z=zoneOf(m);
     guide.style.display=''; guide.setAttribute('x1',x); guide.setAttribute('x2',x);
     tip2.innerHTML='';
-    const h=el('div','spTipH'); h.appendChild(el('b',null,m.d.slice(0,4)+'년 '+(+m.d.slice(4,6))+'월')); tip2.appendChild(h);
+    const h=el('div','spTipH'); h.appendChild(el('b',null,m.d.slice(0,4)+'년 '+(+m.d.slice(4,6))+'월'));
+    const zt=el('small',null,LS_ZONE[z][0]); zt.style.color=LS_ZONE[z][1]; h.appendChild(zt); tip2.appendChild(h);
     const gr=el('div','spTipG');
     const gap=ln&&ln.mid?(m.p/ln.mid-1)*100:null;
-    [['주가',won(m.p)+'원'],['이익선',ln&&ln.mid?won(ln.mid)+'원':(ln&&ln.loss?'적자':'—')],['벌어짐',lsPct(gap)],['값 띠',ln&&ln.lo?won(ln.lo)+'–'+won(ln.hi):'—']]
+    const per=ln&&ln.mid&&d.band.mid?m.p/(ln.mid/d.band.mid):null;
+    [['주가',won(m.p)+'원'],['이익선',ln&&ln.mid?won(ln.mid)+'원':(ln&&ln.loss?'적자':'—')],['벌어짐',lsPct(gap)],
+     ['그때 PER',per?per.toFixed(1)+'배':'—'],['값 띠',ln&&ln.lo?won(ln.lo)+'–'+won(ln.hi):'—'],['띠 기준',d.band.lo?d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'—']]
       .forEach(([k,v])=>{ const c2=el('div'); c2.appendChild(el('span',null,k)); c2.appendChild(el('b',null,v)); gr.appendChild(c2); });
     tip2.appendChild(gr); tip2.hidden=false;
     const tw=tip2.offsetWidth; let lx=x*sc+14; if(lx+tw>box.width-4) lx=x*sc-tw-14;
