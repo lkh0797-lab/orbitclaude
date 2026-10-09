@@ -24,7 +24,7 @@
 결과: 표준출력 + .cache/druck_bt/bt_accel_abc.json (A/B/C 비교 — 화면이 읽는 bt_accel.json 은 --from-cache 만 쓴다)
 
 --from-cache (2026-10-10, 가속도 개편 6) — 위 A/B/C 비교 대신 가속도 탭이 쓰는 druck 캐시(v = 드러켄밀러.VERSION)의 점을 그대로 표본으로 쓴다.
-  B · 7국면 · 변곡(띠를 건너는 규칙)이 화면과 같은 값이다. 들어가는 날 = 그 숫자를 알 수 있던 날(B기준일) 다음 거래일 종가.
+  B · 7국면 · 변곡(한 분기 부호 바뀜 — ▲ = B(n) ≥ +3%p 이고 B(n−1) < 0, ▼ 는 거울; 2026-10-10 사용자 결정으로 띠를 건너는 규칙에서 되돌림)이 화면과 같은 값이다. 들어가는 날 = 그 숫자를 알 수 있던 날(B기준일) 다음 거래일 종가.
   기저율 표본 = 재작성 비교값으로 센 행(품질 asfiled · mix 아님)이고 B기준일 − 원본 공시일 ≤ 45일인 행. 나머지는 'asfiled' 한 줄로만 따로 낸다.
   결과: .cache/druck_bt/bt_accel.json(산업 '섹터 안 종목' · 가속도 탭 기저율) · .cache/druck_bt/events.json(회사별 변곡 · 보고서 구간 시장 대비).
   64비트 파이썬으로 돌린다(py -3.13 — 서버 모듈 + 전 종목 주가를 한 번에 올린다). 뷰어가 매일 밤 미리 계산 뒤 부른다(서버 _druck_prebuild).
@@ -47,6 +47,7 @@ T0, T1 = "20120101", dt.date.today().strftime("%Y%m%d")
 LAG_MAX = 45          # 일 — B기준일(숫자를 알 수 있던 날)이 원본 공시일보다 이만큼 넘게 늦으면(정정본 값) 기저율 표본에서 뺀다
 PHASES = ("확장 가속", "확장 유지", "둔화", "회복", "부진 지속", "수축 심화", "정체")     # 드러켄밀러.phase_label 의 7국면
 THR = {"A": 1.5, "B": 3.0, "C": 3.0}
+TURN_BAND = 3.0         # %p — 드러켄밀러.PHASE_BAND(변곡 문턱). --from-cache 의 변곡은 캐시에 적힌 값을 읽고, 이 수는 규칙 설명 문장에만 쓴다
 NAME = {"A": "A TTM(지금)", "B": "B 2분기 평균", "C": "C 1분기"}
 
 
@@ -330,7 +331,7 @@ def report(W, rows):
         if "med" in s:
             print("%-26s n %5d · 6개월 %s · 12개월 %s [%s, %s] · 이긴 %.0f%% · TTM+4Q %s" % (
                 lab, s["n"], fmt(s["ex6"]), fmt(s["med"]), fmt(s["ci"][0]), fmt(s["ci"][1]), s["hit"], fmt(s["dG4"])))
-    _dump(rep, "bt_accel_abc.json")      # 화면이 읽는 bt_accel.json(--from-cache, 띠를 건너는 변곡)을 옛 규칙 표로 덮지 않게 따로
+    _dump(rep, "bt_accel_abc.json")      # 화면이 읽는 bt_accel.json(--from-cache, 캐시에 적힌 변곡)을 이 A/B/C 표로 덮지 않게 따로
 
 
 # ---------------------------------------------------------------- --from-cache — druck 캐시(지금 DRK.VERSION)로 기저율 · 사건 파일
@@ -512,11 +513,11 @@ def report_cache(W, rows):
           "base": {"ex12": med([r["ex12"] for r in X]), "ex6": med([r["ex6"] for r in X])}}
     xa.update(turns(X))
     rep["asfiled"] = xa
-    rep["turn"] = {"rule": "|B| ≥ %.0f%%p 이고, 그 앞 가장 가까운 |B| ≥ %.0f%%p 분기(4분기 안)가 반대 부호" % (3.0, 3.0),
+    rep["turn"] = {"rule": "▲ = B(n) ≥ +%.0f%%p 이고 B(n−1) < 0 · ▼ = B(n) ≤ −%.0f%%p 이고 B(n−1) > 0 (n−1 은 분기 키, 없으면 변곡 아님)" % (TURN_BAND, TURN_BAND),
                    "up": rep["ev_all"]["B_up"], "dn": rep["ev_all"]["B_dn"], "spread": rep["ev_all"]["B_spread"], "whip": rep["whip"]["B"],
                    "order": rep["ev_order"], "other": rep["ev_other"]}
 
-    print("\n== 변곡 뒤 — 12개월 시장 대비 (띠 ±3%p 를 건너 반대쪽으로 넘어온 분기)")
+    print("\n== 변곡 뒤 — 12개월 시장 대비 (가속 B 가 앞 분기 음(−)에서 +%.0f%%p 이상으로 · ▼ 는 거울)" % TURN_BAND)
     print(_ev_head())
     for title, t in (("전 종목", rep["ev_all"]), ("수주 업종", rep["ev_order"]), ("수주 업종 밖", rep["ev_other"]), ("표본 밖(asfiled 등)", xa)):
         print(_ev_line(title + " ▲", t["B_up"]))

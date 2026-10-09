@@ -119,6 +119,89 @@ def test_druck_write_failure_returns_uncached(fake_co, monkeypatch, capsys):
     assert "000001" in capsys.readouterr().out and SRV._druck_read("000001") is None
 
 
+# ---------------------------------------------------------------- 최종 검토 고침(2026-10-10)
+def test_druck_newest_filed_quarter_missing_is_transient(fake_co, monkeypatch):
+    """오늘 공시된 분기의 원장이 시리즈에 없다(공시 당일 DART 013) — 새 서명으로 굳히지 않는다(다음 조회 · 다음 밤에 다시 받는다)."""
+    c, seen, tmp = fake_co
+    c["reports"].append({"stamp": "2025-09", "label": "분기보고서", "tag": "", "rcept": time.strftime("%Y%m%d") + "000003", "sections": []})
+    monkeypatch.setattr(DRK, "attach_prices", ok_prices)
+    out = SRV.druck("000001")
+    assert out["transient"] == 1 and len(out["points"]) == 2
+    assert not os.path.exists(os.path.join(str(tmp), "druck", "000001.json"))
+
+
+def test_druck_basis_from_recent_quarters_for_financials(fake_co, monkeypatch):
+    """금융(KSIC 64~66)이고 최근 8개 자료 분기에 매출액이 없으면 영업이익 기준 — 옛 분기에 매출이 있어도(IFRS17 뒤 보험사)."""
+    c, seen, tmp = fake_co
+    monkeypatch.setattr(DRK, "attach_prices", ok_prices)
+    old = [{"year": 2016 + i // 4, "q": i % 4 + 1, "label": "x", "n": 2016 * 4 + i, "품질": [], "fs": "CFS", "매출액": 100.0} for i in range(8)]
+    new = [dict(p, 매출액=None, 영업이익=10.0) for p in copy.deepcopy(PTS)]
+    new = [dict(p, n=2016 * 4 + 8 + i, year=2018, q=i + 1, label="2018Q%d" % (i + 1)) for i, p in enumerate(new * 4)][:8]
+    monkeypatch.setattr(DRK, "series", lambda corp, code, years, meta=None, offline=False, progress=None: copy.deepcopy(old + new))
+    monkeypatch.setattr(SRV, "_ksic_of", lambda corp: "65110")
+    assert SRV.druck("000001", force=True)["basis"] == "영업이익"
+    monkeypatch.setattr(SRV, "_ksic_of", lambda corp: "26110")
+    assert SRV.druck("000001", force=True)["basis"] == "매출"                         # 금융이 아니면 매출
+
+
+def test_druck_split_after_blanks_per_history(fake_co, monkeypatch):
+    """마지막 자료 분기 뒤 분할 공시(20260901) — 분할 뒤 첫 보고서까지 모든 분기 PER_TTM 을 비워 캐시한다."""
+    c, seen, tmp = fake_co
+
+    def priced(pts, code, dates):
+        ok_prices(pts, code, dates)
+        for p in pts:
+            p["EPS_TTM"], p["PER_TTM"] = 1000.0, 10.0
+        return pts
+    monkeypatch.setattr(DRK, "attach_prices", priced)
+    out = SRV.druck("000001")
+    assert out["split_after"] and all("PER_TTM" not in p for p in out["points"])
+    assert all("PER_TTM" not in p for p in SRV._druck_read("000001")["points"])
+    monkeypatch.setattr(SRV, "_share_events", lambda code: [])
+    assert all(p["PER_TTM"] == 10.0 for p in SRV.druck("000001", force=True)["points"])
+
+
+def test_druck_now_gives_reason_without_eps_and_skips_price_fetch(monkeypatch):
+    class _F:
+        @staticmethod
+        def fetch_prices(code):
+            raise AssertionError("EPS_TTM 이 없으면 주가를 받지 않는다")
+    monkeypatch.setattr(SRV, "FIN", _F)
+    monkeypatch.setattr(SRV, "corp_code_of", lambda code: "00000001")
+    monkeypatch.setattr(SRV, "_ksic_of", lambda corp: "64190")
+    pts = [qp(y, q, fs="CFS", 지배순이익=1e12) for y, q in ((2025, 3), (2025, 4), (2026, 1), (2026, 2))]
+    now = SRV._druck_now("105560", {"points": pts})
+    assert now["per"] is None and now["reason"].startswith("금융사 주식 수 산출 불가") and now["last"] == "2026Q2"
+
+
+def test_bg_thread_start_failure_leaves_no_stuck_entry(fake_co, monkeypatch):
+    """스레드를 못 띄우면(32비트 'can't start new thread') 진행 칸 · 다시 쌓기 표시를 거두고 예외를 올린다 — 화면이 영영 '쌓는 중'이 되지 않게."""
+    class _Boom:
+        def __init__(self, *a, **kw):
+            pass
+
+        def start(self):
+            raise RuntimeError("can't start new thread")
+    monkeypatch.setattr(SRV.threading, "Thread", _Boom)
+    monkeypatch.setattr(SRV, "DRUCK_STALE_KICKED", set())
+    with pytest.raises(RuntimeError):
+        SRV.druck("000001", wait=False)
+    assert "000001" not in SRV.DRUCK_BUILDING
+    with pytest.raises(RuntimeError):
+        SRV._druck_kick_stale("000001")
+    assert "000001" not in SRV.DRUCK_STALE_KICKED and "000001" not in SRV.DRUCK_BUILDING
+
+
+def test_industry_stocks_sends_order_up_down_and_spread(monkeypatch, tmp_path):
+    """산업 '섹터 안 종목' — 수주 업종 ▲ 만이 아니라 ▼ 와 ▲−▼ 도 보낸다(같은 업종 상승이 둘 다 덮는지 보이게)."""
+    monkeypatch.setattr(SRV, "CACHE_DIR", str(tmp_path))
+    monkeypatch.setattr(SRV, "_INDF", {})
+    monkeypatch.setattr(SRV, "IND", dict(SRV.IND, data={"sectors": []}))
+    order = {"B_up": {"n": 177, "med": 13.1}, "B_dn": {"n": 180, "med": 14.0}, "B_spread": {"diff": -0.9, "ci": [-8.2, 9.2]}, "x": 1}
+    _write_json(os.path.join(str(tmp_path), "druck_bt", "bt_accel.json"), dict(BT_FILE, ev_order=order))
+    assert SRV.industry_sub("stocks", "")["bt"]["order"] == {k: order[k] for k in ("B_up", "B_dn", "B_spread")}
+
+
 # ---------------------------------------------------------------- 밤 미리 계산(_druck_prebuild)
 import datetime as _dt
 
@@ -213,18 +296,34 @@ def test_prebuild_drops_uncached_memo(prebuild, monkeypatch):
     assert "B" not in soft and "Z" in soft and "D" in soft             # D 는 깨끗한 빌드(가짜가 남긴 기억은 druck 몫)
 
 
-def test_prebuild_skips_remaining_after_budget(prebuild, monkeypatch):
+def test_prebuild_after_budget_skips_only_companies_needing_network(prebuild, monkeypatch):
+    """예산이 끝난 뒤엔 원장을 새로 받아야 하는 회사만 건너뛰고(다음 밤), 받을 것이 없는 회사는 계속 쌓는다(2026-10-10 최종 검토 S2)."""
     comps, calls, budgets, _ = prebuild
+    asked = []
 
     def fake(code, force=False, offline=False, wait=True):
         calls.append((code, offline))
         DRK.NET["used"] += SRV.DRUCK_NET_BUDGET // 2
         return {"points": []}
     monkeypatch.setattr(SRV, "druck", fake)
+    monkeypatch.setattr(SRV, "_druck_needs_net", lambda c: asked.append(c["code"]) or c["code"] == "B")
     SRV._druck_prebuild(now=lambda: _dt.datetime(2026, 10, 10, 2, 30), run_bt=False)
     P = SRV.DRUCK_PRE
-    assert [c for c, _ in calls] == ["D", "C"]                        # E 는 fresh, D · C 에서 예산 끝 → B · A 건너뜀
-    assert (P["fresh"], P["built"], P["skipped_budget"], P["done"]) == (1, 2, 2, 5)
+    assert [c for c, _ in calls] == ["D", "C", "A"]                   # E 는 fresh, D · C 에서 예산 끝 → B(받을 것 있음)만 건너뜀
+    assert asked == ["B", "A"]                                         # 예산이 남아 있는 동안은 묻지 않는다
+    assert (P["fresh"], P["built"], P["skipped_budget"], P["done"]) == (1, 3, 1, 5)
+
+
+def test_druck_needs_net_reads_ledger_files_with_meta(monkeypatch):
+    c = {"code": "000001", "reports": [{"stamp": "2024-03", "label": "분기보고서", "tag": "", "rcept": "20240515000001"},
+                                       {"stamp": "2025-06", "label": "반기보고서", "tag": "[기재정정]", "rcept": "20251020000002"}]}
+    got = []
+    monkeypatch.setattr(SRV, "corp_code_of", lambda code: "00000001" if code == "000001" else None)
+    monkeypatch.setattr(DRK, "needs_net", lambda corp, years, meta: got.append((corp, years, meta)) or True)
+    assert SRV._druck_needs_net(c) is True
+    assert got[0][0] == "00000001" and got[0][1] == [2024, 2025]
+    assert got[0][2]["filed"] == {2024 * 4: "20240515"} and got[0][2]["amend"] == {(2025, 2): "20251020"}
+    assert SRV._druck_needs_net({"code": "999999", "reports": []}) is False         # 고유번호 없음 — 쌓으면 오류로 끝난다
 
 
 class _P:

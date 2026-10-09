@@ -1515,9 +1515,14 @@ def _ksic_of(corp):
     return str(_INDUTY.get(corp) or "")
 
 
-def _druck_basis(code):
-    """KSIC 64~66(금융)이면 영업이익 기준, 아니면 매출. druck() 은 매출액이 한 분기도 없는 회사에만 부른다."""
-    return "영업이익" if _ksic_of(corp_code_of(code) or "").startswith(("64", "65", "66")) else "매출"
+def _druck_fin(code):
+    """KSIC 64~66(금융 · 보험 · 금융 지원)인가."""
+    return _ksic_of(corp_code_of(code) or "").startswith(("64", "65", "66"))
+
+
+def _druck_basis(code, pts=()):
+    """기준 지표 — 금융(KSIC 64~66)이고 최근 8개 자료 분기에 매출액이 없으면 영업이익, 아니면 매출(규칙은 DRK.pick_basis)."""
+    return DRK.pick_basis(pts, _druck_fin(code))
 
 
 def _no_secret(msg):
@@ -1561,7 +1566,11 @@ def druck(code, force=False, offline=False, wait=True):
         with DRUCK_LOCKS_G:
             if code not in DRUCK_BUILDING:
                 DRUCK_BUILDING[code] = {"done": 0, "total": 0}
-                threading.Thread(target=_druck_bg, args=(code, force, offline), daemon=True).start()
+                try:
+                    threading.Thread(target=_druck_bg, args=(code, force, offline), daemon=True).start()
+                except Exception:
+                    DRUCK_BUILDING.pop(code, None)      # 스레드를 못 띄웠다(32비트 'can't start new thread') — 칸이 남으면 화면이 영영 '쌓는 중'
+                    raise
         return {"building": True, **DRUCK_BUILDING.get(code, {})}
     with DRUCK_LOCKS_G:
         lk = DRUCK_LOCKS.setdefault(code, threading.Lock())
@@ -1580,14 +1589,18 @@ def druck(code, force=False, offline=False, wait=True):
                 st.update(done=done, total=total)
         pts = DRK.series(corp, code, years, meta=meta, offline=offline, progress=prog)
         transient = DRK.LAST.get("transient", 0)
+        if DRK.filed_missing(pts, meta) is not None:
+            transient += 1                 # 가장 최근에 공시된 분기 원장이 비었다(공시 당일 DART 013 등) — 새 서명으로 굳히지 않고 다음에 다시 받는다
         sev = _share_events(code)
         DRK.per_share(pts, sev)
-        basis = _druck_basis(code) if not any(p.get("매출액") for p in pts) else "매출"
+        basis = _druck_basis(code, pts)
         DRK.accel(pts, basis=basis)
         dates = {(p["year"], p["q"]): meta["filed"][p["n"]] for p in pts if meta["filed"].get(p["n"])}
         DRK.attach_prices(pts, code, dates)
         if dates and not any(p.get("주가") for p in pts):
             transient += 1                 # 주가를 한 분기도 못 붙였다 — 네이버 일시 오류면 fetch_prices 가 {} 를 준다. 깨끗한 빌드로 캐시하지 않는다
+        sa = DRK.split_after(pts, sev)
+        DRK.hold_per(pts, sa)              # 마지막 자료 분기 뒤 분할 · 병합 — 분할 뒤 첫 보고서까지 PER_TTM 을 비운다(주가 · EPS 기준이 어긋난다)
         # 본문 지표 — 사업의 내용에서만 긁는다
         text_rows = []
         for r in c["reports"]:
@@ -1601,7 +1614,7 @@ def druck(code, force=False, offline=False, wait=True):
                 text_rows.append({"stamp": r["stamp"], "label": r["label"], "rcept": r["rcept"], "found": found})
         out = {"v": DRK.VERSION, "sig": sig, "code": code, "name": c["name"], "basis": basis,
                "fy": sorted(meta["fy_bad"]), "points": pts, "text": text_rows,
-               "split_after": DRK.split_after(pts, sev), "transient": transient}
+               "split_after": sa, "transient": transient}
         if transient:
             # 일시 오류가 낀 빌드는 디스크에 안 쓴다 — 예전 캐시를 주되 transient 를 달아 화면이 '새로 못 받았다'를 알게 한다. TTL 동안만 들고 있다
             res = dict(old, transient=transient) if old else out
@@ -1614,25 +1627,34 @@ def druck(code, force=False, offline=False, wait=True):
 
 
 def _druck_now(code, d):
-    """지금 PER — 규칙은 DRK.now_per(서버 없이 시험한다). 네이버 수정주가(하루 캐시)를 받아 넘긴다. 캐시하지 않는다."""
+    """지금 PER — 규칙은 DRK.now_per(서버 없이 시험한다). EPS_TTM 이 있으면 네이버 수정주가(하루 캐시)를 받아 넘긴다. 캐시하지 않는다.
+    EPS_TTM 이 하나도 없어도 부른다 — 화면이 '왜 없는지'(금융사 주식 수 · 기준 다른 4분기 · 적자)를 reason 으로 받는다."""
     pts = d.get("points") or []
-    if FIN is None or DRK is None or not any(p.get("EPS_TTM") for p in pts):
+    if DRK is None:
         return None
-    try:
-        pr = FIN.fetch_prices(code) or {}
-    except Exception:
-        return None
-    return DRK.now_per(pts, pr, d.get("split_after"))
+    pr = {}
+    if FIN is not None and any(p.get("EPS_TTM") for p in pts):
+        try:
+            pr = FIN.fetch_prices(code) or {}
+        except Exception:
+            pr = {}
+    return DRK.now_per(pts, pr, d.get("split_after"), fin=_druck_fin(code))
 
 
 def _druck_kick_stale(code):
-    """지금 PER 이 낡았다(k 가 0.55~1.8 밖 · 마지막 분기 뒤 분할 공시) — 뒤에서 force 로 한 번 다시 쌓는다.
-    회사마다 이 서버 프로세스에서 한 번만(DRUCK_STALE_KICKED) — 다시 쌓아도 split_after 는 남으니 되풀이하지 않는다."""
+    """지금 PER 의 k 가 0.55~1.8 밖이다(캐시 뒤 주가 자료가 다시 보정됨) — 뒤에서 force 로 한 번 다시 쌓는다.
+    split_after(마지막 분기 뒤 분할 공시)만으로는 다시 쌓지 않는다 — 분할 뒤 보고서 전에 다시 쌓으면 보정된 주가 ÷ 분할 전 EPS 로 역사 PER 이 틀어진다
+    (그동안 PER 은 hold_per 가 비운다). 회사마다 이 서버 프로세스에서 한 번만(DRUCK_STALE_KICKED). 스레드를 못 띄우면 표시를 거두고 예외를 올린다."""
     with DRUCK_LOCKS_G:
         if code in DRUCK_STALE_KICKED:
             return False
         DRUCK_STALE_KICKED.add(code)
-    druck(code, True, wait=False)
+    try:
+        druck(code, True, wait=False)
+    except Exception:
+        with DRUCK_LOCKS_G:
+            DRUCK_STALE_KICKED.discard(code)
+        raise
     return True
 
 
@@ -1730,10 +1752,20 @@ def _druck_run_bt():
     return res
 
 
+def _druck_needs_net(c):
+    """이 회사를 offline 으로 쌓을 때 DART 를 불러야 하나 — 원장 파일만 본다(DRK.needs_net: _fetch 와 같은 판정). 고유번호가 없으면 False(쌓으면 오류로 끝난다)."""
+    corp = corp_code_of(c.get("code") or "")
+    if not corp:
+        return False
+    years = sorted({int(r["stamp"][:4]) for r in c.get("reports") or []})
+    return DRK.needs_net(corp, years, _druck_meta(c))
+
+
 def _druck_prebuild(now=dt.datetime.now, run_bt=True):
     """전 종목 druck(offline) — _druck_order 순서로, 시작 뒤 처음 오는 06:00 에 멈춘다. 끝나면(멈춰도) 기저율 백테스트를 돌린다.
     DRUCK_PRE: done/total(회사) · fresh(이미 지금 sig) · built(새로 씀) · transient(일시 오류 · DART 예산 끝 — 안 씀) · failed · net(DART 받은 수)
-    · skipped_budget(DART 예산이 바닥난 뒤 건너뛴 회사 — 다음 밤) · per_co(새로 쌓은 회사당 초) · stopped('06:00' 이면 시간에 멈춤)
+    · skipped_budget(DART 예산이 바닥난 뒤, 원장을 새로 받아야 해서 건너뛴 회사 — 다음 밤. 받을 것이 없는 회사는 예산이 끝나도 계속 쌓는다)
+    · per_co(새로 쌓은 회사당 초) · stopped('06:00' 이면 시간에 멈춤)
     · bt(백테스트 결과). 미캐시 결과는 DRUCK_SOFT 에 남기지 않는다. 이미 돌고 있으면 False."""
     with DRUCK_PRE_LOCK:
         if DRUCK_PRE["running"] or DRK is None:
@@ -1758,8 +1790,8 @@ def _druck_prebuild(now=dt.datetime.now, run_bt=True):
                 cur = _druck_read(code) if code else None
                 if cur is not None and cur.get("sig") == _druck_sig(c):
                     DRUCK_PRE["fresh"] += 1
-                elif DRK.NET["used"] >= DRUCK_NET_BUDGET:
-                    DRUCK_PRE["skipped_budget"] += 1      # DART 예산 끝 — 쌓아도 빠진 분기는 transient(미캐시)라 다음 밤으로 미룬다
+                elif DRK.NET["used"] >= DRUCK_NET_BUDGET and _druck_needs_net(c):
+                    DRUCK_PRE["skipped_budget"] += 1      # DART 예산 끝 · 이 회사는 원장을 받아야 한다 — 쌓아도 transient(미캐시)라 다음 밤으로 미룬다
                 else:
                     t1 = time.time()
                     res = druck(code, offline=True) if code else None
@@ -2143,10 +2175,12 @@ def screen_row(c):
     else:
         meta = _druck_meta(c)
         pts = DRK.series(corp, c["code"], years, meta=meta, offline=True)
-        DRK.per_share(pts, _share_events(c["code"]))
+        sev = _share_events(c["code"])
+        DRK.per_share(pts, sev)
         DRK.accel(pts)
         dates = {(p["year"], p["q"]): meta["filed"][p["n"]] for p in pts if meta["filed"].get(p["n"])}
         DRK.attach_prices(pts, c["code"], dates)
+        DRK.hold_per(pts, DRK.split_after(pts, sev))        # 가속도 탭과 같이 — 마지막 분기 뒤 분할이면 PER 을 비운다
     # 순번이 아니라 분기 키(n)로 — 빈 분기 점(gap · fy)이 끼어도 '직전 분기' · '1년 전'이 다른 분기를 집지 않는다
     by = {p["n"]: p for p in pts if p.get("n") is not None}
     have = [p for p in pts if p.get("매출액") and p.get("n") is not None]
@@ -2162,7 +2196,7 @@ def screen_row(c):
     if cur.get("재고일수") is not None and prev.get("재고일수") is not None:
         inv_delta = cur["재고일수"] - prev["재고일수"]
 
-    # 가속 전환 = 가속(B)이 띠(±3%p) 반대쪽에서 넘어온 분기(변곡 ▲) — 가속도 탭 · 업황 시계와 같은 판정.
+    # 가속 전환 = 가속(B)이 앞 분기 음(−)에서 이번 분기 +3%p 이상으로 바뀐 분기(변곡 ▲) — 가속도 탭과 같은 판정.
     # '덜 나빠짐'도 잡으니 역성장 중인 회사(속도 < 0)와 성장 회사는 갈라놓는다.
     turned = cur.get("변곡") == "▲"
     kind = ("성장" if (cur.get("속도") or 0) >= 0 else "역성장완화") if turned else None
@@ -9332,7 +9366,7 @@ def industry_sub(tab, sector):
         acc = _ind_file("bt_accel", os.path.join(CACHE_DIR, "druck_bt", "bt_accel.json")) or {}
         ev = acc.get("ev_all") or {}
         out["bt"] = {"B_up": ev.get("B_up"), "B_dn": ev.get("B_dn"), "regime": (acc.get("regime") or {}).get("B"),
-                     "whip": (acc.get("whip") or {}).get("B"), "order": {k: v for k, v in (acc.get("ev_order") or {}).items() if k in ("B_up", "B_dn")},
+                     "whip": (acc.get("whip") or {}).get("B"), "order": {k: v for k, v in (acc.get("ev_order") or {}).items() if k in ("B_up", "B_dn", "B_spread")},
                      "n": acc.get("n"), "firms": acc.get("firms")}
         if s:
             out.update(phase=s.get("phase"), cap=s.get("cap"), val=s.get("val"), ttm=s.get("ttm"), ytd=s.get("ytd"), fc_main=s.get("fc_main"),
@@ -10236,7 +10270,7 @@ class Handler(BaseHTTPRequestHandler):
                     now_ = _druck_now(code_, res)
                     res = dict(res, now=now_)                       # 지금 PER — 캐시하지 않는다
                     if now_ and now_.get("stale"):
-                        _druck_kick_stale(code_)                    # 분할 뒤 — 뒤에서 한 번만 force 로 다시 쌓는다
+                        _druck_kick_stale(code_)                    # k 가 범위 밖(주가 자료가 다시 보정됨) — 뒤에서 한 번만 force 로 다시 쌓는다
                 return self._send(200, res)
             if path == "/api/orbit":
                 res = orbit(q.get("code", ""))

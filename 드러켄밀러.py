@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import json
+import math
 import time
 import threading
 
@@ -33,7 +34,7 @@ _spec.loader.exec_module(FIN)
 
 CACHE_DIR = os.path.join(BASE, ".cache", "druck")
 
-VERSION = 3          # 3: 가속도 개편 계획 1 전체 — 정정 공시 원장 다시 받기(같은 날 포함 >=) · 분할 뒤 공시 split_after · 분할 보정 EPS/지금 PER · B(2분기 평균 YoY 의 변화) · 7국면 · 변곡 규칙 · 품질 표시 파이프라인 전부 (2026-10-10). 2: 분기 키 조밀 격자 · Q4 기준/범위 검사 · 재작성 전년 비교(YoY_r) · 기준일 · 품질 표시 · 이상값 (2026-10-09). 계산을 바꾸면 올린다 — 캐시가 전부 다시 계산된다
+VERSION = 4          # 4: 최종 검토 고침 — 변곡을 한 분기 부호 바뀜으로(사용자 결정) · 낡은 지금 PER 막기 · 거짓 분할(합병 창 정수 비율 · 한 분기 튐 · Q4 부호 어긋남) · 분할 뒤 PER 보류 · 매출 없는 분기 주식 수 · 최근 8분기로 금융 기준 · 새 공시 013 다시 받기 · Q2/Q3 누적이 3개월 칸에 · 보고서 단위 ×1e6 · 감사보고서는 결산월 판정에서 뺌 (2026-10-10). 3: 가속도 개편 계획 1 전체 — 정정 공시 원장 다시 받기(같은 날 포함 >=) · 분할 뒤 공시 split_after · 분할 보정 EPS/지금 PER · B(2분기 평균 YoY 의 변화) · 7국면 · 변곡 규칙 · 품질 표시 파이프라인 전부 (2026-10-10). 2: 분기 키 조밀 격자 · Q4 기준/범위 검사 · 재작성 전년 비교(YoY_r) · 기준일 · 품질 표시 · 이상값 (2026-10-09). 계산을 바꾸면 올린다 — 캐시가 전부 다시 계산된다
 
 
 def read_cache(path):
@@ -70,16 +71,20 @@ def write_cache(path, obj, tries=5, wait=0.2):
 
 _Q_OF_MONTH = {"03": 1, "06": 2, "09": 3, "12": 4}
 _FILED_OK = {("분기보고서", "03"), ("반기보고서", "06"), ("분기보고서", "09"), ("사업보고서", "12")}
+_PERIODIC = {"분기보고서", "반기보고서", "사업보고서"}
 
 
 def filed_meta(reports):
     """series() 의 meta — {filed: {n: 원본(정정 아닌) 보고서 접수일 YYYYMMDD — 여럿이면 가장 이른 날}, fy_bad: {연도}}.
     reports = [{stamp: 'YYYY-MM', label, tag, rcept}](서버 회사 색인의 보고서). 12월 결산 정기보고서(분기 03 · 반기 06 · 분기 09 · 사업 12)가
-    아닌 보고서가 하나라도 있는 해는 fy_bad — 결산월이 달라 분기 키가 어긋나니 그해는 받지 않는다.
+    아닌 정기보고서가 하나라도 있는 해는 fy_bad — 결산월이 달라 분기 키가 어긋나니 그해는 받지 않는다.
+    정기보고서가 아닌 것(감사보고서 등 — HPSP 상장 전 2018~2021)은 결산월 판정에서 뺀다(그 해를 fy_bad 로 만들지 않는다).
     amend = {(연도, 분기): 그 분기 정정(태그 달린) 보고서 가운데 가장 늦은 접수일} — 원장 캐시 날짜와 같거나 뒤면 series 가 그 분기를 다시 받는다."""
     filed, fy_bad, amend = {}, set(), {}
     for r in reports:
         y, mth = r["stamp"].split("-")
+        if r["label"] not in _PERIODIC:
+            continue
         if (r["label"], mth) not in _FILED_OK:
             fy_bad.add(int(y))
             continue
@@ -266,16 +271,45 @@ def _will_reask_013(path, year, reprt, mt):
         return False
 
 
-def _fetch(corp_code, year, reprt, fs_div, offline, amend=None):
+def _empty_ledger(path):
+    """원장 캐시 파일이 '없음'(013 · 빈 목록)인가 — 읽지 못하면 False(있는 것으로 본다)."""
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+    except Exception:
+        return False
+    return isinstance(d, dict) and (d.get("status") == "013" or not d.get("list"))
+
+
+def _ledger_path(corp_code, year, reprt, fs_div):
+    return os.path.join(FIN.FIN_DIR, "%s_%s_%s_%s.json" % (corp_code, year, reprt, fs_div))
+
+
+def _net_need(path, year, reprt, amend=None, filed=None, stat=True):
+    """_fetch 가 이 원장 파일 때문에 DART 를 부를까 — (exists, mt, force, net). stat=False 면(online · 정정도 공시일도 없음) 파일을 보지 않는다.
+    force = 정정 공시(amend)가 캐시 파일 날짜와 같거나 뒤 · 또는 원본 공시(filed)가 캐시 파일 날짜와 같거나 뒤인데 파일이 '없음'(013 · 빈 목록) —
+    공시 전에(또는 공시 당일 DART 반영 전에) 받아 둔 013 이 새 분기를 가리지 않게(2026-10-10 최종 검토). net = 파일 없음 · force · 013 다시 묻기.
+    밤 미리 계산의 '네트워크가 필요한 회사' 판정(needs_net)도 이 함수 하나를 쓴다."""
+    if not stat:
+        return True, None, False, False
+    exists = os.path.exists(path)
+    mt = os.path.getmtime(path) if exists else None
+    force = False
+    if mt is not None:
+        day = _ymd(mt)
+        force = bool(amend and amend >= day) or bool(filed and filed >= day and _empty_ledger(path))
+    net = not exists or force or (mt is not None and _will_reask_013(path, year, reprt, mt))
+    return exists, mt, force, net
+
+
+def _fetch(corp_code, year, reprt, fs_div, offline, amend=None, filed=None):
     """원장 한 장. 네트워크를 쓰는 경우 — 캐시 파일이 없다 · 정정 공시(amend, YYYYMMDD)가 캐시 파일 날짜와 같거나 뒤다(force 로 다시 받음, online 도) ·
-    013 캐시를 FIN 이 다시 물을 때. offline 이면 그 셋을 NET 예산에 세고, 바닥나면 받지 않고 일시 오류(transient)로 돌려준다.
-    같은 날도 다시 받는다 — 접수번호엔 시각이 없어, 원장을 받은 그날 낮에 나온 기재정정을 '뒤'로 못 가른다(그날은 한 번 더 받을 수 있다)."""
-    path = os.path.join(FIN.FIN_DIR, "%s_%s_%s_%s.json" % (corp_code, year, reprt, fs_div))
-    exists = os.path.exists(path) if (offline or amend) else True
-    mt = os.path.getmtime(path) if exists and (offline or amend) else None
-    force = bool(amend and mt is not None and amend >= _ymd(mt))
+    원본 공시일(filed)이 캐시 파일 날짜와 같거나 뒤인데 그 파일이 013 · 빈 목록이다(force) · 013 캐시를 FIN 이 다시 물을 때.
+    offline 이면 그 넷을 NET 예산에 세고, 바닥나면 받지 않고 일시 오류(transient)로 돌려준다.
+    같은 날도 다시 받는다 — 접수번호엔 시각이 없어, 원장을 받은 그날 낮에 나온 기재정정 · 원본 공시를 '뒤'로 못 가른다(그날은 한 번 더 받을 수 있다)."""
+    path = _ledger_path(corp_code, year, reprt, fs_div)
+    exists, mt, force, net = _net_need(path, year, reprt, amend, filed, stat=bool(offline or amend or filed))
     if offline:
-        net = not exists or force or (mt is not None and _will_reask_013(path, year, reprt, mt))
         if net:
             if NET["budget"] is not None and NET["used"] >= NET["budget"]:
                 return {"status": "budget", "list": [], "transient": True}
@@ -285,16 +319,16 @@ def _fetch(corp_code, year, reprt, fs_div, offline, amend=None):
     return FIN.fetch_statement(corp_code, year, reprt, fs_div)
 
 
-def period_data(corp_code, year, q, offline=False, amend=None):
+def period_data(corp_code, year, q, offline=False, amend=None, filed=None):
     """한 분기의 원장 — 그 보고서의 값(thstrm) · 누적(thstrm_add) · 비교기간(frmtrm_q · frmtrm_add · frmtrm) · 기준(CFS/OFS) · 출처 · rcept.
-    4분기 단독은 series() 에서 연간 − 3분기 누적으로 뗀다."""
+    4분기 단독은 series() 에서 연간 − 3분기 누적으로 뗀다. filed = 그 분기 원본 공시일(있으면 '공시 전에 받아 둔 013' 을 다시 받는다 — _fetch)."""
     reprt = REPRT_BY_Q[q]
-    st = _fetch(corp_code, year, reprt, "CFS", offline, amend)
+    st = _fetch(corp_code, year, reprt, "CFS", offline, amend, filed)
     if st.get("transient"):
         return {"_transient": True}
     rows, fs = st.get("list") or [], "CFS"
     if not rows:
-        st = _fetch(corp_code, year, reprt, "OFS", offline, amend)
+        st = _fetch(corp_code, year, reprt, "OFS", offline, amend, filed)
         if st.get("transient"):
             return {"_transient": True}
         rows, fs = st.get("list") or [], "OFS"
@@ -342,6 +376,103 @@ def _n(y, q):
     return y * 4 + q - 1
 
 
+_IS_SUFS = ("", "_누적", "_전", "_전누적", "_전연")
+
+
+def _ni_of(d, suf=""):
+    """주식 수 · 부호 판정에 쓰는 순이익 — 지배순이익, 없으면 당기순이익."""
+    v = d.get("지배순이익" + suf)
+    return v if v is not None else d.get("당기순이익" + suf)
+
+
+def _fix_cum_in_quarter(raw):
+    """반기 · 3분기 보고서가 3개월 칸(thstrm)에 누적(thstrm_add)과 같은 값을 적은 경우(DL 2024 반기 2.90조 · 3분기 4.32조, 비교 칸은 빔) —
+    같은 해 바로 앞 분기에 같은 기준(fs)의 누적이 있으면 분기 단독 = 누적 − 앞 분기 누적(EPS 등 손익 다섯 항목 모두, 1분기는 그 값이 곧 누적).
+    앞 분기 기준이 다르면 손익 칸을 비우고 품질 basis. 그해 첫 보고서(분할 신설 회사의 첫 반기 등 — 앞 분기 원장 없음)는 그대로 둔다.
+    raw 의 해당 칸을 고친 사본으로 바꾸고 {n: [품질]} 을 돌려준다."""
+    tags = {}
+    for n in sorted(raw):
+        d, q = raw[n], n % 4 + 1
+        if q not in (2, 3):
+            continue
+        v, c = d.get("매출액"), d.get("매출액_누적")
+        if v is None or c is None or v != c:
+            continue
+        pv = raw.get(n - 1)
+        if pv is None:
+            continue
+        pq = q - 1
+
+        def pcum(k, prev=False):
+            """앞 분기의 누적 — prev 면 비교 칸(전년 같은 누적). 1분기는 그 값이 곧 누적이다."""
+            got = pv.get(k + ("_전누적" if prev else "_누적"))
+            if got is None and pq == 1:
+                got = pv.get(k + ("_전" if prev else ""))
+            return got
+        nd = dict(d)
+        if pv.get("_fs") != d.get("_fs"):
+            for k in KEYS_IS:
+                nd[k] = nd[k + "_전"] = None
+            tags[n] = ["basis"]
+            raw[n] = nd
+            continue
+        if pcum("매출액") is None:
+            continue
+        for k in KEYS_IS:
+            c_, p_ = d.get(k + "_누적"), pcum(k)
+            nd[k] = (c_ - p_) if (c_ is not None and p_ is not None) else None
+            e_, ec_ = d.get(k + "_전"), d.get(k + "_전누적")
+            if e_ is not None and ec_ is not None and e_ == ec_:      # 비교 칸에도 누적이 적혔으면 같은 식으로
+                pp = pcum(k, prev=True)
+                nd[k + "_전"] = (ec_ - pp) if pp is not None else None
+        raw[n] = nd
+    return tags
+
+
+UNIT_JUMP = 100       # 한 분기 매출이 앞뒤 분기 둘 다의 이 배수를 넘으면 그 보고서 전체가 원 대신 천 · 백만 원 배수로 적힌 것(동성케미컬 2017 반기 ×1e6)
+
+
+def _fix_report_unit(raw):
+    """보고서 단위 오류 — 분기 매출이 앞뒤 분기 매출 둘 다의 100배를 넘으면 그 보고서의 손익 값(값 · 누적 · 비교 칸 모두)을 ÷1e6, 안 맞으면 ÷1e3
+    (나눈 매출이 앞뒤 평균의 0.2~5배 안이면 맞음). 둘 다 안 맞으면 손익 칸을 비운다. 둘 다 품질 unit. 4분기는 연간 − 3분기 누적으로 견준다
+    (사업보고서가 배수로 적혔으면 연간 쪽을 나눈다). per_share 의 EPS 단위 검사는 순이익 ÷ EPS 가 같은 배수면 못 잡는다 — 그래서 매출 수준으로 본다.
+    raw 를 고친 사본으로 바꾸고 {n: [품질]} 을 돌려준다."""
+    def qrev(m, src=None):
+        d = src if src is not None else raw.get(m)
+        if not d:
+            return None
+        if m % 4 + 1 != 4:
+            return d.get("매출액")
+        q3 = raw.get(m - 1) or {}
+        a, c = d.get("매출액"), q3.get("매출액_누적")
+        return (a - c) if (a is not None and c is not None and q3.get("_fs") == d.get("_fs")) else None
+    tags = {}
+    for n in sorted(raw):
+        v, a, b = qrev(n), qrev(n - 1), qrev(n + 1)
+        if not (v and a and b and a > 0 and b > 0 and v > UNIT_JUMP * a and v > UNIT_JUMP * b):
+            continue
+        d, mid = raw[n], (a + b) / 2
+        fixed = None
+        for div in (1e6, 1e3):
+            nd = dict(d)
+            for k in KEYS_IS:
+                for suf in _IS_SUFS:
+                    if nd.get(k + suf) is not None:
+                        nd[k + suf] = nd[k + suf] / div
+            v2 = qrev(n, nd)
+            if v2 and 0.2 <= v2 / mid <= 5:
+                fixed = nd
+                break
+        if fixed is None:
+            fixed = dict(d)
+            for k in KEYS_IS:
+                for suf in _IS_SUFS:
+                    fixed.pop(k + suf, None)
+        raw[n] = fixed
+        tags[n] = ["unit"]
+    return tags
+
+
 def series(corp_code, stock_code, years, prices=None, meta=None, offline=False, progress=None):
     """분기 시계열 v2 — n 오름차순 조밀 격자(첫 자료 분기 ~ 끝 자료 분기, 빈 분기 포함).
     meta = {filed: {n: 원본 공시일}, fy_bad: {연도}, amend: {(연도, 분기): 마지막 정정 공시일}, fin: bool}. fy_bad 연도는 받지 않고 'fy' 빈 칸으로만 낸다.
@@ -363,6 +494,8 @@ def series(corp_code, stock_code, years, prices=None, meta=None, offline=False, 
         for q in (1, 2, 3, 4):
             try:
                 kw = {"amend": amend[(y, q)]} if amend.get((y, q)) else {}      # 정정 없는 분기는 예전 호출 그대로
+                if filed.get(_n(y, q)):
+                    kw["filed"] = filed[_n(y, q)]                                 # 공시 전에 받아 둔 013 을 다시 받게(_fetch)
                 d = period_data(corp_code, y, q, offline=offline, **kw)
             except Exception as e:
                 LAST["error"] = "%s: %s" % (type(e).__name__, e)
@@ -378,11 +511,15 @@ def series(corp_code, stock_code, years, prices=None, meta=None, offline=False, 
     fy_ns = [_n(y, q) for y in years if y in fy_bad for q in (1, 2, 3, 4)]
     if not raw and not fy_ns:
         return []
+    raw_tags = {}
+    for tg in (_fix_cum_in_quarter(raw), _fix_report_unit(raw)):     # 원장 단계 고침 — 3개월 칸의 누적 · 보고서 단위 배수
+        for n_, t_ in tg.items():
+            raw_tags.setdefault(n_, []).extend(t_)
     n0, n1 = min(list(raw) + fy_ns), max(list(raw) + fy_ns)
     pts = []
     for n in range(n0, n1 + 1):
         y, q = n // 4, n % 4 + 1
-        p = {"year": y, "q": q, "label": "%dQ%d" % (y, q), "n": n, "품질": []}
+        p = {"year": y, "q": q, "label": "%dQ%d" % (y, q), "n": n, "품질": list(raw_tags.get(n, []))}
         d = raw.get(n)
         if d is None:
             p["품질"].append("fy" if y in fy_bad else "gap")
@@ -412,6 +549,11 @@ def series(corp_code, stock_code, years, prices=None, meta=None, offline=False, 
                 pa_, pc_ = d.get(k + "_전연"), q3.get(k + "_전누적")
                 p[k + "_전"] = (pa_ - pc_) if (ok and pa_ is not None and pc_ is not None) else None
             capex_ok = same_fs and scope_ok         # CAPEX 의 연간 − 3분기 누적도 같은 기준 · 범위일 때만
+            e9, n9 = q3.get("EPS_누적"), _ni_of(q3, "_누적")
+            if e9 is not None and n9 is not None and e9 * n9 < 0:
+                # 3분기 누적 EPS 와 누적 순이익의 부호가 반대(포스코인터내셔널 2022: EPS 누적 −4,042 · 순이익 +) — 연간 − 누적으로 뗀 4분기 EPS(8,822)가
+                # 틀려 그 분기 역산 주식 수(1,030만 주 · 실제 1.23억)가 '12:1 병합'으로 읽혔다. 4분기 EPS 로 주식 수를 구하지 않는다(per_share)
+                p["주식수_제외"] = True
             if d.get("매출액") is not None and p.get("매출액") is None:
                 # 자료가 모자라면(3분기 없음 · 누적 없음) gap, 기준(CFS/OFS) · 범위가 어긋나면 basis
                 p["품질"].append("gap" if q3.get("매출액_누적") is None else "basis")
@@ -554,17 +696,23 @@ def phase_label(speed, acc):
 
 
 def _turns(pts):
-    """|B(n)| ≥ 띠 이고, n 앞 가장 가까운 |B| ≥ 띠 분기 m 이 반대 부호 · n − m ≤ 4 이면 ▲/▼."""
-    last = None                      # (n, sign) — 가장 최근 띠 밖 분기
+    """한 분기 부호 바뀜 — ▲ = B(n) ≥ +띠(3%p) 이고 B(n−1) < 0, ▼ = B(n) ≤ −띠 이고 B(n−1) > 0. n−1 은 분기 키로 찾고,
+    B(n−1) 이 없으면(빈 분기 · 결산월 다른 해 · 값 없음) 변곡이 아니다. 부등호는 엄격하다(B(n−1) = 0 이면 변곡 아님).
+    2026-10-10 사용자 결정으로 '띠를 건너는 규칙'(n 앞 가장 가까운 |B| ≥ 띠 분기가 4분기 안에 반대 부호)에서 되돌렸다 — 전 종목 엄격 표본에서
+    한 분기 규칙 ▲−▼ +1.6 [−0.3, +3.6], 띠 규칙 +0.6 [−0.8, +2.4], 짝지은 차이(한 분기 − 띠) +0.97 [+0.09, +2.13](둘 다 통과 기준엔 못 미침)."""
+    by = {p.get("n"): p for p in pts if p.get("n") is not None}
     for p in pts:
         b = p.get("가속B")
         p["변곡"] = None
         if b is None or abs(b) < PHASE_BAND:
             continue
-        s = 1 if b > 0 else -1
-        if last and last[1] != s and p["n"] - last[0] <= 4:
-            p["변곡"] = "▲" if s > 0 else "▼"
-        last = (p["n"], s)
+        b1 = (by.get(p["n"] - 1) or {}).get("가속B")
+        if b1 is None:
+            continue
+        if b > 0 and b1 < 0:
+            p["변곡"] = "▲"
+        elif b < 0 and b1 > 0:
+            p["변곡"] = "▼"
     return pts
 
 
@@ -674,20 +822,34 @@ def share_basis(sh, sev, cnt=None):
     def split_like(after, at, r_):
         """주식 수가 크게 바뀐 게 분할 · 병합 · 무상증자(주가 자료도 같이 보정됨)인가, 유상증자(주가는 그대로)인가.
         먼저 공시 목록(무상증자 · 주식분할 · 병합 · 감자 결정)으로 정하고(2026-10-05 — 1:1 · 1:2 무상증자 · 16:1 감자를 '증자 등'으로 잘못 보던 것),
-        공시가 없을 때만 회사의 개요(자본금 변동 표) 낱말 · 정수 비율로 본다."""
-        adj_, _mix = events_between(after, at)
+        공시가 없을 때만 회사의 개요(자본금 변동 표) 낱말 · 정수 비율로 본다. 창에 합병 · 유상증자 공시만 있으면 정수 비율로 짐작하지 않는다
+        (포스코인터내셔널 2022: 합병 결정만 있는 창에서 틀린 역산 주식 수 0.084배를 '12:1 병합'으로 읽었다)."""
+        adj_, mix_ = events_between(after, at)
         if adj_:
             return True
         if cnt is not None:
             a_n, b_n = cnt(after), cnt(at)
             if a_n is not None and b_n is not None and b_n > a_n:
                 return True
+        if mix_:
+            return False
         k = r_ if r_ >= 1 else 1 / r_
         return k >= 4.5 and abs(k - round(k)) <= 0.15
+
+    def holds(j, chain):
+        """chain[j] 의 주식 수 수준이 그 뒤 두 분기(chain 순서)에서 ±25% 안에 머무는가 → (판정, 처음 벗어난 분기).
+        하나라도 벗어나면 False, 다 머물지만 뒤 분기가 둘이 안 되면 None(아직 모름), 둘 다 머물면 True."""
+        base, later = sh[chain[j]], chain[j + 1:j + 3]
+        bad = next((k for k in later if not (0.8 <= sh[k] / base <= 1.25)), None)
+        if bad is not None:
+            return False, bad
+        return (True if len(later) >= 2 else None), None
     fac = {k: 1.0 for k in ks}             # 이 분기 뒤에 일어난 분할 비율의 곱
     splits = []
     cut = None                              # 분할과 합병 신주가 겹친 곳 — 그 앞 PER 기록은 지금 기준으로 맞출 수 없어 자기 역사에서 뺀다
-    for a, b in zip(ks, ks[1:]):
+    chain, j = list(ks), 1
+    while j < len(chain):
+        a, b = chain[j - 1], chain[j]
         r_ = sh[b] / sh[a]
         adj_, mix_ = events_between(a, b) if (r_ >= 1.25 or r_ <= 0.8) else ([], [])
         # 공시로 확인된 분할 · 무상증자는 1.25배(0.8배)부터 — 1:0.5 무상증자(헥토) · 두 분기에 걸친 100% 무상증자(노바렉스)
@@ -701,13 +863,23 @@ def share_basis(sh, sev, cnt=None):
                     kind = "분할·병합(증자 섞임 — 앞 기록 제외)"
                     cut = _qn(a) if cut is None else max(cut, _qn(a))
             else:
-                kind = "분할·병합" if split_like(a, b, r_) else "증자 등(주가 보정 없음)"
+                # 공시 없는 분할은 새 주식 수가 뒤 두 분기 동안 ±25% 안에 머물러야 받는다. 머물지 않고 앞 수준 쪽으로 되돌아가면(그 사이에 공시된
+                # 분할 · 병합이 없을 때) 그 분기는 자료 오류로 버리고 앞 분기와 다음 분기를 잇는다 — SK이노베이션 2023Q4 역산 7.6억 주가 5.88배 · 0.126배
+                # '분할' 둘로 읽혀 그 앞 기록 전부에 ×0.743 이 걸렸다(2026-10-10 최종 검토). 다른 수준으로 가거나(합병 · 증자가 잇따름) 공시된 분할 ·
+                # 병합 뒤에 바뀐 것이면(코스텍시스: 합병 뒤 주식 병합) 버리지 않는다
+                h, c_ = holds(j, chain)
+                if (h is False and abs(math.log(sh[c_] / sh[a])) < abs(math.log(sh[c_] / sh[b]))
+                        and not events_between(b, c_)[0]):
+                    chain.pop(j)
+                    continue
+                kind = "분할·병합" if (h and split_like(a, b, r_)) else "증자 등(주가 보정 없음)"
             splits.append({"after": a, "at": b, "ratio": round(r_, 2), "kind": kind})
             if kind.startswith("분할·병합"):
                 for k in ks:
                     if _qn(k) <= _qn(a):
                         fac[k] *= r_
-    return {"now": {k: sh[k] * fac[k] for k in ks}, "splits": splits, "cut": cut}
+        j += 1
+    return {"now": {k: sh[k] * fac[k] for k in chain}, "splits": splits, "cut": cut}
 
 
 def per_share(pts, sev, cnt=None):
@@ -716,13 +888,20 @@ def per_share(pts, sev, cnt=None):
     (단위 오류를 고친 분기는 p["EPS"] 를 바로 고쳐 쓰고, 못 고친 분기는 EPS 를 그대로 둔다).
     EPS 가 원 대신 천 · 백만 원 단위로 적힌 분기는 EPS 를 고쳐 쓰고 품질에 'unit' 을 단다. 못 고치는 이상값은 주식 수 열에서 빼고(이웃 분기 주식 수로 EPS_adj) 'unit' 만 단다.
     분할과 합병 신주가 한 창에 겹쳐 지금 기준으로 맞출 수 없는 구간(share_basis 의 cut)은 그 분기까지 모두 품질 'cut' — 자기 역사 PER 에서 뺄 표시다.
+    역산 주식 수는 순이익 · EPS 부호가 같은 분기만. |순이익| ≥ 매출의 0.5% 조건은 그 분기에 매출액이 있을 때만 건다 — 매출 줄이 없는 은행 · 지주 ·
+    IFRS17 뒤 보험사도 주식 수와 EPS_adj 를 낸다(2026-10-10 최종 검토; 한 분기 튐 · 단위 검사는 그대로). 3분기 누적 EPS 와 누적 순이익의 부호가 반대인
+    해의 4분기(series 의 '주식수_제외')는 주식 수를 구하지 않는다.
     attach_prices 가 PER_TTM 을 EPS_TTM(보정)으로 계산하므로 순서는 series → per_share → accel → attach_prices."""
     by = {p["n"]: p for p in pts}
     imp = {}
     for p in pts:
-        ni, e = p.get("지배순이익") if p.get("지배순이익") is not None else p.get("당기순이익"), p.get("EPS")
-        if ni and e and p.get("매출액") and abs(ni) >= abs(p["매출액"]) * 0.005 and ni / e > 0:
-            imp[p["label"]] = ni / e
+        ni, e = _ni_of(p), p.get("EPS")
+        if not (ni and e and ni / e > 0) or p.get("주식수_제외"):
+            continue
+        rev = p.get("매출액")
+        if rev and abs(ni) < abs(rev) * 0.005:
+            continue
+        imp[p["label"]] = ni / e
     if imp:
         med = sorted(imp.values())[len(imp) // 2]
         for lab, s in list(imp.items()):
@@ -741,7 +920,7 @@ def per_share(pts, sev, cnt=None):
     for p in pts:
         if cut is not None and p["year"] * 4 + p["q"] <= cut:      # _qn 과 같은 척도 — cut 분기(포함) 앞 기록은 지금 기준으로 못 맞춘다
             p["품질"] = sorted(set(p.get("품질", []) + ["cut"]))
-        ni = p.get("지배순이익") if p.get("지배순이익") is not None else p.get("당기순이익")
+        ni = _ni_of(p)
         s = now.get(p["label"])
         if s is None and now:
             qk = p["year"] * 4 + p["q"]                       # _qn 과 같은 척도(연도×4 + 분기)
@@ -764,7 +943,7 @@ NOW_PCT_WIN, NOW_PCT_MIN = 40, 8   # 백분위 창 — 'cut' 아닌 양수 PER_T
 def split_after(pts, sev):
     """마지막 자료 분기(원장이 있는 분기 — 끝의 빈 gap · fy 칸은 뺀다) 말 뒤에 난 주가 보정 사건(SHEV_ADJ: 분할 · 병합 · 무상증자 · 감자)
     공시 [{date, title}]. 그 분기 EPS 는 사건 전 주식 수 기준인데 주가 자료는 사건 뒤 기준으로 다시 보정돼 PER 이 비율만큼 틀린다 —
-    공시 제목으로는 비율을 정확히 못 읽어 지금은 표시만 한다(now_per 의 stale). 정확한 보정은 계획 2(KIS 원 · 수정 주가 비)."""
+    공시 제목으로는 비율을 정확히 못 읽어 분할 뒤 첫 보고서까지 PER 을 비운다(hold_per · now_per 의 reason). 정확한 보정은 계획 2(KIS 원 · 수정 주가 비)."""
     last = max((p["n"] for p in pts if p.get("fs")), default=None)
     if last is None:
         return []
@@ -773,25 +952,134 @@ def split_after(pts, sev):
             if d_ and str(d_).isdigit() and int(d_) > end and SHEV_ADJ.search(nm or "")]
 
 
-def now_per(points, prices, splits=None):
-    """지금 PER(캐시하지 않는다) — 서버 _druck_now 가 지금 받은 수정주가 {YYYYMMDD: 종가} 로 부른다.
-    per = 마지막 종가 ÷ (최신 EPS_TTM ÷ k). k = 캐시에 적힌 공시일 주가 ÷ 지금 받은 수정주가의 같은 날 종가 —
-    EPS_TTM · 주가 · 주가일이 다 있는(그리고 그날 종가가 지금 자료에 있는) 마지막 분기로 잰다. 캐시 뒤 분할로 주가 자료가 다시 보정되면 ≠ 1.
-    pct = 지금 PER 이하 비율 — 'cut' 아닌 양수 PER_TTM 의 마지막 40개, 8개 이상일 때만.
-    stale = k 가 0.55~1.8 밖(경계 포함)이거나 splits(split_after() — 마지막 자료 분기 뒤 분할 · 병합 공시)가 있을 때."""
-    eps_pts = [p for p in points if p.get("EPS_TTM")]
-    if not eps_pts or not prices:
+SPLIT_HOLD = "분할 뒤 첫 보고서 전 — PER 계산 보류"
+
+
+def hold_per(pts, sa):
+    """split_after(마지막 자료 분기 뒤 분할 · 병합 공시)가 있으면 모든 분기의 PER_TTM 을 비운다 — 주가 자료가 사건 뒤 기준으로 다시 보정되면
+    분할 전 기준 EPS 와 짝이 맞지 않아 PER 이 비율만큼 틀린다(코나아이 재현: 다시 쌓으면 역사 PER 전부가 ÷2). 분할 뒤 첫 보고서가 나오면
+    그 분기가 마지막 자료 분기가 되어 split_after 가 비고 PER 이 돌아온다. 비웠으면 True."""
+    if not sa:
+        return False
+    for p in pts:
+        p.pop("PER_TTM", None)
+    return True
+
+
+def pick_basis(pts, fin):
+    """기준 지표 — 금융(KSIC 64~66)이고 최근 8개 자료 분기(원장이 있는 분기)에 매출액이 하나도 없으면 영업이익, 아니면 매출.
+    역사 전체가 아니라 최근으로 본다 — IFRS17 뒤 매출 줄이 끊긴 보험사 · 증권사가 2016~2023 의 국면을 '지금'으로 들고 있었다(2026-10-10 최종 검토)."""
+    if not fin:
+        return "매출"
+    recent = [p for p in pts if p.get("fs")][-8:]
+    return "영업이익" if not any(p.get("매출액") for p in recent) else "매출"
+
+
+FILED_WAIT = 30       # 일 — 원본 공시 뒤 이 날 수까지는 그 분기 원장이 비어 있으면 일시 오류로 본다(DART 반영 지연 · 공시 전에 받아 둔 013)
+
+
+def _days(a, b):
+    """YYYYMMDD 두 날의 차(b − a, 일)."""
+    f = lambda s: _dt.datetime.strptime(str(s)[:8], "%Y%m%d")     # noqa: E731
+    return (f(b) - f(a)).days
+
+
+def filed_missing(pts, meta, today=None, wait=FILED_WAIT):
+    """가장 최근에 원본 공시된 분기(결산월 다른 해 제외)의 원장이 시리즈에 없으면 그 분기 키 n — 서버 druck() 이 그 빌드를 캐시하지 않는다
+    (공시 당일 DART 가 아직 013 을 주거나, 공시 전에 받아 둔 013 이 남은 채 새 서명으로 굳으면 다음 보고서까지 석 달을 한 분기 늦은 채로 보인다).
+    공시일이 wait 일보다 오래됐으면 None — 원장이 끝내 없는 분기 때문에 회사가 영영 캐시되지 않는 일은 막는다."""
+    meta = meta or {}
+    filed, fy_bad = meta.get("filed") or {}, set(meta.get("fy_bad") or ())
+    ns = [n for n in filed if n // 4 not in fy_bad]
+    if not ns:
         return None
-    last = eps_pts[-1]
-    ds = sorted(prices)
-    px, date = prices[ds[-1]], ds[-1]
-    kp = next((p for p in reversed(points)
-               if p.get("EPS_TTM") and p.get("주가") and p.get("주가일") and prices.get(p["주가일"])), None)
-    k = kp["주가"] / prices[kp["주가일"]] if kp else 1.0
-    eps = last["EPS_TTM"] / k
-    per = px / eps if eps > 0 else None
-    hist = [p["PER_TTM"] for p in points if (p.get("PER_TTM") or 0) > 0 and "cut" not in (p.get("품질") or [])][-NOW_PCT_WIN:]
-    pct = (sum(1 for v in hist if v <= per) / len(hist) * 100) if per and len(hist) >= NOW_PCT_MIN else None
+    n = max(ns)
+    if any(p.get("n") == n and p.get("fs") for p in pts):
+        return None
+    today = today or time.strftime("%Y%m%d")
+    try:
+        if _days(filed[n], today) > wait:
+            return None
+    except ValueError:
+        return None
+    return n
+
+
+def needs_net(corp_code, years, meta):
+    """series(offline=True) 가 이 회사에서 DART 를 부를까 — _fetch 와 같은 판정(_net_need: 파일 없음 · 정정 공시 ≥ 파일 날짜 ·
+    원본 공시 ≥ 파일 날짜인 013 · 013 다시 묻기). CFS 파일이 '없음'(013 · 빈 목록)이면 OFS 도 본다(본문 대체로 CFS 줄이 생기면 실제로는 안 볼 수도 있다 —
+    그 경우 '필요하다'로 세어 건너뛰는 쪽으로 틀린다). 밤 미리 계산이 DART 예산을 다 쓴 뒤 네트워크 없이 쌓을 수 있는 회사만 계속 쌓을 때 쓴다."""
+    meta = meta or {}
+    filed, fy_bad, amend = meta.get("filed") or {}, set(meta.get("fy_bad") or ()), meta.get("amend") or {}
+    for y in years:
+        if y in fy_bad:
+            continue
+        for q in (1, 2, 3, 4):
+            reprt, am, fl = REPRT_BY_Q[q], amend.get((y, q)), filed.get(_n(y, q))
+            path = _ledger_path(corp_code, y, reprt, "CFS")
+            if _net_need(path, y, reprt, am, fl)[3]:
+                return True
+            if _empty_ledger(path) and _net_need(_ledger_path(corp_code, y, reprt, "OFS"), y, reprt, am, fl)[3]:
+                return True
+    return False
+
+
+def _no_eps_reason(points, last, fin=False):
+    """최근 자료 분기 last 의 EPS_TTM 이 없거나 0 이하인 까닭 — 화면 KPI 문장."""
+    by = {p.get("n"): p for p in points if p.get("n") is not None}
+    if last.get("n") is None:
+        return "최근 4분기 EPS 없음"
+    w = [by.get(m) or {} for m in range(last["n"] - 3, last["n"] + 1)]
+    if (last.get("EPS_TTM") or 0) < 0 or (last.get("EPS_TTM") == 0 and all(x.get("EPS_adj") is not None for x in w)):
+        return "적자(최근 4분기 EPS 합 ≤ 0)"
+    if any(not x.get("fs") for x in w):
+        return "빠진 분기 포함(최근 4분기 EPS 합을 못 냄)"
+    if any("basis" in (x.get("품질") or []) and x.get("EPS_adj") is None for x in w):
+        return "기준 다른 4분기 포함(연결/별도 · 범위가 맞지 않는 Q4 — 그 분기 EPS 없음)"
+    if all(x.get("주식수") is None for x in w):
+        return ("금융사 " if fin else "") + "주식 수 산출 불가(순이익 ÷ EPS 를 못 구함)"
+    return "EPS · 순이익이 빈 분기 포함"
+
+
+def now_per(points, prices, splits=None, fin=False):
+    """지금 PER(캐시하지 않는다) — 서버 _druck_now 가 지금 받은 수정주가 {YYYYMMDD: 종가} 로 부른다. 자료 분기가 하나도 없으면 None.
+    per = 마지막 종가 ÷ (최신 EPS_TTM ÷ k) — 그 EPS_TTM 분기가 마지막 자료 분기(원장이 있는 마지막 분기)이거나 한 분기 앞일 때만.
+    더 오래된 EPS_TTM(보험사 2024Q2 · 흥국화재 2015Q1 등)으로 '지금' PER 을 내지 않는다 — per None, reason 에 까닭, eps_label 에 마지막 EPS_TTM 분기.
+    k = 캐시에 적힌 공시일 주가 ÷ 지금 받은 수정주가의 같은 날 종가 — EPS_TTM · 주가 · 주가일이 다 있는(그리고 그날 종가가 지금 자료에 있는) 마지막 분기로 잰다.
+    stale = k 가 0.55~1.8 밖(경계 포함) — 캐시 뒤 주가 자료가 다시 보정됐다(서버가 한 번 다시 쌓는다).
+    splits(split_after — 마지막 자료 분기 뒤 분할 · 병합 공시)가 있으면 per None · reason SPLIT_HOLD(PER_TTM 도 hold_per 가 비운다).
+    pct = 지금 PER 이하 비율 — 'cut' 아닌 양수 PER_TTM 의 마지막 40개, 8개 이상일 때만. fin = 금융사(문장에 '금융사')."""
+    data = [p for p in points if p.get("fs")]
+    if not data:
+        return None
+    last_d = data[-1]
     sa = list(splits or [])
-    return {"px": px, "date": date, "per": per, "k": round(k, 3), "pct": pct,
-            "stale": bool(sa) or not (NOW_K_LO < k < NOW_K_HI), "split_after": sa}
+    eps_pts = [p for p in points if p.get("EPS_TTM")]
+    ep = eps_pts[-1] if eps_pts else None
+    out = {"px": None, "date": None, "per": None, "k": None, "pct": None, "stale": False, "split_after": sa,
+           "reason": None, "eps_label": ep.get("label") if ep else None, "last": last_d.get("label")}
+    k = 1.0
+    if prices:
+        ds = sorted(prices)
+        out.update(px=prices[ds[-1]], date=ds[-1])
+        kp = next((p for p in reversed(points)
+                   if p.get("EPS_TTM") and p.get("주가") and p.get("주가일") and prices.get(p["주가일"])), None)
+        k = kp["주가"] / prices[kp["주가일"]] if kp else 1.0
+        out.update(k=round(k, 3), stale=not (NOW_K_LO < k < NOW_K_HI))
+    behind = (last_d["n"] - ep["n"]) if (ep and ep.get("n") is not None and last_d.get("n") is not None) else 0
+    if sa:
+        out["reason"] = SPLIT_HOLD
+    elif ep is None or behind >= 2:
+        why = _no_eps_reason(points, last_d, fin)
+        out["reason"] = ("최근 EPS_TTM 은 %s — %s 는 %s" % (ep["label"], last_d.get("label"), why)) if ep else why
+    elif not prices:
+        out["reason"] = "주가를 못 받음"
+    else:
+        eps = ep["EPS_TTM"] / k
+        if eps <= 0:
+            out["reason"] = "적자(최근 4분기 EPS 합 ≤ 0)"
+        else:
+            per = out["px"] / eps
+            hist = [p["PER_TTM"] for p in points if (p.get("PER_TTM") or 0) > 0 and "cut" not in (p.get("품질") or [])][-NOW_PCT_WIN:]
+            out.update(per=per, pct=(sum(1 for v in hist if v <= per) / len(hist) * 100) if len(hist) >= NOW_PCT_MIN else None)
+    return out

@@ -434,7 +434,7 @@ def events(funds, quarters, feats, came, gone, rcept_of):
                 "매출은 %s 늘었는데 순이익률 %.1f%% — 직전 평균 %.1f%%의 절반 아래. 피셔는 이런 '글리치'에서 PSR이 낮으면 샀다" % (
                     _pct(d["rev_yoy"]), d["ni"] / d["rev"] * 100, _avg(nm_past)))
 
-    # 분기 — 최근 8개 분기(분기 키)의 가속 전환(드러켄밀러). 가속도 탭과 같은 판정: 가속(B)가 띠(±3%p) 반대쪽에서 넘어온 분기(변곡 ▲)
+    # 분기 — 최근 8개 분기(분기 키)의 가속 전환(드러켄밀러). 가속도 탭과 같은 판정: 가속(B)이 앞 분기 음(−)에서 +3%p 이상으로 바뀐 분기(변곡 ▲)
     qby = _q_by(quarters)
     for b in _last_quarters(quarters, "가속B"):
         if b.get("가속B") is not None and b.get("변곡") == "▲" and (b.get("속도") or 0) > 0:
@@ -442,7 +442,7 @@ def events(funds, quarters, feats, came, gone, rcept_of):
             pq = qby.get(b["n"] - 1) or {}
             ev.append({"year": y, "stamp": "%s-%02d" % (y, b.get("q", 4) * 3), "lane": "방향·투자",
                        "guru": "", "tone": "up", "title": "분기 매출 가속 전환 (%s)" % b.get("label", ""),
-                       "detail": "속도 %s, 가속(B) %+.1f%%p — 띠(±3%%p) 반대쪽에서 넘어옴" % (_pct(b.get("속도")), b["가속B"]),
+                       "detail": "속도 %s, 가속(B) %+.1f%%p — 앞 분기 가속이 음(−)이었다" % (_pct(b.get("속도")), b["가속B"]),
                        "rcept": b.get("rcept"), "prev_rcept": pq.get("rcept")})
     # 문장 — 사업 정의가 바뀐 해. 글자 배열이 아니라 '쓴 낱말'이 바뀌었는지 본다
     # (문단 순서·서식만 바뀐 해를 걸러낸다). 가장 크게 바뀐 3개 해만.

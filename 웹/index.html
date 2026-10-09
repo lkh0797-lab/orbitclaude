@@ -589,6 +589,7 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .drkQual .q{font-size:11.5px;color:var(--p-ink);padding:2px 9px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.11)}
 .drkQual .q.ok{color:var(--p-dim)}
 .drkQual .q.transient{border-color:rgba(240,145,106,.5)}
+.drkQual .q.lag{border-color:rgba(241,217,160,.55);color:var(--p-hi)}
 .drkQual small{font:500 10.5px var(--f-num);color:var(--p-faint);margin-left:auto}
 .drkDuo{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:26px;margin-top:14px;align-items:start}
 @media (max-width:1100px){.drkDuo{grid-template-columns:minmax(0,1fr)}}
@@ -618,14 +619,13 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .drkplate.anim .drkTrail{animation:spFade .5s var(--d,0ms) both}
 .drkplate.anim .drkPt{animation:spFade .45s var(--d,0ms) both}
 .drkTip{width:300px}
-/* 점검 메모 — ↑ 좋아짐 · ↓ 나빠짐 · – 판단 보류(판정 · 통과 개수 없음) */
+/* 점검 메모 — 화살표 = 값의 방향(↑ 늘었다 · ↓ 줄었다 · – 비슷하다), 중립 색(판정 · 통과 개수 없음) */
 .drkList{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column}
 .drkList li{display:flex;gap:11px;align-items:flex-start;padding:9px 2px;border-top:1px solid rgba(255,255,255,.06)}
 .drkList li:first-child{border-top:0}
 .drkList li>i{flex:0 0 22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font:700 12px var(--f-body);font-style:normal;margin-top:1px}
-.drkList li.up>i{background:rgba(25,158,112,.18);color:#5fd4a6}
-.drkList li.dn>i{background:rgba(217,89,38,.18);color:#f0916a}
+.drkList li.up>i,.drkList li.dn>i{background:rgba(241,217,160,.12);color:var(--p-hi)}
 .drkList li.na>i{background:rgba(255,255,255,.06);color:var(--p-dim)}
 .drkList li>div{min-width:0;flex:1}
 .drkList .t{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
@@ -5036,10 +5036,17 @@ function grStocks(body, x, d, p){
   zl.appendChild(el('small',null,' 섹터 속도 '+grP(P.speed)+' · 섹터 1년 주가 '+grP(C.ret1y,0)+' 기준으로 가른 자리'));
   body.appendChild(zl);
   // 과거 성적(회사 단위 가속 백테스트 B식 — 같은 식)
-  const up=bt.B_up, dn=bt.B_dn, rg=bt.regime||{}, od=(bt.order||{}).B_up;
+  const up=bt.B_up, dn=bt.B_dn, rg=bt.regime||{}, od=bt.order||{};
   if(up){ const ev=el('div','grEvBox'); ev.appendChild(el('b',null,'이 라벨의 과거 성적(회사 단위, 같은 식 · '+(bt.firms||0)+'곳 · '+(bt.n||0).toLocaleString('ko-KR')+' 회사-분기)'));
     const li=(t,o)=>{ const r=el('div','lbr '+(grOk(o)?'pos':(o&&o.med<=-1&&o.ci&&o.ci[1]<0)?'neg':'nu')); r.appendChild(el('b',null,t)); r.appendChild(el('span',null,grEv(o))); ev.appendChild(r); };
-    li('가속 전환 ↑(띠 밖 반대쪽에서 넘어옴)',up); li('가속 전환 ↓',dn); if(od) li('수주 업종만 — 가속 전환 ↑',od);
+    li('가속 전환 ↑(가속이 음(−)에서 +3%p 이상으로)',up); li('가속 전환 ↓(가속이 양(+)에서 −3%p 이하로)',dn);
+    // 수주 업종은 ↑ 만 보면 구간이 0 위로 멀리 떠 보인다 — ↓ 도 같이 떠 있다(업종 상승이 둘 다 덮음). ↑ · ↓ · 그 차이를 같이 적는다
+    if(od.B_up) li('수주 업종만 — 가속 전환 ↑',od.B_up);
+    if(od.B_dn) li('수주 업종만 — 가속 전환 ↓',od.B_dn);
+    const sp=od.B_spread;
+    if(sp&&sp.diff!=null&&isFinite(sp.diff)){ const r=el('div','lbr nu'); r.appendChild(el('b',null,'수주 업종만 — ↑ − ↓'));
+      r.appendChild(el('span',null,'12개월 초과수익 차이 '+grPp(sp.diff)+((sp.ci||[])[0]!=null?' [90% 구간 '+grPp(sp.ci[0]).replace('%p','')+' ~ '+grPp(sp.ci[1]).replace('%p','')+']':'')));
+      ev.appendChild(r); }
     const rgs=Object.entries(rg).map(([k,v])=>k+' '+grPp(v.med)+'(4분기 뒤 매출 '+grPp(v.dG4)+')').join(' · ');
     const whip=bt.whip&&bt.whip.pct!=null&&isFinite(bt.whip.pct) ? ' · 2분기 안에 뒤집힌 헛신호 '+Math.round(bt.whip.pct)+'%' : '';   // 값이 없으면 '0%' 대신 뺀다
     if(rgs) ev.appendChild(el('small',null,'국면별 12개월 초과수익 중앙: '+rgs+whip));
@@ -8211,6 +8218,7 @@ async function renderScreen(){
       progBox.appendChild(pr);
     }
     let rows=(d.rows||[]).filter(r=>r['가속B']!==null&&r['가속B']!==undefined);
+    const noB=(d.rows||[]).length-rows.length;      // 최신 분기에 가속(B)이 없는 회사(앞 분기 자료 부족 · 기준 다른 Q4 등) — 조용히 빼지 않고 수를 적는다
     S.screenNote=d.score_note||'가중 미검증';
     body.innerHTML='';
 
@@ -8230,21 +8238,24 @@ async function renderScreen(){
     rows=rows.filter(r=>(r['매출액']||0)>=S.screenFloor);
     if(cut>rows.length)
       fl.appendChild(el('span','legend','매출 미달 '+(cut-rows.length)+'종목 제외'));
+    if(noB>0){ const nb=el('span','legend',' · 최신 분기 가속(B) 없음 '+noB+'종목 제외');
+      nb.title='최신 분기에 국면을 못 정한 회사 — 앞 분기 자료 부족 · 기준(연결/별도 · 범위)이 다른 Q4 · 매출 줄이 끊긴 분기 등. 그 회사의 가속도 탭 자료 점검에 까닭이 나온다.';
+      fl.appendChild(nb); }
     body.appendChild(fl);
 
     if(!rows.length){
       body.appendChild(el('div','loading', d.running?'계산 중…':'해당 조건에 맞는 종목이 없습니다.'));
     } else {
       rows.sort((a,b)=>(b.score??-1)-(a.score??-1));
-      // 전환 = 이번 분기 가속(B) 변곡 ▲(띠 −3%p 아래에서 +3%p 위로 넘어옴, 4분기 안). 속도 부호로 성장 · 역성장 완화를 가른다
+      // 전환 = 이번 분기 가속(B) 변곡 ▲(앞 분기 가속이 음(−)이고 이번 분기 +3%p 이상). 속도 부호로 성장 · 역성장 완화를 가른다
       const grow=rows.filter(r=>r['변곡']==='▲'&&r['전환종류']==='성장');
       const less=rows.filter(r=>r['변곡']==='▲'&&r['전환종류']!=='성장');
       if(grow.length||less.length){
         const f=el('div','first');
         let h='';
-        if(grow.length) h+='<b>★ 성장 전환 '+grow.length+'종목</b> — 매출이 늘고, 가속(B)이 띠 아래에서 위로 넘어왔다(▲): '+
+        if(grow.length) h+='<b>★ 성장 전환 '+grow.length+'종목</b> — 매출이 늘고, 가속(B)이 앞 분기 음(−)에서 +3%p 이상으로 바뀌었다(▲): '+
           grow.slice(0,8).map(r=>esc(r.name)).join(', ')+(grow.length>8?' 외':'');
-        if(less.length) h+=(h?'<br>':'')+'<b>★ 역성장 완화 '+less.length+'종목</b> — 아직 매출은 줄지만 가속(B)이 띠 아래에서 위로 넘어왔다(▲): '+
+        if(less.length) h+=(h?'<br>':'')+'<b>★ 역성장 완화 '+less.length+'종목</b> — 아직 매출은 줄지만 가속(B)이 앞 분기 음(−)에서 +3%p 이상으로 바뀌었다(▲): '+
           less.slice(0,8).map(r=>esc(r.name)).join(', ')+(less.length>8?' 외':'');
         f.innerHTML=h;
         body.appendChild(f);
@@ -8360,8 +8371,8 @@ function screenTable(rows){
       const b=el('span', grow?'tag t0':'tag t2', grow?'★성장 전환':'★역성장 완화');
       b.style.marginLeft='6px';
       b.title = grow
-        ? '매출이 전년 대비 늘고 있고(속도 +), 가속(B)이 띠(−3%p) 아래에서 +3%p 위로 넘어왔습니다(변곡 ▲, 4분기 안).'
-        : '매출은 아직 전년 대비 줄고 있지만(속도 −) 가속(B)이 띠 아래에서 위로 넘어왔습니다(변곡 ▲). 성장 전환이 아닙니다.';
+        ? '매출이 전년 대비 늘고 있고(속도 +), 가속(B)이 앞 분기 음(−)에서 이번 분기 +3%p 이상으로 바뀌었습니다(변곡 ▲).'
+        : '매출은 아직 전년 대비 줄고 있지만(속도 −) 가속(B)이 앞 분기 음(−)에서 +3%p 이상으로 바뀌었습니다(변곡 ▲). 성장 전환이 아닙니다.';
       nm.appendChild(b);
     }
     tr.appendChild(nm);
@@ -8503,6 +8514,10 @@ function drkPlate(plate, R, c, d, bt, ev){
   const data=R.filter(r=>dNum(r['매출액'])||dNum(r['영업이익']));
   const last=data[data.length-1]||R[R.length-1];
   const now=V[V.length-1]||last;               // 지금 = 국면이 있는 마지막 분기(끝에 빈 분기 · 결산월 다른 해가 붙을 수 있다)
+  // 마지막 자료 분기(원장이 있는 분기)보다 2분기 넘게 앞선 국면은 '지금'이 아니다 — KPI · 나침반에 그 분기 이름을 달고 까닭을 자료 점검에 적는다
+  const lastD=R.filter(r=>r.fs).pop()||last;
+  K.old=!!(now.reg&&lastD&&lastD.n-now.n>=2);
+  K.lag=K.old ? drkLagCause(R, now, lastD, M) : null;
 
   // ── 머리
   const top=el('div','spTop');
@@ -8526,12 +8541,14 @@ function drkPlate(plate, R, c, d, bt, ev){
   const hl=el('div','spHead');
   if(now.reg){
     const s2=now.s-now.a;                        // 앞 2분기 속도(B = 속도 − 앞 2분기 속도)
-    hl.appendChild(el('h3',null,c.name+', '+H[now.reg]+' ('+dPct(s2,0)+' → '+dPct(now.s,0)+')'));
+    // 속도의 부호가 바뀌었으면 그 사실을 말한다 — '수축 심화'라도 앞 2분기가 성장이었으면 '감소가 빨라졌다'가 아니다(DMS +107% → −20%)
+    const h=s2>0&&now.s<0 ? M+'이 늘다가 줄기 시작했다' : s2<0&&now.s>0 ? M+'이 줄다가 늘기 시작했다' : H[now.reg];
+    hl.appendChild(el('h3',null,c.name+', '+h+' ('+dPct(s2,0)+' → '+dPct(now.s,0)+')'+(K.old?' — '+now.label+' 기준':'')));
     hl.appendChild(el('p',null,now.label+' 기준 속도(최근 2분기 분기 '+M+' 전년 대비 평균) '+dPct(now.s,1)+', 그 앞 2분기 '+dPct(s2,1)+' — 가속 '+dPp(now.a,1)+'. '+
       (now.streak ? now.streak+'분기째 띠(±3%p) 밖.' : '띠(±3%p) 안.')+
-      (now.turn ? ' 이번 분기에 가속이 띠 반대쪽에서 넘어왔다('+(now.turn==='up'?'▲':'▼')+' 변곡).' : '')+
+      (now.turn ? (now.turn==='up' ? ' 이번 분기에 가속이 앞 분기 음(−)에서 +3%p 이상으로 바뀌었다(▲ 변곡).' : ' 이번 분기에 가속이 앞 분기 양(+)에서 −3%p 이하로 바뀌었다(▼ 변곡).') : '')+
       (now['엇갈림'] ? ' 이번 분기 단독은 반대로 움직였다(직전 분기 대비 '+dPp(now.C,1)+').' : '')+
-      (last.n>now.n ? ' 가장 최근 '+last.label+'는 국면을 못 정했다('+((last['품질']||[]).map(k=>DRK_QS[k]||k).join(' · ')||'앞 분기 자료 부족')+').' : '')));
+      (lastD.n>now.n ? ' 가장 최근 '+lastD.label+'는 국면을 못 정했다('+(K.lag||((lastD['품질']||[]).map(k=>DRK_QS[k]||k).join(' · ')||'앞 분기 자료 부족'))+').' : '')));
     hl.appendChild(el('p','spEn',(M==='매출'?'Revenue':'Operating profit')+' speed '+dPct(now.s,0)+' (2Q avg YoY), acceleration '+
       (dNum(now.a)?(now.a>=0?'+':'')+now.a.toFixed(1)+' pp':'—')+' vs the prior 2Q — '+DRK_RC[now.reg].en.toLowerCase()+'.'));
   } else hl.appendChild(el('h3',null,'분기 자료가 모자라 국면을 못 정했다'));
@@ -8539,7 +8556,8 @@ function drkPlate(plate, R, c, d, bt, ev){
   plate.appendChild(hl);
 
   // ── 자료 점검 — 최근 12분기 품질 · 결산월 · 기준 지표 · 분할 보정 · 기준일
-  plate.appendChild(drkQual(R, last, d));
+  K.nowLabel=now.label;
+  plate.appendChild(drkQual(R, lastD, d, K));
 
   // ── 위 두 단: 국면 나침반 | 점검 메모
   const duo=el('div','drkDuo');
@@ -8547,18 +8565,21 @@ function drkPlate(plate, R, c, d, bt, ev){
   duo.appendChild(drkChecks(R, now, K));
   plate.appendChild(duo);
 
-  // ── 숫자 다섯
+  // ── 숫자 다섯 — 국면이 낡았으면(K.old) 칸마다 그 분기 이름을 단다
   const np=d.now||{};
+  const at=K.old ? now.label+' · ' : '';
   const perF=dNum(now['PER_TTM'])&&now['PER_TTM']>0 ? now['PER_TTM'].toFixed(1)+'배' : '—';
-  const perN=!np.stale&&dNum(np.per)&&np.per>0 ? np.per.toFixed(1)+'배' : null;
-  const perTxt = np.stale ? '공시일('+now.label+') PER · 지금 값은 분할 뒤 다시 계산 대기'
-    : perN ? '지금 PER'+(np.date?'('+dDate(np.date).slice(5)+' 종가)':'')+' · 공시일 '+perF+(dNum(np.pct)?' · 자기 역사 백분위 '+Math.round(np.pct):'')
-    : '공시일('+now.label+') PER · 지금 값 없음(4분기 EPS 가 없거나 적자)';
+  const perN=!np.stale&&!np.reason&&dNum(np.per)&&np.per>0 ? np.per.toFixed(1)+'배' : null;
+  // 지금 값이 없으면 서버가 준 까닭(분할 뒤 보류 · 낡은 EPS · 금융사 주식 수 · 기준 다른 4분기 · 적자)을 그대로 적는다
+  const perTxt = np.stale ? '공시일('+now.label+') PER · 지금 값은 다시 계산 대기(캐시 뒤 주가 자료가 다시 보정됨)'
+    : perN ? '지금 PER('+(np.date?dDate(np.date).slice(5)+' 종가':'종가')+(np.eps_label&&np.eps_label!==np.last?' ÷ '+np.eps_label+' EPS_TTM':'')+')'+
+             ' · 공시일('+now.label+') '+perF+(dNum(np.pct)?' · 자기 역사 백분위 '+Math.round(np.pct):'')
+    : '공시일('+now.label+') PER · 지금 값 없음 — '+(np.reason||'최근 4분기 EPS 없음');
   const kp=el('div','spKpi drkKpi');
-  [[dPct(now.s,1), '속도 · 최근 2분기 분기 '+M+' 전년 대비 평균 · TTM 추세 '+dPct(now.g,0), 'Speed · 2Q avg YoY'],
-   [dPp(now.a,1), '가속(B) · 속도 − 앞 2분기 · '+(now.streak?now.streak+'분기째 띠 밖':'띠(±3%p) 안'), 'Acceleration · B'],
-   [dNum(now.m)?now.m.toFixed(1)+'%':'—', 'TTM 영업이익률 · 1년 새 '+dPp(now.mD4,1), 'Margin · TTM'],
-   [dNum(now['재고일수'])?Math.round(now['재고일수'])+'일':'—', '재고일수 · 1년 새 '+dPct(now.invD4,0), 'Inventory days'],
+  [[dPct(now.s,1), at+'속도 · 최근 2분기 분기 '+M+' 전년 대비 평균 · TTM 추세 '+dPct(now.g,0), 'Speed · 2Q avg YoY'],
+   [dPp(now.a,1), at+'가속(B) · 속도 − 앞 2분기 · '+(now.streak?now.streak+'분기째 띠 밖':'띠(±3%p) 안'), 'Acceleration · B'],
+   [dNum(now.m)?now.m.toFixed(1)+'%':'—', at+'TTM 영업이익률 · 1년 새 '+dPp(now.mD4,1), 'Margin · TTM'],
+   [dNum(now['재고일수'])?Math.round(now['재고일수'])+'일':'—', at+'재고일수 · 1년 새 '+dPct(now.invD4,0), 'Inventory days'],
    [perN||perF, perTxt, 'P/E · now · at filing'],
   ].forEach(([b,s,sm])=>{ const k=el('div','spK'); k.appendChild(el('b',null,b)); k.appendChild(el('span',null,s));
     k.appendChild(el('small',null,sm)); kp.appendChild(k); });
@@ -8573,9 +8594,26 @@ function drkPlate(plate, R, c, d, bt, ev){
   ft.innerHTML='<span></span><b>ORBIT · 기업궤도추적</b>';
   ft.querySelector('span').textContent='출처: DART 분기·반기·사업보고서(분기 단독, 전년 대비는 같은 보고서의 비교기간 값). '+
     '속도 = 분기 '+M+' 전년 대비의 최근 2분기 평균, 가속 = 속도 − 앞 2분기 평균, 띠 ±3%p — 산업 탭 업황 시계와 같은 식. '+
+    '변곡 ▲ = 앞 분기 가속이 음(−)이고 이번 분기 +3%p 이상, ▼ = 앞 분기 양(+)이고 이번 분기 −3%p 이하. '+
     '사건 수익률은 그 숫자를 알 수 있던 날 다음 거래일부터 전 종목 중앙값 대비. 주가 = 네이버 수정주가, EPS 는 분할 보정(지금 주식 수 기준).'+
     (bt.at?' 기저율 '+dDate(bt.at)+' 계산.':'');
   plate.appendChild(ft);
+}
+
+// 국면이 마지막 자료 분기보다 2분기 넘게 앞에서 멈춘 까닭 — 매출 줄이 끊김(매출 기준) · B 를 막은 분기(기준 다른 Q4 · 빈 분기 · 1년 전 값 없음)
+function drkLagCause(R, now, lastD, M){
+  const lab=n=>Math.floor(n/4)+'Q'+(n%4+1);
+  if(M==='매출'){
+    const lastRev=R.filter(r=>dNum(r['매출액'])).pop();
+    if(lastRev&&lastD.n-lastRev.n>=2) return '매출 줄 없음 ('+lab(lastRev.n+1)+' 부터)';
+  }
+  const by=Object.fromEntries(R.map(r=>[r.n,r])), key=M==='매출'?'매출액':'영업이익';
+  const bad=[]; for(let n=now.n+1;n<=lastD.n;n++){ const r=by[n]; if(!r||!dNum(r.Y)) bad.push(n); }
+  const why=n=>{ const r=by[n]||{}, q=(r['품질']||[]).filter(k=>!['amended','asfiled','mix'].includes(k));
+    if(q.length) return lab(n)+'('+q.map(k=>DRK_QS[k]||k).join(' · ')+')';
+    const b=by[n-4]; return lab(n)+(b&&!dNum(b[key]) ? '(1년 전 '+lab(n-4)+' 값 없음)' : '(전년 대비 없음)'); };
+  if(!bad.length) return '앞 분기 자료 부족(재작성 · 공시 당시 값 섞임 등)';
+  return 'B 를 막은 분기 — '+bad.slice(0,4).map(why).join(' · ')+(bad.length>4?' 외':'');
 }
 
 // 기저율 한 줄 — 이 국면(막 난 변곡이면 그 변곡)의 전 종목 같은 정의 성적. 회사 수 · 표본 수는 파일 값
@@ -8592,14 +8630,15 @@ function drkBaseLine(now, K){
   p.textContent='기저율 · '+lab+' · 과거 '+(o.firms||bt.firms||0).toLocaleString('ko-KR')+'곳 '+o.n.toLocaleString('ko-KR')+'번 — 12개월 시장 대비 중앙 '+dPct(o.med,1)+
     (o.ci?' [90% 구간 '+dPct(o.ci[0],1)+', '+dPct(o.ci[1],1)+']':'')+' · 이긴 비율 '+Math.round(o.hit||0)+'%'+
     (dNum(o.dG4)?' · 4분기 뒤 TTM 성장률 변화 '+dPp(o.dG4,1):'')+(dNum(bt.base_any)?' · 아무 분기 '+dPct(bt.base_any,1):'')+
-    (NEG.has(now.reg)?' · 속도가 음수인 국면은 상장폐지된 회사가 빠져 위로 치우친 값':'')+' · 주가보다 실적 변화를 더 잘 맞힌다 · 지금 상장사만(생존 편향)';
+    (NEG.has(now.reg)?' · 속도가 음수인 국면은 상장폐지된 회사가 빠져 위로 치우친 값':'')+' · 지금 상장사만(생존 편향)';
   return p;
 }
 
-// 자료 점검 띠 — 최근 12분기 점의 품질 합집합 · 회사 단위 표시 · 데이터 기준일
-function drkQual(R, last, d){
+// 자료 점검 띠 — 최근 12분기 점의 품질 합집합 · 회사 단위 표시 · 데이터 기준일 · 국면이 멈춘 까닭(K.lag)
+function drkQual(R, last, d, K){
   const box=el('div','drkQual');
   box.appendChild(el('b',null,'자료 점검'));
+  if(K&&K.lag) box.appendChild(el('span','q lag','국면 · KPI 는 '+K.nowLabel+' 기준(그 뒤 '+last.label+'까지 국면을 못 정함) — '+K.lag));
   const cnt={}; R.slice(-12).forEach(r=>(r['품질']||[]).forEach(k=>{ cnt[k]=(cnt[k]||0)+1; }));
   const fy=d.fy||[];
   const items=Object.keys(DRK_QN).filter(k=>cnt[k]&&!(k==='fy'&&fy.length)).map(k=>[DRK_QN[k]+' ('+cnt[k]+'분기)', k]);
@@ -8677,7 +8716,7 @@ function drkCompass(R, K){
     if(last || i===0){   // 오른쪽 · 위 끝에 붙은 점은 이름을 안쪽으로 — 칸 이름과 판 밖으로 밀리지 않게
       const nr=P[i][0]>W-Rr-110, nt=P[i][1]<T+34, dx=last?14:8, dy=last?12:8;
       const t=svgEl('text',{x:P[i][0]+(nr?-dx:dx),y:P[i][1]+(nt?dy+14:-dy),'text-anchor':nr?'end':'start',class:last?'drkNowL':'drkFirstL'});
-      t.textContent=last?r.label+' 지금':r.label; g.appendChild(t); }
+      t.textContent=last&&!K.old?r.label+' 지금':r.label; g.appendChild(t); }   // 국면이 낡았으면(마지막 자료 분기보다 2분기↑ 앞) '지금'이라 하지 않는다
     g.addEventListener('pointerenter',()=>{
       tp.innerHTML=''; tp.appendChild(drkTipBody(r, K)); tp.hidden=false;
       const bx=box.getBoundingClientRect(), sv=svg.getBoundingClientRect(), sc=sv.width/W;
@@ -8714,7 +8753,7 @@ function drkTipBody(r, K){
   return f;
 }
 
-// 점검 메모 — 지금 분기의 사실만. ↑ 좋아짐 · ↓ 나빠짐 · – 판단 보류(띠 안 · 값 없음). 통과 개수 · 판정은 두지 않는다
+// 점검 메모 — 지금 분기의 사실만. 화살표는 값의 방향(↑ 늘었다 · ↓ 줄었다 · – 비슷하다/값 없음), 중립 색. 좋아짐/나빠짐 · 통과 개수 · 판정은 두지 않는다
 function drkChecks(R, now, K){
   const box=el('div','drkChecks'), M=K.M;
   box.appendChild(el('div','spIdeasH','점검 메모')).appendChild(el('em',null,'NOTES · '+now.label));
@@ -8732,14 +8771,14 @@ function drkChecks(R, now, K){
   else add('na','영업 레버리지','—','영업이익이 적자이거나 막 흑자로 돌아(또는 매출 TTM 이 없어) 증가율을 견주지 않았다');
   if(dNum(now.mD4)) add(Math.abs(now.mD4)<.5?'na':now.mD4>0?'up':'dn','이익률', (dNum(now.m)?now.m.toFixed(1)+'% · ':'')+dPp(now.mD4,1)+' (1년)',
     Math.abs(now.mD4)<.5?'TTM 영업이익률이 1년 전과 비슷하다(±0.5%p 안)':'TTM 영업이익률이 1년 전보다 '+Math.abs(now.mD4).toFixed(1)+'%p '+(now.mD4>0?'넓어졌다':'좁아졌다'));
-  if(dNum(now.invD4)) add(now.invD4>=10?'dn':now.invD4<=-10?'up':'na','재고일수','재고일수 '+dPct(now.invD4,0)+' (1년)',
+  if(dNum(now.invD4)) add(now.invD4>=10?'up':now.invD4<=-10?'dn':'na','재고일수','재고일수 '+dPct(now.invD4,0)+' (1년)',
     now.invD4>=10?'재고일수가 1년 새 '+Math.round(now.invD4)+'% 늘었다'+(dNum(now.a)&&now.a<=-DRK_BAND?' — 같은 분기 가속은 '+dPp(now.a,1):'')
     :now.invD4<=-10?'재고일수가 1년 새 '+Math.round(-now.invD4)+'% 줄었다':'재고일수가 1년 전과 비슷하다(±10% 안)');
-  if(dNum(now.arD4)) add(now.arD4>=10?'dn':now.arD4<=-10?'up':'na','매출채권일수','채권일수 '+dPct(now.arD4,0)+' (1년)',
+  if(dNum(now.arD4)) add(now.arD4>=10?'up':now.arD4<=-10?'dn':'na','매출채권일수','채권일수 '+dPct(now.arD4,0)+' (1년)',
     now.arD4>=10?'매출채권 회수가 1년 전보다 '+Math.round(now.arD4)+'% 느려졌다':now.arD4<=-10?'매출채권 회수가 1년 전보다 '+Math.round(-now.arD4)+'% 빨라졌다':'매출채권일수가 1년 전과 비슷하다(±10% 안)');
   if(dNum(now.px4)&&dNum(now.eps4)){
     const gap=now.px4-now.eps4;
-    add(gap>30?'dn':gap<-20?'up':'na','주가 vs 이익','주가 '+dPct(now.px4,0)+' vs EPS '+dPct(now.eps4,0)+' (1년)',
+    add(gap>30?'up':gap<-20?'dn':'na','주가 vs 이익','주가 '+dPct(now.px4,0)+' vs EPS '+dPct(now.eps4,0)+' (1년)',
       gap>30?'주가가 4분기 EPS 보다 '+Math.round(gap)+'%p 더 올랐다':gap<-20?'4분기 EPS 가 주가보다 '+Math.round(-gap)+'%p 더 올랐다':'주가와 4분기 EPS 가 비슷하게 움직였다');
   }
   const ul=el('ul','drkList');
@@ -8750,7 +8789,7 @@ function drkChecks(R, now, K){
     m.appendChild(el('small',null,x.h)); li.appendChild(m); ul.appendChild(li);
   });
   box.appendChild(ul);
-  box.appendChild(el('div','drkNoteKey','↑ 좋아짐 · ↓ 나빠짐 · – 판단 보류(띠 안 · 작은 변화 · 값 없음). 1년 = 같은 분기 키 n−4 와 견준 값.'));
+  box.appendChild(el('div','drkNoteKey','화살표는 값의 방향 — ↑ 늘었다(주가 vs 이익은 주가가 더 올랐다) · ↓ 줄었다 · – 비슷하다(띠 안 · 작은 변화 · 값 없음). 좋고 나쁨의 판정이 아니다. 1년 = 같은 분기 키 n−4 와 견준 값.'));
   return box;
 }
 
@@ -8964,7 +9003,7 @@ function drkTurns(R, K){
   const note=el('div','drkSumC note');
   note.innerHTML='<span>이 회사 · 시장 대비</span><p></p>';
   note.querySelector('p').textContent=T.length ? sTxt('▲',u)+' / '+sTxt('▼',w)+'. 같은 기간 전 종목 아무 분기 중앙 '+(dNum(bt.base_any)?dPct(bt.base_any,1):'—')+
-    ' — 한 회사의 몇 번으로는 신호를 가르지 않는다.' : '가속이 띠(±3%p)를 건너 반대쪽으로 넘어간 분기가 없다.';
+    ' — 한 회사의 몇 번으로는 신호를 가르지 않는다.' : '가속이 앞 분기와 부호가 바뀌며 ±3%p 를 넘은 분기(▲ · ▼)가 없다.';
   sum.appendChild(note);
   box.appendChild(sum);
   if(!T.length) return box;
@@ -8996,7 +9035,7 @@ function drkLedger(box, R, text, d){
   const hd=el('div','orbLedH'); const ht=el('div');
   ht.appendChild(el('h4',null,'분기 원장'));
   ht.appendChild(el('p','sub','최신부터, 빠진 분기도 한 줄. 분기 YoY = 같은 보고서의 전년 같은 분기(재작성) 대비 — 없으면 공시 당시 값. '+
-    '속도 = 최근 2분기 분기 YoY 평균, 가속(B) = 속도 − 앞 2분기 속도, ▲▼ = 가속이 띠(±3%p) 반대쪽에서 넘어온 분기. '+
+    '속도 = 최근 2분기 분기 YoY 평균, 가속(B) = 속도 − 앞 2분기 속도, ▲▼ = 앞 분기 가속과 부호가 바뀌며 ±3%p 를 넘은 분기(▲ = 앞 분기 음(−) → +3%p 이상). '+
     'TTM 추세 = 최근 4분기 합의 1년 전 대비(약 1분기 늦음). 공시일 PER = 공시일 종가 ÷ 4분기 EPS(분할 보정). 품질은 마우스를 올리면 풀이.'));
   hd.appendChild(ht); box.appendChild(hd);
   const wrap=el('div','tblwrap');

@@ -400,7 +400,7 @@ def mk_q(rev, cum=None, prev=None, prev_cum=None, prev_ann=None, rc="20240514", 
 
 
 def run_series(monkeypatch, table, years, meta=None):
-    monkeypatch.setattr(DRK, "period_data", lambda corp, y, q, offline=False: table.get((y, q)))
+    monkeypatch.setattr(DRK, "period_data", lambda corp, y, q, offline=False, **kw: table.get((y, q)))
     return DRK.series("C", "000000", years, meta=meta or {})
 
 
@@ -490,8 +490,8 @@ def year_table(fs_q1="CFS", fs_q4="CFS"):
             (2024, 4): mk_q(460, op=40, capex=20, fs=fs_q4, 재고자산=460, 매출채권=230)}
 
 
-def test_version_is_3():
-    assert DRK.VERSION == 3
+def test_version_is_4():
+    assert DRK.VERSION == 4
 
 
 def test_q4_derived_value_and_restated_yoy(monkeypatch):
@@ -664,22 +664,37 @@ def test_phase_labels_and_flat():
     assert DRK.phase_label(1, 1) == "정체"
 
 
-def test_turn_through_flat_band():
-    # 삼성 모양: B ... −6.2 → +10.9(▲) → +41.7(같은 쪽 — 변곡 아님)
-    pts = grid([0] * 8)
-    Bs = [None, None, None, -9.2, -6.2, 10.9, 41.7, 1.0]
+def _turn_marks(Bs, start=(2024, 1)):
+    pts = grid([0] * len(Bs), start=start)
     for p, b in zip(pts, Bs):
         p["가속B"] = b
     DRK._turns(pts)
-    assert [p["변곡"] for p in pts][4:7] == [None, "▲", None]
+    return [p["변곡"] for p in pts]
 
 
-def test_turn_needs_within_4():
-    pts = grid([0] * 8)
-    for p, b in zip(pts, [-5, 1, 1, 1, 1, 6, None, None]):
-        p["가속B"] = b
+def test_turn_one_quarter_flip_samsung_shape():
+    """한 분기 부호 바뀜(2026-10-10 사용자 결정) — 삼성: B 2025Q2 −9.2 · 2025Q3 −6.2 → 2025Q4 +10.9 ▲ → 2026Q1 +41.7(같은 쪽 — 변곡 아님)."""
+    marks = _turn_marks([-9.2, -6.2, 10.9, 41.7], start=(2025, 2))
+    assert marks == [None, None, "▲", None]
+
+
+def test_turn_needs_opposite_sign_in_previous_quarter():
+    """앞 분기 B 가 띠 안이라도 부호만 본다 — 띠를 건넜는지(예전 규칙)는 보지 않는다."""
+    assert _turn_marks([-5, 1, 6]) == [None, None, None]          # 앞 분기 +1 — 띠를 건넜지만(예전 ▲) 부호가 같다
+    assert _turn_marks([5, -1, 1, 4]) == [None, None, None, None]  # 앞 분기 +1 이고 이번 +4 — 같은 쪽
+    assert _turn_marks([5, -1, 4]) == [None, None, "▲"]            # 앞 분기 −1(띠 안) → +4 — ▲
+    assert _turn_marks([1, 2, -4]) == [None, None, "▼"]            # 앞 분기 +2 → −4 — ▼
+    assert _turn_marks([-2, 2.9, -2.9]) == [None, None, None]      # 이번 분기가 띠 안이면 변곡 아님
+
+
+def test_turn_missing_or_zero_previous_quarter_is_no_turn():
+    assert _turn_marks([-5, None, 6]) == [None, None, None]        # B(n−1) 없음
+    assert _turn_marks([0, 6]) == [None, None] and _turn_marks([0, -6]) == [None, None]   # B(n−1) = 0 — 부등호가 엄격하다
+    pts = grid([0, 0, 0])
+    del pts[1]                                                     # n−1 점이 아예 없다(키로 찾는다 — 목록 순서가 아니라)
+    pts[0]["가속B"], pts[1]["가속B"] = -5.0, 6.0
     DRK._turns(pts)
-    assert pts[5]["변곡"] is None        # 반대쪽 띠 밖 값이 5분기 앞 — 변곡 아님
+    assert [p["변곡"] for p in pts] == [None, None]
 
 
 def test_divergence_only_outside_band():
@@ -835,7 +850,8 @@ def kakao_table():
     rep(2025, "11011", 4_700 * 10 ** 9, 3000 * E8, [row("IS", EPS_TOT, "기본주당이익", thstrm_amount=750)])        # 연간 → 4분기 단독 = 연간 − 3분기 누적
     rep(2026, "11013", 1_500 * 10 ** 9, 1200 * E8, [row("IS", EPS_TOT, "기본주당이익", thstrm_amount=300)])
     rep(2026, "11012", 1_600 * 10 ** 9, 164 * E8, [row("IS", EPS_CONT, "계속영업 기본주당이익", thstrm_amount=431),
-                                                   row("IS", EPS_DISC, "중단영업 기본주당이익", thstrm_amount=-390)])
+                                                   row("IS", EPS_DISC, "중단영업 기본주당이익", thstrm_amount=-390)],
+        rev_add=3_100 * 10 ** 9, ni_add=1364 * E8)                  # 반기 보고서의 누적 칸은 반기 누적(3개월 칸과 다르다)
     return t
 
 
@@ -1044,17 +1060,23 @@ def test_split_after_without_data_points_is_empty():
 
 
 # ---------------------------------------------------------------- 지금 PER(서버 _druck_now)
-def per_pts(pers, last=None):
-    pts = [{"PER_TTM": v, "품질": []} for v in pers]
+def per_pts(pers, last=None, n0=2016 * 4):
+    """자료 분기(fs 있음)가 분기 키 n0 부터 이어진 점 — 앞쪽은 PER_TTM 만, 끝 점(last)은 EPS_TTM 등."""
+    def pt(i, **kw):
+        n = n0 + i
+        return dict({"n": n, "label": "%dQ%d" % (n // 4, n % 4 + 1), "fs": "CFS", "품질": []}, **kw)
+    pts = [pt(i, PER_TTM=v) for i, v in enumerate(pers)]
     if last is not None:
-        pts.append(dict(last, 품질=last.get("품질", [])))
+        pts.append(pt(len(pers), **dict(last, 품질=last.get("품질", []))))
     return pts
 
 
 def test_now_per_k1():
     pts = per_pts([10.0] * 7, {"EPS_TTM": 1000.0, "주가": 12000.0, "주가일": "20260814", "PER_TTM": 12.0})
     now = DRK.now_per(pts, {"20260814": 12000.0, "20261008": 15000.0})
-    assert now == {"px": 15000.0, "date": "20261008", "per": 15.0, "k": 1.0, "pct": 100.0, "stale": False, "split_after": []}
+    lab = pts[-1]["label"]
+    assert now == {"px": 15000.0, "date": "20261008", "per": 15.0, "k": 1.0, "pct": 100.0, "stale": False, "split_after": [],
+                   "reason": None, "eps_label": lab, "last": lab}
 
 
 def test_now_per_k_after_split_rescales_eps_and_is_stale():
@@ -1064,8 +1086,8 @@ def test_now_per_k_after_split_rescales_eps_and_is_stale():
 
 
 def test_now_per_k_from_last_point_with_eps_price_and_date():
-    pts = [{"EPS_TTM": 900.0, "주가": 30000.0, "주가일": "20260514", "품질": []},
-           {"EPS_TTM": 1000.0, "품질": []}]                                   # 최신 분기는 주가가 아직 없다
+    pts = per_pts([], {"EPS_TTM": 900.0, "주가": 30000.0, "주가일": "20260514"})
+    pts += per_pts([], {"EPS_TTM": 1000.0}, n0=pts[-1]["n"] + 1)              # 최신 분기는 주가가 아직 없다
     now = DRK.now_per(pts, {"20260514": 20000.0, "20261008": 30000.0})
     assert now["k"] == 1.5 and now["per"] == pytest.approx(30000 / (1000 / 1.5)) and now["stale"] is False
 
@@ -1078,11 +1100,51 @@ def test_now_per_stale_thresholds(cached, stale):
     assert now["k"] == round(cached / 20000.0, 3) and now["stale"] is stale
 
 
-def test_now_per_split_after_is_stale_even_with_k1():
+def test_now_per_split_after_holds_per_and_is_not_stale_by_itself():
+    """마지막 자료 분기 뒤 분할 공시 — 지금 PER 을 내지 않고(분할 뒤 첫 보고서 전) 까닭을 적는다. k 가 1 이면 stale 이 아니다
+    (stale 은 '주가 자료가 다시 보정됐다' = 서버가 다시 쌓는 조건 — split_after 만으로는 다시 쌓지 않는다)."""
     sa = [{"date": "20260901", "title": "주식분할결정"}]
-    pts = per_pts([], {"EPS_TTM": 1000.0, "주가": 10000.0, "주가일": "20260814"})
+    pts = per_pts([10.0] * 8, {"EPS_TTM": 1000.0, "주가": 10000.0, "주가일": "20260814"})
     now = DRK.now_per(pts, {"20260814": 10000.0, "20261008": 10000.0}, sa)
-    assert now["k"] == 1.0 and now["stale"] is True and now["split_after"] == sa
+    assert now["k"] == 1.0 and now["stale"] is False and now["split_after"] == sa
+    assert now["per"] is None and now["pct"] is None and now["reason"] == DRK.SPLIT_HOLD == "분할 뒤 첫 보고서 전 — PER 계산 보류"
+    now = DRK.now_per(pts, {"20260814": 5000.0, "20261008": 5000.0}, sa)        # 네이버가 이미 보정 — k 2 → stale(한 번 다시 쌓는다), PER 은 여전히 보류
+    assert now["stale"] is True and now["per"] is None
+
+
+def test_now_per_only_from_latest_or_one_back_eps():
+    """지금 PER 은 마지막 자료 분기(또는 한 분기 앞)의 EPS_TTM 으로만 — 흥국화재처럼 2015Q1 EPS_TTM 으로 '지금'을 내지 않는다."""
+    prices = {"20150515": 10000.0, "20261008": 12000.0}
+    base = per_pts([8.0] * 8, {"EPS_TTM": 1000.0, "주가": 10000.0, "주가일": "20150515", "PER_TTM": 10.0})
+    one_back = base + per_pts([], {"EPS_adj": 50.0, "주식수": 1e6}, n0=base[-1]["n"] + 1)      # 최신 분기 EPS_TTM 없음 — 한 분기 앞은 쓴다
+    now = DRK.now_per(one_back, prices)
+    assert now["per"] == pytest.approx(12.0) and now["eps_label"] == base[-1]["label"] and now["reason"] is None
+    two_back = one_back + per_pts([], {"EPS_adj": 50.0, "주식수": 1e6}, n0=one_back[-1]["n"] + 1)
+    now = DRK.now_per(two_back, prices)
+    assert now["per"] is None and now["pct"] is None and now["eps_label"] == base[-1]["label"] and now["last"] == two_back[-1]["label"]
+    assert now["reason"].startswith("최근 EPS_TTM 은 %s — %s 는 " % (base[-1]["label"], two_back[-1]["label"]))
+    gap_tail = one_back + [{"n": one_back[-1]["n"] + 1, "label": "x", "품질": ["gap"]}]       # 끝의 빈 칸(원장 없음)은 자료 분기가 아니다
+    assert DRK.now_per(gap_tail, prices)["per"] == pytest.approx(12.0)
+
+
+def test_now_per_reasons_without_eps_ttm():
+    """EPS_TTM 이 없을 때 화면이 적을 까닭 — 금융사 주식 수 · 기준 다른 4분기 · 빠진 분기 · 적자."""
+    bank = per_pts([None] * 3, {"지배순이익": 1e12})                       # 주식 수를 못 구함(주식수 없음)
+    now = DRK.now_per(bank, {}, fin=True)
+    assert now["per"] is None and now["eps_label"] is None and now["reason"].startswith("금융사 주식 수 산출 불가")
+    assert DRK.now_per(bank, {})["reason"].startswith("주식 수 산출 불가")
+    basis = per_pts([None] * 3, {})
+    for i, p in enumerate(basis):
+        p.update({"주식수": 1e6, "EPS_adj": None if i == 1 else 10.0})
+    basis[1]["품질"] = ["basis"]                                          # Q4 기준이 달라 그 분기 EPS 없음
+    assert DRK.now_per(basis, {})["reason"].startswith("기준 다른 4분기 포함")
+    gapw = per_pts([None] * 3, {"EPS_adj": 10.0, "주식수": 1e6})
+    del gapw[1]["fs"]
+    assert DRK.now_per(gapw, {})["reason"].startswith("빠진 분기 포함")
+    neg = per_pts([None] * 9, {"EPS_TTM": -50.0, "주가": 9000.0, "주가일": "20261008"})
+    now = DRK.now_per(neg, {"20261008": 9000.0})
+    assert now["per"] is None and now["pct"] is None and now["reason"].startswith("적자")
+    assert DRK.now_per([{"n": 1, "품질": ["gap"]}], {"20261008": 1.0}) is None            # 자료 분기가 하나도 없다
 
 
 def test_now_per_pct_needs_eight_values_and_skips_cut():
@@ -1106,10 +1168,12 @@ def test_now_per_pct_uses_last_40_valid_values():
 
 def test_now_per_none_cases():
     pts = per_pts([], {"EPS_TTM": 1000.0, "주가": 10000.0, "주가일": "20260814"})
-    assert DRK.now_per(per_pts([10.0] * 9), {"20261008": 1.0}) is None                 # EPS_TTM 없음
-    assert DRK.now_per(pts, {}) is None                                               # 주가 못 받음
+    no_eps = DRK.now_per(per_pts([10.0] * 9), {"20261008": 1.0})                       # EPS_TTM 없음 — 값 없이 까닭만
+    assert no_eps["per"] is None and no_eps["reason"] and no_eps["px"] == 1.0
+    no_px = DRK.now_per(pts, {})                                                       # 주가 못 받음
+    assert no_px["per"] is None and no_px["reason"] == "주가를 못 받음" and no_px["px"] is None
     neg = DRK.now_per(per_pts([10.0] * 9, {"EPS_TTM": -50.0}), {"20261008": 9000.0})
-    assert neg["per"] is None and neg["pct"] is None
+    assert neg["per"] is None and neg["pct"] is None and neg["reason"].startswith("적자")
 
 
 # ---------------------------------------------------------------- 정정 공시 · 013 다시 묻기 — 원장 다시 받기와 NET 예산(Task 6 고침)
@@ -1206,3 +1270,283 @@ def test_b_lookup_joins_by_quarter_key_and_gates_on_b_date():
     assert DRK.b_known(lk, 8064, "20160516") == 5.0
     assert DRK.b_known(lk, 8065, "20991231") is None and DRK.b_known(lk, 9999, "20991231") is None
     assert DRK.b_known(DRK.b_lookup([{"n": 1, "가속B": 3.0}]), 1, "20991231") is None     # 기준일 없음 — 알 수 있었는지 모른다
+
+
+# ================================================================ 최종 검토 고침(2026-10-10)
+# ---------------------------------------------------------------- F8 — 감사보고서는 결산월 판정에서 뺀다
+def test_filed_meta_ignores_audit_reports_for_fy():
+    """HPSP 상장 전 '감사보고서'(stamp 12) — 정기보고서가 아니니 그 해를 fy_bad('결산월 다름')로 만들지 않는다."""
+    reps = [rep("2019-12", "감사보고서", "20200320000001"), rep("2020-12", "감사보고서", "20210320000002"),
+            rep("2022-09", "분기보고서", "20221114000003"), rep("2022-12", "사업보고서", "20230320000004")]
+    m = DRK.filed_meta(reps)
+    assert m["fy_bad"] == set()
+    assert m["filed"] == {2022 * 4 + 2: "20221114", 2022 * 4 + 3: "20230320"}
+    assert DRK.filed_meta([rep("2024-06", "사업보고서", "20240920000001")])["fy_bad"] == {2024}    # 6월 결산 정기보고서는 그대로
+
+
+# ---------------------------------------------------------------- 서버 S1 — 공시 전에(또는 공시 당일) 받아 둔 013 이 새 분기를 가리지 않게
+def _ledger(dirpath, corp, year, reprt, fs="CFS", status="013", rows=None, ymd=None):
+    p = dirpath / ("%s_%s_%s_%s.json" % (corp, year, reprt, fs))
+    p.write_text(json.dumps({"status": status, "list": rows or []}), encoding="utf-8")
+    return _aged(p, ymd) if ymd else p
+
+
+def test_fetch_refetches_fresh_013_when_original_filing_is_today(monkeypatch, fin_dir):
+    """오늘 아침(공시 전) 받아 둔 013 — 24시간이 안 돼 FIN 의 013 다시 묻기에도 안 걸린다. 원본 공시일이 파일 날짜와 같거나 뒤면
+    force 로 다시 받는다(offline 은 예산에 센다, online 은 안 센다). 공시일이 없으면 예전처럼 그대로."""
+    calls = []
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", lambda *a, **kw: calls.append((a, kw)) or stmt([]))
+    today = time.strftime("%Y%m%d")
+    _ledger(fin_dir, "C", 2026, "11014")                                   # 지금 막 받은 013
+    monkeypatch.setitem(DRK.NET, "budget", 5)
+    DRK._fetch("C", 2026, "11014", "CFS", True)
+    assert calls[-1][1] == {} and DRK.NET["used"] == 0
+    DRK._fetch("C", 2026, "11014", "CFS", True, filed=today)
+    assert calls[-1][1] == {"force": True} and DRK.NET["used"] == 1
+    DRK._fetch("C", 2026, "11014", "CFS", False, filed=today)
+    assert calls[-1][1] == {"force": True} and DRK.NET["used"] == 1
+    monkeypatch.setitem(DRK.NET, "budget", 1)
+    assert DRK._fetch("C", 2026, "11014", "CFS", True, filed=today)["status"] == "budget"     # 예산이 바닥나면 받지 않고 일시 오류
+
+
+def test_fetch_keeps_ledger_with_data_or_fetched_after_filing(monkeypatch, fin_dir):
+    calls = []
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", lambda *a, **kw: calls.append((a, kw)) or stmt([]))
+    _ledger(fin_dir, "C", 2025, "11012", status="000", rows=[{"sj_div": "IS"}], ymd="20250814")   # 공시 당일 받았지만 자료가 있다
+    _ledger(fin_dir, "C", 2025, "11014", ymd="20260120")                                         # 공시(2025-11-14) 뒤에 받은 013 — 믿는다
+    DRK._fetch("C", 2025, "11012", "CFS", True, filed="20250814")
+    DRK._fetch("C", 2025, "11014", "CFS", True, filed="20251114")
+    assert [kw for _, kw in calls] == [{}, {}] and DRK.NET["used"] == 0
+
+
+def test_series_passes_filed_date_per_quarter(monkeypatch):
+    seen = []
+
+    def pd(corp, y, q, offline=False, **kw):
+        seen.append(((y, q), kw))
+        return mk_q(100 + q)
+    monkeypatch.setattr(DRK, "period_data", pd)
+    DRK.series("C", "000000", [2025], meta={"filed": {2025 * 4 + 2: "20251114"}, "amend": {(2025, 2): "20251020"}})
+    assert dict(seen) == {(2025, 1): {}, (2025, 2): {"amend": "20251020"}, (2025, 3): {"filed": "20251114"}, (2025, 4): {}}
+
+
+def test_series_picks_up_quarter_filed_today_over_fresh_013(monkeypatch, fin_dir):
+    """끝에서 끝까지 — 2026Q3 원장을 오늘 아침 013 으로 받아 뒀고 오늘 3분기보고서가 공시됐다. 밤 계산(offline)이 그 분기를 다시 받아 넣는다.
+    공시일을 모르면(예전) 시리즈가 2026Q2 에서 끝나고, filed_missing 이 그 빌드를 캐시하지 말라고 알린다."""
+    today = time.strftime("%Y%m%d")
+    q3 = [row("IS", "ifrs-full_Revenue", "매출액", thstrm_amount=310, thstrm_add_amount=810)]
+    table = {(2026, "11013"): stmt([row("IS", "ifrs-full_Revenue", "매출액", thstrm_amount=200, thstrm_add_amount=200)]),
+             (2026, "11012"): stmt([row("IS", "ifrs-full_Revenue", "매출액", thstrm_amount=300, thstrm_add_amount=500)])}
+
+    def fs(corp, year, reprt, fs_div="CFS", force=False):
+        if (int(year), str(reprt)) == (2026, "11014") and force and fs_div == "CFS":
+            return stmt(q3)                                                 # DART 는 이제 자료를 준다
+        return table.get((int(year), str(reprt)), {"status": "013", "list": []}) if fs_div == "CFS" else {"status": "013", "list": []}
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", fs)
+    for r in ("11013", "11012", "11011"):
+        _ledger(fin_dir, "C", 2026, r, status="000", rows=[{"sj_div": "IS"}], ymd="20260901")
+        _ledger(fin_dir, "C", 2026, r, fs="OFS", ymd="20260901")
+    _ledger(fin_dir, "C", 2026, "11014")
+    _ledger(fin_dir, "C", 2026, "11014", fs="OFS")
+    meta = {"filed": {2026 * 4: "20260515", 2026 * 4 + 1: "20260814", 2026 * 4 + 2: today}, "fy_bad": set(), "amend": {}}
+    pts = DRK.series("C", "000000", [2026], meta=meta, offline=True)
+    assert [p["label"] for p in pts if p.get("fs")] == ["2026Q1", "2026Q2", "2026Q3"] and pts[-1]["매출액"] == 310
+    assert DRK.filed_missing(pts, meta, today=today) is None
+    old = DRK.series("C", "000000", [2026], meta=dict(meta, filed={}), offline=True)
+    assert [p["label"] for p in old if p.get("fs")] == ["2026Q1", "2026Q2"]
+    assert DRK.filed_missing(old, meta, today=today) == 2026 * 4 + 2
+
+
+def test_filed_missing_newest_filed_quarter_without_ledger():
+    pts = [{"n": 2026 * 4, "fs": "CFS"}, {"n": 2026 * 4 + 1, "fs": "CFS"}]
+    meta = {"filed": {2026 * 4: "20260515", 2026 * 4 + 1: "20260814", 2026 * 4 + 2: "20261114"}, "fy_bad": set()}
+    assert DRK.filed_missing(pts, meta, today="20261115") == 2026 * 4 + 2
+    assert DRK.filed_missing(pts + [{"n": 2026 * 4 + 2, "fs": "OFS"}], meta, today="20261115") is None
+    assert DRK.filed_missing(pts + [{"n": 2026 * 4 + 2, "품질": ["gap"]}], meta, today="20261115") == 2026 * 4 + 2   # 빈 칸은 자료가 아니다
+    assert DRK.filed_missing(pts, meta, today="20261214") == 2026 * 4 + 2                  # 공시 뒤 30일까지는 일시 오류
+    assert DRK.filed_missing(pts, meta, today="20261215") is None                          # 그 뒤엔 원장이 끝내 없는 분기로 본다
+    assert DRK.filed_missing(pts, dict(meta, fy_bad={2026}), today="20261115") is None     # 결산월 다른 해는 보지 않는다
+    assert DRK.filed_missing(pts, {}, today="20261115") is None
+
+
+# ---------------------------------------------------------------- 서버 S2 — 예산이 끝난 뒤 '네트워크가 필요한 회사'만 건너뛰는 판정
+def test_needs_net_mirrors_fetch_predicates(fin_dir):
+    meta = {"filed": {2024 * 4 + 3: "20250310"}, "fy_bad": {2023}, "amend": {}}
+    for r in ("11013", "11012", "11014", "11011"):
+        _ledger(fin_dir, "C", 2024, r, status="000", rows=[{"sj_div": "IS"}], ymd="20250401")
+    assert DRK.needs_net("C", [2023, 2024], meta) is False            # 2023 은 결산월 다른 해 — 안 본다. 2024 원장은 다 있다
+    assert DRK.needs_net("C", [2024, 2025], meta) is True             # 2025 원장 파일이 없다
+    assert DRK.needs_net("C", [2024], dict(meta, amend={(2024, 2): "20250402"})) is True    # 정정 공시가 파일보다 뒤
+    _ledger(fin_dir, "C", 2024, "11011", ymd="20250310")              # 사업보고서 원장을 공시 당일 013 으로 받아 둠
+    assert DRK.needs_net("C", [2024], meta) is True
+    _ledger(fin_dir, "C", 2024, "11011", ymd="20250601")              # 공시 뒤에 받은 CFS 013(별도만 내는 회사) — OFS 를 본다
+    assert DRK.needs_net("C", [2024], meta) is True                   # OFS 파일이 없다
+    _ledger(fin_dir, "C", 2024, "11011", fs="OFS", status="000", rows=[{"sj_div": "IS"}], ymd="20250601")
+    assert DRK.needs_net("C", [2024], meta) is False
+
+
+# ---------------------------------------------------------------- F2 — 거짓 분할 · 병합
+def test_share_basis_merger_window_does_not_guess_split_from_integer_ratio():
+    """창에 합병 · 유상증자 공시만 있으면 정수 비율(5배)로 분할을 짐작하지 않는다 — 합병 신주는 주가를 보정하지 않는다.
+    같은 모양에 공시가 없으면 새 수준이 두 분기 머문 뒤에 분할로 받는다."""
+    sh = {"2025Q1": 10e6, "2025Q2": 10e6, "2025Q3": 50e6, "2025Q4": 50.5e6, "2026Q1": 49.8e6}
+    out = DRK.share_basis(sh, [("20250820", "주요사항보고서(회사합병결정)")])
+    assert [s["kind"] for s in out["splits"]] == ["증자 등(주가 보정 없음)"] and abs(out["now"]["2025Q1"] - 10e6) < 1
+    out = DRK.share_basis(sh, [])
+    assert [s["kind"] for s in out["splits"]] == ["분할·병합"] and abs(out["now"]["2025Q1"] - 50e6) < 1
+
+
+def test_share_basis_undisclosed_split_needs_two_later_quarters():
+    sh = {"2025Q1": 10e6, "2025Q2": 10e6, "2025Q3": 50e6}
+    assert DRK.share_basis(sh, [])["splits"][0]["kind"] == "증자 등(주가 보정 없음)"           # 뒤 분기가 없다 — 아직 모름
+    sh["2025Q4"] = 50.5e6
+    assert DRK.share_basis(sh, [])["splits"][0]["kind"] == "증자 등(주가 보정 없음)"           # 하나뿐
+    sh["2026Q1"] = 49.8e6
+    assert DRK.share_basis(sh, [])["splits"][0]["kind"] == "분할·병합"
+    out = DRK.share_basis({"2025Q1": 10e6, "2025Q2": 10e6, "2025Q3": 50e6}, [("20250820", "주식분할결정")])
+    assert out["splits"][0]["kind"] == "분할·병합" and abs(out["now"]["2025Q2"] - 50e6) < 1   # 공시로 확인된 분할은 곧바로
+
+
+def test_share_basis_posco_international_shape():
+    """포스코인터내셔널 2022 — 틀린 4분기 역산 1,030만 주(0.084배, 12:1 꼴)가 합병 결정만 있는 창에 끼고, 다음 값은 합병 뒤 1.70억(×1.38 — 한 분기 튐
+    거르기가 못 잡는다). 예전엔 '12:1 병합'으로 앞 기록 전부에 ×12 가 걸려 2019Q4 PER 이 6.6 대신 0.55 였다."""
+    sh = {"2021Q4": 123.49e6, "2022Q1": 123.37e6, "2022Q2": 123.39e6, "2022Q4": 10.32e6,
+          "2023Q2": 170.13e6, "2023Q3": 170.16e6, "2023Q4": 179.65e6, "2024Q1": 170.31e6}
+    sev = [("20220812", "주요사항보고서(회사합병결정)"), ("20220817", "주요사항보고서(회사합병결정)"), ("20220926", "주요사항보고서(회사합병결정)")]
+    out = DRK.share_basis(sh, sev)
+    assert not [s for s in out["splits"] if s["kind"].startswith("분할")]
+    assert abs(out["now"]["2021Q4"] - 123.49e6) < 1 and "2022Q4" not in out["now"]
+
+
+def test_share_basis_sk_innovation_shape():
+    """SK이노베이션 2023Q4 — 역산 7.6억 주(실제 약 0.97억)가 5.88배 · 0.126배 두 '분할'로 읽혀 그 앞 기록 전부에 ×0.743 이 걸렸다.
+    공시 없는 큰 변화의 새 수준이 바로 되돌아가면(나가는 쪽도 공시 없음) 그 분기는 자료 오류로 버리고 앞뒤를 잇는다."""
+    sh = {"2023Q1": 85.49e6, "2023Q2": 87.49e6, "2023Q3": 129.82e6, "2023Q4": 763.98e6, "2024Q2": 96.46e6,
+          "2024Q3": 96.47e6, "2024Q4": 117.97e6, "2025Q1": 148.77e6, "2025Q2": 148.76e6}
+    sev = [("20230623", "주요사항보고서(유상증자결정)"), ("20230802", "주요사항보고서(유상증자결정)"),
+           ("20230907", "주요사항보고서(유상증자결정)"), ("20240717", "주요사항보고서(회사합병결정)")]
+    out = DRK.share_basis(sh, sev)
+    assert out["splits"] == [] and "2023Q4" not in out["now"]
+    assert all(abs(out["now"][k] - v) < 1 for k, v in sh.items() if k != "2023Q4")      # 앞 기록에 비율이 걸리지 않는다
+    sev_adj = sev + [("20240101", "주식병합결정")]                                       # 나가는 쪽에 병합 공시가 있으면 버리지 않는다
+    assert "2023Q4" in DRK.share_basis(sh, sev_adj)["now"]
+
+
+def test_share_basis_keeps_level_changed_by_merger_then_disclosed_consolidation():
+    """코스텍시스 꼴 — 합병 신주로 주식 수가 4.9배(공시 없는 분할 아님), 두 분기 뒤 공시된 주식 병합으로 다시 0.35배.
+    새 수준이 두 분기 머물지 못했지만 그 사이에 공시된 병합이 있으니 '튄 분기'로 버리지 않는다(합병 신주 → 증자 등, 병합 → 분할·병합)."""
+    sh = {"2022Q3": 2.0e6, "2022Q4": 2.0e6, "2023Q1": 9.8e6, "2023Q2": 9.9e6, "2023Q4": 3.46e6, "2024Q1": 3.5e6}
+    sev = [("20221228", "주요사항보고서(회사합병결정)"), ("20230105", "주요사항보고서(회사합병결정)"), ("20231026", "주식병합결정")]
+    out = DRK.share_basis(sh, sev)
+    assert "2023Q1" in out["now"]
+    assert [(s["at"], s["kind"]) for s in out["splits"]] == [("2023Q1", "증자 등(주가 보정 없음)"), ("2023Q4", "분할·병합")]
+    assert out["now"]["2022Q3"] == pytest.approx(2.0e6 * 3.46 / 9.9)                 # 앞 기록엔 병합 비율만 걸린다(합병 비율은 안 건다)
+
+
+def test_q4_eps_with_opposite_sign_q3_cumulative_gives_no_share_count(monkeypatch):
+    """포스코인터내셔널 2022 — 3분기 누적 EPS −4,042 · 누적 순이익 +4,987억. 연간 − 누적으로 뗀 4분기 EPS 8,822 는 틀린 값이라
+    그 분기 주식 수(1,030만)를 쓰지 않는다. 4분기 EPS_adj 는 이웃 분기 주식 수로."""
+    E8 = 1e8
+    t = {(2022, 1): mk_q(9.9e12, ni=1605 * E8, EPS=1301.0),
+         (2022, 2): mk_q(11.0e12, cum=20.9e12, ni=2289 * E8, EPS=1855.0, **{"지배순이익_누적": 3894 * E8, "EPS_누적": 3156.0}),
+         (2022, 3): mk_q(9.0e12, cum=29.9e12, ni=1093 * E8, EPS=-886.0, **{"지배순이익_누적": 4987 * E8, "EPS_누적": -4042.0}),
+         (2022, 4): mk_q(37.9e12, ni=5897 * E8, EPS=4780.0),
+         (2023, 1): mk_q(8.3e12, ni=1807 * E8, EPS=1062.0),
+         (2023, 2): mk_q(8.9e12, cum=17.2e12, ni=2237 * E8, EPS=1315.0),
+         (2023, 3): mk_q(8.0e12, cum=25.2e12, ni=2006 * E8, EPS=1179.0)}
+    pts = run_series(monkeypatch, t, [2022, 2023])
+    by = {p["label"]: p for p in pts}
+    assert by["2022Q4"]["EPS"] == 4780.0 + 4042.0 and by["2022Q4"].get("주식수_제외") is True
+    assert not by["2022Q3"].get("주식수_제외") and not by["2023Q1"].get("주식수_제외")
+    DRK.per_share(pts, [("20220812", "주요사항보고서(회사합병결정)")])
+    assert abs(by["2022Q1"]["EPS_adj"] - 1301) < 1                                      # ×12 가 안 걸린다
+    assert 500 < by["2022Q4"]["EPS_adj"] < 800 and by["2022Q3"]["EPS_adj"] > 0          # 4분기 · 3분기는 이웃 분기 주식 수로(부호도 순이익 쪽)
+
+
+# ---------------------------------------------------------------- F5 — 매출 없는 분기도 주식 수
+def test_per_share_without_revenue_still_gets_shares():
+    """매출 줄이 없는 은행 · 지주(KB금융 꼴) — 순이익 ÷ EPS 로 주식 수와 EPS_TTM 을 낸다. 매출이 있는 분기의 0.5% 조건은 그대로."""
+    pts = grid([0] * 6)
+    for p in pts:
+        p["지배순이익"], p["EPS"] = 1.4e12, 3600.0
+    DRK.per_share(pts, [])
+    assert pts[-1]["EPS_TTM"] == pytest.approx(4 * 3600.0) and pts[-1]["주식수"] == pytest.approx(1.4e12 / 3600)
+    small = grid([0] * 6)
+    for p in small:
+        p["지배순이익"], p["EPS"], p["매출액"] = 1e8, 10.0, 1e12                 # 순이익이 매출의 0.01% — 반올림 EPS 로 주식 수가 흔들린다
+    DRK.per_share(small, [])
+    assert all(p["주식수"] is None and p["EPS_TTM"] is None for p in small)
+    mixed = grid([0] * 6)                                                    # IFRS17 뒤 매출 줄이 끊긴 보험사 — 끊긴 뒤에도 EPS_adj 가 이어진다
+    for i, p in enumerate(mixed):
+        p["지배순이익"], p["EPS"] = 2e11, 4000.0
+        if i < 2:
+            p["매출액"] = 5e12
+    DRK.per_share(mixed, [])
+    assert all(p["EPS_adj"] == pytest.approx(4000.0) for p in mixed) and mixed[-1]["EPS_TTM"] == pytest.approx(16000.0)
+
+
+# ---------------------------------------------------------------- F4 — 금융사 기준은 최근 8개 자료 분기로
+def test_pick_basis_recent_eight_data_quarters():
+    ins = [{"n": i, "fs": "CFS", "매출액": 1e12 if i < 30 else None} for i in range(40)]     # IFRS17 뒤 매출 줄이 끊긴 보험사(최근 10분기)
+    assert DRK.pick_basis(ins, True) == "영업이익"
+    assert DRK.pick_basis(ins, False) == "매출"                                             # 금융이 아니면 늘 매출
+    ins[33]["매출액"] = 1e12                                                               # 최근 8분기 안에 매출이 한 분기라도 있으면 매출
+    assert DRK.pick_basis(ins, True) == "매출"
+    tail = [dict(p, 매출액=1e12) for p in ins[:30]] + [{"n": 30 + i, "품질": ["gap"]} for i in range(10)]   # 끝의 빈 칸은 자료 분기가 아니다
+    assert DRK.pick_basis(tail, True) == "매출"
+    assert DRK.pick_basis([], True) == "영업이익"
+
+
+# ---------------------------------------------------------------- F3 — 마지막 자료 분기 뒤 분할이면 PER 을 비운다
+def test_hold_per_blanks_every_per_while_split_after():
+    pts = [{"PER_TTM": 10.0}, {"PER_TTM": 12.0, "EPS_TTM": 1000.0}]
+    assert DRK.hold_per(pts, []) is False and pts[1]["PER_TTM"] == 12.0
+    assert DRK.hold_per(pts, [{"date": "20260901", "title": "주식분할결정"}]) is True
+    assert all("PER_TTM" not in p for p in pts) and pts[1]["EPS_TTM"] == 1000.0
+
+
+# ---------------------------------------------------------------- F6 — 3개월 칸에 적힌 누적
+def test_cumulative_written_in_quarter_column_is_differenced(monkeypatch):
+    """DL 2024 — 반기 · 3분기 보고서가 3개월 칸에 누적을 적었다(2.90조 = 반기 누적, 4.32조 = 9개월; 비교 칸은 빔).
+    같은 해 바로 앞 분기에 같은 기준 누적이 있으면 분기 단독 = 누적 − 앞 누적(EPS · 순이익도)."""
+    E8 = 1e8
+    t = {(2024, 1): mk_q(1.4029e12, cum=1.4029e12, ni=200 * E8, EPS=500.0, **{"지배순이익_누적": 200 * E8, "EPS_누적": 500.0}),
+         (2024, 2): mk_q(2.8962e12, cum=2.8962e12, ni=399 * E8, EPS=998.0, **{"지배순이익_누적": 399 * E8, "EPS_누적": 998.0}),
+         (2024, 3): mk_q(4.3185e12, cum=4.3185e12, ni=606 * E8, EPS=1516.0, **{"지배순이익_누적": 606 * E8, "EPS_누적": 1516.0})}
+    by = {p["label"]: p for p in run_series(monkeypatch, t, [2024])}
+    assert by["2024Q1"]["매출액"] == 1.4029e12
+    assert by["2024Q2"]["매출액"] == pytest.approx(2.8962e12 - 1.4029e12) and by["2024Q2"]["EPS"] == pytest.approx(498.0)
+    assert by["2024Q3"]["매출액"] == pytest.approx(4.3185e12 - 2.8962e12) and by["2024Q3"]["EPS"] == pytest.approx(518.0)
+    assert by["2024Q3"]["지배순이익"] == pytest.approx(207 * E8) and by["2024Q2"]["품질"] == [] and by["2024Q3"]["품질"] == []
+    assert t[(2024, 2)]["매출액"] == 2.8962e12                                          # 원장 사본만 고친다
+    t[(2024, 2)] = mk_q(2.8962e12, cum=2.8962e12, fs="OFS")                             # 앞 분기와 기준(fs)이 다르면 비우고 basis
+    q2 = {p["label"]: p for p in run_series(monkeypatch, t, [2024])}["2024Q2"]
+    assert q2.get("매출액") is None and q2.get("EPS") is None and "basis" in q2["품질"]
+    first = {(2018, 2): mk_q(9.0e11, cum=9.0e11), (2018, 3): mk_q(1.0e12, cum=1.9e12)}   # 분할 신설 회사의 첫 반기 — 앞 분기 원장이 없다
+    pts = run_series(monkeypatch, first, [2018])
+    assert pts[0]["label"] == "2018Q2" and pts[0]["매출액"] == 9.0e11 and pts[0]["품질"] == [] and pts[1]["매출액"] == 1.0e12
+
+
+# ---------------------------------------------------------------- F7 — 보고서 하나가 통째로 ×1e6
+def test_report_scaled_by_million_is_divided_and_tagged(monkeypatch):
+    """동성케미컬 2017 반기 꼴 — 매출 · 순이익 · EPS 가 모두 ×1e6. 순이익 ÷ EPS 는 맞아 EPS 단위 검사로는 못 잡는다 —
+    분기 매출이 앞뒤 분기 둘 다의 100배를 넘으면 그 보고서 손익(비교 칸 포함)을 ÷1e6(안 맞으면 ÷1e3)로 맞추고 unit."""
+    E8 = 1e8
+    t = {(2017, 1): mk_q(2.0e11, ni=40 * E8, EPS=90.0),
+         (2017, 2): mk_q(2.1e17, prev=1.9e17, ni=45e14, EPS=51e6),
+         (2017, 3): mk_q(2.2e11, cum=6.3e11, ni=42 * E8, EPS=95.0)}
+    q2 = {p["label"]: p for p in run_series(monkeypatch, t, [2017])}["2017Q2"]
+    assert q2["매출액"] == pytest.approx(2.1e11) and q2["매출액_전"] == pytest.approx(1.9e11) and q2["EPS"] == pytest.approx(51.0)
+    assert q2["지배순이익"] == pytest.approx(45 * E8) and q2["품질"] == ["unit"] and q2["YoY_r"] == pytest.approx((2.1 / 1.9 - 1) * 100)
+    t[(2017, 2)] = mk_q(2.1e14, ni=45e11, EPS=51e3)                                        # ×1e3
+    q2 = {p["label"]: p for p in run_series(monkeypatch, t, [2017])}["2017Q2"]
+    assert q2["매출액"] == pytest.approx(2.1e11) and q2["EPS"] == pytest.approx(51.0) and q2["품질"] == ["unit"]
+    t[(2017, 2)] = mk_q(5.0e15, ni=1e12, EPS=10.0)                                         # ÷1e6 · ÷1e3 둘 다 앞뒤 평균의 0.2~5배 밖 — 비운다
+    q2 = {p["label"]: p for p in run_series(monkeypatch, t, [2017])}["2017Q2"]
+    assert q2.get("매출액") is None and q2.get("EPS") is None and q2["품질"] == ["unit"]
+    t[(2017, 2)] = mk_q(1.2e13)                                                            # 60배 — 진짜 큰 분기일 수 있다(손대지 않음)
+    q2 = {p["label"]: p for p in run_series(monkeypatch, t, [2017])}["2017Q2"]
+    assert q2["매출액"] == 1.2e13 and "unit" not in q2["품질"]
+    t4 = {(2017, 3): mk_q(2.2e11, cum=6.3e11), (2017, 4): mk_q(8.6e17), (2018, 1): mk_q(2.4e11)}   # 사업보고서가 ×1e6 — 연간 쪽을 나눈다
+    q4 = {p["label"]: p for p in run_series(monkeypatch, t4, [2017, 2018])}["2017Q4"]
+    assert q4["매출액"] == pytest.approx(8.6e11 - 6.3e11) and q4["품질"] == ["unit"]
