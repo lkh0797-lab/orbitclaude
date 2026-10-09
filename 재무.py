@@ -192,17 +192,25 @@ def fetch_statement(corp_code, year, reprt_code, fs_div="CFS"):
                 return _or_body(d, corp_code, year, reprt_code, fs_div)
         except Exception:
             pass
-    r = requests.get(DART + "/fnlttSinglAcntAll.json", timeout=90, params={
-        "crtfc_key": API_KEY, "corp_code": corp_code, "bsns_year": str(year),
-        "reprt_code": reprt_code, "fs_div": fs_div})
-    r.raise_for_status()
-    js = r.json()
+    try:
+        r = requests.get(DART + "/fnlttSinglAcntAll.json", timeout=90, params={
+            "crtfc_key": API_KEY, "corp_code": corp_code, "bsns_year": str(year),
+            "reprt_code": reprt_code, "fs_div": fs_div})
+        r.raise_for_status()
+        js = r.json()
+    except Exception:
+        # 네트워크 · HTTP 오류 — 본문으로 대신하지 않는다. 받는 쪽(드러켄밀러)이 이 빌드를 캐시하지 않게 표시만 단다
+        return {"status": "net", "list": [], "transient": True}
     data = {"status": js.get("status"), "list": js.get("list") or []}
     # 정상(000)과 '데이터 없음'(013)만 캐시한다. 한도 초과(020)·점검중(800) 같은
     # 일시 오류를 캐시하면 그 해는 영영 빈 채로 남는다.
     if data["status"] in ("000", "013"):
         with open(cache, "w", encoding="utf-8") as fh:
             json.dump(data, fh, ensure_ascii=False)
+    else:
+        # 일시 오류는 본문으로 대신하지 않는다(대신하면 받는 쪽이 오류를 못 본다 — 2026-10-09)
+        time.sleep(0.25)
+        return dict(data, transient=True)
     time.sleep(0.25)
     return _or_body(data, corp_code, year, reprt_code, fs_div)
 

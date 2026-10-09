@@ -40,6 +40,7 @@ IS_PICK = {
     "영업이익": (["dart_OperatingIncomeLoss",
                 "ifrs-full_ProfitLossFromOperatingActivities"], r"^영업(?:이익|손익|손실)"),
     "당기순이익": (["ifrs-full_ProfitLoss"], r"^당기순(?:이익|손익|손실)"),
+    "지배순이익": (["ifrs-full_ProfitLossAttributableToOwnersOfParent"], r"^(지배기업\s*)?(소유주|지배주주|지배기업).*(지분|순이익|귀속)"),
     "EPS": (["ifrs-full_BasicEarningsLossPerShare",
              "ifrs-full_BasicEarningsLossPerShareFromContinuingOperations"],
             r"^(?:보통주\s*)?(?:계속영업\s*)?기본\s*주당"),
@@ -93,27 +94,55 @@ def _capex(rows):
     return None
 
 
-def period_data(corp_code, year, q):
-    """한 분기의 원장. 사업보고서는 연간치라 여기서는 그대로 두고,
-    4분기 단독은 series() 에서 연간 − 3분기누적으로 뗀다."""
+NET = {"budget": None, "used": 0}   # offline 빌드의 네트워크 예산 — 캐시 파일이 없을 때만 센다
+
+
+def _fetch(corp_code, year, reprt, fs_div, offline):
+    if offline:
+        path = os.path.join(FIN.FIN_DIR, "%s_%s_%s_%s.json" % (corp_code, year, reprt, fs_div))
+        if not os.path.exists(path):
+            if NET["budget"] is not None and NET["used"] >= NET["budget"]:
+                return {"status": "budget", "list": [], "transient": True}
+            NET["used"] += 1
+    return FIN.fetch_statement(corp_code, year, reprt, fs_div)
+
+
+def period_data(corp_code, year, q, offline=False):
+    """한 분기의 원장 — 그 보고서의 값(thstrm) · 누적(thstrm_add) · 비교기간(frmtrm_q · frmtrm_add · frmtrm) · 기준(CFS/OFS) · 출처 · rcept.
+    4분기 단독은 series() 에서 연간 − 3분기 누적으로 뗀다."""
     reprt = REPRT_BY_Q[q]
-    st = FIN.fetch_statement(corp_code, year, reprt)
-    rows = st.get("list") or []
+    st = _fetch(corp_code, year, reprt, "CFS", offline)
+    if st.get("transient"):
+        return {"_transient": True}
+    rows, fs = st.get("list") or [], "CFS"
     if not rows:
-        st = FIN.fetch_statement(corp_code, year, reprt, "OFS")
-        rows = st.get("list") or []
+        st = _fetch(corp_code, year, reprt, "OFS", offline)
+        if st.get("transient"):
+            return {"_transient": True}
+        rows, fs = st.get("list") or [], "OFS"
     if not rows:
         return None
     d = {}
     d.update(_grab(rows, ("IS", "CIS"), IS_PICK, "thstrm_amount"))
     d.update(_grab(rows, ("BS",), BS_PICK, "thstrm_amount"))
-    cum = _grab(rows, ("IS", "CIS"), IS_PICK, "thstrm_add_amount")
-    for k, v in cum.items():
-        d[k + "_누적"] = v
+    for fld, suf in (("thstrm_add_amount", "_누적"), ("frmtrm_q_amount", "_전"), ("frmtrm_add_amount", "_전누적"), ("frmtrm_amount", "_전연")):
+        for k, v in _grab(rows, ("IS", "CIS"), IS_PICK, fld).items():
+            d[k + suf] = v
+    if q == 1:
+        for k in IS_PICK:
+            if d.get(k + "_전") is None and d.get(k + "_전누적") is not None:
+                d[k + "_전"] = d[k + "_전누적"]
+    if q != 4:                              # 분기 · 반기 보고서의 frmtrm_amount 는 대개 없고, 있으면 누적값이다 — 쓰지 않는다
+        for k in IS_PICK:
+            d.pop(k + "_전연", None)
     cx = _capex(rows)
     if cx is not None:
         d["CAPEX"] = cx
-    return d or None
+    if not any(not k.startswith("_") for k in d):
+        return None
+    rc = [str(r.get("rcept_no") or "")[:8] for r in rows if r.get("rcept_no")]
+    d.update(_fs=fs, _src="body" if st.get("status") == "body" else "api", _rcept=max(rc) if rc else None, _transient=False)
+    return d
 
 
 def series(corp_code, stock_code, years, prices=None):
