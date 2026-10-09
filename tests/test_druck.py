@@ -490,8 +490,8 @@ def year_table(fs_q1="CFS", fs_q4="CFS"):
             (2024, 4): mk_q(460, op=40, capex=20, fs=fs_q4, 재고자산=460, 매출채권=230)}
 
 
-def test_version_is_2():
-    assert DRK.VERSION == 2
+def test_version_is_3():
+    assert DRK.VERSION == 3
 
 
 def test_q4_derived_value_and_restated_yoy(monkeypatch):

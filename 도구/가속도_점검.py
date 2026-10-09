@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """가속도 개편 점검 — (pipe) _pipe_rows 분할 보정이 리팩터 앞뒤로 같은가 · (def) accel 의 B 가 옛 백테스트 B 와 같은가 · (cases) 회귀 사례 · (api) 소비처 응답.
-실행: python 도구/가속도_점검.py pipe --save before.json  /  python 도구/가속도_점검.py pipe --compare before.json  /  python 도구/가속도_점검.py def"""
+실행: python 도구/가속도_점검.py pipe --save before.json  /  python 도구/가속도_점검.py pipe --compare before.json  /  python 도구/가속도_점검.py def
+      python 도구/가속도_점검.py cases      (뷰어가 떠 있어야 한다 — 127.0.0.1:8765. 실패 0 이어야 통과)"""
 import os, sys, json, importlib.util as ilu
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
@@ -70,9 +71,68 @@ def defcheck():
     return bad
 
 
+API = "http://127.0.0.1:8765"
+
+
+def _pt(d, label):
+    """응답 d 의 points 에서 분기 label 의 점 — 없으면 StopIteration(그 사례는 실패로 센다)."""
+    return next(p for p in d["points"] if p["label"] == label)
+
+
+def _per_range(d, lo_label, hi_label, lo, hi, least=20):
+    """lo_label~hi_label 사이 PER_TTM 이 실제로 있는 점이 least 개 이상이고 모두 [lo, hi] 안인가 — 값이 비어서 통과하는 일이 없게."""
+    v = [p["PER_TTM"] for p in d["points"] if lo_label <= p["label"] <= hi_label and p.get("PER_TTM")]
+    return len(v) >= least and all(lo <= x <= hi for x in v)
+
+
+# (종목코드, 판정 함수(응답 → 참/거짓), 이름) — 실제 응답 모양에 맞춘다: points[].{label · 변곡 · 매출액 · EPS · EPS_TTM · PER_TTM}, 최상위 basis · fy
+CASES = [
+    ("005930", lambda d: _per_range(d, "2012Q1", "2018Q4", 5, 30), "삼성 2012~2018 공시일 PER 5~30"),
+    ("005930", lambda d: _pt(d, "2025Q4")["변곡"] == "▲", "삼성 2025Q4 ▲"),
+    ("005930", lambda d: _pt(d, "2026Q1")["변곡"] is None, "삼성 2026Q1 같은 쪽 — 변곡 아님"),
+    ("010120", lambda d: abs(_pt(d, "2026Q2")["EPS_TTM"] / _pt(d, "2026Q1")["EPS_TTM"] - 1) < 0.6, "LS일렉트릭 분할 앞뒤 EPS_TTM 한 기준"),
+    ("000210", lambda d: _pt(d, "2020Q4").get("매출액") is None, "DL 2020Q4 Q4 없음"),
+    ("042370", lambda d: bool(d.get("fy")), "비츠로테크 결산월 다름"),
+    ("105560", lambda d: d.get("basis") == "영업이익", "KB 영업이익 기준"),
+    # 원값 EPS 는 못 고친 분기(2015Q4 매출 없음 · 2017Q3 누적을 ×1e6 으로 적음)에 공시 그대로 남는다(per_share) — 고친 값은 EPS_adj · EPS_TTM · PER_TTM 에 있다
+    ("003550", lambda d: all(abs(p.get("EPS_adj") or 0) < 1e6 and abs(p.get("EPS_TTM") or 0) < 1e6 for p in d["points"]) and _per_range(d, "2015Q4", "2018Q4", 3, 30, least=10), "LG EPS 단위 — 고친 EPS_adj · EPS_TTM < 1e6, 2015Q4~2018Q4 PER 3~30"),
+    ("035720", lambda d: 20 <= _pt(d, "2026Q2")["EPS"] <= 60, "카카오 2026Q2 EPS 중단영업 포함 전체 기준(37 안팎 · 계속영업만이면 390)"),
+]
+
+
+def cases(patience=1800):
+    """회귀 사례 — 켜져 있는 뷰어의 /api/druck 으로. 새 VERSION 직후 첫 호출은 그 회사를 처음부터 계산해 30~60초 걸린다(동기 응답).
+    building 이 오면 patience 초까지 3초마다 다시 묻는다. 실패 수를 돌려준다."""
+    import urllib.request, time
+    fails = 0
+    for code, f, name in CASES:
+        ok = False
+        try:
+            t0 = time.time()
+            while True:
+                d = json.load(urllib.request.urlopen(API + "/api/druck?code=" + code, timeout=300))
+                if not d.get("building") or time.time() - t0 > patience:
+                    break
+                time.sleep(3)
+            if d.get("building"):
+                name += " (계산이 끝나지 않음)"
+            else:
+                ok = bool(f(d))
+                if not ok:
+                    name += " (v%s)" % d.get("v")
+        except Exception as e:
+            name += " (%s: %s)" % (type(e).__name__, e)
+        fails += not ok
+        print(("OK  " if ok else "FAIL") + "  " + code + "  " + name, flush=True)
+    print("실패 %d" % fails)
+    return fails
+
+
 if __name__ == "__main__":
     if sys.argv[1] == "def":
         sys.exit(1 if defcheck() else 0)
+    if sys.argv[1] == "cases":
+        sys.exit(1 if cases() else 0)
     S = load_server()
     if sys.argv[1] == "pipe":
         res = pipe(S)
