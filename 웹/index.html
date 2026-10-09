@@ -2130,6 +2130,7 @@ table.mtx td .mg.flat{color:var(--faint)}
 .fincell .fd.up{color:var(--add)} .fincell .fd.dn{color:var(--del)}
 .fincell .fd .pc{opacity:.75}
 .finnote{font-size:11.5px;color:var(--faint);margin-top:9px;line-height:1.6}
+.finnote.warn{color:var(--warn)}
 
 .bcard{border:1px solid var(--line);border-radius:10px;background:var(--panel);
   margin-bottom:10px;overflow:hidden}
@@ -4487,6 +4488,10 @@ async function viewValue(p, force){
   [['수집한 회사',d.n_univ],['고점 '+(d.rules?d.rules.dd:-25)+'%↓',d.n_fell],['① 흑자 · ② 이익 지킴',rows.length],['④ 저평가',d.running?undefined:A.length]]
     .forEach(([k,v],i)=>{ if(i) fn.appendChild(el('i',null,'→')); const x=el('div'); x.appendChild(el('b',null,v===undefined||v===null?'—':String(v))); x.appendChild(el('span',null,k)); fn.appendChild(x); });
   body.appendChild(fn);
+  const km=d.kis_meta;                      // 증권사 상태(관리 · 정지 · 정리매매 · 투자위험 → 관찰) 기준일
+  if(km&&km.date) body.appendChild(el('div','finnote'+(km.old?' warn':''),'증권사 종목 상태: '+km.date.slice(0,4)+'-'+km.date.slice(4,6)+'-'+km.date.slice(6,8)+' 기준 '+km.n+'종목'+
+    (km.old?' — '+Math.round(km.age_days)+'일 지난 자료(차트 발굴 스캔이 돌지 않았다). 그 뒤 지정 · 해제는 반영 안 됨':'')));
+  else body.appendChild(el('div','finnote','증권사 종목 상태 없음 — 차트 발굴 스캔(증권사 연결)이 21일 안에 돈 적이 없어 관리 · 정지 종목을 증권사 기준으로 거르지 못했다(공시 위험만 반영).'));
   S.valBt=d.bt||null;                       // 펼침 점수 머리말의 검증 숫자(valBtNums)
   if(d.bt) body.appendChild(valEvidence(d.bt));
   body.appendChild(valTable(A,'저평가','이익은 지켰고, 주가는 25% 넘게 빠졌고, 빨간불이 없고, 점수 50↑ — 같은 이익에 시장이 덜 쳐주는 곳'));
@@ -6427,6 +6432,8 @@ function valTable(rows0, title, sub) {
     const td = el('td'); const a = el('a', null, r.name); a.href = '#'; a.onclick = e => { e.preventDefault(); e.stopPropagation(); pick(r.code); }; td.appendChild(a);
     td.appendChild(el('small', null, ' ' + r.code + ' · ' + (r.industry || '') + (r.cap_rank ? ' · 시총 ' + r.cap_rank + '위' : '')));
     const rp = valRiskPill(r.risk); if (rp) td.appendChild(rp);
+    (r.kst || []).forEach(k => { const p = el('span', 'vdRiskP ' + (/관리|정지|정리|위험/.test(k) ? 'r' : 'o'), k);
+      p.title = '증권사(한국투자증권) 종목 상태 — 차트 발굴 스캔이 받은 값'; td.appendChild(p); });
     td.appendChild(el('div', 'dipFwd', '고점 ' + won(r.hi) + '(' + r.hi_d.slice(2, 4) + '.' + r.hi_d.slice(4, 6) + ') → 지금 ' + won(r.price) + ' · 최근 3개월 ' + valPct(r.ret3m) +
       (r.mp_yoy != null ? ' · 업종 가격 ' + valPct(r.mp_yoy) : '') + (r.cyc != null ? ' · 재고 순환 ' + (r.cyc >= 0 ? '+' : '') + Math.round(r.cyc) + '%p' : '')));
     (r.tier_why || []).forEach(x => td.appendChild(el('div', 'dipWhy', x)));

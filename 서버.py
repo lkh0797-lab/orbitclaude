@@ -8438,9 +8438,12 @@ def _disc_refresh():
 
 
 # 증권사(한국투자증권) 공식 종목 상태 — 차트 발굴(Tech) 스캔이 KIS 로 받아 남기는 스냅샷을 읽는다(이 서버는 32비트라 KIS 를 직접 부르지 않는다).
-# 관리종목 · 거래정지 · 정리매매 · 투자위험이면 저평가 등급을 주지 않는다. 투자경고 · 단기과열 · 증거금 100%(신용 불가)는 표시만.
+# 관리종목 · 거래정지 · 정리매매 · 투자위험이면 저평가 등급을 주지 않는다. 투자주의 · 투자경고 · 단기과열은 태그(kst)로 표시만.
+# 스냅샷이 오래돼도(긴 연휴 · PC 꺼짐) 21일까지는 쓴다 — 관리 · 정지 지정은 보통 몇 달 가므로 묵은 상태로 내리는 편이
+# 아무 확인 없이 '저평가'로 되돌리는 것보다 안전하다. 기준일 · 경과일은 화면(kis_meta)에 보인다.
 _KSNAP = {"mt": None, "d": None}
-KIS_SNAP_MAX_AGE = 5 * 86400
+KIS_SNAP_MAX_AGE = 21 * 86400
+KIS_SNAP_WARN_DAYS = 5
 
 
 def _kis_snapshot():
@@ -8460,33 +8463,27 @@ def _kis_snapshot():
     return _KSNAP["d"]
 
 
+def _kis_meta():
+    """화면용 증권사 상태 스냅샷 정보 {date: 자료 기준일, at: 쓴 시각, age_days, old: 경고할 만큼 묵었나, n: 종목 수} 또는 None."""
+    d = _kis_snapshot()
+    if not d or not _KSNAP["mt"]:
+        return None
+    age = (time.time() - _KSNAP["mt"]) / 86400
+    return {"date": d.get("date"), "at": d.get("at"), "age_days": round(age, 1), "old": age > KIS_SNAP_WARN_DAYS,
+            "n": len(d.get("status") or {})}
+
+
 def _kis_tags(st):
-    """KIS 상태 한 종목 → (등급을 내릴 사유 목록, 표시 태그 목록)."""
+    """KIS 상태 한 종목(Tech 스냅샷 status[code] = {stat, tags, ex, marg, cap, …}) → (등급을 내릴 사유 목록, 표시 태그 목록).
+    ex = Tech 의 스캔 제외 사유(거래정지 · 정리매매 · 관리종목 · 투자위험). 증거금 100%는 흔해서(전 종목 68%) 태그로 쓰지 않는다(옛 스냅샷에 있어도 뺀다)."""
     if not st:
         return [], []
     stat = str(st.get("stat") or "")
-    warn = str(st.get("warn") or "00")
-    bad, tags = [], []
-    if st.get("mang") or stat == "51":
-        bad.append("관리종목")
-    if st.get("halt") or stat == "58":
-        bad.append("거래정지")
-    if st.get("sltr"):
-        bad.append("정리매매")
-    if warn == "03" or stat == "52":
-        bad.append("투자위험")
-    if warn == "02" or stat == "53":
-        tags.append("투자경고")
-    elif warn == "01" or stat == "54":
-        tags.append("투자주의")
-    if st.get("short_over") or stat == "59":
-        tags.append("단기과열")
-    try:
-        if float(st.get("marg") or 0) >= 100 or stat == "57":
-            tags.append("증거금100%")
-    except (TypeError, ValueError):
-        pass
-    return bad, bad + tags
+    tags = [t for t in (st.get("tags") or []) if t != "증거금100%"]
+    bad = [st["ex"]] if st.get("ex") else []
+    if not bad:                                   # 옛 스냅샷(ex 없음)이면 상태 코드로
+        bad = [nm for code, nm in (("51", "관리종목"), ("58", "거래정지"), ("52", "투자위험")) if stat == code]
+    return bad, list(dict.fromkeys(bad + tags))
 
 
 def _val_apply_risk(rows):
@@ -8563,6 +8560,7 @@ def value_view(force=False):
     out["rows"] = _val_apply_risk(out.get("rows") or [])
     dr = _disc_risk() or {}
     out["risk_meta"] = {k: dr.get(k) for k in ("기준일", "evidence", "수", "규칙")} if dr else None
+    out["kis_meta"] = _kis_meta()
     spec = _val_score_spec()
     if spec:
         out["bt"] = {k: spec.get(k) for k in ("eval", "n_cand", "firms", "dates", "weights", "groups")}
