@@ -5043,7 +5043,10 @@ function grStocks(body, x, d, p){
     const rgs=Object.entries(rg).map(([k,v])=>k+' '+grPp(v.med)+'(4분기 뒤 매출 '+grPp(v.dG4)+')').join(' · ');
     const whip=bt.whip&&bt.whip.pct!=null&&isFinite(bt.whip.pct) ? ' · 2분기 안에 뒤집힌 헛신호 '+Math.round(bt.whip.pct)+'%' : '';   // 값이 없으면 '0%' 대신 뺀다
     if(rgs) ev.appendChild(el('small',null,'국면별 12개월 초과수익 중앙: '+rgs+whip));
-    ev.appendChild(el('small',null,'효과가 작으니(이긴 비율 '+(up.hit!=null?Math.round(up.hit):'—')+'%) 라벨은 \'사라\'가 아니라 \'거르라\'로 읽는다. 섹터 대비 네 자리의 성적은 검증 전.'));
+    // 처방 문장 없이 잰 값만 — 전환 ↑ · ↓ 의 90% 구간이 둘 다 0 을 걸치면 그렇다고만 적는다(구간이 0 을 걸치면 라벨만으로 고르지 않는다)
+    const straddle=o=>!!(o&&o.ci&&o.ci[0]!=null&&o.ci[1]!=null&&o.ci[0]<=0&&o.ci[1]>=0);
+    ev.appendChild(el('small',null,(straddle(up)&&straddle(dn) ? '전환 ↑ · ↓ 모두 구간이 0 을 걸쳐 라벨만으로 고르지 않는다' : '위 숫자는 잰 값 그대로')+
+      '(이긴 비율 '+(up.hit!=null?Math.round(up.hit):'—')+'%). 섹터 대비 네 자리의 성적은 검증 전.'));
     body.appendChild(ev); }
   // 표
   S.grSt=S.grSt||{}; const st=S.grSt.stocks=S.grSt.stocks||{k:7,dir:'desc'};

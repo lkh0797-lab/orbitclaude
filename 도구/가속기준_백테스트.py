@@ -333,7 +333,7 @@ def report(W, rows):
     _dump(rep, "bt_accel_abc.json")      # 화면이 읽는 bt_accel.json(--from-cache, 띠를 건너는 변곡)을 옛 규칙 표로 덮지 않게 따로
 
 
-# ---------------------------------------------------------------- --from-cache — druck 캐시(v2)로 기저율 · 사건 파일
+# ---------------------------------------------------------------- --from-cache — druck 캐시(지금 DRK.VERSION)로 기저율 · 사건 파일
 def _dump(obj, name):
     """OUT/name 에 원자 쓰기(.tmp → replace) — 서버가 mtime 을 보고 읽다가 반쯤 쓴 파일을 만나지 않게. 읽는 쪽이 열고 있으면 몇 번 다시."""
     os.makedirs(OUT, exist_ok=True)

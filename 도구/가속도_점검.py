@@ -94,14 +94,15 @@ CASES = [
     ("000210", lambda d: _pt(d, "2020Q4").get("매출액") is None, "DL 2020Q4 Q4 없음"),
     ("042370", lambda d: bool(d.get("fy")), "비츠로테크 결산월 다름"),
     ("105560", lambda d: d.get("basis") == "영업이익", "KB 영업이익 기준"),
-    # 원값 EPS 는 못 고친 분기(2015Q4 매출 없음 · 2017Q3 누적을 ×1e6 으로 적음)에 공시 그대로 남는다(per_share) — 고친 값은 EPS_adj · EPS_TTM · PER_TTM 에 있다
-    ("003550", lambda d: all(abs(p.get("EPS_adj") or 0) < 1e6 and abs(p.get("EPS_TTM") or 0) < 1e6 for p in d["points"]) and _per_range(d, "2015Q4", "2018Q4", 3, 30, least=10), "LG EPS 단위 — 고친 EPS_adj · EPS_TTM < 1e6, 2015Q4~2018Q4 PER 3~30"),
+    # 원값 EPS 는 못 고친 분기(2015Q4 매출 없음 · 2017Q3 누적을 ×1e6 으로 적음 · 2017Q4 는 그 연간 − 9M)에 공시 그대로 남는다(per_share) — 고친 값은 EPS_adj · EPS_TTM · PER_TTM 에 있다
+    ("003550", lambda d: all(abs(p.get("EPS_adj") or 0) < 1e6 and abs(p.get("EPS_TTM") or 0) < 1e6 for p in d["points"]) and _per_range(d, "2015Q4", "2018Q4", 3, 30, least=10)
+     and abs(_pt(d, "2017Q3")["EPS_adj"] / 4675 - 1) < 0.05, "LG EPS 단위 — 고친 EPS_adj · EPS_TTM < 1e6, 2017Q3 EPS_adj 4,675(±5%), 2015Q4~2018Q4 PER 3~30"),
     ("035720", lambda d: 20 <= _pt(d, "2026Q2")["EPS"] <= 60, "카카오 2026Q2 EPS 중단영업 포함 전체 기준(37 안팎 · 계속영업만이면 390)"),
 ]
 
 
 def cases(patience=1800):
-    """회귀 사례 — 켜져 있는 뷰어의 /api/druck 으로. 새 VERSION 직후 첫 호출은 그 회사를 처음부터 계산해 30~60초 걸린다(동기 응답).
+    """회귀 사례 — 켜져 있는 뷰어의 /api/druck 으로. 새 VERSION 직후 첫 호출은 그 회사를 처음부터 계산해 느리다(동기 응답).
     building 이 오면 patience 초까지 3초마다 다시 묻는다. 실패 수를 돌려준다."""
     import urllib.request, time
     fails = 0
