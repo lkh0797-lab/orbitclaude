@@ -752,3 +752,152 @@ def test_per_share_unit_error():
     pts[2]["EPS"] = 1000 * 1e6
     DRK.per_share(pts, [])
     assert "unit" in pts[2]["품질"] and abs(pts[2]["EPS_adj"] - 1000) < 1
+
+
+# ------------------------------------------------------------------ EPS 를 합계(계속 + 중단영업) 기준으로 — 서버 _pipe_rows 의 계속영업 EPS + 중단영업 EPS 규칙
+EPS_TOT = "ifrs-full_BasicEarningsLossPerShare"
+EPS_CONT = "ifrs-full_BasicEarningsLossPerShareFromContinuingOperations"
+EPS_DISC = "ifrs-full_BasicEarningsLossPerShareFromDiscontinuedOperations"
+
+
+def test_period_data_eps_total_row_is_used_as_is(monkeypatch):
+    """합계 기본주당이익 줄(태그 BasicEarningsLossPerShare)이 있으면 그 값 — 중단영업 줄이 같이 있어도 더하지 않는다."""
+    amt = dict(thstrm_amount=40, thstrm_add_amount=800, frmtrm_q_amount=30, frmtrm_add_amount=700, frmtrm_amount=950)
+    disc = dict(thstrm_amount=-350, thstrm_add_amount=-100, frmtrm_q_amount=-5, frmtrm_add_amount=-6, frmtrm_amount=-7)
+    for with_disc in (False, True):
+        rows = [row("IS", EPS_TOT, "기본주당이익", **amt)]
+        if with_disc:
+            rows.append(row("IS", EPS_DISC, "중단영업 기본주당이익", **disc))
+        monkeypatch.setattr(DRK.FIN, "fetch_statement", fake_fetch({(2024, "11011", "CFS"): stmt(rows)}))
+        d = DRK.period_data("C", 2024, 4)
+        assert (d["EPS"], d["EPS_누적"], d["EPS_전"], d["EPS_전누적"], d["EPS_전연"]) == (40, 800, 30, 700, 950)
+
+
+def test_period_data_eps_continuing_plus_discontinued_in_every_field(monkeypatch):
+    """계속영업 줄만 있고 중단영업 줄이 따로 있으면 둘을 더해 합계 기준으로 — 값 · 누적 · 전년 같은 분기 · 전년 같은 누적 · 전년 연간 모두."""
+    cont = dict(thstrm_amount=390, thstrm_add_amount=900, frmtrm_q_amount=300, frmtrm_add_amount=800, frmtrm_amount=1000)
+    disc = dict(thstrm_amount=-350, thstrm_add_amount=-100, frmtrm_q_amount=-20, frmtrm_add_amount=-30, frmtrm_amount=-40)
+    rows = [row("IS", EPS_CONT, "계속영업 기본주당이익", **cont), row("IS", EPS_DISC, "중단영업 기본주당이익", **disc)]
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", fake_fetch({(2024, "11011", "CFS"): stmt(rows)}))
+    d = DRK.period_data("C", 2024, 4)
+    assert (d["EPS"], d["EPS_누적"], d["EPS_전"], d["EPS_전누적"], d["EPS_전연"]) == (40, 800, 280, 770, 960)
+
+
+def test_period_data_eps_continuing_plus_discontinued_untagged_names(monkeypatch):
+    """태그가 없는 줄(본문 파서)도 이름으로 같은 규칙 — '중단영업' 이 든 기본 주당 줄을 더한다."""
+    rows = [row("IS", NO_TAG, "계속영업 기본주당이익", thstrm_amount=390),
+            row("IS", NO_TAG, "중단영업 기본주당손익", thstrm_amount=-350)]
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", fake_fetch({(2024, "11013", "CFS"): stmt(rows)}))
+    assert DRK.period_data("C", 2024, 1)["EPS"] == 40
+
+
+def test_period_data_eps_continuing_only_without_discontinued_row(monkeypatch):
+    """중단영업 줄이 없으면 계속영업 값 그대로(더할 게 없다). 중단영업 줄의 한 칸만 비면 그 칸은 계속영업 그대로."""
+    rows = [row("IS", EPS_CONT, "계속영업 기본주당이익", thstrm_amount=390, thstrm_add_amount=900)]
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", fake_fetch({(2024, "11012", "CFS"): stmt(rows)}))
+    d = DRK.period_data("C", 2024, 2)
+    assert d["EPS"] == 390 and d["EPS_누적"] == 900
+    rows.append(row("IS", EPS_DISC, "중단영업 기본주당이익", thstrm_amount=-350))        # 누적 칸은 빈 값
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", fake_fetch({(2024, "11012", "CFS"): stmt(rows)}))
+    d = DRK.period_data("C", 2024, 2)
+    assert d["EPS"] == 40 and d["EPS_누적"] == 900
+
+
+def test_period_data_eps_prefers_total_name_over_continuing_only_name(monkeypatch):
+    """태그 없는 줄이 둘이면 계속영업만 센 줄보다 합계 줄을 먼저(서버 _pipe_rows 의 후보 순서) — 계속영업 줄이 앞에 와도 중단영업을 또 더하지 않는다."""
+    rows = [row("IS", NO_TAG, "계속영업 기본주당이익", thstrm_amount=390),
+            row("IS", NO_TAG, "기본주당이익", thstrm_amount=40),
+            row("IS", NO_TAG, "중단영업 기본주당이익", thstrm_amount=-350)]
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", fake_fetch({(2024, "11013", "CFS"): stmt(rows)}))
+    assert DRK.period_data("C", 2024, 1)["EPS"] == 40
+
+
+def test_period_data_eps_combined_name_is_total(monkeypatch):
+    """'계속영업과 중단영업 …' 이름의 줄은 합계 — 중단영업 줄이 따로 있어도 더하지 않는다(서버 cont 판정: '계속영업과' 는 계속영업만이 아니다)."""
+    rows = [row("IS", EPS_TOT, "계속영업과 중단영업 기본주당이익", thstrm_amount=40),
+            row("IS", EPS_DISC, "중단영업 기본주당이익", thstrm_amount=-350)]
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", fake_fetch({(2024, "11013", "CFS"): stmt(rows)}))
+    assert DRK.period_data("C", 2024, 1)["EPS"] == 40
+
+
+def kakao_table():
+    """카카오 2026Q2 모양 — 약 4억 주. 2026Q2 는 계속영업 순이익 1,724억 − 중단영업 1,560억 = 지배순이익 164억이고,
+    EPS 는 계속영업 431원 · 중단영업 −390원 두 줄뿐이다(합계 줄 없음). 앞 분기는 합계 EPS 줄."""
+    E8 = 10 ** 8
+    t = {}
+
+    def rep(year, reprt, rev, ni, eps_rows, **add):
+        rows = [row("IS", "ifrs-full_Revenue", "매출액", thstrm_amount=rev, thstrm_add_amount=add.get("rev_add", rev)),
+                row("IS", OWNER, "지배기업 소유주지분", thstrm_amount=ni, thstrm_add_amount=add.get("ni_add", ni))] + eps_rows
+        t[(year, reprt, "CFS")] = stmt(rows)
+    rep(2025, "11014", 1_200 * 10 ** 9, 800 * E8, [row("IS", EPS_TOT, "기본주당이익", thstrm_amount=200, thstrm_add_amount=600)],
+        rev_add=3_300 * 10 ** 9, ni_add=2400 * E8)
+    rep(2025, "11011", 4_700 * 10 ** 9, 3000 * E8, [row("IS", EPS_TOT, "기본주당이익", thstrm_amount=750)])        # 연간 → 4분기 단독 = 연간 − 3분기 누적
+    rep(2026, "11013", 1_500 * 10 ** 9, 1200 * E8, [row("IS", EPS_TOT, "기본주당이익", thstrm_amount=300)])
+    rep(2026, "11012", 1_600 * 10 ** 9, 164 * E8, [row("IS", EPS_CONT, "계속영업 기본주당이익", thstrm_amount=431),
+                                                   row("IS", EPS_DISC, "중단영업 기본주당이익", thstrm_amount=-390)])
+    return t
+
+
+def test_per_share_continuing_plus_discontinued_eps_end_to_end(monkeypatch):
+    """period_data → series → per_share. 계속영업 EPS 만 쓰면 2026Q2 주식 수가 4억 → 3,800만 주로 줄어(10배) 분할 · 병합으로 읽히고
+    EPS 가 부푼다. 합계 기준(431 − 390 = 41원)이면 주식 수 4억 그대로, 분할 없음."""
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", fake_fetch(kakao_table()))
+    pts = DRK.series("C", "000000", [2025, 2026], meta={})
+    by = {p["label"]: p for p in pts}
+    assert by["2025Q4"]["EPS"] == 150 and by["2026Q2"]["EPS"] == 41            # 4분기 단독도 합계 기준끼리 뺀다
+    DRK.per_share(pts, [])
+    last = pts[-1]
+    assert last["label"] == "2026Q2"
+    assert abs(last["주식수"] / 400e6 - 1) < 0.01
+    assert abs(last["EPS_adj"] - 41) < 0.5
+    assert abs(last["EPS_TTM"] - (200 + 150 + 300 + 41)) < 1                    # 네 분기 모두 같은 주식 수 · 합계 기준
+    assert last["EPS_TTM_raw"] == 200 + 150 + 300 + 41
+    assert "cut" not in last["품질"]
+
+
+def test_per_share_unfixable_unit_uses_neighbour_shares():
+    """주식 수가 중앙값의 1/300 밑인데 ÷1e3 · ÷1e6 으로도 못 맞추는 분기는 주식 수 열에서 빠지고 'unit' 을 단다.
+    EPS_adj 는 이웃 분기 주식 수로(EPS 자체는 그대로 둔다 — EPS_TTM_raw 에는 그 값이 들어간다)."""
+    pts = grid([0] * 5)
+    for p in pts:
+        p["지배순이익"], p["EPS"], p["매출액"] = 100e8, 1000, 1e12
+    pts[2]["EPS"] = 1000 * 1e4                                  # 구한 주식 수 = 1e3 — 중앙값 1e7 의 1/1e4 (×1e3 → 1e6, ×1e6 → 1e9: 둘 다 중앙값 ±1.8배 밖)
+    DRK.per_share(pts, [])
+    assert "unit" in pts[2]["품질"] and pts[2]["EPS"] == 1000 * 1e4
+    assert abs(pts[2]["주식수"] - 1e7) < 1 and abs(pts[2]["EPS_adj"] - 1000) < 1e-6
+    assert all("unit" not in p["품질"] for i, p in enumerate(pts) if i != 2)
+    assert abs(pts[4]["EPS_TTM"] - 4000) < 1e-6                 # 보정 주식 수로 네 분기 합
+    assert pts[4]["EPS_TTM_raw"] == 1000 * 3 + 1000 * 1e4       # 원래 합 — 못 고친 EPS 가 그대로 들어간다
+
+
+def test_per_share_fixed_unit_eps_raw_sum_uses_corrected_eps():
+    """EPS_TTM_raw 는 단위를 고친 EPS 의 단순 합이다(공시 원값이 아니다) — 분할 보정만 안 한 합."""
+    pts = grid([0] * 5)
+    for p in pts:
+        p["지배순이익"], p["EPS"], p["매출액"] = 100e8, 1000, 1e12
+    pts[3]["EPS"] = 1000 * 1e6
+    DRK.per_share(pts, [])
+    assert pts[3]["EPS"] == 1000 and pts[4]["EPS_TTM_raw"] == 4000
+
+
+def test_per_share_tags_cut_quarters():
+    """분할 + 합병(증자 섞임)이 한 창에 겹치면 share_basis 가 cut 을 낸다 — 그 분기(포함) 앞은 모두 품질 'cut' (자기 역사 PER 에서 뺄 표시)."""
+    pts = grid([0] * 6, start=(2025, 2))                        # 2025Q2 … 2026Q3
+    shares = [10e6, 10e6, 10e6, 106e6, 106e6, 106e6]            # 2026Q1 에 10.6배 — 정수 비율이 아니다
+    for p, s in zip(pts, shares):
+        p["지배순이익"], p["매출액"] = 100e8, 1e12
+        p["EPS"] = 100e8 / s
+    sev = [("20260110", "주식분할결정"), ("20260112", "회사합병결정")]
+    assert DRK.share_basis({p["label"]: 100e8 / p["EPS"] for p in pts}, sev)["cut"] == 2025 * 4 + 4
+    DRK.per_share(pts, sev)
+    assert [p["label"] for p in pts if "cut" in p["품질"]] == ["2025Q2", "2025Q3", "2025Q4"]      # cut 분기(2025Q4) 포함, 그 뒤는 아님
+
+
+def test_per_share_no_cut_tag_for_plain_split():
+    pts = grid([0] * 4, start=(2025, 3))
+    for p, s in zip(pts, [29.4e6, 29.4e6, 29.4e6, 147e6]):
+        p["지배순이익"], p["매출액"] = 100e8, 1e12
+        p["EPS"] = 100e8 / s
+    DRK.per_share(pts, [("20260410", "주식분할결정")])
+    assert all("cut" not in p["품질"] for p in pts)

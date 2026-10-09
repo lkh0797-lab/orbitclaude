@@ -107,7 +107,8 @@ BS_PICK = {
 CAPEX_RE = re.compile(r"유형자산의? ?(취득|증가)")
 
 
-def _grab(rows, table, picks, field):
+def _grab(rows, table, picks, field, meta=None):
+    """원장에서 picks 의 항목을 골라 {키: 값}. meta 를 주면 고른 줄의 이름을 meta[키] 에 남긴다."""
     out = {}
     for key, (ids, name_re) in picks.items():
         rx = re.compile(name_re)
@@ -131,10 +132,38 @@ def _grab(rows, table, picks, field):
                 continue
             score = FIN._tag_score(aid, ids)
             if best is None or score > best[0]:
-                best = (score, v)
+                best = (score, v, nm)
         if best:
             out[key] = best[1]
+            if meta is not None:
+                meta[key] = best[2]
     return out
+
+
+EPS_DISC_TAG = "ifrs-full_BasicEarningsLossPerShareFromDiscontinuedOperations"
+
+
+def _cont_only(nm):
+    """'계속영업 기본주당이익' 처럼 계속영업만 센 줄인가 — '계속영업과 중단영업 …' 은 합계 줄이다(서버 _pipe_rows 의 cont 와 같은 판정)."""
+    return "계속영업" in nm and "계속영업과" not in nm
+
+
+def _disc_eps(rows, field):
+    """중단영업 기본주당이익 줄의 값(없으면 None) — 태그 BasicEarningsLossPerShareFromDiscontinuedOperations 이거나,
+    이름에 '중단영업'이 있고 '계속영업'은 없으며 '기본 … 주당'이 든 줄. 칸마다 값이 있는 첫 줄(서버 _pipe_rows 의 disc 와 같은 규칙)."""
+    for r in rows:
+        if r.get("sj_div") not in ("IS", "CIS"):
+            continue
+        nm = FIN.NUM_PREFIX.sub("", (r.get("account_nm") or "").strip())
+        if "우선주" in nm:
+            continue
+        if not (FIN.norm_tag(r.get("account_id")) == EPS_DISC_TAG
+                or ("중단영업" in nm and "계속영업" not in nm and re.search(r"기본.*주당|주당.*기본", nm))):
+            continue
+        v = FIN.num(r.get(field))
+        if v is not None:
+            return v
+    return None
 
 
 def _capex(rows):
@@ -187,7 +216,14 @@ def period_data(corp_code, year, q, offline=False):
     d.update(_grab(rows, ("BS",), BS_PICK, "thstrm_amount"))
     has_nci = any(_grab(rows, ("IS", "CIS"), NCI_PICK, fld) for fld, _ in IS_FIELDS)
     for fld, suf in IS_FIELDS:
-        got = _grab(rows, ("IS", "CIS"), IS_PICK, fld)
+        meta = {}
+        got = _grab(rows, ("IS", "CIS"), IS_PICK, fld, meta)
+        # EPS 는 합계(계속 + 중단영업) 기준으로 — 계속영업 줄만 골랐고 중단영업 줄이 따로 있으면 더한다. 순이익(중단영업 포함)과 기준을 맞춘다
+        # (카카오 2026Q2: 계속영업 EPS 431원 × 순이익 164억(중단 −1,560억 포함)이면 주식 수가 10배 줄어 '병합'으로 읽힌다 — 합계 41원)
+        if got.get("EPS") is not None and _cont_only(meta.get("EPS", "")):
+            dv = _disc_eps(rows, fld)
+            if dv is not None:
+                got["EPS"] += dv
         if "지배순이익" not in got and got.get("당기순이익") is not None:
             # 지배기업 귀속 줄이 없으면 당기순이익 − 비지배 몫(비지배 줄이 아예 없으면 당기순이익 그대로 — 재무._net_income_from 과 같은 규칙)
             nci = _grab(rows, ("IS", "CIS"), NCI_PICK, fld).get("비지배순이익")
@@ -562,8 +598,11 @@ def share_basis(sh, sev, cnt=None):
 
 
 def per_share(pts, sev, cnt=None):
-    """분기 주식 수(지배순이익 ÷ EPS) → 지금 기준 EPS_adj · EPS_TTM(보정). 원래 합(분할 전 · 후 기준이 섞임)은 EPS_TTM_raw.
-    EPS 가 원 대신 천 · 백만 원 단위로 적힌 분기는 EPS 를 고쳐 쓰고 품질에 'unit' 을 단다.
+    """분기 주식 수(지배순이익 ÷ EPS) → 지금 기준 EPS_adj · EPS_TTM(보정).
+    EPS_TTM_raw = 네 분기 EPS 의 단순 합 — 분할 · 병합 보정은 안 한 합(전 · 후 기준이 섞임)이다. 공시 원값의 합이 아니라 아래 단위 보정을 거친 EPS 의 합이다
+    (단위 오류를 고친 분기는 p["EPS"] 를 바로 고쳐 쓰고, 못 고친 분기는 EPS 를 그대로 둔다).
+    EPS 가 원 대신 천 · 백만 원 단위로 적힌 분기는 EPS 를 고쳐 쓰고 품질에 'unit' 을 단다. 못 고치는 이상값은 주식 수 열에서 빼고(이웃 분기 주식 수로 EPS_adj) 'unit' 만 단다.
+    분할과 합병 신주가 한 창에 겹쳐 지금 기준으로 맞출 수 없는 구간(share_basis 의 cut)은 그 분기까지 모두 품질 'cut' — 자기 역사 PER 에서 뺄 표시다.
     attach_prices 가 PER_TTM 을 EPS_TTM(보정)으로 계산하므로 순서는 series → per_share → accel → attach_prices."""
     by = {p["n"]: p for p in pts}
     imp = {}
@@ -584,8 +623,11 @@ def per_share(pts, sev, cnt=None):
                 else:
                     imp.pop(lab)
                 p["품질"] = sorted(set(p.get("품질", []) + ["unit"]))
-    now = share_basis(imp, sev, cnt)["now"] if imp else {}
+    sb = share_basis(imp, sev, cnt) if imp else {"now": {}, "cut": None}
+    now, cut = sb["now"], sb["cut"]
     for p in pts:
+        if cut is not None and p["year"] * 4 + p["q"] <= cut:      # _qn 과 같은 척도 — cut 분기(포함) 앞 기록은 지금 기준으로 못 맞춘다
+            p["품질"] = sorted(set(p.get("품질", []) + ["cut"]))
         ni = p.get("지배순이익") if p.get("지배순이익") is not None else p.get("당기순이익")
         s = now.get(p["label"])
         if s is None and now:
