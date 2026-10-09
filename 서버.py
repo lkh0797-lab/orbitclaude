@@ -1461,8 +1461,9 @@ Q_OF_MONTH = {"03": 1, "06": 2, "09": 3, "12": 4}
 DRUCK_BUILDING = {}           # code → {"done", "total"} — 백그라운드(bg=1) 계산 진행. 그 스레드가 끝나면(실패해도) 지운다
 DRUCK_LOCKS = {}              # code → Lock — 한 회사를 두 스레드가 같이 쌓지 않게
 DRUCK_LOCKS_G = threading.Lock()
-DRUCK_SOFT = {}               # code → (시각, sig, 결과) — 디스크에 안 쓴 결과(일시 오류가 낀 빌드 · 백그라운드 실패)
+DRUCK_SOFT = {}               # code → (시각, sig, 결과, 종류) — 디스크에 안 쓴 결과. 종류 "transient"(일시 오류가 낀 빌드) · "error"(백그라운드 실패)
 DRUCK_SOFT_TTL = 600          # 초 — 이 동안은 같은 sig 로 다시 쌓지 않는다(백그라운드 폴링이 같은 빌드를 끝없이 다시 돌리지 않게)
+DRUCK_STALE_KICKED = set()    # 지금 PER 이 낡아(분할 뒤) 뒤에서 force 로 다시 쌓기 시작한 회사 — 이 서버 프로세스에서 회사마다 한 번만(되풀이 없음)
 
 
 def _druck_path(code):
@@ -1479,31 +1480,21 @@ def _druck_sig(c):
     return "v%d:%s" % (DRK.VERSION, rc)
 
 
-def _druck_fresh(code, sig):
-    """지금 sig 로 이미 있는 결과 — 디스크 캐시, 아니면 TTL 안의 미캐시 결과. 없으면 None."""
+def _druck_fresh(code, sig, bg=False):
+    """지금 sig 로 이미 있는 결과 — 디스크 캐시, 아니면 TTL 안의 미캐시 결과. 없으면 None.
+    백그라운드 실패("error")는 bg 조회(wait=False 폴링)에만 준다 — 동기 호출(inflect 등)은 오류 기억에 막히지 않고 직접 쌓아 본다."""
     old = _druck_read(code)
     if old and old.get("sig") == sig:
         return old
     soft = DRUCK_SOFT.get(code)
-    if soft and soft[1] == sig and time.time() - soft[0] < DRUCK_SOFT_TTL:
+    if soft and soft[1] == sig and time.time() - soft[0] < DRUCK_SOFT_TTL and (bg or soft[3] != "error"):
         return soft[2]
     return None
 
 
 def _druck_meta(c):
-    """{filed: {n: 원본(정정 아닌) 보고서 접수일}, fy_bad: {결산월이 12월이 아닌 해}} — DRK.series 의 meta."""
-    filed, fy_bad = {}, set()
-    ok = {("분기보고서", "03"), ("반기보고서", "06"), ("분기보고서", "09"), ("사업보고서", "12")}
-    for r in c["reports"]:
-        y, mth = r["stamp"].split("-")
-        if (r["label"], mth) not in ok:
-            fy_bad.add(int(y))
-            continue
-        q = Q_OF_MONTH.get(mth)
-        n = int(y) * 4 + q - 1
-        if not r["tag"]:
-            filed[n] = min(filed.get(n, "99999999"), rcept_dt_of(r))
-    return {"filed": filed, "fy_bad": fy_bad}
+    """DRK.series 의 meta {filed, fy_bad} — 규칙은 DRK.filed_meta(서버 없이 시험한다)."""
+    return DRK.filed_meta(c["reports"])
 
 
 _INDUTY = {}                  # corp_code → KSIC — .cache/거시/induty.json 을 처음 쓸 때 한 번 읽는다
@@ -1524,22 +1515,30 @@ def _druck_basis(code):
     return "영업이익" if _ksic_of(corp_code_of(code) or "").startswith(("64", "65", "66")) else "매출"
 
 
+def _no_secret(msg):
+    """로그 · 응답에 남길 예외 문장 — URL 쿼리의 키 값(crtfc_key 등)은 가리고, 한 줄 · 300자로."""
+    msg = re.sub(r"(?i)((?:crtfc_key|api_?key|appkey|appsecret|secret|token)=)[^&\s'\"]+", r"\1***", str(msg))
+    return " ".join(msg.split())[:300]
+
+
 def _druck_bg(code, force, offline):
-    """백그라운드 빌드. 실패하면 오류를 TTL 동안 들고 있어(폴링이 같은 실패를 되풀이하지 않게) 다음 요청이 받아 간다."""
+    """백그라운드 빌드. 실패하면 서버 로그에 한 줄 남기고, 오류를 TTL 동안 들고 있어(폴링이 같은 실패를 되풀이하지 않게) 다음 bg 요청이 받아 간다."""
     try:
         druck(code, force, offline, True)
     except Exception as e:
+        msg = _no_secret("%s: %s" % (type(e).__name__, e))
+        print("가속도 백그라운드 계산 실패:", code, msg)
         c = company_by_code(code)
         if c is not None and DRK is not None:
-            DRUCK_SOFT[code] = (time.time(), _druck_sig(c), {"error": "가속도 계산 실패 — %s: %s" % (type(e).__name__, e)})
+            DRUCK_SOFT[code] = (time.time(), _druck_sig(c), {"error": "가속도 계산 실패 — " + msg}, "error")
     finally:
         DRUCK_BUILDING.pop(code, None)
 
 
 def druck(code, force=False, offline=False, wait=True):
     """분기 단독 실적 시계열 v2(series → per_share → accel → attach_prices) + 본문에서 긁은 가동률 · 수주잔고.
-    캐시 {v, sig, code, name, basis, fy, points, text, transient}. wait=False 이고 지금 sig 의 결과가 없으면
-    백그라운드로 쌓기 시작하고 {"building": True, "done", "total"} 를 바로 돌려준다."""
+    캐시 {v, sig, code, name, basis, fy, points, text, split_after, transient}. wait=False 이고 지금 sig 의 결과가 없으면
+    백그라운드로 쌓기 시작하고 {"building": True, "done", "total"} 를 바로 돌려준다(done · total = 받은 분기 수 · 받을 분기 수)."""
     c = company_by_code(code)
     if not c:
         return None
@@ -1550,7 +1549,7 @@ def druck(code, force=False, offline=False, wait=True):
         return {"error": "DART 고유번호를 찾지 못했습니다."}
     sig = _druck_sig(c)
     if not force:
-        got = _druck_fresh(code, sig)
+        got = _druck_fresh(code, sig, bg=not wait)
         if got is not None:
             return got
     if not wait:
@@ -1569,12 +1568,21 @@ def druck(code, force=False, offline=False, wait=True):
         old = _druck_read(code)
         meta = _druck_meta(c)
         years = sorted({int(r["stamp"][:4]) for r in c["reports"]})
-        pts = DRK.series(corp, code, years, meta=meta, offline=offline)
+
+        def prog(done, total):                     # 백그라운드 진행률 — bg 요청이 걸어 둔 칸이 있을 때만
+            st = DRUCK_BUILDING.get(code)
+            if st is not None:
+                st.update(done=done, total=total)
+        pts = DRK.series(corp, code, years, meta=meta, offline=offline, progress=prog)
         transient = DRK.LAST.get("transient", 0)
-        DRK.per_share(pts, _share_events(code))
+        sev = _share_events(code)
+        DRK.per_share(pts, sev)
         basis = _druck_basis(code) if not any(p.get("매출액") for p in pts) else "매출"
         DRK.accel(pts, basis=basis)
-        DRK.attach_prices(pts, code, {(p["year"], p["q"]): meta["filed"][p["n"]] for p in pts if meta["filed"].get(p["n"])})
+        dates = {(p["year"], p["q"]): meta["filed"][p["n"]] for p in pts if meta["filed"].get(p["n"])}
+        DRK.attach_prices(pts, code, dates)
+        if dates and not any(p.get("주가") for p in pts):
+            transient += 1                 # 주가를 한 분기도 못 붙였다 — 네이버 일시 오류면 fetch_prices 가 {} 를 준다. 깨끗한 빌드로 캐시하지 않는다
         # 본문 지표 — 사업의 내용에서만 긁는다
         text_rows = []
         for r in c["reports"]:
@@ -1587,44 +1595,40 @@ def druck(code, force=False, offline=False, wait=True):
             if found:
                 text_rows.append({"stamp": r["stamp"], "label": r["label"], "rcept": r["rcept"], "found": found})
         out = {"v": DRK.VERSION, "sig": sig, "code": code, "name": c["name"], "basis": basis,
-               "fy": sorted(meta["fy_bad"]), "points": pts, "text": text_rows, "transient": transient}
+               "fy": sorted(meta["fy_bad"]), "points": pts, "text": text_rows,
+               "split_after": DRK.split_after(pts, sev), "transient": transient}
         if transient:
-            res = old or out               # 일시 오류가 낀 빌드는 디스크에 안 쓴다(예전 캐시 유지) — TTL 동안만 들고 있다
-            DRUCK_SOFT[code] = (time.time(), sig, res)
+            # 일시 오류가 낀 빌드는 디스크에 안 쓴다 — 예전 캐시를 주되 transient 를 달아 화면이 '새로 못 받았다'를 알게 한다. TTL 동안만 들고 있다
+            res = dict(old, transient=transient) if old else out
+            DRUCK_SOFT[code] = (time.time(), sig, res, "transient")
             return res
         DRUCK_SOFT.pop(code, None)
-        path = _druck_path(code)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump(out, fh, ensure_ascii=False)
-        os.replace(tmp, path)              # 원자 쓰기 — 읽는 쪽이 반쯤 쓴 파일을 보지 않게
+        if not DRK.write_cache(_druck_path(code), out):     # 원자 쓰기(.tmp → replace) — 읽는 쪽이 파일을 열고 있으면 몇 번 다시 해 본다
+            print("가속도 캐시 못 씀(파일이 잠김 — 이번 결과는 캐시하지 않음):", code)
         return out
 
 
 def _druck_now(code, d):
-    """지금 PER = 네이버 오늘 종가 ÷ (최신 EPS_TTM ÷ k). k = 캐시의 마지막 주가 ÷ 지금 받은 수정주가의 같은 날 종가(분할이 생기면 ≠ 1).
-    캐시하지 않는다. pct = 최근 41분기 공시일 PER 중 지금 PER 이하 비율(8분기 이상일 때) — 'cut'(분할 · 합병이 겹쳐 지금 기준으로 못 맞춘) 분기는 뺀다."""
-    pts = [p for p in d.get("points") or [] if p.get("EPS_TTM")]
-    if not pts or FIN is None:
+    """지금 PER — 규칙은 DRK.now_per(서버 없이 시험한다). 네이버 수정주가(하루 캐시)를 받아 넘긴다. 캐시하지 않는다."""
+    pts = d.get("points") or []
+    if FIN is None or DRK is None or not any(p.get("EPS_TTM") for p in pts):
         return None
-    last = pts[-1]
     try:
         pr = FIN.fetch_prices(code) or {}
     except Exception:
         return None
-    if not pr:
-        return None
-    ds = sorted(pr)
-    px, date = pr[ds[-1]], ds[-1]
-    k = 1.0
-    if last.get("주가") and last.get("주가일") and pr.get(last["주가일"]):
-        k = last["주가"] / pr[last["주가일"]]
-    eps = last["EPS_TTM"] / k
-    per = px / eps if eps and eps > 0 else None
-    hist = [p.get("PER_TTM") for p in d["points"][-41:] if (p.get("PER_TTM") or 0) > 0 and "cut" not in (p.get("품질") or [])]
-    pct = (sum(1 for v in hist if per and v <= per) / len(hist) * 100) if per and len(hist) >= 8 else None
-    return {"px": px, "date": date, "per": per, "k": round(k, 3), "pct": pct, "stale": not (0.55 < k < 1.8)}
+    return DRK.now_per(pts, pr, d.get("split_after"))
+
+
+def _druck_kick_stale(code):
+    """지금 PER 이 낡았다(k 가 0.55~1.8 밖 · 마지막 분기 뒤 분할 공시) — 뒤에서 force 로 한 번 다시 쌓는다.
+    회사마다 이 서버 프로세스에서 한 번만(DRUCK_STALE_KICKED) — 다시 쌓아도 split_after 는 남으니 되풀이하지 않는다."""
+    with DRUCK_LOCKS_G:
+        if code in DRUCK_STALE_KICKED:
+            return False
+        DRUCK_STALE_KICKED.add(code)
+    druck(code, True, wait=False)
+    return True
 
 
 def catalyst_view(days, level="sector", force=False, minw=2):
@@ -10037,7 +10041,10 @@ class Handler(BaseHTTPRequestHandler):
                 if res is None:
                     return self._send(404, {"error": "회사 없음"})
                 if res.get("points"):
-                    res = dict(res, now=_druck_now(code_, res))     # 지금 PER — 캐시하지 않는다
+                    now_ = _druck_now(code_, res)
+                    res = dict(res, now=now_)                       # 지금 PER — 캐시하지 않는다
+                    if now_ and now_.get("stale"):
+                        _druck_kick_stale(code_)                    # 분할 뒤 — 뒤에서 한 번만 force 로 다시 쌓는다
                 return self._send(200, res)
             if path == "/api/orbit":
                 res = orbit(q.get("code", ""))

@@ -933,3 +933,180 @@ def test_read_cache_current_version(tmp_path):
     d = {"v": DRK.VERSION, "sig": "v%d:abc" % DRK.VERSION, "points": [{"n": 1, "품질": ["gap"]}]}
     p.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
     assert DRK.read_cache(str(p)) == d
+
+
+# ---------------------------------------------------------------- 캐시 쓰기 — 읽는 쪽이 파일을 열고 있으면 Windows replace 가 PermissionError
+def test_write_cache_retries_permission_error(tmp_path, monkeypatch):
+    real, calls, slept = os.replace, [], []
+
+    def flaky(a, b):
+        calls.append(a)
+        if len(calls) <= 2:
+            raise PermissionError(13, "WinError 5 액세스가 거부되었습니다")
+        return real(a, b)
+    monkeypatch.setattr(DRK.os, "replace", flaky)
+    monkeypatch.setattr(DRK.time, "sleep", slept.append)
+    path = str(tmp_path / "druck" / "x.json")
+    obj = {"v": DRK.VERSION, "sig": "v2:a", "points": [{"n": 1, "품질": []}]}
+    assert DRK.write_cache(path, obj) is True
+    assert len(calls) == 3 and slept == [0.2, 0.2]
+    assert not os.path.exists(path + ".tmp")
+    monkeypatch.undo()
+    assert DRK.read_cache(path) == obj
+
+
+def test_write_cache_gives_up_after_five_tries_and_removes_tmp(tmp_path, monkeypatch):
+    path = str(tmp_path / "x.json")
+    old = {"v": DRK.VERSION, "sig": "v2:old", "points": []}
+    assert DRK.write_cache(path, old) is True
+    calls, slept = [], []
+
+    def locked(a, b):
+        calls.append(a)
+        raise PermissionError(13, "locked")
+    monkeypatch.setattr(DRK.os, "replace", locked)
+    monkeypatch.setattr(DRK.time, "sleep", slept.append)
+    assert DRK.write_cache(path, {"v": DRK.VERSION, "sig": "v2:new", "points": []}) is False
+    assert len(calls) == 5 and len(slept) == 4                  # 마지막 실패 뒤에는 쉬지 않는다
+    assert not os.path.exists(path + ".tmp")
+    monkeypatch.undo()
+    assert DRK.read_cache(path) == old                          # 예전 캐시는 그대로
+
+
+# ---------------------------------------------------------------- 진행률
+def test_series_progress_counts_every_period(monkeypatch):
+    def fetch(corp, year, reprt, fs_div="CFS"):
+        if int(year) == 2025 and reprt == "11013":
+            return {"status": "err", "list": [], "transient": True}      # 일시 오류 분기도 센다
+        return stmt([])
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", fetch)
+    seen = []
+    DRK.series("C", "000000", [2023, 2024, 2025], meta={"fy_bad": {2024}}, progress=lambda d, t: seen.append((d, t)))
+    assert seen == [(1, 12), (2, 12), (3, 12), (4, 12), (8, 12), (9, 12), (10, 12), (11, 12), (12, 12)]
+    assert DRK.LAST["transient"] == 1
+
+
+def test_series_without_progress_still_works(monkeypatch):
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", lambda *a: stmt([]))
+    assert DRK.series("C", "000000", [2025]) == []
+
+
+# ---------------------------------------------------------------- filed_meta(서버 _druck_meta)
+def rep(stamp, label, rcept, tag=""):
+    return {"stamp": stamp, "label": label, "tag": tag, "rcept": rcept}
+
+
+def test_filed_meta_december_fy_uses_original_filing_dates():
+    reps = [rep("2025-03", "분기보고서", "20250515000001"),
+            rep("2025-06", "반기보고서", "20250814000002"),
+            rep("2025-06", "반기보고서", "20251020000009", "[기재정정]"),     # 정정본 접수일은 filed 에 안 든다
+            rep("2025-09", "분기보고서", "20251114000003"),
+            rep("2025-12", "사업보고서", "20260310000004"),
+            rep("2026-03", "분기보고서", "20260601000005", "[기재정정]")]     # 정정본만 있는 분기 — filed 없음
+    m = DRK.filed_meta(reps)
+    assert m["fy_bad"] == set()
+    assert m["filed"] == {2025 * 4: "20250515", 2025 * 4 + 1: "20250814", 2025 * 4 + 2: "20251114", 2025 * 4 + 3: "20260310"}
+
+
+def test_filed_meta_two_originals_keep_earliest():
+    m = DRK.filed_meta([rep("2025-03", "분기보고서", "20250530000002"), rep("2025-03", "분기보고서", "20250515000001")])
+    assert m["filed"] == {2025 * 4: "20250515"}
+
+
+def test_filed_meta_non_december_fy_years_are_bad():
+    """6월 결산 — 사업보고서가 06, 반기보고서가 12 에 나온다. 그런 보고서가 하나라도 있는 해는 fy_bad(분기 키가 어긋난다).
+    모양만 12월 결산과 같은 분기보고서(09 · 03)는 filed 에 남지만 그해 전체를 series 가 fy 칸으로 뺀다."""
+    reps = [rep("2024-06", "사업보고서", "20240920000001"), rep("2024-09", "분기보고서", "20241114000002"),
+            rep("2024-12", "반기보고서", "20250214000003"), rep("2025-03", "분기보고서", "20250515000004"),
+            rep("2025-06", "사업보고서", "20250920000005")]
+    m = DRK.filed_meta(reps)
+    assert m["fy_bad"] == {2024, 2025}
+    assert m["filed"] == {2024 * 4 + 2: "20241114", 2025 * 4: "20250515"}
+
+
+# ---------------------------------------------------------------- 마지막 자료 분기 뒤 분할 공시
+def test_split_after_only_adjusting_events_after_last_data_quarter():
+    pts = [{"n": 2026 * 4, "label": "2026Q1", "fs": "CFS", "품질": []},
+           {"n": 2026 * 4 + 1, "label": "2026Q2", "fs": "CFS", "품질": []},
+           {"n": 2026 * 4 + 2, "label": "2026Q3", "품질": ["gap"]}]          # 끝의 빈 칸은 자료 분기가 아니다
+    sev = [("20260520", "주식분할결정"),          # 마지막 자료 분기(2026Q2, 6/30) 안 — 그 분기에 이미 반영
+           ("20260630", "무상증자결정"),          # 분기 말 당일 — 뒤가 아니다
+           ("20260715", "주식분할결정"),
+           ("20260801", "유상증자결정"),          # 주가 보정 없는 사건은 안 든다
+           ("20260901", "주식병합결정")]
+    assert DRK.split_after(pts, sev) == [{"date": "20260715", "title": "주식분할결정"},
+                                          {"date": "20260901", "title": "주식병합결정"}]
+
+
+def test_split_after_without_data_points_is_empty():
+    assert DRK.split_after([{"n": 1, "품질": ["gap"]}], [("20260715", "주식분할결정")]) == []
+    assert DRK.split_after([{"n": 2026 * 4, "fs": "OFS", "품질": []}], None) == []
+
+
+# ---------------------------------------------------------------- 지금 PER(서버 _druck_now)
+def per_pts(pers, last=None):
+    pts = [{"PER_TTM": v, "품질": []} for v in pers]
+    if last is not None:
+        pts.append(dict(last, 품질=last.get("품질", [])))
+    return pts
+
+
+def test_now_per_k1():
+    pts = per_pts([10.0] * 7, {"EPS_TTM": 1000.0, "주가": 12000.0, "주가일": "20260814", "PER_TTM": 12.0})
+    now = DRK.now_per(pts, {"20260814": 12000.0, "20261008": 15000.0})
+    assert now == {"px": 15000.0, "date": "20261008", "per": 15.0, "k": 1.0, "pct": 100.0, "stale": False, "split_after": []}
+
+
+def test_now_per_k_after_split_rescales_eps_and_is_stale():
+    pts = per_pts([], {"EPS_TTM": 5000.0, "주가": 100000.0, "주가일": "20260814", "PER_TTM": 20.0})
+    now = DRK.now_per(pts, {"20260814": 20000.0, "20261008": 21000.0})     # 캐시 뒤 5:1 분할 — 수정주가는 옛 날짜도 1/5
+    assert now["k"] == 5.0 and now["per"] == pytest.approx(21000 / 1000) and now["stale"] is True
+
+
+def test_now_per_k_from_last_point_with_eps_price_and_date():
+    pts = [{"EPS_TTM": 900.0, "주가": 30000.0, "주가일": "20260514", "품질": []},
+           {"EPS_TTM": 1000.0, "품질": []}]                                   # 최신 분기는 주가가 아직 없다
+    now = DRK.now_per(pts, {"20260514": 20000.0, "20261008": 30000.0})
+    assert now["k"] == 1.5 and now["per"] == pytest.approx(30000 / (1000 / 1.5)) and now["stale"] is False
+
+
+@pytest.mark.parametrize("cached,stale", [(11000.0, True), (11200.0, False), (20000.0, False), (35800.0, False), (36000.0, True)])
+def test_now_per_stale_thresholds(cached, stale):
+    """k = 0.55 · 1.8 은 낡음(경계 포함), 0.56 · 1.79 는 아님."""
+    pts = per_pts([], {"EPS_TTM": 1000.0, "주가": cached, "주가일": "20260814"})
+    now = DRK.now_per(pts, {"20260814": 20000.0, "20261008": 20000.0})
+    assert now["k"] == round(cached / 20000.0, 3) and now["stale"] is stale
+
+
+def test_now_per_split_after_is_stale_even_with_k1():
+    sa = [{"date": "20260901", "title": "주식분할결정"}]
+    pts = per_pts([], {"EPS_TTM": 1000.0, "주가": 10000.0, "주가일": "20260814"})
+    now = DRK.now_per(pts, {"20260814": 10000.0, "20261008": 10000.0}, sa)
+    assert now["k"] == 1.0 and now["stale"] is True and now["split_after"] == sa
+
+
+def test_now_per_pct_needs_eight_values_and_skips_cut():
+    last = {"EPS_TTM": 1000.0, "주가": 10000.0, "주가일": "20260814", "PER_TTM": 10.0}
+    prices = {"20260814": 10000.0, "20261008": 10000.0}
+    assert DRK.now_per(per_pts([5.0] * 7, last), prices)["pct"] == 100.0             # 정확히 8개
+    assert DRK.now_per(per_pts([5.0] * 6, last), prices)["pct"] is None              # 7개
+    pts = per_pts([5.0] * 7, last)
+    pts[0]["품질"] = ["cut"]                                                           # cut 분기는 빠져 7개
+    assert DRK.now_per(pts, prices)["pct"] is None
+    pts = per_pts([5.0] * 7 + [-3.0, None], last)                                     # 음수 · None 은 세지 않는다
+    assert DRK.now_per(pts, prices)["pct"] == 100.0
+
+
+def test_now_per_pct_uses_last_40_valid_values():
+    pts = per_pts([1.0] * 5 + [20.0] * 39, {"EPS_TTM": 1000.0, "주가": 20000.0, "주가일": "20260814", "PER_TTM": 20.0})
+    pts += [{"품질": ["gap"]} for _ in range(3)]                                       # 끝의 빈 칸이 창을 줄이지 않는다
+    now = DRK.now_per(pts, {"20260814": 20000.0, "20261008": 15000.0})
+    assert now["per"] == 15.0 and now["pct"] == 0.0                                   # 앞의 싼 PER 5개는 창 밖
+
+
+def test_now_per_none_cases():
+    pts = per_pts([], {"EPS_TTM": 1000.0, "주가": 10000.0, "주가일": "20260814"})
+    assert DRK.now_per(per_pts([10.0] * 9), {"20261008": 1.0}) is None                 # EPS_TTM 없음
+    assert DRK.now_per(pts, {}) is None                                               # 주가 못 받음
+    neg = DRK.now_per(per_pts([10.0] * 9, {"EPS_TTM": -50.0}), {"20261008": 9000.0})
+    assert neg["per"] is None and neg["pct"] is None

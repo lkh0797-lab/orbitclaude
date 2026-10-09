@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import json
+import time
 import threading
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -44,6 +45,47 @@ def read_cache(path):
     except Exception:
         return None
     return d if isinstance(d, dict) and d.get("v") == VERSION else None
+
+
+def write_cache(path, obj, tries=5, wait=0.2):
+    """캐시 원자 쓰기 — path.tmp 에 쓰고 os.replace. 읽는 쪽이 잠금 없이 파일을 열고 있으면 Windows 의 replace 가
+    PermissionError(WinError 5)로 실패한다 — wait 초 쉬며 tries 번까지 다시 해 본다. 끝내 못 바꾸면 .tmp 를 지우고 False(캐시 안 됨)."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(obj, fh, ensure_ascii=False)
+    for i in range(tries):
+        try:
+            os.replace(tmp, path)
+            return True
+        except PermissionError:
+            if i < tries - 1:
+                time.sleep(wait)
+    try:
+        os.remove(tmp)
+    except OSError:
+        pass
+    return False
+
+
+_Q_OF_MONTH = {"03": 1, "06": 2, "09": 3, "12": 4}
+_FILED_OK = {("분기보고서", "03"), ("반기보고서", "06"), ("분기보고서", "09"), ("사업보고서", "12")}
+
+
+def filed_meta(reports):
+    """series() 의 meta — {filed: {n: 원본(정정 아닌) 보고서 접수일 YYYYMMDD — 여럿이면 가장 이른 날}, fy_bad: {연도}}.
+    reports = [{stamp: 'YYYY-MM', label, tag, rcept}](서버 회사 색인의 보고서). 12월 결산 정기보고서(분기 03 · 반기 06 · 분기 09 · 사업 12)가
+    아닌 보고서가 하나라도 있는 해는 fy_bad — 결산월이 달라 분기 키가 어긋나니 그해는 받지 않는다."""
+    filed, fy_bad = {}, set()
+    for r in reports:
+        y, mth = r["stamp"].split("-")
+        if (r["label"], mth) not in _FILED_OK:
+            fy_bad.add(int(y))
+            continue
+        n = int(y) * 4 + _Q_OF_MONTH[mth] - 1
+        if not r["tag"]:
+            filed[n] = min(filed.get(n, "99999999"), r["rcept"][:8])
+    return {"filed": filed, "fy_bad": fy_bad}
 
 
 class _Last(threading.local):
@@ -265,16 +307,21 @@ def _n(y, q):
     return y * 4 + q - 1
 
 
-def series(corp_code, stock_code, years, prices=None, meta=None, offline=False):
+def series(corp_code, stock_code, years, prices=None, meta=None, offline=False, progress=None):
     """분기 시계열 v2 — n 오름차순 조밀 격자(첫 자료 분기 ~ 끝 자료 분기, 빈 분기 포함).
     meta = {filed: {n: 원본 공시일}, fy_bad: {연도}, fin: bool}. fy_bad 연도는 받지 않고 'fy' 빈 칸으로만 낸다.
+    progress(done, total) 가 있으면 분기 하나를 받을 때마다 부른다(total = 연도 수 × 4, fy_bad 연도는 네 칸을 한 번에 센다) — 서버 진행률.
     끝나면 LAST(스레드별)에 transient · fy_bad · error 를 남긴다 — transient > 0 이면 일시 오류로 빠진 분기가 있다는 뜻이다."""
     meta = meta or {}
     filed, fy_bad = meta.get("filed") or {}, set(meta.get("fy_bad") or ())
     LAST.update(transient=0, fy_bad=sorted(fy_bad), error=None)
     raw = {}
+    total, done = len(years) * 4, 0
     for y in years:
         if y in fy_bad:
+            done += 4
+            if progress is not None:
+                progress(done, total)
             continue
         for q in (1, 2, 3, 4):
             try:
@@ -282,6 +329,9 @@ def series(corp_code, stock_code, years, prices=None, meta=None, offline=False):
             except Exception as e:
                 LAST["error"] = "%s: %s" % (type(e).__name__, e)
                 d = {"_transient": True}
+            done += 1
+            if progress is not None:
+                progress(done, total)
             if d and d.get("_transient"):
                 LAST["transient"] += 1
                 continue
@@ -652,3 +702,44 @@ def per_share(pts, sev, cnt=None):
         p["EPS_TTM_raw"] = sum(x["EPS"] for x in w) if all(x.get("EPS") is not None for x in w) else None
         p["EPS_TTM"] = sum(x["EPS_adj"] for x in w) if all(x.get("EPS_adj") is not None for x in w) else None
     return pts
+
+
+# ---------------------------------------------------------------- 지금 PER
+NOW_K_LO, NOW_K_HI = 0.55, 1.8     # k 가 이 사이 밖이면 캐시 뒤 분할 · 병합으로 주가 자료가 다시 보정된 것 — 지금 PER 을 믿지 않는다(stale)
+NOW_PCT_WIN, NOW_PCT_MIN = 40, 8   # 백분위 창 — 'cut' 아닌 양수 PER_TTM 의 마지막 40개, 8개 이상(서버 저평가 per_pct 의 hist_per[-40:] 와 같다)
+
+
+def split_after(pts, sev):
+    """마지막 자료 분기(원장이 있는 분기 — 끝의 빈 gap · fy 칸은 뺀다) 말 뒤에 난 주가 보정 사건(SHEV_ADJ: 분할 · 병합 · 무상증자 · 감자)
+    공시 [{date, title}]. 그 분기 EPS 는 사건 전 주식 수 기준인데 주가 자료는 사건 뒤 기준으로 다시 보정돼 PER 이 비율만큼 틀린다 —
+    공시 제목으로는 비율을 정확히 못 읽어 지금은 표시만 한다(now_per 의 stale). 정확한 보정은 계획 2(KIS 원 · 수정 주가 비)."""
+    last = max((p["n"] for p in pts if p.get("fs")), default=None)
+    if last is None:
+        return []
+    end = _qend("%dQ%d" % (last // 4, last % 4 + 1))
+    return [{"date": str(d_), "title": nm} for d_, nm in (sev or [])
+            if d_ and str(d_).isdigit() and int(d_) > end and SHEV_ADJ.search(nm or "")]
+
+
+def now_per(points, prices, splits=None):
+    """지금 PER(캐시하지 않는다) — 서버 _druck_now 가 지금 받은 수정주가 {YYYYMMDD: 종가} 로 부른다.
+    per = 마지막 종가 ÷ (최신 EPS_TTM ÷ k). k = 캐시에 적힌 공시일 주가 ÷ 지금 받은 수정주가의 같은 날 종가 —
+    EPS_TTM · 주가 · 주가일이 다 있는(그리고 그날 종가가 지금 자료에 있는) 마지막 분기로 잰다. 캐시 뒤 분할로 주가 자료가 다시 보정되면 ≠ 1.
+    pct = 지금 PER 이하 비율 — 'cut' 아닌 양수 PER_TTM 의 마지막 40개, 8개 이상일 때만.
+    stale = k 가 0.55~1.8 밖(경계 포함)이거나 splits(split_after() — 마지막 자료 분기 뒤 분할 · 병합 공시)가 있을 때."""
+    eps_pts = [p for p in points if p.get("EPS_TTM")]
+    if not eps_pts or not prices:
+        return None
+    last = eps_pts[-1]
+    ds = sorted(prices)
+    px, date = prices[ds[-1]], ds[-1]
+    kp = next((p for p in reversed(points)
+               if p.get("EPS_TTM") and p.get("주가") and p.get("주가일") and prices.get(p["주가일"])), None)
+    k = kp["주가"] / prices[kp["주가일"]] if kp else 1.0
+    eps = last["EPS_TTM"] / k
+    per = px / eps if eps > 0 else None
+    hist = [p["PER_TTM"] for p in points if (p.get("PER_TTM") or 0) > 0 and "cut" not in (p.get("품질") or [])][-NOW_PCT_WIN:]
+    pct = (sum(1 for v in hist if v <= per) / len(hist) * 100) if per and len(hist) >= NOW_PCT_MIN else None
+    sa = list(splits or [])
+    return {"px": px, "date": date, "per": per, "k": round(k, 3), "pct": pct,
+            "stale": bool(sa) or not (NOW_K_LO < k < NOW_K_HI), "split_after": sa}
