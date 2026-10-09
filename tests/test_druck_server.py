@@ -196,3 +196,61 @@ def test_prebuild_stops_at_six(prebuild):
 def test_prebuild_not_reentrant(prebuild):
     SRV.DRUCK_PRE["running"] = True
     assert SRV._druck_prebuild(run_bt=False) is False
+
+
+def test_prebuild_drops_uncached_memo(prebuild, monkeypatch):
+    comps, calls, budgets, _ = prebuild
+    soft = {"Z": (0, "v2:z", {}, "transient")}                      # 다른 회사(화면 폴링) 기억은 그대로
+    monkeypatch.setattr(SRV, "DRUCK_SOFT", soft)
+
+    def fake(code, force=False, offline=False, wait=True):
+        res = {"B": {"transient": 1}, "C": {"error": "x"}}.get(code, {"points": []})
+        if code in ("B", "D"):
+            SRV.DRUCK_SOFT[code] = (0, "sig", res, "transient")
+        return res
+    monkeypatch.setattr(SRV, "druck", fake)
+    SRV._druck_prebuild(now=lambda: _dt.datetime(2026, 10, 10, 2, 30), run_bt=False)
+    assert "B" not in soft and "Z" in soft and "D" in soft             # D 는 깨끗한 빌드(가짜가 남긴 기억은 druck 몫)
+
+
+def test_prebuild_skips_remaining_after_budget(prebuild, monkeypatch):
+    comps, calls, budgets, _ = prebuild
+
+    def fake(code, force=False, offline=False, wait=True):
+        calls.append((code, offline))
+        DRK.NET["used"] += SRV.DRUCK_NET_BUDGET // 2
+        return {"points": []}
+    monkeypatch.setattr(SRV, "druck", fake)
+    SRV._druck_prebuild(now=lambda: _dt.datetime(2026, 10, 10, 2, 30), run_bt=False)
+    P = SRV.DRUCK_PRE
+    assert [c for c, _ in calls] == ["D", "C"]                        # E 는 fresh, D · C 에서 예산 끝 → B · A 건너뜀
+    assert (P["fresh"], P["built"], P["skipped_budget"], P["done"]) == (1, 2, 2, 5)
+
+
+class _P:
+    def __init__(self, rc):
+        self.returncode = rc
+
+
+def test_run_bt_falls_back_when_64bit_launcher_fails_fast(monkeypatch, tmp_path):
+    monkeypatch.setattr(SRV, "CACHE_DIR", str(tmp_path))
+    monkeypatch.setattr(SRV, "BT_PY", "py -3.13")
+    ran = []
+    monkeypatch.setattr(SRV.subprocess, "run", lambda cmd, **kw: ran.append(cmd[0]) or _P(103 if cmd[0] == "py" else 0))
+    res = SRV._druck_run_bt()
+    assert ran == ["py", sys.executable] and res["py"] == sys.executable and res["rc"] == 0
+    log = (tmp_path / "druck_bt" / "bt_run.log").read_text(encoding="utf-8")
+    assert "실행: py -3.13" in log and "코드 103" in log and "실행: " + sys.executable in log
+
+
+def test_run_bt_no_fallback_on_slow_failure_or_success(monkeypatch, tmp_path):
+    monkeypatch.setattr(SRV, "CACHE_DIR", str(tmp_path))
+    monkeypatch.setattr(SRV, "BT_PY", "py -3.13")
+    monkeypatch.setattr(SRV, "BT_QUICK_FAIL", 0)                      # 어떤 실패도 '곧바로'가 아니다 — 스크립트 자체 실패는 다시 안 돈다
+    ran = []
+    monkeypatch.setattr(SRV.subprocess, "run", lambda cmd, **kw: ran.append(cmd[0]) or _P(1))
+    assert SRV._druck_run_bt()["py"] == "py -3.13" and ran == ["py"]
+    ran.clear()
+    monkeypatch.setattr(SRV, "BT_QUICK_FAIL", 20)
+    monkeypatch.setattr(SRV.subprocess, "run", lambda cmd, **kw: ran.append(cmd[0]) or _P(0))
+    assert SRV._druck_run_bt()["rc"] == 0 and ran == ["py"]

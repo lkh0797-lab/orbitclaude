@@ -180,11 +180,12 @@ def _ni_fallback(rows, field="thstrm_amount"):
 
 
 # ---------------------------------------------------------------- DART
-def fetch_statement(corp_code, year, reprt_code, fs_div="CFS"):
+def fetch_statement(corp_code, year, reprt_code, fs_div="CFS", force=False):
+    """force=True 면 캐시를 읽지 않고 다시 받는다(정정 공시가 캐시 파일보다 뒤에 나온 분기 — 드러켄밀러._fetch). 그 밖엔 그대로."""
     os.makedirs(FIN_DIR, exist_ok=True)
     cache = os.path.join(FIN_DIR, "%s_%s_%s_%s.json"
                          % (corp_code, year, reprt_code, fs_div))
-    if os.path.exists(cache):
+    if not force and os.path.exists(cache):
         try:
             with open(cache, "r", encoding="utf-8") as fh:
                 d = json.load(fh)

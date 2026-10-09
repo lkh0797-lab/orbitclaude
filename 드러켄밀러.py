@@ -75,8 +75,9 @@ _FILED_OK = {("분기보고서", "03"), ("반기보고서", "06"), ("분기보�
 def filed_meta(reports):
     """series() 의 meta — {filed: {n: 원본(정정 아닌) 보고서 접수일 YYYYMMDD — 여럿이면 가장 이른 날}, fy_bad: {연도}}.
     reports = [{stamp: 'YYYY-MM', label, tag, rcept}](서버 회사 색인의 보고서). 12월 결산 정기보고서(분기 03 · 반기 06 · 분기 09 · 사업 12)가
-    아닌 보고서가 하나라도 있는 해는 fy_bad — 결산월이 달라 분기 키가 어긋나니 그해는 받지 않는다."""
-    filed, fy_bad = {}, set()
+    아닌 보고서가 하나라도 있는 해는 fy_bad — 결산월이 달라 분기 키가 어긋나니 그해는 받지 않는다.
+    amend = {(연도, 분기): 그 분기 정정(태그 달린) 보고서 가운데 가장 늦은 접수일} — 원장 캐시보다 뒤면 series 가 그 분기를 다시 받는다."""
+    filed, fy_bad, amend = {}, set(), {}
     for r in reports:
         y, mth = r["stamp"].split("-")
         if (r["label"], mth) not in _FILED_OK:
@@ -85,7 +86,10 @@ def filed_meta(reports):
         n = int(y) * 4 + _Q_OF_MONTH[mth] - 1
         if not r["tag"]:
             filed[n] = min(filed.get(n, "99999999"), r["rcept"][:8])
-    return {"filed": filed, "fy_bad": fy_bad}
+        else:
+            k = (int(y), _Q_OF_MONTH[mth])
+            amend[k] = max(amend.get(k, ""), r["rcept"][:8])
+    return {"filed": filed, "fy_bad": fy_bad, "amend": amend}
 
 
 class _Last(threading.local):
@@ -240,26 +244,56 @@ IS_FIELDS = (("thstrm_amount", ""), ("thstrm_add_amount", "_누적"), ("frmtrm_q
 NET = {"budget": None, "used": 0}   # offline 빌드의 네트워크 예산 — 캐시 파일이 없을 때만 센다
 
 
-def _fetch(corp_code, year, reprt, fs_div, offline):
+def _ymd(ts):
+    return time.strftime("%Y%m%d", time.localtime(ts))
+
+
+def _will_reask_013(path, year, reprt, mt):
+    """FIN.fetch_statement 가 이 캐시(013 '데이터 없음')를 다시 물을까 — FIN._stale_013 과 같은 판정. 파일은 mtime 조건이 맞을 때만 연다
+    (기한 지나 받은 파일이 대부분이라 드라이브 읽기를 한 번 더 하지 않게)."""
+    try:
+        mo, dy = FIN._PERIOD_END[str(reprt)]
+        end = time.mktime((int(year), mo, dy, 0, 0, 0, 0, 0, -1))
+    except Exception:
+        return False
+    now = time.time()
+    if not (mt < end + 100 * 86400 and now > end + 14 * 86400 and now - mt > 86400):
+        return False
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return bool(FIN._stale_013(json.load(fh), path, year, reprt))
+    except Exception:
+        return False
+
+
+def _fetch(corp_code, year, reprt, fs_div, offline, amend=None):
+    """원장 한 장. 네트워크를 쓰는 경우 — 캐시 파일이 없다 · 정정 공시(amend, YYYYMMDD)가 캐시 파일 날짜보다 뒤다(force 로 다시 받음, online 도) ·
+    013 캐시를 FIN 이 다시 물을 때. offline 이면 그 셋을 NET 예산에 세고, 바닥나면 받지 않고 일시 오류(transient)로 돌려준다."""
+    path = os.path.join(FIN.FIN_DIR, "%s_%s_%s_%s.json" % (corp_code, year, reprt, fs_div))
+    exists = os.path.exists(path) if (offline or amend) else True
+    mt = os.path.getmtime(path) if exists and (offline or amend) else None
+    force = bool(amend and mt is not None and amend > _ymd(mt))
     if offline:
-        path = os.path.join(FIN.FIN_DIR, "%s_%s_%s_%s.json" % (corp_code, year, reprt, fs_div))
-        if not os.path.exists(path):
+        net = not exists or force or (mt is not None and _will_reask_013(path, year, reprt, mt))
+        if net:
             if NET["budget"] is not None and NET["used"] >= NET["budget"]:
                 return {"status": "budget", "list": [], "transient": True}
             NET["used"] += 1
+    if force:
+        return FIN.fetch_statement(corp_code, year, reprt, fs_div, force=True)
     return FIN.fetch_statement(corp_code, year, reprt, fs_div)
 
 
-def period_data(corp_code, year, q, offline=False):
+def period_data(corp_code, year, q, offline=False, amend=None):
     """한 분기의 원장 — 그 보고서의 값(thstrm) · 누적(thstrm_add) · 비교기간(frmtrm_q · frmtrm_add · frmtrm) · 기준(CFS/OFS) · 출처 · rcept.
     4분기 단독은 series() 에서 연간 − 3분기 누적으로 뗀다."""
     reprt = REPRT_BY_Q[q]
-    st = _fetch(corp_code, year, reprt, "CFS", offline)
+    st = _fetch(corp_code, year, reprt, "CFS", offline, amend)
     if st.get("transient"):
         return {"_transient": True}
     rows, fs = st.get("list") or [], "CFS"
     if not rows:
-        st = _fetch(corp_code, year, reprt, "OFS", offline)
+        st = _fetch(corp_code, year, reprt, "OFS", offline, amend)
         if st.get("transient"):
             return {"_transient": True}
         rows, fs = st.get("list") or [], "OFS"
@@ -309,11 +343,13 @@ def _n(y, q):
 
 def series(corp_code, stock_code, years, prices=None, meta=None, offline=False, progress=None):
     """분기 시계열 v2 — n 오름차순 조밀 격자(첫 자료 분기 ~ 끝 자료 분기, 빈 분기 포함).
-    meta = {filed: {n: 원본 공시일}, fy_bad: {연도}, fin: bool}. fy_bad 연도는 받지 않고 'fy' 빈 칸으로만 낸다.
+    meta = {filed: {n: 원본 공시일}, fy_bad: {연도}, amend: {(연도, 분기): 마지막 정정 공시일}, fin: bool}. fy_bad 연도는 받지 않고 'fy' 빈 칸으로만 낸다.
+    amend 의 날짜가 원장 캐시 파일 날짜보다 뒤면 그 분기 원장을 다시 받는다(_fetch).
     progress(done, total) 가 있으면 분기 하나를 받을 때마다 부른다(total = 연도 수 × 4, fy_bad 연도는 네 칸을 한 번에 센다) — 서버 진행률.
     끝나면 LAST(스레드별)에 transient · fy_bad · error 를 남긴다 — transient > 0 이면 일시 오류로 빠진 분기가 있다는 뜻이다."""
     meta = meta or {}
     filed, fy_bad = meta.get("filed") or {}, set(meta.get("fy_bad") or ())
+    amend = meta.get("amend") or {}
     LAST.update(transient=0, fy_bad=sorted(fy_bad), error=None)
     raw = {}
     total, done = len(years) * 4, 0
@@ -325,7 +361,8 @@ def series(corp_code, stock_code, years, prices=None, meta=None, offline=False, 
             continue
         for q in (1, 2, 3, 4):
             try:
-                d = period_data(corp_code, y, q, offline=offline)
+                kw = {"amend": amend[(y, q)]} if amend.get((y, q)) else {}      # 정정 없는 분기는 예전 호출 그대로
+                d = period_data(corp_code, y, q, offline=offline, **kw)
             except Exception as e:
                 LAST["error"] = "%s: %s" % (type(e).__name__, e)
                 d = {"_transient": True}

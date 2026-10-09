@@ -1494,7 +1494,8 @@ def _druck_fresh(code, sig, bg=False):
 
 
 def _druck_meta(c):
-    """DRK.series 의 meta {filed, fy_bad} — 규칙은 DRK.filed_meta(서버 없이 시험한다)."""
+    """DRK.series 의 meta {filed, fy_bad, amend} — 규칙은 DRK.filed_meta(서버 없이 시험한다). amend(분기별 마지막 정정 공시일)가
+    원장 캐시 파일보다 뒤면 그 분기만 다시 받는다."""
     return DRK.filed_meta(c["reports"])
 
 
@@ -1642,6 +1643,7 @@ DRUCK_NET_BUDGET = 2000       # 한 번 돌 때 DART 원장 새로 받기 상한
 DRUCK_PRE_AT = (2, 0)         # 00:10 수집 뒤 · 06:30 저평가 전
 DRUCK_PRE_STOP = 6            # 시 — 시작한 뒤 처음 오는 06:00 에 멈춘다
 BT_PY = os.environ.get("ORBIT_BT_PY") or "py -3.13"     # 64비트 파이썬 실행기(명령 문자열) — 서버 모듈 + 전 종목 주가를 한 번에 올린다
+BT_QUICK_FAIL = 20            # 초 — 64비트 실행기가 이보다 빨리 0 아닌 코드로 끝나면(런처 · import 실패) 서버 파이썬으로 다시
 
 
 def _bt_cmd(spec=None):
@@ -1667,7 +1669,8 @@ def _druck_deadline(start, hour=DRUCK_PRE_STOP):
 
 def _druck_run_bt():
     """기저율 · 사건 파일 — BT_PY(ORBIT_BT_PY)로 도구/가속기준_백테스트.py --from-cache. 출력은 .cache/druck_bt/bt_run.log.
-    실행기를 못 찾을 때(FileNotFoundError)만 서버 자신의 파이썬으로 다시 돈다 — 32비트면 메모리가 빠듯할 수 있다."""
+    실행기를 못 찾거나(FileNotFoundError) 곧바로(BT_QUICK_FAIL 초 안) 0 아닌 코드로 끝나면(py 런처 103 — 3.13 없음 · import 실패) 서버 자신의
+    파이썬으로 다시 돈다 — 32비트면 메모리가 빠듯할 수 있다. 어느 실행기로 돌았는지 로그와 결과(py)에 남긴다."""
     script = os.path.join(BASE, "도구", "가속기준_백테스트.py")
     log = os.path.join(CACHE_DIR, "druck_bt", "bt_run.log")
     os.makedirs(os.path.dirname(log), exist_ok=True)
@@ -1676,11 +1679,20 @@ def _druck_run_bt():
     with open(log, "w", encoding="utf-8") as fh:
         fh.write("== %s\n" % dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         fh.flush()
-        for cmd in (_bt_cmd(), [sys.executable]):
+        cmds = [_bt_cmd(), [sys.executable]]
+        for i, cmd in enumerate(cmds):
             try:
+                fh.write("실행: %s\n" % " ".join(cmd))
+                fh.flush()
+                t1 = time.time()
                 p = subprocess.run(cmd + [script, "--from-cache"], cwd=BASE, stdout=fh, stderr=subprocess.STDOUT, env=env,
                                    timeout=3 * 3600, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
                 res = {"py": " ".join(cmd), "rc": p.returncode}
+                quick = time.time() - t1 < BT_QUICK_FAIL
+                if p.returncode != 0 and quick and i + 1 < len(cmds):
+                    fh.write("\n%s 가 %.0f초 만에 코드 %s 로 끝남 — 서버 파이썬으로 다시\n" % (" ".join(cmd), time.time() - t1, p.returncode))
+                    fh.flush()
+                    continue
                 break
             except FileNotFoundError as e:
                 fh.write("실행기 없음 %s: %s — 서버 파이썬으로 다시\n" % (" ".join(cmd), e))
@@ -1697,7 +1709,8 @@ def _druck_run_bt():
 def _druck_prebuild(now=dt.datetime.now, run_bt=True):
     """전 종목 druck(offline) — _druck_order 순서로, 시작 뒤 처음 오는 06:00 에 멈춘다. 끝나면(멈춰도) 기저율 백테스트를 돌린다.
     DRUCK_PRE: done/total(회사) · fresh(이미 지금 sig) · built(새로 씀) · transient(일시 오류 · DART 예산 끝 — 안 씀) · failed · net(DART 받은 수)
-    · per_co(새로 쌓은 회사당 초) · stopped('06:00' 이면 시간에 멈춤) · bt(백테스트 결과). 이미 돌고 있으면 False."""
+    · skipped_budget(DART 예산이 바닥난 뒤 건너뛴 회사 — 다음 밤) · per_co(새로 쌓은 회사당 초) · stopped('06:00' 이면 시간에 멈춤)
+    · bt(백테스트 결과). 미캐시 결과는 DRUCK_SOFT 에 남기지 않는다. 이미 돌고 있으면 False."""
     with DRUCK_PRE_LOCK:
         if DRUCK_PRE["running"] or DRK is None:
             return False
@@ -1708,7 +1721,7 @@ def _druck_prebuild(now=dt.datetime.now, run_bt=True):
         stop = _druck_deadline(start)
         comps = list(INDEX["companies"])
         DRUCK_PRE.update(started=start.isoformat(timespec="seconds"), stop_at=stop.isoformat(timespec="seconds"), done=0, total=len(comps),
-                         net=0, fresh=0, built=0, transient=0, failed=0, per_co=None, stopped=None, bt=None, code=None)
+                         net=0, fresh=0, built=0, transient=0, failed=0, skipped_budget=0, per_co=None, stopped=None, bt=None, code=None)
         comps = _druck_order(comps, lambda code: bool(code) and os.path.exists(_druck_path(code)))     # 파일 확인 988번 — 드라이브라 몇 초 걸린다
         DRK.NET.update(budget=DRUCK_NET_BUDGET, used=0)
         for c in comps:
@@ -1721,6 +1734,8 @@ def _druck_prebuild(now=dt.datetime.now, run_bt=True):
                 cur = _druck_read(code) if code else None
                 if cur is not None and cur.get("sig") == _druck_sig(c):
                     DRUCK_PRE["fresh"] += 1
+                elif DRK.NET["used"] >= DRUCK_NET_BUDGET:
+                    DRUCK_PRE["skipped_budget"] += 1      # DART 예산 끝 — 쌓아도 빠진 분기는 transient(미캐시)라 다음 밤으로 미룬다
                 else:
                     t1 = time.time()
                     res = druck(code, offline=True) if code else None
@@ -1731,6 +1746,8 @@ def _druck_prebuild(now=dt.datetime.now, run_bt=True):
                         DRUCK_PRE["transient"] += 1
                     else:
                         DRUCK_PRE["built"] += 1
+                    if code and (not res or res.get("error") or res.get("transient")):
+                        DRUCK_SOFT.pop(code, None)        # 미캐시 결과 기억은 화면 폴링용 — 밤새 988곳 몫이 32비트 뷰어 메모리에 쌓이지 않게
                     n = DRUCK_PRE["built"] + DRUCK_PRE["transient"] + DRUCK_PRE["failed"]
                     DRUCK_PRE["per_co"] = round(work / n, 2) if n else None
             except Exception as e:

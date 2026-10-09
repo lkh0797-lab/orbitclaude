@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, sys, json, importlib.util as ilu
+import os, sys, json, time, importlib.util as ilu
 import pytest
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
@@ -1110,3 +1110,76 @@ def test_now_per_none_cases():
     assert DRK.now_per(pts, {}) is None                                               # 주가 못 받음
     neg = DRK.now_per(per_pts([10.0] * 9, {"EPS_TTM": -50.0}), {"20261008": 9000.0})
     assert neg["per"] is None and neg["pct"] is None
+
+
+# ---------------------------------------------------------------- 정정 공시 · 013 다시 묻기 — 원장 다시 받기와 NET 예산(Task 6 고침)
+def _aged(p, ymd):
+    t = time.mktime(time.strptime(ymd, "%Y%m%d"))
+    os.utime(str(p), (t, t))
+    return p
+
+
+def test_filed_meta_amend_is_latest_tagged_rcept_per_quarter():
+    reps = [rep("2025-06", "반기보고서", "20250814000002"),
+            rep("2025-06", "반기보고서", "20251020000009", "[기재정정]"),
+            rep("2025-06", "반기보고서", "20251105000010", "[기재정정]"),
+            rep("2025-12", "사업보고서", "20260310000004")]
+    assert DRK.filed_meta(reps)["amend"] == {(2025, 2): "20251105"}
+
+
+def test_fetch_refetches_file_older_than_amendment_and_counts_it(monkeypatch, fin_dir):
+    calls = []
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", lambda *a, **kw: calls.append((a, kw)) or stmt([]))
+    _aged(_cache_file(fin_dir, "C", 2025, "11012"), "20250820")
+    monkeypatch.setitem(DRK.NET, "budget", 5)
+    DRK._fetch("C", 2025, "11012", "CFS", True, amend="20251020")
+    assert calls[-1][1] == {"force": True} and DRK.NET["used"] == 1
+    DRK._fetch("C", 2025, "11012", "CFS", False, amend="20251020")        # online 도 다시 받되 예산엔 안 센다
+    assert calls[-1][1] == {"force": True} and DRK.NET["used"] == 1
+
+
+def test_fetch_keeps_cache_newer_than_amendment_or_without_one(monkeypatch, fin_dir):
+    calls = []
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", lambda *a, **kw: calls.append((a, kw)) or stmt([]))
+    _aged(_cache_file(fin_dir, "C", 2025, "11012"), "20251021")
+    DRK._fetch("C", 2025, "11012", "CFS", True, amend="20251020")         # 정정 뒤에 받은 파일
+    DRK._fetch("C", 2025, "11012", "CFS", True)                           # 정정 없음
+    DRK._fetch("C", 2025, "11012", "CFS", True, amend="20251021")         # 같은 날 — '뒤'가 아니다
+    assert [kw for _, kw in calls] == [{}, {}, {}] and DRK.NET["used"] == 0
+
+
+def test_fetch_amended_over_budget_is_transient(monkeypatch, fin_dir):
+    calls = []
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", lambda *a, **kw: calls.append((a, kw)) or stmt([]))
+    _aged(_cache_file(fin_dir, "C", 2025, "11012"), "20250820")
+    monkeypatch.setitem(DRK.NET, "budget", 0)
+    out = DRK._fetch("C", 2025, "11012", "CFS", True, amend="20251020")
+    assert out == {"status": "budget", "list": [], "transient": True} and calls == []
+
+
+def test_fetch_stale_013_reask_is_charged_and_budgeted(monkeypatch, fin_dir):
+    calls = []
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", lambda *a, **kw: calls.append((a, kw)) or stmt([]))
+    p = fin_dir / "C_2025_11014_CFS.json"
+    p.write_text(json.dumps({"status": "013", "list": []}), encoding="utf-8")
+    _aged(p, "20251001")                                  # 기한(9/30 + 100일) 전에 받은 013 — FIN 이 다시 묻는다
+    q = fin_dir / "C_2025_11013_CFS.json"
+    q.write_text(json.dumps({"status": "013", "list": []}), encoding="utf-8")
+    _aged(q, "20250901")                                  # 1분기(3/31) + 100일 뒤에 받은 013 — 그대로 믿는다
+    monkeypatch.setitem(DRK.NET, "budget", 1)
+    DRK._fetch("C", 2025, "11013", "CFS", True)
+    assert DRK.NET["used"] == 0
+    DRK._fetch("C", 2025, "11014", "CFS", True)
+    assert DRK.NET["used"] == 1 and len(calls) == 2
+    assert DRK._fetch("C", 2025, "11014", "CFS", True)["status"] == "budget" and len(calls) == 2
+
+
+def test_series_passes_amend_only_for_amended_quarters(monkeypatch):
+    seen = []
+
+    def pd(corp, y, q, offline=False, **kw):
+        seen.append(((y, q), kw))
+        return mk_q(100)
+    monkeypatch.setattr(DRK, "period_data", pd)
+    DRK.series("C", "000000", [2025], meta={"amend": {(2025, 2): "20251020"}})
+    assert dict(seen) == {(2025, 1): {}, (2025, 2): {"amend": "20251020"}, (2025, 3): {}, (2025, 4): {}}
