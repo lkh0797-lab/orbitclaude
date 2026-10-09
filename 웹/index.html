@@ -8611,7 +8611,8 @@ function drkLagCause(R, now, lastD, M){
   const bad=[]; for(let n=now.n+1;n<=lastD.n;n++){ const r=by[n]; if(!r||!dNum(r.Y)) bad.push(n); }
   const why=n=>{ const r=by[n]||{}, q=(r['품질']||[]).filter(k=>!['amended','asfiled','mix'].includes(k));
     if(q.length) return lab(n)+'('+q.map(k=>DRK_QS[k]||k).join(' · ')+')';
-    const b=by[n-4]; return lab(n)+(b&&!dNum(b[key]) ? '(1년 전 '+lab(n-4)+' 값 없음)' : '(전년 대비 없음)'); };
+    const b=by[n-4]; return lab(n)+(b&&!dNum(b[key]) ? '(1년 전 '+lab(n-4)+' 값 없음)'
+      : key==='영업이익' ? '(1년 전 영업이익이 음수이거나 너무 작아 전년 대비 없음)' : '(전년 대비 없음)'); };
   if(!bad.length) return '앞 분기 자료 부족(재작성 · 공시 당시 값 섞임 등)';
   return 'B 를 막은 분기 — '+bad.slice(0,4).map(why).join(' · ')+(bad.length>4?' 외':'');
 }
