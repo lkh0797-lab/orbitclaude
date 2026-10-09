@@ -2265,6 +2265,31 @@ table.csTbl td.emptyRow{color:var(--faint);text-align:center;padding:26px 0}
 .tchHead .tchMeta{margin-left:auto;font:12px var(--mono);color:var(--faint)}
 .tchHead a.ghost{text-decoration:none;display:inline-block}
 .tchFrame{width:100%;height:calc(100vh - 200px);min-height:640px;border:1px solid var(--line);border-radius:8px;background:#fff}
+/* ---------- 기록 채점 · 매매 일지 (2026-10-10) ---------- */
+.scTbl td.num b.pos,.trdTot b.pos{color:var(--add)}.scTbl td.num b.neg,.trdTot b.neg{color:var(--del)}
+.scTbl td.num small,.trdTbl td small{color:var(--faint);font-size:11px}
+.scWait{color:var(--faint);font-size:11.5px}
+.scStall{color:var(--del);margin-left:6px;font-size:11px;cursor:help}
+.scNotes{font-size:12px;color:var(--dim);margin:12px 0 0 18px;line-height:1.7}
+.trdTot{display:flex;flex-wrap:wrap;gap:8px 20px;margin:6px 0 10px;font-size:12.5px;color:var(--dim);align-items:baseline}
+.trdTot b{font:600 15px var(--mono);margin-left:6px;color:var(--ink)}
+.trdAsof{font-size:11.5px;color:var(--faint)}
+.trdForm{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:8px 0 14px;background:var(--panel)}
+.trdForm>b{display:block;margin-bottom:8px;font-size:13px}
+.trdForm .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px 12px}
+.trdForm label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--dim)}
+.trdForm label[hidden]{display:none}
+.trdForm input,.trdForm select,.trdForm textarea{font:13px var(--sans);padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-width:0}
+.trdForm textarea{min-height:48px;resize:vertical}
+.trdForm .wide{grid-column:1/-1}
+.trdForm .act{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.trdMsg{font-size:12.5px;color:var(--del)}
+.trdFlag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font:600 10.5px var(--sans);vertical-align:1px}
+.trdFlag.bad{background:var(--del-bg);color:var(--del)}.trdFlag.warn{background:var(--warn-bg);color:var(--warn)}.trdFlag.g{background:var(--line2);color:var(--dim)}
+.trdTbl td.pos{color:var(--add)}.trdTbl td.neg{color:var(--del)}
+.trdWhy td{font-size:12px;color:var(--dim);white-space:normal;padding-top:0;border-top:0}
+.trdWhyCell{white-space:normal;max-width:280px;font-size:12px;color:var(--dim)}
+.trdAll{font-weight:600}
 .tchLog{font:11.5px/1.5 var(--mono);color:var(--dim);background:var(--line2);border-radius:6px;padding:8px 10px;max-height:220px;overflow:auto;white-space:pre-wrap;margin:6px 0 0}
 /* ---------- 보컬 — 거래대금 · 테마 대장주 · 눌림목 (2026-10-08) ---------- */
 /* ---------- 보컬 — 거래대금 · 테마 대장주 · 눌림목 (2026-10-08) ----------
@@ -2926,6 +2951,8 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
       <div class="tabs" id="tabs" hidden>
         <button data-t="val">저평가</button>
         <button data-t="tech">차트 발굴</button>
+        <button data-t="score">기록 채점</button>
+        <button data-t="trd">매매 일지</button>
         <button data-t="orbit" class="on">궤도</button>
         <button data-t="land">풍경</button>
         <button data-t="brief">변화 브리핑</button>
@@ -2946,10 +2973,12 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
       </div>
       <div id="panes">
         <div class="empty" id="welcome">
-          왼쪽 위 검색창에 기업명을 넣으면 최근 15년 보고서가 전부 열립니다.
+          <span id="welcomeMsg">왼쪽 위 검색창에 기업명을 넣으면 최근 15년 보고서가 전부 열립니다.</span>
           <div style="margin-top:14px"><button class="ghost" onclick="S.tab='val';jump('val')">저평가 종목 보기 — 가치는 지켰는데 주가가 빠진 회사</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='grow';jump('grow')">산업 성장률 — 섹터별 매출 · 이익 · 생산 · 수출 추이와 시장 규모 · 시가총액 · 전망</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='tech';jump('tech')">차트 발굴 — 전 종목 차트 패턴(CAN SLIM · VCP · 컵앤핸들 · 300억 눌림목 · 보컬)</button></div>
+          <div style="margin-top:8px"><button class="ghost" onclick="S.tab='score';jump('score')">기록 채점 — 매일 남긴 판정(저평가 · 차트 발굴)이 그 뒤 실제로 어땠나</button></div>
+          <div style="margin-top:8px"><button class="ghost" onclick="S.tab='trd';jump('trd')">매매 일지 — 산 이유 · 생각을 바꿀 조건 · 결과를 도구별로</button></div>
         </div>
       </div>
     </main>
@@ -3016,7 +3045,7 @@ async function loadCompanies(){
 
 // 색인은 서버가 뜬 뒤 뒤에서 만든다. 다 되기 전에는 검색할 게 없으니 알려준다.
 async function waitIndex(){
-  const w=$('#welcome');
+  const w=$('#welcomeMsg');      // 문장만 바꾼다 — 첫 화면 단추(저평가 · 차트 발굴 · 기록 채점 · 매매 일지 …)는 남긴다
   for(let i=0;i<600;i++){
     let st;
     try { st = await (await fetch('/api/status')).json(); } catch(e){ st=null; }
@@ -3140,7 +3169,7 @@ function show(t){
   ({orbit:viewOrbit, land:viewLand, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, rep:viewReports, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue, vocal:viewVocal, tech:viewTech, grow:viewGrowth}[t])(p);
+    play:viewPlay, cat:viewCatalyst, exp:viewExport, val:viewValue, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades}[t])(p);
 }
 
 // ---------------------------------------------------------- 분기 변화 — 보고서가 나올 때마다 직전 공시(3개월 전)와 맞댄다
@@ -5334,6 +5363,293 @@ function viewTech(p, run){
   };
   rf.onclick=()=>load(true);
   load(!!run);
+}
+
+// ---------------------------------------------------------- 기록 채점 — 매일 남긴 판정의 진짜 성적(/api/score, 2026-10-10)
+// 저평가 실전 기록(forward) · 차트 발굴 일지를 그 뒤 실제 주가로 잰다. 계산은 서버 기록채점.py.
+const scD=d=>d&&d.length===8?d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6):(d||'—');
+const scPct=v=>v==null?'—':(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1)+'%';
+function scCell(st){
+  const td=el('td','num');
+  if(!st||!st.n){
+    td.appendChild(el('span','scWait',st&&st.n_all?'익는 중':'—'));
+    if(st&&st.n_all) td.title='기록 '+st.n_all+'건 — 아직 이 기간이 지나지 않았다';
+    return td;
+  }
+  const ex=st.ex_median;
+  td.appendChild(el('b',ex==null?null:ex>0?'pos':ex<0?'neg':null,scPct(ex)));
+  td.appendChild(el('small',null,' '+(st.win==null?'':Math.round(st.win)+'% · ')+st.n+'건'));
+  td.title='같은 기간 전 종목 중앙값 대비 초과(중앙) '+scPct(ex)+' · 이긴 비율 '+(st.win==null?'—':st.win+'%')+
+    '\n수익률 평균 '+scPct(st.mean)+' · 중앙 '+scPct(st.median)+' · 가장 나쁨 '+scPct(st.worst)+'\n'+st.n+'/'+st.n_all+'건이 이 기간을 지났다';
+  return td;
+}
+function scSection(title, part, tech, sub, hz){
+  const w=el('div','dipBlock');
+  const h=el('div','dipBH'); h.appendChild(el('b',null,title)); h.appendChild(el('span',null,sub)); w.appendChild(h);
+  if(!part||!part.n_obs){ w.appendChild(el('div','empty','아직 기록이 없다.')); return w; }
+  w.appendChild(el('div','finnote','관측 '+part.n_obs+'건 · '+part.n_codes+'종목'+(part.n_noprice?' · 주가 없음 '+part.n_noprice+'건':'')+
+    ' — 칸: 같은 기간 전 종목 중앙값 대비 초과(중앙) · 이긴 비율 · 지난 건수. 마우스를 올리면 평균 · 중앙 · 가장 나쁨'));
+  const t=el('table','tbl scTbl');
+  const hr=el('tr');
+  ['묶음','기록','지금까지'].concat(hz.map(x=>x+'거래일')).concat(tech?['손절 먼저','+20% 먼저']:[]).forEach((x,i)=>hr.appendChild(el('th',i?'r':null,x)));
+  t.appendChild(hr);
+  part.groups.forEach(g=>{
+    const tr=el('tr');
+    const td0=el('td'); td0.appendChild(el('span',null,g.label));
+    if(g.n_stalled){ const s=el('small','scStall','끊김 '+g.n_stalled); s.title='주가가 30일 넘게 끊긴 종목(거래 정지 · 상장폐지) — 끊긴 날 종가로 끝난 것으로 셌다'; td0.appendChild(s); }
+    tr.appendChild(td0);
+    tr.appendChild(el('td','num',g.n_obs+'건 · '+g.n_codes+'곳'));
+    const now=scCell(g.now);
+    if(g.now&&g.now.n&&g.now.days_median!=null) now.appendChild(el('small',null,' · '+g.now.days_median+'일'));
+    tr.appendChild(now);
+    hz.forEach(x=>tr.appendChild(scCell((g.h||{})[String(x)])));
+    if(tech){
+      const t1=el('td','num',g.stop_first==null?'—':Math.round(g.stop_first)+'%'), t2=el('td','num',g.target_first==null?'—':Math.round(g.target_first)+'%');
+      t1.title=t2.title='60거래일 안 종가 기준으로 손절가 · +20% 중 먼저 닿은 비율 — 결판 난 '+(g.n_exit||0)+'건';
+      tr.appendChild(t1); tr.appendChild(t2);
+    }
+    t.appendChild(tr);
+  });
+  const wrap=el('div','tblwrap'); wrap.appendChild(t); w.appendChild(wrap);
+  if(part.ref) w.appendChild(el('div','finnote','비교 — '+(part.ref.label||'백테스트')+': '+part.ref.text));
+  return w;
+}
+async function viewScore(p, force){
+  p.innerHTML='';
+  const box=el('div','scBox'); p.appendChild(box);
+  const hd=el('div','dipHead');
+  hd.appendChild(el('b',null,'기록 채점'));
+  hd.appendChild(el('span',null,'매일 남긴 판정(저평가 실전 기록 · 차트 발굴 일지)이 그 뒤 실제로 어땠나 — 백테스트가 아닌 진짜 표본 밖 성적'));
+  const rf=el('button','ghost','다시 채점'); rf.style.marginLeft='auto'; rf.onclick=()=>viewScore(p,true); hd.appendChild(rf);
+  box.appendChild(hd);
+  const body=el('div'); box.appendChild(body);
+  let d;
+  try{ d=await (await fetch('/api/score'+(force?'?force=1':''))).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
+  if(!box.isConnected) return;
+  if(d.error) body.appendChild(el('div','err',d.error));
+  if(d.running){
+    const pr=el('div','prog'); pr.appendChild(el('span',null,'채점 중 — 기록과 988곳 주가를 맞춰 보는 중(20초 안팎)')); body.appendChild(pr);
+    // 채점 중엔 화면을 그대로 둔다 — 통째로 다시 그리면 펼친 '기록 기준일별'이 접히고 읽던 자리가 튄다
+    const poll=async()=>{
+      if(!(box.isConnected&&S.tab==='score')) return;
+      let e=null; try{ e=await (await fetch('/api/score')).json(); }catch(x){ e=null; }
+      if(!(box.isConnected&&S.tab==='score')) return;
+      if(e&&e.running) setTimeout(poll,4000); else viewScore(p,false);
+    };
+    setTimeout(poll,4000);
+  }
+  const r=d.result;
+  if(!r){ if(!d.running&&!d.error) body.appendChild(el('div','empty','아직 채점 결과가 없다.')); return; }
+  const hz=r.horizons||[5,20,60,120,250];
+  body.appendChild(el('div','finnote','기준: '+r.basis+' · 주가 마지막 날 '+scD(r.price_last)));
+  const v=r.value||{}, tc=r.tech||{};
+  body.appendChild(scSection('저평가 실전 기록',v,false,'매일 06:30 저평가 목록을 남긴 기록 — 기록 기준일 '+((v.dates||[]).map(scD).join(' · ')||'없음'),hz));
+  if((v.cohorts||[]).length){
+    const det=el('details','dipCond'); det.appendChild(el('summary',null,'기록 기준일별 — 저평가 · 관찰 등급의 지금까지'));
+    const t=el('table','tbl scTbl'); const hr=el('tr');
+    ['기준일','파일','저평가','관찰','저평가 지금까지','관찰 지금까지'].forEach((x,i)=>hr.appendChild(el('th',i>1?'r':null,x))); t.appendChild(hr);
+    v.cohorts.forEach(c=>{ const tr=el('tr');
+      tr.appendChild(el('td',null,scD(c.date))); tr.appendChild(el('td',null,c.file||''));
+      tr.appendChild(el('td','num',String(c.n_v))); tr.appendChild(el('td','num',String(c.n_o)));
+      tr.appendChild(scCell(c.now_v)); tr.appendChild(scCell(c.now_o)); t.appendChild(tr); });
+    det.appendChild(t); body.appendChild(det);
+  }
+  body.appendChild(scSection('차트 발굴 일지',tc,true,'Tech 스캔이 매일 남긴 후보 — 기록일 '+((tc.dates||[]).map(scD).join(' · ')||'없음'),hz));
+  const ul=el('ul','scNotes'); (r.notes||[]).forEach(n=>ul.appendChild(el('li',null,n))); body.appendChild(ul);
+}
+
+// ---------------------------------------------------------- 매매 일지 — 실제 매매 · 산 이유 · 생각을 바꿀 조건(/api/trades, 2026-10-10)
+// 개인 자료: 서버가 기업추적/개인/매매일지.json 에 쓴다(.gitignore — 공개 저장소에 안 올라감). 계산은 서버 매매일지.py.
+const trW=v=>v==null?'—':Math.round(v).toLocaleString('ko-KR');
+const trPct=v=>v==null?'—':(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(2)+'%';
+const trCls=v=>v==null?'num':v>0?'num pos':v<0?'num neg':'num';
+function trdFocus(p){ const f=p.querySelector('.trdForm'); if(f) f.scrollIntoView({block:'start'}); }   // 스크롤은 main 이 한다
+async function trdPost(body){
+  const r=await fetch('/api/trades',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  let d; try{ d=await r.json(); }catch(e){ d={error:'응답을 읽지 못했습니다 (HTTP '+r.status+')'}; }
+  if(!r.ok||d.error) throw new Error(d.error||('HTTP '+r.status));
+  return d;
+}
+function trdForm(p, d, pre){
+  const f=el('div','trdForm');
+  const edit=pre&&pre.id;
+  f.appendChild(el('b',null,edit?'거래 고치기':(pre&&pre.side==='sell'?'매도 기록':'거래 기록')));
+  const g=el('div','grid'); f.appendChild(g);
+  const fld=(lab,node,cls)=>{ const l=el('label',cls||null); l.appendChild(el('span',null,lab)); l.appendChild(node); g.appendChild(l); return node; };
+  const inp=(type,val,ph)=>{ const i=document.createElement('input'); i.type=type; if(val!=null) i.value=val; if(ph) i.placeholder=ph; return i; };
+  const sel=(opts,val)=>{ const s=document.createElement('select'); opts.forEach(([k,lab])=>{ const o=document.createElement('option'); o.value=k; o.textContent=lab; s.appendChild(o); }); if(val!=null) s.value=val; return s; };
+  const ta=(val,ph)=>{ const t=document.createElement('textarea'); if(val) t.value=val; if(ph) t.placeholder=ph; return t; };
+  const P=pre||{};
+  const date=fld('날짜',inp('date',P.date||d.today||''));
+  const side=fld('매수 / 매도',sel([['buy','매수'],['sell','매도']],P.side||'buy'));
+  const code=fld('종목 (이름 또는 코드)',inp('text',P.code?((P.name?P.name+' ':'')+'('+P.code+')'):'','예: 삼성전자 또는 005930'));
+  code.setAttribute('list','trdCoList');
+  let dl=$('#trdCoList');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='trdCoList'; document.body.appendChild(dl); }
+  if(!dl.childElementCount) (S.companies||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.name+' ('+c.code+')'; dl.appendChild(o); });
+  const name=fld('종목명',inp('text',P.name||''));
+  let autoName=P.name||'';      // 자동으로 채운 이름 — 사용자가 직접 고친 이름은 건드리지 않는다
+  const resolveCode=v=>{ v=v.trim(); const m=v.match(/\(([0-9A-Za-z]{6})\)\s*$/)||v.match(/^([0-9A-Za-z]{6})$/);
+    if(m) return m[1].toUpperCase(); const hit=(S.companies||[]).find(c=>c.name===v); return hit?hit.code:null; };
+  const price=fld('가격 (원)',inp('number',P.price!=null?P.price:'')); price.step='any'; price.min='0';
+  const qty=fld('수량 (주)',inp('number',P.qty!=null?P.qty:'')); qty.step='1'; qty.min='1';
+  const fee=fld('수수료 · 세금 (원)',inp('number',P.fee?P.fee:'')); fee.step='any'; fee.min='0';
+  const src=fld('어디서 나온 생각',sel((d.sources||[]).map(s=>[s.key,s.label]),P.source||'etc'));
+  const setup=fld('셋업 · 근거 한 줄',inp('text',P.setup||'','예: 300억 눌림목 첫 진입'));
+  const hz=fld('보유 계획',sel([['','정하지 않음']].concat((d.horizons||[]).map(h=>[h.key,h.label])),P.horizon||''));
+  const stop=fld('손절가 (원)',inp('number',P.stop!=null?P.stop:'')); stop.step='any';
+  const target=fld('목표가 (원, 선택)',inp('number',P.target!=null?P.target:'')); target.step='any';
+  const reason=fld('',ta(P.reason,''),'wide');
+  const thesis=fld('생각을 바꿀 조건 — 이 일이 생기면 판단이 틀린 것',ta(P.thesis_break,'예: 다음 분기 수주잔고가 줄면 · 종가가 손절가 아래면'),'wide');
+  const memo=fld('메모',ta(P.memo,''),'wide');
+  const rl=reason.parentNode.firstChild;
+  const sync=()=>{ const sell=side.value==='sell'; rl.textContent=sell?'판 이유 · 배운 점':'산 이유'; thesis.parentNode.hidden=sell; };
+  side.onchange=sync; sync();
+  code.addEventListener('change',()=>{
+    const c=resolveCode(code.value), hit=c&&(S.companies||[]).find(x=>x.code===c);
+    const untouched=!name.value.trim()||name.value===autoName;
+    if(hit&&untouched){ name.value=hit.name; autoName=hit.name; }
+    else if(!hit&&untouched){ name.value=''; autoName=''; }
+  });
+  const act=el('div','act'); f.appendChild(act);
+  const ok=el('button',null,edit?'고친 내용 저장':'저장'); act.appendChild(ok);
+  if(edit||pre){ const cancel=el('button','ghost','취소'); cancel.onclick=()=>viewTrades(p); act.appendChild(cancel); }
+  const msg=el('span','trdMsg'); act.appendChild(msg);
+  const num=x=>x.value.trim()===''?null:Number(x.value);
+  ok.onclick=async()=>{
+    msg.textContent='';
+    const cc=resolveCode(code.value);
+    if(!cc){ msg.textContent='종목: 목록에서 고르거나 이름 · 6자리 코드를 넣으세요'; return; }
+    const q=num(qty);
+    if(q==null||!Number.isInteger(q)){ msg.textContent='수량: 정수로 넣으세요'; return; }
+    const t={date:date.value,side:side.value,code:cc,name:name.value.trim(),price:num(price),qty:q,
+      fee:num(fee)||0,source:src.value,setup:setup.value,horizon:hz.value,reason:reason.value,
+      thesis_break:side.value==='sell'?(P.thesis_break||''):thesis.value,stop:num(stop),target:num(target),memo:memo.value};
+    if(edit) t.id=P.id;
+    ok.disabled=true;
+    try{ const nd=await trdPost({action:edit?'update':'add',trade:t}); if(!f.isConnected||S.tab!=='trd') return; viewTrades(p,nd); }
+    catch(e){ msg.textContent=e.message; ok.disabled=false; }
+  };
+  return f;
+}
+async function viewTrades(p, data, pre){
+  p.innerHTML='';
+  const box=el('div','trdBox'); p.appendChild(box);
+  const hd=el('div','dipHead');
+  hd.appendChild(el('b',null,'매매 일지'));
+  hd.appendChild(el('span',null,'산 이유와 생각을 바꿀 조건을 적고, 결과를 도구별로 잰다 — 개인 자료(이 PC 의 개인/ 폴더, 공개 저장소에 안 올라감)'));
+  box.appendChild(hd);
+  let d=data;
+  if(!d){ try{ d=await (await fetch('/api/trades')).json(); }catch(e){ d={error:'불러오지 못했습니다'}; } }
+  if(!box.isConnected) return;
+  if(d.error){ box.appendChild(el('div','err',d.error)); if(!d.book) return; }
+  const bk=d.book||{open:[],closed:[],stats:{},totals:{}}, T=bk.totals||{};
+  const tot=el('div','trdTot');
+  [['보유 원가',trW(T.priced_cost!=null?T.priced_cost:T.cost)+'원',null],['평가액',trW(T.value)+'원',null],
+   ['평가손익',trW(T.unreal)+'원 ('+trPct(T.unreal_pct)+')',T.unreal],['실현손익',trW(T.realized)+'원',T.realized],
+   ['보유 · 끝난 매매',(T.n_open||0)+' · '+(T.n_closed||0),null]].forEach(([k,v,c])=>{
+    const x=el('div'); x.appendChild(el('span',null,k)); x.appendChild(el('b',c==null?null:c>0?'pos':c<0?'neg':null,v)); tot.appendChild(x); });
+  if(T.price_asof) tot.appendChild(el('div','trdAsof','현재가 = '+T.price_asof+' 종가'+(T.n_no_price?' · 현재가 없음 '+T.n_no_price:'')));
+  box.appendChild(tot);
+  (bk.warnings||[]).forEach(w=>box.appendChild(el('div','finnote warn',w)));
+  if(d.bench_pending){
+    const n=el('div','finnote','같은 기간 중앙 대비는 계산 준비 중 — 수집 회사 주가를 처음 읽느라 40초 안팎 걸린다. ');
+    const rb=el('button','ghost','다시 보기'); rb.onclick=()=>viewTrades(p); n.appendChild(rb); box.appendChild(n);
+  }
+  box.appendChild(trdForm(p,d,pre));
+  const blk=(title,sub)=>{ const w=el('div','dipBlock'); const h=el('div','dipBH'); h.appendChild(el('b',null,title)); if(sub) h.appendChild(el('span',null,sub)); w.appendChild(h); box.appendChild(w); return w; };
+  const table=(w,heads)=>{ const t=el('table','tbl trdTbl'); const hr=el('tr'); heads.forEach((x,i)=>hr.appendChild(el('th',x[1]?'r':null,x[0]))); t.appendChild(hr); const wr=el('div','tblwrap'); wr.appendChild(t); w.appendChild(wr); return t; };
+  const nm=(r)=>{ const td=el('td'); td.appendChild(el('b',null,r.name||r.code)); td.appendChild(el('small',null,' '+r.code)); return td; };
+  const flag=(td,txt,cls,tip)=>{ const s=el('span','trdFlag '+cls,txt); if(tip) s.title=tip; td.appendChild(s); };
+  // 보유 중
+  const w1=blk('보유 중',(bk.open||[]).length+'건 — 산 이유 · 생각을 바꿀 조건을 다시 읽고, 깨졌으면 판다');
+  if(!(bk.open||[]).length) w1.appendChild(el('div','empty','보유 중인 종목이 없다.'));
+  else{
+    const t=table(w1,[['종목'],['산 날'],['수량',1],['산 값',1],['현재가',1],['수익률',1],['평가손익',1],['보유일',1],['손절가',1],['같은 기간 중앙 대비',1],['출처 · 셋업'],['']]);
+    bk.open.forEach(r=>{
+      const tr=el('tr'); const td=nm(r);
+      if(r.stop_broken) flag(td,'손절가 이탈','bad','현재가가 손절가 이하');
+      else if(r.near_stop) flag(td,'손절가 3% 안','warn');
+      if(r.over_horizon) flag(td,'계획 기간 지남','warn',(r.horizon_label||'')+' — 산 지 '+r.days+'일');
+      if(r.no_price) flag(td,'현재가 없음','g');
+      tr.appendChild(td);
+      tr.appendChild(el('td',null,r.buy_date));
+      tr.appendChild(el('td','num',trW(r.qty)));
+      tr.appendChild(el('td','num',trW(r.price)));
+      const lp=el('td','num',trW(r.last)); if(r.last_date) lp.title=r.last_date+' 종가'; tr.appendChild(lp);
+      tr.appendChild(el('td',trCls(r.ret),trPct(r.ret)));
+      tr.appendChild(el('td',trCls(r.pnl),trW(r.pnl)));
+      tr.appendChild(el('td','num',r.days+'일'));
+      tr.appendChild(el('td','num',r.stop?trW(r.stop):'—'));
+      tr.appendChild(el('td',trCls(r.excess),trPct(r.excess)));
+      tr.appendChild(el('td',null,r.source_label+(r.setup?' · '+r.setup:'')+(r.horizon?' · '+r.horizon_label:'')));
+      const tdb=el('td'), same=bk.open.filter(x=>x.code===r.code);
+      if(same[0]===r){            // 판 것은 먼저 산 로트부터 맞춘다(FIFO) — 종목마다 한 단추, 전체 보유 수량으로
+        const tot=same.reduce((a,x)=>a+x.qty,0), sb=el('button','ghost','매도 기록');
+        sb.title='먼저 산 것('+r.buy_date+')부터 판 것으로 맞춘다'+(same.length>1?' — 이 종목 로트 '+same.length+'개, 합계 '+tot+'주':'');
+        sb.onclick=()=>{ viewTrades(p,d,{side:'sell',date:d.today,code:r.code,name:r.name,qty:tot,price:r.last}); trdFocus(p); };
+        tdb.appendChild(sb);
+      }
+      tr.appendChild(tdb);
+      t.appendChild(tr);
+      if(r.reason||r.thesis_break){ const tr2=el('tr','trdWhy'); const td2=el('td'); td2.colSpan=12;
+        td2.textContent=(r.reason?'산 이유: '+r.reason:'')+(r.reason&&r.thesis_break?'  ·  ':'')+(r.thesis_break?'생각을 바꿀 조건: '+r.thesis_break:'');
+        tr2.appendChild(td2); t.appendChild(tr2); }
+    });
+  }
+  // 끝난 매매
+  const w2=blk('끝난 매매',(bk.closed||[]).length+'건 (먼저 산 것부터 판 것으로 맞춤)');
+  if(!(bk.closed||[]).length) w2.appendChild(el('div','empty','아직 판 종목이 없다.'));
+  else{
+    const t=table(w2,[['종목'],['산 날 → 판 날'],['수량',1],['산 값 → 판 값',1],['수익률',1],['손익',1],['보유일',1],['같은 기간 중앙 대비',1],['출처 · 셋업'],['판 이유']]);
+    bk.closed.slice().reverse().forEach(r=>{
+      const tr=el('tr'); tr.appendChild(nm(r));
+      tr.appendChild(el('td',null,r.buy_date+' → '+r.sell_date));
+      tr.appendChild(el('td','num',trW(r.qty)));
+      tr.appendChild(el('td','num',trW(r.buy_price)+' → '+trW(r.sell_price)));
+      tr.appendChild(el('td',trCls(r.ret),trPct(r.ret)));
+      tr.appendChild(el('td',trCls(r.pnl),trW(r.pnl)));
+      tr.appendChild(el('td','num',r.days+'일'));
+      tr.appendChild(el('td',trCls(r.excess),trPct(r.excess)));
+      tr.appendChild(el('td',null,r.source_label+(r.setup?' · '+r.setup:'')));
+      const why=el('td','trdWhyCell',r.sell_reason||''); if(r.thesis_break) why.title='생각을 바꿀 조건(살 때): '+r.thesis_break; tr.appendChild(why);
+      t.appendChild(tr);
+    });
+  }
+  // 통계
+  const st=bk.stats||{};
+  if(st.all&&st.all.n){
+    const w3=blk('성적','끝난 매매만 — 도구(출처)별 · 보유 계획별');
+    const t=table(w3,[['묶음'],['건수',1],['승률',1],['평균 이익',1],['평균 손실',1],['손익비',1],['수익 팩터',1],['손익 합',1],['평균 보유일',1],['중앙 대비(중앙)',1],['중앙을 이긴 비율',1]]);
+    const row=(lab,s,strong)=>{ const tr=el('tr'); tr.appendChild(el('td',strong?'trdAll':null,lab));
+      tr.appendChild(el('td','num',String(s.n))); tr.appendChild(el('td','num',s.win_rate==null?'—':s.win_rate+'%'));
+      tr.appendChild(el('td',trCls(s.avg_win),trPct(s.avg_win))); tr.appendChild(el('td',trCls(s.avg_loss),trPct(s.avg_loss)));
+      tr.appendChild(el('td','num',s.payoff==null?'—':String(s.payoff))); tr.appendChild(el('td','num',s.profit_factor==null?'—':String(s.profit_factor)));
+      tr.appendChild(el('td',trCls(s.pnl),trW(s.pnl))); tr.appendChild(el('td','num',s.avg_days==null?'—':s.avg_days+'일'));
+      tr.appendChild(el('td',trCls(s.ex_median),trPct(s.ex_median))); tr.appendChild(el('td','num',s.beat==null?'—':s.beat+'%')); t.appendChild(tr); };
+    row('전체',st.all,true);
+    (st.by_source||[]).forEach(s=>row('출처 · '+s.label,s));
+    (st.by_horizon||[]).forEach(s=>row('계획 · '+s.label,s));
+    w3.appendChild(el('div','finnote','손익비 = 평균 이익 ÷ |평균 손실| · 수익 팩터 = 이긴 손익 합 ÷ |진 손익 합| · 중앙 대비 = 같은 기간 수집 회사(시총 상위) 수익률 중앙값을 뺀 값. 건수가 적을 때는 운이 크게 섞인다.'));
+  }
+  // 전체 기록
+  const w4=blk('전체 기록',(d.trades||[]).length+'건 — 저장 위치 '+(d.path||''));
+  if((d.trades||[]).length){
+    const t=table(w4,[['날짜'],[''],['종목'],['가격',1],['수량',1],['수수료 · 세금',1],['출처'],['']]);
+    const lab=Object.fromEntries((d.sources||[]).map(s=>[s.key,s.label]));
+    d.trades.forEach(r=>{
+      const tr=el('tr'); tr.appendChild(el('td',null,r.date));
+      tr.appendChild(el('td',r.side==='buy'?'pos':'neg',r.side==='buy'?'매수':'매도'));
+      tr.appendChild(nm(r)); tr.appendChild(el('td','num',trW(r.price))); tr.appendChild(el('td','num',trW(r.qty)));
+      tr.appendChild(el('td','num',r.fee?trW(r.fee):'—')); tr.appendChild(el('td',null,lab[r.source]||r.source||''));
+      const tdb=el('td');
+      const eb=el('button','ghost','고치기'); eb.onclick=()=>{ viewTrades(p,d,r); trdFocus(p); }; tdb.appendChild(eb);
+      const db=el('button','ghost','지우기'); db.onclick=async()=>{
+        if(!confirm(r.date+' '+(r.name||r.code)+' '+(r.side==='buy'?'매수':'매도')+' '+r.qty+'주 기록을 지울까요? (하루 한 번 백업은 개인/backup 에 남는다)')) return;
+        try{ const nd=await trdPost({action:'delete',id:r.id}); if(!box.isConnected||S.tab!=='trd') return; viewTrades(p,nd); }catch(e){ alert(e.message); } };
+      tdb.appendChild(db); tr.appendChild(tdb); t.appendChild(tr);
+    });
+  }
 }
 
 async function viewVocal(p, force){

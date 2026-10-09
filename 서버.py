@@ -10062,6 +10062,259 @@ def _rep_auto_loop():
 
 
 # ---------------------------------------------------------------- HTTP
+# ---------------------------------------------------------- 기록 채점 · 매매 일지 (2026-10-10)
+# 기록 채점: 매일 남긴 판정(저평가 실전 기록 forward/*.json · 차트 발굴 일지 Tech/output/journal.csv)을
+#   그 뒤 실제 주가로 잰다 — 백테스트가 아닌 진짜 표본 밖 성적. 계산은 기록채점.py(표준 라이브러리만).
+# 매매 일지: 실제 매매와 산 이유 · 생각을 바꿀 조건을 적고, 보유 · 끝난 매매 · 도구별 성적을 본다. 계산은 매매일지.py.
+#   개인 자료라 기업추적/개인/매매일지.json(.gitignore — 공개 저장소에 안 올라감, 구글 드라이브로 백업)에 둔다.
+def _load_mod(name):
+    try:
+        sp = _ilu.spec_from_file_location(name, os.path.join(BASE, name + ".py"))
+        m = _ilu.module_from_spec(sp)
+        sp.loader.exec_module(m)
+        return m
+    except Exception as e:
+        print("%s 모듈 로드 실패: %s" % (name, e))
+        return None
+
+
+SCR = _load_mod("기록채점")
+TRD = _load_mod("매매일지")
+SCORE_DIR = os.path.join(CACHE_DIR, "score")
+SCORE_FWD = os.path.join(VAL_DIR, "forward")
+SCORE = {"running": False, "at": None, "result": None, "error": None}
+SCORE_LOCK = threading.Lock()
+SCORE_MAX_AGE = 6 * 3600          # 채점 결과가 이보다 묵으면 볼 때 다시 잰다(주가는 매일 06:30 새로)
+
+
+def _score_journal_path():
+    return os.path.join(TECH_DIR, "output", "journal.csv")
+
+
+def _last_close():
+    """(지금, 가장 최근 장 마감 15:40 시각, 지금 장중인가). 휴장일 달력은 모른다(주말만) — 넉넉한 쪽."""
+    now = dt.datetime.now()
+    lc = now.replace(hour=15, minute=40, second=0, microsecond=0)
+    while lc > now or lc.weekday() >= 5:
+        lc = (lc - dt.timedelta(days=1)).replace(hour=15, minute=40)
+    live = now.weekday() < 5 and (9, 0) <= (now.hour, now.minute) < (15, 40)
+    return now, lc, live
+
+
+def _px_file(code):
+    """채점 · 벤치마크용 종가 {YYYYMMDD: 종가} — .cache/price(저평가가 매일 새로 받는 988곳),
+    없으면 .cache/ohlcv 의 종가. 네트워크는 쓰지 않는다. 장중에 받은 오늘 봉(미완성)은 뺀다."""
+    for sub, k in (("price", None), ("ohlcv", 3)):
+        try:
+            with open(os.path.join(CACHE_DIR, sub, code + ".json"), "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if isinstance(d, dict) and d:
+            if k is not None:
+                d = {dd: v[k] for dd, v in d.items() if isinstance(v, list) and len(v) > k}
+            _, _, live = _last_close()
+            if live:
+                d.pop(dt.date.today().strftime("%Y%m%d"), None)
+            return d
+    return None
+
+
+def _score_universe():
+    """벤치마크 유니버스 = .cache/price 에 종가가 있는 회사(시총 상위 수집 대상)."""
+    try:
+        return sorted(f[:-5] for f in os.listdir(os.path.join(CACHE_DIR, "price")) if f.endswith(".json"))
+    except OSError:
+        return []
+
+
+def _score_inputs_mtime():
+    ts = [0.0]
+    for p in [_score_journal_path()] + ([os.path.join(SCORE_FWD, f) for f in os.listdir(SCORE_FWD)]
+                                         if os.path.isdir(SCORE_FWD) else []):
+        try:
+            ts.append(os.path.getmtime(p))
+        except OSError:
+            pass
+    return max(ts)
+
+
+def _run_score():
+    try:
+        jp = _score_journal_path()
+        # 일지 종목 중 .cache/price 에 없는 것(시총 상위 밖)은 일봉 캐시를 하루 한 번 새로 받는다 — 24시간 캐시
+        if FIN is not None and os.path.isfile(jp):
+            try:
+                codes = sorted({r["code"] for r in SCR.load_journal(jp)})
+            except Exception:
+                codes = []
+            now, lc, _ = _last_close()
+            age = max(60, (now - lc).total_seconds())     # 마지막 장 마감 전에 받은 캐시면 다시(장중 봉을 하루 들고 있지 않게)
+            for c in codes:
+                if not os.path.exists(os.path.join(CACHE_DIR, "price", c + ".json")):
+                    try:
+                        FIN.fetch_ohlcv(c, max_age=age)
+                    except Exception:
+                        pass
+        mt = _score_inputs_mtime()
+        res = SCR.run(SCORE_FWD, jp, _px_file, _score_universe())
+        res["inputs_mtime"] = mt
+        with SCORE_LOCK:                 # 화면에는 바로 — 파일 저장은 덤(드라이브가 잡고 있어도 결과는 안 버린다)
+            SCORE.update(result=res, at=time.time(), error=None)
+        try:
+            import tempfile
+            os.makedirs(SCORE_DIR, exist_ok=True)
+            fd, tmp = tempfile.mkstemp(prefix="_result.", suffix=".tmp", dir=SCORE_DIR)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    json.dump(res, fh, ensure_ascii=False)
+                (TRD._replace if TRD is not None else os.replace)(tmp, os.path.join(SCORE_DIR, "_result.json"))
+            except BaseException:
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
+                raise
+        except Exception as e:
+            print("기록 채점 결과 저장 실패(화면에는 보인다): %s" % type(e).__name__, flush=True)
+    except Exception as e:
+        with SCORE_LOCK:
+            SCORE["error"] = "%s: %s" % (type(e).__name__, e)
+    finally:
+        with SCORE_LOCK:
+            SCORE["running"] = False
+
+
+def score_view(force=False):
+    if SCR is None:
+        return {"error": "기록채점.py 를 읽지 못했습니다"}
+    with SCORE_LOCK:
+        if SCORE["result"] is None and not SCORE["running"]:
+            try:
+                p = os.path.join(SCORE_DIR, "_result.json")
+                with open(p, "r", encoding="utf-8") as fh:
+                    SCORE.update(result=json.load(fh), at=os.path.getmtime(p))
+            except (OSError, ValueError):
+                pass
+        res = SCORE["result"]
+        stale = force or res is None or time.time() - (SCORE["at"] or 0) > SCORE_MAX_AGE \
+            or _score_inputs_mtime() > (res or {}).get("inputs_mtime", 0)
+        if stale and not SCORE["running"]:
+            SCORE["running"] = True
+            threading.Thread(target=_run_score, daemon=True).start()
+        return {"running": SCORE["running"], "at": SCORE["at"], "error": SCORE["error"], "result": SCORE["result"]}
+
+
+TRD_LOCK = threading.Lock()
+_TRD_BENCH = {"at": 0.0, "since": None, "prices": None, "univ": None}
+_TRD_BENCH_LOCK = threading.Lock()
+
+
+def _trd_price(code):
+    """보유 종목 현재가 = 마지막 종가(네이버 일별 시세, 하루 한 번 새로). 못 구하면 증권사 스냅샷 가격."""
+    px = None
+    try:
+        if FIN is not None:
+            if os.path.exists(os.path.join(CACHE_DIR, "price", code + ".json")):
+                px = FIN.fetch_prices(code)          # 수집 회사(988곳) — 저평가가 매일 새로 받는 캐시
+            else:                                     # 그 밖은 일봉 캐시로 — .cache/price 에 새 파일을 만들면
+                ov = FIN.fetch_ohlcv(code) or {}      # 채점 유니버스 · 새로 받기 판단이 어긋난다
+                px = {k: v[3] for k, v in ov.items() if isinstance(v, list) and len(v) > 3 and v[3]}
+    except Exception:
+        px = None
+    if px:
+        d = max(px)
+        return float(px[d]), d
+    snap = _kis_snapshot() or {}
+    st = (snap.get("status") or {}).get(code) or {}
+    if st.get("px"):
+        return float(st["px"]), snap.get("date")
+    return None, None
+
+
+def _trd_warm(since):
+    """벤치마크용 유니버스 주가(988곳 파일)를 미리 읽어 둔다 — 처음엔 드라이브에서 40초 안팎 걸려 화면을 막지 않게 따로."""
+    try:
+        P, U = SCR.Prices(_px_file, since=since), _score_universe()
+        for c in U:
+            P.series(c)
+        with _TRD_BENCH_LOCK:
+            _TRD_BENCH.update(prices=P, univ=U, since=since, at=time.time())
+    except Exception as e:
+        print("매매 일지 벤치마크 준비 실패: %s" % e, flush=True)
+    finally:
+        with _TRD_BENCH_LOCK:
+            _TRD_BENCH["warming"] = False
+
+
+def _trd_bench(trades):
+    """같은 기간 유니버스 종목 수익률 중앙값(%) 함수 — 기록 채점과 같은 벤치마크. 주가는 한 시간 동안 들고 있는다.
+    아직 준비 전이면 None 을 돌려주고 뒤에서 읽기 시작한다(화면에는 '계산 중')."""
+    if SCR is None or not trades:
+        return None
+    ds = sorted(d for d in (TRD._as_date(t.get("date")) for t in trades) if d)   # 못 읽는 행은 장부처럼 건너뛴다
+    if not ds:
+        return None
+    since = (ds[0] - dt.timedelta(days=15)).strftime("%Y%m%d")
+    with _TRD_BENCH_LOCK:
+        b = _TRD_BENCH
+        have = b["prices"] is not None and since >= (b["since"] or since)
+        if (not have or time.time() - b["at"] > 3600) and not b.get("warming"):
+            b["warming"] = True          # 한 시간 지났으면 뒤에서 새로 읽고, 그동안은 들고 있던 값으로
+            threading.Thread(target=_trd_warm, args=(since,), daemon=True).start()
+        if not have:
+            return None
+        P, U = b["prices"], b["univ"]
+
+    def f(d0, d1):
+        with _TRD_BENCH_LOCK:
+            v = SCR.bench(P, U, d0, d1)
+        return None if v is None else v * 100.0
+    return f
+
+
+def _trd_path_label(path):
+    try:
+        rel = os.path.relpath(path, BASE)
+        return rel if not rel.startswith("..") else os.path.basename(path)
+    except ValueError:
+        return os.path.basename(path)
+
+
+def trades_view():
+    if TRD is None:
+        return {"error": "매매일지.py 를 읽지 못했습니다"}
+    path = TRD.default_path()
+    with TRD_LOCK:
+        try:
+            data = TRD.load(path)
+        except ValueError as e:
+            return {"error": str(e), "path": _trd_path_label(path)}
+    trades = data.get("trades") or []
+    bench = _trd_bench(trades)
+    bk = TRD.book(trades, _trd_price, bench)
+    trades = sorted(trades, key=lambda t: (str(t.get("date") or ""), str(t.get("created") or "")), reverse=True)
+    return {"trades": trades, "book": bk, "sources": TRD.sources_meta(), "horizons": TRD.horizons_meta(),
+            "path": _trd_path_label(path), "today": dt.date.today().isoformat(),
+            "bench_pending": bool(trades) and bench is None and SCR is not None}
+
+
+def trades_change(body):
+    """POST /api/trades {action: add|update|delete, trade: {...} | id} → 바뀐 뒤 화면 자료. 문제가 있으면 ValueError."""
+    if TRD is None:
+        raise ValueError("매매일지.py 를 읽지 못했습니다")
+    if not isinstance(body, dict):
+        raise ValueError("입력이 객체가 아닙니다")
+    action = body.get("action")
+    payload = {"id": body.get("id")} if action == "delete" else body.get("trade")
+    path = TRD.default_path()
+    with TRD_LOCK:
+        data = TRD.load(path)
+        new = TRD.apply(data, action, payload)
+        TRD.save(path, new)
+    return trades_view()
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
 
@@ -10073,15 +10326,45 @@ class Handler(BaseHTTPRequestHandler):
             body = json.dumps(body, ensure_ascii=False).encode("utf-8")
         elif isinstance(body, str):
             body = body.encode("utf-8")
-        self.send_response(code)
-        self.send_header("Content-Type", ctype)
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        try:
+        try:                             # 응답 쓰기 전체 — 브라우저가 먼저 끊으면(탭 닫기 · 새로 고침) 조용히 끝낸다
+            self.send_response(code)     # (예외가 새면 오류 문구 · 매매 내용이 viewer_auto.log 에 찍힌다)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Frame-Options", "SAMEORIGIN")          # 다른 사이트가 이 화면을 틀에 넣어
+            self.send_header("Content-Security-Policy", "frame-ancestors 'self'")   # 누르게 하는 것 막기
+            self.end_headers()
             self.wfile.write(body)
-        except (BrokenPipeError, ConnectionAbortedError):
-            pass
+        except OSError:
+            self.close_connection = True
+
+    def _local_host(self):
+        """Host 가 이 서버 주소(127.0.0.1 · localhost + 포트)인가 — 다른 이름으로 돌려 오는 요청(DNS 리바인딩) 막기."""
+        port = self.server.server_address[1]
+        return (self.headers.get("Host") or "").strip().lower() in ("127.0.0.1:%d" % port, "localhost:%d" % port)
+
+    def do_POST(self):
+        """쓰기 요청 — 지금은 매매 일지만. 같은 출처(이 PC 의 이 화면)에서 온 JSON 만 받는다:
+        Host · Origin 확인, Content-Type application/json(다른 사이트에서는 사전 확인에 막힌다), 64KB 한도."""
+        u = urllib.parse.urlparse(self.path)
+        try:
+            port = self.server.server_address[1]
+            origin = (self.headers.get("Origin") or "").strip().lower()
+            if not self._local_host() or origin not in ("http://127.0.0.1:%d" % port, "http://localhost:%d" % port):
+                return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
+            if u.path != "/api/trades":
+                return self._send(404, {"error": "no route"})
+            if (self.headers.get("Content-Type") or "").split(";")[0].strip().lower() != "application/json":
+                return self._send(415, {"error": "JSON 으로 보내야 합니다"})
+            n = int(self.headers.get("Content-Length") or 0)
+            if n <= 0 or n > 65536:
+                return self._send(413, {"error": "요청 크기가 맞지 않습니다"})
+            body = json.loads(self.rfile.read(n).decode("utf-8"))
+            return self._send(200, trades_change(body))
+        except ValueError as e:              # 입력 검증 · 보유 수량 초과 · 깨진 파일 · JSON 오류
+            return self._send(400, {"error": str(e)})
+        except Exception as e:
+            return self._send(500, {"error": "%s: %s" % (type(e).__name__, e)})
 
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
@@ -10304,6 +10587,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, dip_view(q.get("force") == "1"))
             if path == "/api/value":
                 return self._send(200, value_view(q.get("force") == "1"))
+            if path == "/api/score":
+                return self._send(200, score_view(q.get("force") == "1"))
+            if path == "/api/trades":           # 개인 매매 기록 — 이 PC 의 이 주소로 온 요청만
+                if not self._local_host():
+                    return self._send(403, {"error": "이 PC 의 주소로만 열 수 있습니다"})
+                return self._send(200, trades_view())
             if path == "/api/vocal":
                 return self._send(200, vocal_view(q.get("force") == "1"))
             if path == "/api/tech":
@@ -10404,12 +10693,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, "웹/index.html 이 없습니다.", "text/plain; charset=utf-8")
         with open(path, "rb") as fh:
             body = fh.read()
-        self.send_response(200)
-        self.send_header("Content-Type", ctype)
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(body)
+        return self._send(200, body, ctype)
 
 
 def _labels(q):
