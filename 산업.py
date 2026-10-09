@@ -538,11 +538,8 @@ def _exports_q(exp_series, qrows, latest_q, since):
 
 
 # ---------------------------------------------------------------- 업황 시계
-PHASE_BAND = 3.0      # %p — 속도 변화가 이 안이면 '유지'
-PHASE_FLAT = 2.0      # % — 속도가 이 안이고 가속도 '유지'면 '정체'(늘지도 줄지도 않음)
-# 라벨 — (속도 > 0 여부, 가속 구간) → 이름. 화면 범례와 같다
-PHASE_NAME = {(True, 1): "확장 가속", (True, 0): "확장 유지", (True, -1): "둔화",
-              (False, 1): "회복", (False, 0): "부진 지속", (False, -1): "수축 심화"}
+# 띠 · 정체 · 라벨 이름과 판정(phase_label)은 드러켄밀러(가속도 탭)와 한 곳 — 두 화면의 국면이 같은 식으로 정해진다(2026-10-09)
+from 드러켄밀러 import PHASE_BAND, PHASE_FLAT, PHASE_NAME, phase_label  # noqa: E402,F401
 
 
 def _phase(qrows):
@@ -566,9 +563,8 @@ def _phase(qrows):
     if not v:
         return None
     sp, pv, ac = v
-    band = 1 if ac >= PHASE_BAND else -1 if ac <= -PHASE_BAND else 0
     n = len(ys)
-    label = "정체" if band == 0 and abs(sp) < PHASE_FLAT else PHASE_NAME[(sp > 0, band)]
+    label = phase_label(sp, ac)
     return {"label": label, "speed": _r1(sp), "prev": _r1(pv), "accel": _r1(ac), "band": PHASE_BAND,
             "qs": [ys[n - 2][0], ys[n - 1][0]], "prev_qs": [ys[n - 4][0], ys[n - 3][0]], "trail": trail,
             "g": _r1(ys[-1][1]), "dg": _r1(ac)}

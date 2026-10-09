@@ -639,3 +639,80 @@ def test_last_is_thread_local(monkeypatch):
     for th in ths: th.join(30)
     assert errs == [] and seen == {"A": (3, []), "B": (0, [])}
     assert DRK.LAST["transient"] == 99 and DRK.LAST["error"] == "main"        # 메인 스레드 값은 그대로
+
+
+# ---------------------------------------------------------------- accel — B · 7국면 · 변곡 · 엇갈림 · mix (Task 3)
+def grid(yoys, start=(2024, 1)):
+    """yoys: 분기마다 (재작성 YoY_r, 공시 당시 매출YoY) — 하나만 주면 둘 다 같은 값."""
+    y0, q0 = start; out = []
+    for i, v in enumerate(yoys):
+        n = y0 * 4 + q0 - 1 + i
+        r, a = (v if isinstance(v, tuple) else (v, v))
+        out.append({"n": n, "year": n // 4, "q": n % 4 + 1, "label": "%dQ%d" % (n // 4, n % 4 + 1), "YoY_r": r, "매출YoY": a, "품질": [], "기준일": "20240101"})
+    return out
+
+
+def test_b_definition():
+    pts = DRK.accel(grid([10, 20, 30, 50]))
+    # s(n) = (Y(n)+Y(n-1))/2 ; B(n) = s(n) - s(n-2)
+    assert pts[3]["속도"] == 40 and pts[3]["가속B"] == 40 - 15
+
+
+def test_phase_labels_and_flat():
+    assert DRK.phase_label(10, 4) == "확장 가속" and DRK.phase_label(10, 0) == "확장 유지" and DRK.phase_label(10, -4) == "둔화"
+    assert DRK.phase_label(-10, 4) == "회복" and DRK.phase_label(-10, 0) == "부진 지속" and DRK.phase_label(-10, -4) == "수축 심화"
+    assert DRK.phase_label(1, 1) == "정체"
+
+
+def test_turn_through_flat_band():
+    # 삼성 모양: B ... −6.2 → +10.9(▲) → +41.7(같은 쪽 — 변곡 아님)
+    pts = grid([0] * 8)
+    Bs = [None, None, None, -9.2, -6.2, 10.9, 41.7, 1.0]
+    for p, b in zip(pts, Bs):
+        p["가속B"] = b
+    DRK._turns(pts)
+    assert [p["변곡"] for p in pts][4:7] == [None, "▲", None]
+
+
+def test_turn_needs_within_4():
+    pts = grid([0] * 8)
+    for p, b in zip(pts, [-5, 1, 1, 1, 1, 6, None, None]):
+        p["가속B"] = b
+    DRK._turns(pts)
+    assert pts[5]["변곡"] is None        # 반대쪽 띠 밖 값이 5분기 앞 — 변곡 아님
+
+
+def test_divergence_only_outside_band():
+    pts = DRK.accel(grid([0, 10, 20, 40, 15]))
+    last = pts[-1]
+    # B(last) = s(4) - s(2) = 27.5 - 15 = 12.5 > 3, C = 15 - 40 = -25 → 엇갈림
+    assert last["가속B"] == 12.5 and last["C"] == -25 and last["엇갈림"] is True
+    same = DRK.accel(grid([10, 10, 10, 10, 2]))
+    assert same[-1]["가속B"] == -4 and same[-1]["C"] == -8 and same[-1]["엇갈림"] is False   # B · C 같은 부호
+    inband = DRK.accel(grid([10, 10, 10, 12, 4]))
+    assert abs(inband[-1]["가속B"]) < 3 and inband[-1]["엇갈림"] is False                  # 띠 안이면 방향이 없어 엇갈림도 없음
+
+
+def test_mix_window_falls_back_to_asfiled():
+    pts = DRK.accel(grid([(None, 5), (None, 6), (10, 7), (12, 8)]))
+    last = pts[-1]
+    assert "mix" in last["품질"] and last["가속B"] == ((8 + 7) / 2) - ((6 + 5) / 2)
+
+
+def test_short_history_no_phase():
+    pts = DRK.accel(grid([10, 12]))
+    assert all(p["국면"] is None for p in pts)
+
+
+def test_op_basis_small_base_skipped():
+    pts = grid([0] * 6)
+    ops = [2, 100, 100, 100, 50, 120]      # pts[4] 의 1년 전 기저 2 는 직전 4분기 평균 |영업이익| 75.5 의 20% 미만 — YoY 안 씀
+    for p, o in zip(pts, ops):
+        p["영업이익"] = o
+    for p in pts:
+        b = next((x for x in pts if x["n"] == p["n"] - 4), None)
+        p["영업이익YoY_r"] = (p["영업이익"] / b["영업이익"] - 1) * 100 if b else None
+        p["영업이익YoY"] = p["영업이익YoY_r"]
+    DRK.accel(pts, basis="영업이익")
+    assert pts[4]["Y"] is None
+    assert round(pts[5]["Y"], 6) == 20.0

@@ -402,3 +402,82 @@ def scan_text_metrics(text, limit=4):
         if hits:
             out[name] = hits
     return out
+
+
+# ---------------------------------------------------------------- 가속(B) · 국면 — 산업 업황 시계와 같은 식 · 같은 이름(2026-10-09)
+PHASE_BAND = 3.0      # %p — 가속이 이 안이면 '유지'
+PHASE_FLAT = 2.0      # % — 속도가 이 안이고 가속도 '유지'면 '정체'
+PHASE_NAME = {(True, 1): "확장 가속", (True, 0): "확장 유지", (True, -1): "둔화",
+              (False, 1): "회복", (False, 0): "부진 지속", (False, -1): "수축 심화"}
+
+
+def phase_label(speed, acc):
+    band = 1 if acc >= PHASE_BAND else -1 if acc <= -PHASE_BAND else 0
+    if band == 0 and abs(speed) < PHASE_FLAT:
+        return "정체"
+    return PHASE_NAME[(speed > 0, band)]
+
+
+def _turns(pts):
+    """|B(n)| ≥ 띠 이고, n 앞 가장 가까운 |B| ≥ 띠 분기 m 이 반대 부호 · n − m ≤ 4 이면 ▲/▼."""
+    last = None                      # (n, sign) — 가장 최근 띠 밖 분기
+    for p in pts:
+        b = p.get("가속B")
+        p["변곡"] = None
+        if b is None or abs(b) < PHASE_BAND:
+            continue
+        s = 1 if b > 0 else -1
+        if last and last[1] != s and p["n"] - last[0] <= 4:
+            p["변곡"] = "▲" if s > 0 else "▼"
+        last = (p["n"], s)
+    return pts
+
+
+def accel(pts, basis="매출"):
+    by = {p["n"]: p for p in pts}
+    for p in pts:
+        p.setdefault("품질", [])
+        if basis == "영업이익":
+            hist = [abs(by[m]["영업이익"]) for m in range(p["n"] - 4, p["n"]) if m in by and by[m].get("영업이익") is not None]
+            base = (by.get(p["n"] - 4) or {}).get("영업이익")
+            ok = base is not None and base > 0 and hist and base >= 0.2 * (sum(hist) / len(hist))
+            r, a = (p.get("영업이익YoY_r"), p.get("영업이익YoY")) if ok else (None, None)
+        else:
+            r, a = p.get("YoY_r"), p.get("매출YoY")
+        p["Y_asfiled"] = a
+        if r is not None:
+            p["Y"] = r
+        else:
+            p["Y"] = a
+            if a is not None:
+                p["품질"].append("asfiled")
+    for p in pts:
+        n = p["n"]
+        w = [by.get(m) for m in range(n - 3, n + 1)]
+        p["속도"] = p["가속B"] = p["C"] = p["국면"] = p["B기준일"] = None
+        p["엇갈림"] = False
+        if all(x is not None for x in w) and all(x.get("Y") is not None for x in w):
+            ys = [x["Y"] for x in w]
+            kinds = {"asfiled" in x["품질"] for x in w}
+            if len(kinds) > 1:
+                alt = [x.get("Y_asfiled") for x in w]
+                if all(v is not None for v in alt):
+                    ys = alt
+                    p["품질"].append("mix")
+                else:
+                    ys = None
+            if ys:
+                s, s2 = (ys[3] + ys[2]) / 2, (ys[1] + ys[0]) / 2
+                p["속도"], p["가속B"] = s, s - s2
+                p["국면"] = phase_label(s, s - s2)
+                dates = [x.get("기준일") for x in w if x.get("기준일")]
+                p["B기준일"] = max(dates) if dates else None
+        prev = by.get(n - 1)
+        if prev and p.get("Y") is not None and prev.get("Y") is not None:
+            p["C"] = p["Y"] - prev["Y"]
+        b, c = p.get("가속B"), p.get("C")
+        p["엇갈림"] = bool(b is not None and c is not None and abs(b) >= PHASE_BAND and abs(c) >= 5 and (b > 0) != (c > 0))
+    _turns(pts)
+    for p in pts:
+        p["품질"] = sorted(set(p["품질"]))
+    return pts
