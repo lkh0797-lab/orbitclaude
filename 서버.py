@@ -8862,6 +8862,8 @@ def tech_run(auto=False):
             cmd = [exe, "-m", "chart_screener", "scan", "--out", TECH_OUT]
             if auto and _tech_supports("--skip-holiday"):
                 cmd.append("--skip-holiday")
+            if _tech_supports("--hist-budget"):      # 차트 '전체' 용 긴 이력(증권사 일봉) — 리포트 뒤 최대 10분, 남으면 다음 스캔
+                cmd += ["--hist-budget", "600"]
             TECH["proc"] = subprocess.Popen(
                 cmd, cwd=TECH_DIR,
                 stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
@@ -10020,6 +10022,13 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(404, "<p style='font:14px sans-serif;color:#888;padding:24px'>아직 차트 발굴 리포트가 없습니다 — '다시 계산'을 누르세요.</p>",
                                       "text/html; charset=utf-8")
                 return self._send(200, body, "text/html; charset=utf-8")
+            if path.startswith("/tech/hist/"):      # 리포트 차트의 긴 이력(Tech 가 리포트 옆 hist/<code>.json 에 쓴다)
+                m = re.fullmatch(r"([0-9A-Z]{6})\.json", path[len("/tech/hist/"):])
+                p = os.path.join(TECH_OUT, "hist", m.group(1) + ".json") if m else None
+                if not p or not os.path.isfile(p):
+                    return self._send(404, {"error": "이력 없음"})
+                with open(p, "rb") as fh:
+                    return self._send(200, fh.read())
             if path == "/api/industry":
                 return self._send(200, industry_view(q.get("force") == "1"))
             if path == "/api/industry/sub":
