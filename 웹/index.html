@@ -23,6 +23,8 @@
   --syn-1:#2a78d6; --syn-2:#eb6834; --syn-3:#1baf7a; --syn-other:#b9b6ae; --syn-wash:#2a78d6;
   /* 밸류체인 — 상류(원재료) · 계열 법인 경유 */
   --vc-up:#4f6f9f; --vc-up-soft:#eef2f8; --vc-via:#a8731c; --vc-via-soft:#f8efdc;
+  /* 주가 오르내림 — 한국식(빨강 오름 · 파랑 내림). 분석 지표 증감(--add/--del)과 따로 */
+  --up:#cf3b32; --dn:#2f62c9;
   --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
   --sans:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
 }
@@ -38,6 +40,7 @@
     --gal-mod:#e0b25e; --gal-num:#9aa4b0; --gal-tbl:#8e96e8;
     --syn-1:#3987e5; --syn-2:#d95926; --syn-3:#199e70; --syn-other:#5a5852; --syn-wash:#3987e5;
     --vc-up:#93acd6; --vc-up-soft:#222a36; --vc-via:#e0b25e; --vc-via-soft:#2f2717;
+    --up:#f0716a; --dn:#6ea2f2;
   }
 }
 *{box-sizing:border-box}
@@ -2927,6 +2930,85 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
 .grWatch{margin:2px 0 0;padding-left:18px;font-size:12px;color:var(--dim);line-height:1.6}
 .grMem a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--faint)}
 .grMem td small{color:var(--faint);font-size:10.5px}
+/* ---------- 내러티브 — 이 종목 소식(기사 제목 · 리포트 · 공시 · 정기보고서) ---------- */
+.stWrap{max-width:1480px}
+.stStat{display:flex;flex-direction:column;gap:6px;margin:0 0 12px}.stStat:empty{display:none}
+.stMsg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--dim);border:1px solid var(--line2);border-left:3px solid var(--line);border-radius:8px;background:var(--panel);padding:6px 11px}
+.stMsg.run{border-left-color:var(--accent)}.stMsg.warn{border-left-color:var(--warn);background:var(--warn-bg);color:var(--ink)}.stMsg.bad{border-left-color:var(--del);background:var(--del-bg);color:var(--ink)}
+.stMsg.run::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none;animation:stBlink 1.2s ease-in-out infinite}
+@keyframes stBlink{50%{opacity:.2}}
+.stCo{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:2px 0 2px}
+.stCo b{font:700 19px/1.3 'Noto Serif KR',serif;color:var(--ink)}.stCo .cd{font:12px var(--mono);color:var(--faint)}
+.stCo .px{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}.stCo .ch{font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums}.stCo .pd{font-size:11.5px;color:var(--faint)}
+.stUp{color:var(--up)}.stDn{color:var(--dn)}
+.stRange{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:12px;color:var(--dim);margin:0 0 16px}.stRange small{color:var(--faint);font-size:11px}
+.stRange button{padding:2px 10px;font-size:11.5px;border-radius:999px}
+.stSec{margin:0 0 14px}
+.stSecH{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:0 0 7px}.stSecH b{font-size:13.5px;font-weight:700;color:var(--ink)}.stSecH span{font-size:11.5px;color:var(--faint)}
+.stHot{display:flex;flex-wrap:wrap;gap:6px}
+.stHot button{display:flex;flex-direction:column;align-items:flex-start;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:4px 11px 5px;cursor:pointer;text-align:left;line-height:1.35}
+.stHot button b{font-size:12.5px;font-weight:600}.stHot button b small{font:11px var(--mono);color:var(--faint);margin-left:5px;font-weight:400}
+.stHot button span{font-size:10.5px;color:var(--accent)}
+.stHot button:hover{border-color:var(--accent)}
+.stHot button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.stHot button.on span,.stHot button.on b small{color:var(--accent-ink);opacity:.85}
+.stEmptyL{font-size:12px;color:var(--faint)}
+.stStrip{background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:6px 10px 2px}
+.stStripSvg{margin-top:0}.stStripSvg .hit{cursor:pointer}
+.stStripSvg .stPx{fill:none;stroke:var(--ink);stroke-width:1.4;opacity:.72;stroke-linejoin:round}
+.stStripSvg .stNb{fill:var(--faint);opacity:.6}.stStripSvg .stNb.hi{fill:var(--accent);opacity:.95}
+.stStripSvg .stGl{stroke:var(--line2);stroke-width:1}.stStripSvg .stAx{font-size:10px;fill:var(--faint)}
+.stStripSvg .stMg{fill:var(--add)}.stStripSvg .stMb{fill:var(--del)}.stStripSvg .stMr{fill:var(--gal-tbl)}
+.stStripSvg .stSel{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 2;pointer-events:none}
+.stKey{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:11px;color:var(--faint);padding:2px 2px 5px}
+.stKey .g{color:var(--add)}.stKey .b{color:var(--del)}.stKey .r{color:var(--gal-tbl)}
+.stTools{display:flex;flex-direction:column;gap:8px;margin:16px 0 10px}
+.stTools2{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.stTools2 input[type=search]{flex:1;min-width:200px;max-width:420px;padding:6px 11px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:13px}
+.stNoise{font-size:12.5px;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:5px}
+.stOn{display:inline-flex;align-items:center;gap:2px;font-size:12px;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 2px 2px 10px}
+.stOn button{border:0;background:none;color:inherit;cursor:pointer;padding:0 7px;font-size:12px}
+.stGrid{display:grid;grid-template-columns:minmax(320px,440px) minmax(0,1fr);gap:16px;align-items:start}
+.stList{position:sticky;top:10px;max-height:var(--stH,calc(100vh - 100px));overflow-y:auto;overscroll-behavior:contain;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.stDay{position:sticky;top:0;z-index:1;background:var(--panel);border-bottom:1px solid var(--line2);padding:6px 12px 5px;font-size:11.5px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;transition:background .4s}
+.stDay span{font-weight:400;color:var(--dim)}.stDay span b{font-weight:700}.stDay.flash{background:var(--accent-soft)}
+.stRow{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line2);border-left:3px solid transparent;background:none;padding:7px 12px 8px 9px;cursor:pointer;color:inherit}
+.stRow:hover{background:var(--bg)}.stRow.on{background:var(--accent-soft);border-left-color:var(--accent)}.stRow.hid{opacity:.55}
+.stRow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.stRowH{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--faint);min-width:0}
+.stRowH .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-variant-numeric:tabular-nums}
+.stRowH .n{font:600 10.5px var(--mono);color:var(--dim);margin-left:auto;flex:none}
+.stTi{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.45;color:var(--ink);margin-top:2px;word-break:keep-all}
+.stBadge.tag{font-size:10.5px;font-weight:700;padding:1px 7px;flex:none;line-height:1.5}
+.stTone{font-size:10.5px;font-weight:700;flex:none}.stTone.g{color:var(--add)}.stTone.b{color:var(--del)}.stTone.c{color:var(--warn)}
+.stMore{display:block;margin:10px auto 12px}
+.stListE{padding:28px 16px;text-align:center;font-size:12.5px;color:var(--faint);line-height:1.6}.stListE .ghost{margin-top:10px}
+.stRight{min-width:0}
+.stDet{background:var(--panel);border:1px solid var(--line);border-radius:12px;min-width:0;overflow:hidden}
+.stDet .rpB{overflow:visible}.stDet .rpF{flex-wrap:wrap}.stDet .rpF .ghost{padding:5px 12px;font-size:12.5px}
+/* 리포트 칸도 이 탭의 주가 반응처럼 한국식 — 오름(상향 · 상승여력 · 매수) 빨강, 내림 파랑. 리포트 탭 말풍선은 그대로 */
+.stDet .rpStock .c.up b,.stDet .rpStock .c.buy b{color:var(--up)}.stDet .rpStock .c.dn b,.stDet .rpStock .c.sell b{color:var(--dn)}
+.stHint{margin:6px 0 0;font-size:12px;color:var(--faint);line-height:1.6}
+.stRe{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.stRe .c{border:1px solid var(--line2);border-radius:9px;padding:7px 10px;background:var(--bg)}
+.stRe .c span{display:block;font-size:10.5px;color:var(--faint);font-weight:600}.stRe .c b{font-size:15px;font-variant-numeric:tabular-nums}
+.stRe .c small{display:block;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+.stCls{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px}
+.stG{font-size:11.5px;font-weight:700;padding:1px 10px;border-radius:999px;background:var(--line2);color:var(--dim)}
+.stG.good{background:var(--add-bg);color:var(--add)}.stG.check{background:var(--warn-bg);color:var(--warn)}.stG.bad{background:var(--del-bg);color:var(--del)}
+.stW{font-size:11px;color:var(--accent);letter-spacing:1px}
+.stKv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 16px;font-size:13px;margin:0}
+.stKv dt{color:var(--faint);font-size:12px}.stKv dd{margin:0;font-variant-numeric:tabular-nums;word-break:keep-all}.stKv dd.big{font-weight:700;color:var(--accent)}
+.stTerm{padding:6px 0}.stTerm+.stTerm{border-top:1px dotted var(--line2)}
+.stTermH{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-size:12.5px}.stTermH b{font-size:13.5px}.stTermH span{color:var(--dim)}
+.stLink{border:0;background:none;color:var(--accent);cursor:pointer;font-size:12px;padding:0;margin-left:auto}.stLink:hover{text-decoration:underline}
+.stSnip{margin:4px 0 0;font-size:12.5px;line-height:1.65;color:var(--dim);border-left:2px solid var(--line);padding-left:9px;word-break:keep-all}
+.stGist{padding:6px 0}.stGist+.stGist{border-top:1px dotted var(--line2)}
+.stGist .sec{font-size:11px;font-weight:700;color:var(--faint)}.stGist p{margin:2px 0 0;font-size:13.5px;line-height:1.7;word-break:keep-all}
+.stTags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.stTags .tag{font-size:10.5px;padding:1px 7px}
+.stSame{display:flex;flex-direction:column}
+.stSameIt{display:flex;align-items:center;gap:7px;width:100%;text-align:left;border:0;border-bottom:1px dotted var(--line2);background:none;padding:5px 2px;cursor:pointer;font-size:12.5px;color:var(--ink);min-width:0}
+.stSameIt:hover{color:var(--accent)}.stSameIt .ti{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.stSameIt .tm{flex:none;font:11px var(--mono);color:var(--faint)}
+@media (max-width:1100px){.stGrid{grid-template-columns:minmax(0,1fr)}.stList{position:static;max-height:60vh}}
 </style>
 </head>
 <body>
@@ -2951,6 +3033,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
         <button data-t="trd">매매 일지</button>
         <button data-t="orbit" class="on">궤도</button>
         <button data-t="land">풍경</button>
+        <button data-t="story">내러티브</button>
         <button data-t="brief">변화 브리핑</button>
         <button data-t="qtr">분기 변화</button>
         <button data-t="earn">실적</button>
@@ -3160,8 +3243,9 @@ $('#tabs').addEventListener('click', e=>{
 });
 function show(t){
   S.tab=t;
+  if(t!=='story'&&S.stFit){ window.removeEventListener('resize',S.stFit); S.stFit=null; }   // 내러티브를 떠나면 payload 붙든 resize 리스너를 바로 놓는다
   const p=$('#panes'); p.innerHTML='<div class="loading">불러오는 중…</div>';
-  ({orbit:viewOrbit, land:viewLand, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
+  ({orbit:viewOrbit, land:viewLand, story:viewStory, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, rep:viewReports, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
     cat:viewCatalyst, exp:viewExport, val:viewValue, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades}[t])(p);
@@ -11775,19 +11859,15 @@ function repEst(lines){
   rows.forEach(r=>{ const tr=el('tr'); tr.appendChild(el('th','rpYr',r.yr)); cols.forEach(k=>tr.appendChild(el('td',null,r[k]||''))); t.appendChild(tr); });
   return t;
 }
-// 말풍선 — 제목 바로 아래에 크게. 핵심 투자포인트 · 실적 전망(표) · 리스크 · 결론 · 소제목 문단 · 원문 링크. 바깥을 누르거나 Esc 로 닫는다
-function repPop(r,anchor,ev){
-  const old=document.querySelector('.rpBub'); if(old){ const same=old._r===r; old._close(); if(same) return; }
-  const bub=el('div','rpBub'); bub._r=r; const arrow=el('i','rpArrow'); bub.appendChild(arrow);
+// 리포트 한 건 채우기 — 머리(날짜 · 증권사 · 꼬리표 · 제목 · 주가 칸) · 본문(투자포인트 · 실적 전망 · 리스크 · 결론) · 원문 링크. 말풍선과 내러티브 상세가 같이 쓴다
+function repFill(r,head,body,foot){
   const tt=repTitle(r);
-  const head=el('div','rpH');
   const meta=el('div','rpMeta');
   meta.appendChild(el('span','d',r.date.slice(0,10))); const mb=el('span','b'+(r.broker?'':' nb'),r.broker||'증권사 미표기');
   if(r.broker_via) mb.title='요약 카드엔 증권사가 없어 '+r.broker_via+' 채널의 같은 리포트로 채움'; meta.appendChild(mb);
   if(tt.tag) meta.appendChild(el('span','t',tt.tag));
   if(r.kind==='산업'&&r.sector&&r.sector!==tt.tag) meta.appendChild(el('span','t',r.sector));
   if(r.kind==='기업'&&r.name) meta.appendChild(el('span','t co',r.name));
-  const x=el('button','x','✕'); x.type='button'; x.title='닫기(Esc)'; head.appendChild(x);
   head.appendChild(meta); head.appendChild(el('h3','rpT',tt.t||'(제목 없음)'));
   if(r.kind==='기업'&&(r.opinion||r.tp||r.price_at)){ const st=el('div','rpStock');
     const cell=(l,v,cls)=>{ const c=el('div','c'+(cls?' '+cls:'')); c.appendChild(el('span',null,l)); c.appendChild(el('b',null,v)); st.appendChild(c); };
@@ -11796,8 +11876,6 @@ function repPop(r,anchor,ev){
     if(r.price_at) cell('리포트 당시 주가',r.price_at.toLocaleString('ko-KR')+'원');
     if(r.price_at&&r.tp){ const u=(r.tp/r.price_at-1)*100; cell('상승여력',(u>=0?'+':'')+u.toFixed(0)+'%',u>=0?'up':'dn'); }
     head.appendChild(st); }
-  bub.appendChild(head);
-  const body=el('div','rpB');
   const sec=(title,cls)=>{ const s=el('section','rpS'+(cls?' '+cls:'')); s.appendChild(el('h4',null,title)); body.appendChild(s); return s; };
   if((r.lines||[]).length){ const s=sec('핵심 투자포인트'); const ol=el('ol','rpPts'); r.lines.forEach(l=>ol.appendChild(el('li',null,l))); s.appendChild(ol); }
   (r.sections||[]).forEach(x=>{ const s=sec(x.h.replace(/[:：]\s*$/,'')); s.appendChild(el('p',null,x.p)); });
@@ -11805,13 +11883,19 @@ function repPop(r,anchor,ev){
   if((r.risks||[]).length){ const s=sec('리스크','risk'); const ul=el('ul','rpList'); r.risks.forEach(l=>ul.appendChild(el('li',null,l))); s.appendChild(ul); }
   if(r.concl){ const s=sec('결론','concl'); s.appendChild(el('p',null,r.concl)); }
   if(!body.children.length) body.appendChild(el('div','rpEmpty','요약 내용이 없는 글이다 — 원문에서 본다'));
-  bub.appendChild(body);
-  const foot=el('div','rpF');
   const lk=(t,u)=>{ const a=el('a','rpL',t); a.href=u; a.target='_blank'; a.rel='noopener'; foot.appendChild(a); };
   const orig=(r.urls||[]).find(u=>!/t\.me\//.test(u)); if(orig) lk('원문 보기 ↗',orig); if(r.msg_url) lk('텔레그램 글 ↗',r.msg_url);
   if(r.brk_url&&r.brk_url!==r.msg_url) lk((r.broker||'증권사')+' 채널 글 ↗',r.brk_url);
+}
+// 말풍선 — 제목 바로 아래에 크게. 핵심 투자포인트 · 실적 전망(표) · 리스크 · 결론 · 소제목 문단 · 원문 링크. 바깥을 누르거나 Esc 로 닫는다
+function repPop(r,anchor,ev){
+  const old=document.querySelector('.rpBub'); if(old){ const same=old._r===r; old._close(); if(same) return; }
+  const bub=el('div','rpBub'); bub._r=r; const arrow=el('i','rpArrow'); bub.appendChild(arrow);
+  const head=el('div','rpH'), body=el('div','rpB'), foot=el('div','rpF');
+  const x=el('button','x','✕'); x.type='button'; x.title='닫기(Esc)'; head.appendChild(x);
+  repFill(r,head,body,foot);
   foot.appendChild(el('span','hint','바깥을 누르거나 Esc'));
-  bub.appendChild(foot);
+  bub.appendChild(head); bub.appendChild(body); bub.appendChild(foot);
   document.body.appendChild(bub);
   // 자리 — 제목 바로 아래, 화면 안으로. 화살표는 누른 곳을 가리킨다
   const ar=anchor.getBoundingClientRect(), W=Math.min(860,window.innerWidth-32);
@@ -14604,6 +14688,406 @@ function multiline(d){
   wrap.appendChild(svg); wrap.appendChild(leg);
   wrap.style.margin='4px 0 18px';
   return wrap;
+}
+
+// ---------------------------------------------------------- 내러티브 — 이 종목 소식 피드 (/api/story · 내러티브.py)
+// 증권사 앱 '소식' 탭처럼 대중이 접한 소식(언론 기사 제목 · 증권사 리포트 · 공시)과 회사의 정기보고서를 날짜순 한 줄로 — 왼쪽 목록, 오른쪽 상세.
+// 기업추적만 가진 것을 붙인다: 기사 낱말을 회사가 보고서에서 언제부터 썼나(낱말 궤적) · 공시 호재/확인/악재 · 계약 칸 · 정기보고서 한 줄 요약 · 그날 주가와 시장(전 종목 중앙).
+// 점수 · 매수 신호는 내지 않는다(문장 기반 선행 점수는 표본 외 검증 실패). 서버가 뒤에서 만드는 동안(pending · stale · news_running) 3초마다 다시 묻는다.
+const ST_TYPE={news:['뉴스','t3'], report:['리포트','t4'], disc:['공시','t0'], filing:['보고서','t2'], alert:['경보','t1']};
+const ST_CHIP=[['','전체'],['news','뉴스'],['report','리포트'],['disc','공시'],['filing','정기보고서'],['alert','시장경보']];
+const ST_K={art:'이 종목 기사', mention:'테마 · 업종 기사 — 이 종목이 대표 종목으로 붙었지만 제목에 이름은 없다', disc:'거래소 · 코스닥 공시 제목', alert:'시장조치',
+  info_list:'인포스탁 자동 목록', info_move:'인포스탁 시세 띠 · 급등락 속보', info_echo:'인포스탁 공시 되풀이', robot:'로봇 기사', roundup:'이 종목 이름 없는 시황', ad:'광고'};
+const ST_DK={A001:'사업보고서', B:'주요사항보고', I:'거래소 공시', KRX:'거래소 공시 · KIS 제목'};
+const ST_G={good:'호재', check:'확인', bad:'악재'};
+const ST_PAGE=300;                                             // 목록은 300줄씩 — 005930 은 3,500건 안팎
+const stD=d=>d?d.slice(0,4)+'.'+d.slice(4,6)+'.'+d.slice(6,8):'';
+const stEp=d=>Date.UTC(+d.slice(0,4),+d.slice(4,6)-1,+d.slice(6,8))/864e5;       // 'YYYYMMDD' → 일 수(띠 가로축 · 요일)
+const stToday=()=>{ const t=new Date(); return t.getFullYear()+String(t.getMonth()+1).padStart(2,'0')+String(t.getDate()).padStart(2,'0'); };
+const stDW=d=>d?stD(d)+' ('+'일월화수목금토'[new Date(stEp(d)*864e5).getUTCDay()]+')':'';
+const stHM=t=>t&&t.length>=4?t.slice(0,2)+':'+t.slice(2,4):'';
+const stPct=v=>v==null||!isFinite(v)?'—':(v>0?'+':'')+v.toFixed(2)+'%';
+const stPp=v=>v==null||!isFinite(v)?'—':(v>0?'+':'')+v.toFixed(2)+'%p';
+const stUD=v=>v>0?'stUp':v<0?'stDn':'';                         // 주가는 한국식 — 빨강 오름 · 파랑 내림
+const stNorm=s=>String(s||'').replace(/\s+/g,'').toLowerCase();  // 한글은 띄어쓰기 무시
+const stWon=v=>v==null?null:(Math.abs(v)>=1e8?qWon(v):Math.round(v/1e4).toLocaleString('ko-KR')+'만')+'원';
+const stSrc=x=>x.src||(x.type==='report'?x.broker||'증권사 미표기':x.type==='disc'?ST_DK[x.kind]||'공시':x.type==='filing'?'정기보고서':x.type==='alert'?'시장조치':'');
+// 목록 줄 꼬리표 — 공시 호재 ▲ · 악재 ▼ · 확인, 리포트 목표가 상향 ▲ · 하향 ▼
+function stTone(x){
+  if(x.type==='disc'){ const g=(x.cls||{}).g||(x.tone>0?'good':x.tone<0?'bad':'');
+    return g==='good'?el('span','stTone g','▲ 호재'):g==='bad'?el('span','stTone b','▼ 악재'):g==='check'?el('span','stTone c','확인'):null; }
+  if(x.type==='report'&&x.tone) return el('span','stTone '+(x.tone>0?'g':'b'),x.tone>0?'▲ 상향':'▼ 하향');
+  return null;
+}
+async function viewStory(p){
+  const c=S.co; p.innerHTML='';
+  if(!c){ p.appendChild(el('div','empty','왼쪽에서 회사를 고르세요.')); return; }
+  const code=c.code;
+  // 거르기 · 고른 소식 · 펼친 줄 수는 회사마다 기억한다 — 폴링으로 다시 그려도, 탭을 오가도 그대로
+  if(!S.stv||S.stv.code!==code) S.stv={code, type:'', kw:'', q:'', noise:false, sel:null, shown:ST_PAGE};
+  const V=S.stv, R={};
+  const box=el('div','stWrap'); p.appendChild(box);
+  const hd=el('div','dipHead'); hd.appendChild(el('b',null,'내러티브'));
+  hd.appendChild(el('span',null,'이 종목에 대해 대중이 접한 소식(기사 제목 · 리포트 · 공시)과 회사의 정기보고서를 날짜순으로 — 점수 · 매수 신호는 내지 않는다'));
+  box.appendChild(hd);
+  const stat=el('div','stStat'); box.appendChild(stat);
+  const body=el('div'); body.appendChild(el('div','loading','소식 불러오는 중…')); box.appendChild(body);
+  let D=null, timer=0;
+  const alive=()=>S.tab==='story'&&S.co&&S.co.code===code&&box.isConnected;
+  // 목록 높이 — main 위치에서 화면 아래까지(머리가 두 줄로 접혀도 맞게 그때그때 잰다)
+  // 리스너는 한 벌만(S.stFit) — 남으면 그 클로저가 payload · 떼어 낸 DOM 을 다음 resize 까지 붙든다
+  const unfit=()=>{ window.removeEventListener('resize',fit); if(S.stFit===fit) S.stFit=null; };
+  const fit=()=>{ if(!box.isConnected) return unfit();
+    if(R.grid) R.grid.style.setProperty('--stH',Math.max(320,window.innerHeight-$('main').getBoundingClientRect().top-20)+'px'); };
+  if(S.stFit) window.removeEventListener('resize',S.stFit);
+  S.stFit=fit; window.addEventListener('resize',fit);
+  const msg=(cls,txt)=>{ const m=el('div','stMsg'+(cls?' '+cls:'')); m.appendChild(el('span',null,txt)); stat.appendChild(m); };
+  const status=d=>{
+    stat.innerHTML='';
+    if(!d){ msg('bad','서버에 닿지 못했다 — 5초 뒤 다시 묻는다'); return; }
+    if(d.error&&!d.items){ msg('bad',d.error); return; }
+    // 다시 만들기만 실패 — 서버가 앞 판을 같이 보냈으면 그걸 보이고 실패는 한 줄로(10분 뒤 다시 해 본다)
+    const be=d.build_error||d.error;
+    if(be) msg('bad','다시 만들기 실패 — '+be+' · 지금 보이는 것은 '+(d.built||'앞')+' 판, 10분 뒤 다시 해 본다');
+    if(d.pending){ msg('run','소식 모으는 중'+(d.step?' · '+d.step:'')+' — 처음 한 번은 공시 색인 · 리포트 읽기로 1~2분 걸린다'); return; }
+    const sr=d.src||{}, N=sr.news||{}, ix=(sr.disc||{}).index;
+    if(d.stale) msg('run','새 자료로 다시 만드는 중 — 지금 보이는 것은 '+(d.built||'앞')+' 판, 다 되면 저절로 바뀐다');
+    if(d.news_running) msg('run','뉴스 제목 받는 중(한국투자증권) — 받는 대로 붙는다');
+    else if(N.ok===false) msg('warn','뉴스 제목 없음 — '+(N.note||'사유 모름')+'. 리포트 · 공시 · 정기보고서는 그대로 본다');
+    else if(N.note) msg('warn','뉴스 '+N.note+' — 받아 둔 제목으로 본다');      // 받아 둔 게 있을 때의 새로 받기 실패
+    if(!d.news_running&&N.ok!==false&&(N.capped||N.complete===false)) msg('','뉴스는 '+(N.oldest?stD(N.oldest)+'까지':'일부만')+' 받았다 — 더 오래된 것은 다음에 이어 받는다(언론 기사는 약 1년만 남는다)');
+    const cut=[N.cut?'뉴스 '+fmt(N.cut)+'건':'',N.cut_hidden?'잡음 '+fmt(N.cut_hidden)+'건':''].filter(Boolean).join(' · ');
+    if(cut) msg('','목록 크기 한도로 오래된 '+cut+'은 뺐다 — 받아 둔 제목 캐시엔 남아 있다');
+    if(ix==='building') msg('run','공시 색인 만드는 중(처음 한 번 약 20초) — 다 되면 공시가 붙는다');
+    else if(ix==='missing') msg('warn','공시 색인이 없다 — 공시목록(.cache/공시목록)이 아직 없어 공시는 빠졌다');
+  };
+  const load=async refresh=>{
+    clearTimeout(timer); if(!alive()) return unfit();
+    let d=null; try{ d=await (await fetch('/api/story?code='+code+(refresh?'&refresh=1':''))).json(); }catch(e){ d=null; }
+    if(!alive()) return unfit();
+    status(d);
+    if(!d){ timer=setTimeout(()=>load(),5000); return; }
+    // 「뉴스 새로 받기」 — 받는 중이 아니면 되살린다(받기를 거절 · 실패해 새 판이 안 와도 눌린 채로 남지 않게)
+    if(R.nb&&!d.news_running&&!d.pending){ R.nb.disabled=false; R.nb.textContent='뉴스 새로 받기'; }
+    if(refresh&&!d.error&&!d.build_error&&!d.pending&&!d.news_running&&!((d.src||{}).news||{}).note) msg('','뉴스는 1분 안에 받아 두었다 — 조금 뒤 다시 누를 수 있다');
+    if(d.error&&!d.items){ if(!D){ stat.innerHTML=''; body.innerHTML=''; body.appendChild(el('div','err',d.error)); }
+      timer=setTimeout(()=>load(),60000); return; }     // 막힘(10분)이 풀리면 다시 만들게 천천히 묻는다
+    if(!d.pending&&(!D||d.built!==D.built)){ D=d; draw(); }     // built 가 같으면 다시 그리지 않는다
+    if(d.pending||d.stale||d.news_running||((d.src||{}).disc||{}).index==='building') timer=setTimeout(()=>load(),3000);
+    else if(d.error||d.build_error) timer=setTimeout(()=>load(),60000);
+  };
+  // 그리기 — 새 payload 마다 한 번. 고른 소식 · 거르기 · 스크롤(목록 · main) · 찾기 칸 커서를 지킨다
+  const draw=()=>{
+    // 앞 판의 찾기 대기(200ms)는 버리고 친 글자는 지금 V.q 로 — 다시 그려도 글자가 안 지워지고, 옛 판 타이머가 R 을 덮지 않는다
+    clearTimeout(R.tq); if(R.inp) V.q=R.inp.value.trim();
+    const qv=R.inp?R.inp.value:V.q, gen=R.gen=(R.gen||0)+1;
+    const mn=$('main'), mTop=mn.scrollTop, lTop=R.list?R.list.scrollTop:null;
+    const foc=R.inp&&document.activeElement===R.inp?[R.inp.selectionStart,R.inp.selectionEnd]:null;
+    const fr=document.activeElement, fid=fr&&R.list&&R.list.contains(fr)&&fr.classList.contains('stRow')?fr.dataset.id:null;   // 화살표로 돌던 줄
+    const items=(D.items||[]).slice().sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0);   // 최신 먼저(같은 날은 서버 순서 그대로)
+    const byId=new Map(), byDay=new Map();
+    items.forEach(x=>{ byId.set(x.id,x); if(!byDay.has(x.d)) byDay.set(x.d,[]); byDay.get(x.d).push(x); });
+    const vocab=Object.assign({}, D.vocab||{}); (D.hot||[]).forEach(h=>{ if(h.vocab){ vocab[h.w]=h.vocab; if(h.vocab.term) vocab[h.vocab.term]=h.vocab; } });   // 서버의 vocab 지도(제목에 걸린 낱말 전부) + 요즘 이야기 낱말
+    const nHid=items.filter(x=>x.hide).length;
+    // 요즘 이야기 낱말 — 서버처럼 회사 이름 속 글자는 안 친다(대한광통신 ≠ 광통신), 영문은 낱말 경계(AI ≠ Daily, HBM ⊂ HBM4)
+    const nm=stNorm(D.name||c.name);
+    const passer=()=>{ const kw=stNorm(V.kw), q=stNorm(V.q);
+      const re=/^[a-z0-9]+$/i.test(V.kw)?new RegExp('(^|[^a-z])'+V.kw.toLowerCase()+'(?![a-z])'):null;
+      const cut=s=>nm&&nm!==kw?s.split(nm).join('|'):s;
+      const kwHit=x=>(x.terms||[]).includes(V.kw)||(re?re.test(cut(String(x.title||'').toLowerCase())):cut(stNorm(x.title)).includes(kw));
+      return (x,anyType)=>!(x.hide&&!V.noise)&&(anyType||!V.type||x.type===V.type)&&
+        (!kw||kwHit(x))&&(!q||stNorm(x.title).includes(q)); };
+    let cur=[];
+    const w=el('div');
+    // 머리 — 이름 · 코드 · 마지막 종가 · 전일 대비 · 자료 범위
+    const co=el('div','stCo'); co.appendChild(el('b',null,D.name||c.name)); co.appendChild(el('span','cd',D.code||code));
+    const px=D.px||{};
+    if(px.last!=null){ co.appendChild(el('span','px',Math.round(px.last).toLocaleString('ko-KR')+'원'));
+      if(px.chg!=null) co.appendChild(el('span','ch '+stUD(px.chg),(px.chg>0?'▲ ':px.chg<0?'▼ ':'')+stPct(px.chg)));
+      co.appendChild(el('span','pd',(px.date?stD(px.date)+' 종가 · ':'')+'전일 대비')); }
+    else co.appendChild(el('span','pd','주가 자료 없음'));
+    w.appendChild(co);
+    const sr=D.src||{}, N=sr.news||{}, Rp=sr.reports||{}, Ds=sr.disc||{}, rg=el('div','stRange');
+    const nOld=items.reduce((m,x)=>x.type==='news'&&(!m||x.d<m)?x.d:m,null);   // 목록에 실제로 있는 가장 오래된 뉴스(크기 한도로 덜어 내면 캐시 oldest 보다 뒤)
+    rg.appendChild(el('span',null,[N.ok===false?'뉴스 없음':nOld?'뉴스 '+stD(nOld)+'~':'뉴스 0건', '리포트 '+fmt(Rp.n||0)+'건',
+      Ds.index==='building'?'공시 색인 만드는 중':Ds.index==='missing'?'공시 색인 없음':'공시 '+(Ds.from?Ds.from.slice(0,4)+'~ ':'')+fmt(Ds.n||0)+'건',
+      '정기보고서 '+fmt((sr.filings||{}).n||0)+'건'].join(' · ')));
+    if(D.built) rg.appendChild(el('small',null,'만든 때 '+D.built));
+    R.nb=null;
+    if(N.ok!==false){ const b=el('button','ghost','뉴스 새로 받기'); b.type='button'; b.title='한국투자증권에서 이 종목 뉴스 제목을 지금 다시 받는다(평소엔 30분마다)';
+      b.onclick=()=>{ b.disabled=true; b.textContent='받기 요청함'; load(true); }; rg.appendChild(b); R.nb=b; }
+    w.appendChild(rg);
+    // 요즘 이야기 — 최근 90일 제목에 자주 나온 말. 회사 보고서에도 나오면 첫 언급 · 지금 단계
+    const hs=el('div','stSec'), hh=el('div','stSecH'), hb=el('div','stHot');
+    hh.appendChild(el('b',null,'요즘 이야기')); hh.appendChild(el('span',null,'최근 90일 뉴스 · 리포트 제목에 자주 나온 말(소식 수) — 누르면 목록이 그 말로 걸러진다. 아랫줄 = 회사 보고서에도 나오는 말'));
+    hs.appendChild(hh); hs.appendChild(hb); w.appendChild(hs);
+    if(!(D.hot||[]).length) hb.appendChild(el('span','stEmptyL','최근 90일 제목에 자주 나온 말이 아직 없다'));
+    (D.hot||[]).forEach(h=>{ const b=el('button'); b.type='button'; b.dataset.w=h.w;
+      const t=el('b',null,h.w); t.appendChild(el('small',null,fmt(h.n||0))); b.appendChild(t);
+      const v=h.vocab; if(v){ b.appendChild(el('span',null,(v.from_start?'자료 처음부터 있음':'보고서 첫 언급 '+(v.first?v.first.slice(0,4)+'.'+v.first.slice(4,6):v.first_label||''))+(v.now?' · 지금 '+v.now:'')));
+        if(v.snip) b.title=(v.first_label?v.first_label+' — ':'')+v.snip; }
+      b.onclick=()=>{ V.kw=V.kw===h.w?'':h.w; refilter(); }; hb.appendChild(b); });
+    // 관심도 띠 — 최근 1년
+    const sv=stStrip(D,byDay,d=>goDay(d)); R.strip=sv;
+    if(sv){ const ss=el('div','stSec'), sh=el('div','stSecH'); sh.appendChild(el('b',null,'관심도 띠')); sh.appendChild(el('span',null,'최근 1년 — 마우스를 올리면 그날 숫자, 누르면 목록이 그날로 간다'));
+      ss.appendChild(sh); ss.appendChild(sv.w); w.appendChild(ss); }
+    // 거르기 — 종류 칩 · 잡음 보기 · 제목 찾기 · 걸린 낱말
+    const tools=el('div','stTools'), chips=el('div','repChips'), t2=el('div','stTools2'), on=el('span');
+    tools.appendChild(chips); tools.appendChild(t2); w.appendChild(tools);
+    const inp=el('input'); inp.type='search'; inp.placeholder='제목에서 찾기(예: 수주, 데이터센터)'; inp.value=qv;
+    inp.oninput=()=>{ clearTimeout(R.tq); R.tq=setTimeout(()=>{ V.q=inp.value.trim(); refilter(); },200); };   // 타이머는 R 에 — 다시 그릴 때 끊는다
+    t2.appendChild(inp);
+    if(nHid){ const lab=el('label','stNoise'), cb=el('input'); cb.type='checkbox'; cb.checked=V.noise; cb.onchange=()=>{ V.noise=cb.checked; refilter(); };
+      lab.title='인포스탁 자동 목록 · 시세 띠 · 로봇 기사 · 이름 없는 시황 · 광고 — 지우지 않고 숨겨 둔다';
+      lab.appendChild(cb); lab.appendChild(document.createTextNode('잡음 '+fmt(nHid)+'건 보기')); t2.appendChild(lab); }
+    t2.appendChild(on);
+    const drawChips=()=>{ chips.innerHTML=''; const ok=passer(), n={}; let all=0;
+      items.forEach(x=>{ if(ok(x,true)){ n[x.type]=(n[x.type]||0)+1; all++; } });
+      ST_CHIP.forEach(([k,t])=>{ const b=el('button',V.type===k?'on':null,t+' '+fmt(k?n[k]||0:all)); b.type='button'; b.onclick=()=>{ V.type=k; refilter(); }; chips.appendChild(b); }); };
+    const drawOn=()=>{ hb.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.w===V.kw));
+      on.innerHTML=''; on.className=V.kw?'stOn':''; if(!V.kw) return;
+      on.appendChild(document.createTextNode('「'+V.kw+'」 들어간 소식만')); const x=el('button',null,'✕'); x.type='button'; x.title='낱말 거르기 풀기';
+      x.onclick=()=>{ V.kw=''; refilter(); }; on.appendChild(x); };
+    // 두 칸 — 왼쪽 목록(자체 스크롤 · sticky) · 오른쪽 상세. 출처 줄은 상세 밑에 — 두 칸이 맨 끝이어야 main 을 끝까지 내려도 목록 머리가 안 가려진다
+    const grid=el('div','stGrid'), list=el('div','stList'), right=el('div','stRight'), det=el('div','stDet');
+    right.appendChild(det); grid.appendChild(list); grid.appendChild(right); w.appendChild(grid);
+    right.appendChild(el('div','finnote','출처 = 한국투자증권 뉴스 제목(이 PC 의 본인 분석용 — 기사 본문은 받지 않는다. 「기사 찾아보기」는 누를 때 브라우저가 네이버 뉴스 검색을 연다) · 구독한 증권사 텔레그램 리포트 요약 · DART 공시목록 · 수집한 정기보고서. '+
+      '주가 반응 = 반응일(휴장 · 장 마감 뒤면 다음 거래일) 수정 종가 등락과 5거래일 누적, 시장 = 같은 날 전 종목 등락 중앙값. 점수 · 매수 신호는 내지 않는다 — 문장 기반 선행 점수는 표본 외 검증에서 실패했다.'));
+    R.grid=grid; R.list=list; R.inp=inp; R.on=null; R.rows=new Map();
+    const dayHead=d=>{ const h=el('div','stDay'); h.dataset.d=d; h.appendChild(document.createTextNode(stDW(d))); const m=(D.days||{})[d];
+      if(m&&m.chg!=null){ const s=el('span'); s.appendChild(document.createTextNode(' · 주가 ')); s.appendChild(el('b',stUD(m.chg),stPct(m.chg)));
+        if(m.mkt!=null) s.appendChild(document.createTextNode(' (시장 '+stPct(m.mkt)+')')); h.appendChild(s); }
+      return h; };
+    const row=x=>{ const b=el('button','stRow'+(x.hide?' hid':'')); b.type='button'; b.dataset.id=x.id;
+      const h=el('span','stRowH'), T=ST_TYPE[x.type]||[x.type,''];
+      h.appendChild(el('span','tag '+T[1]+' stBadge',T[0])); const tn=stTone(x); if(tn) h.appendChild(tn);
+      h.appendChild(el('span','s',[stSrc(x),stD(x.d)+(x.t?' '+stHM(x.t):'')].filter(Boolean).join(' · ')));
+      if(x.n>1) h.appendChild(el('span','n','×'+x.n));
+      b.appendChild(h); b.appendChild(el('span','stTi',x.title||'(제목 없음)')); return b; };
+    const drawList=()=>{ if(gen!==R.gen) return;      // 옛 판(떼어 낸 목록)이 R 을 덮지 않게
+      const ok=passer(); cur=items.filter(x=>ok(x)); list.innerHTML=''; R.rows=new Map(); R.on=null;
+      if(!items.length){ list.appendChild(el('div','stListE','아직 소식이 없다 — 뉴스 제목 · 리포트 · 공시 · 정기보고서 어느 것도 들어오지 않았다')); return; }
+      if(!cur.length){ const e=el('div','stListE','조건에 맞는 소식이 없다'); e.appendChild(el('br')); const b=el('button','ghost','거르기 풀기'); b.type='button';
+        b.onclick=()=>{ V.type=''; V.kw=''; V.q=''; inp.value=''; refilter(); }; e.appendChild(b); list.appendChild(e); return; }
+      const f=document.createDocumentFragment(), n=Math.min(cur.length,V.shown); let last=null;
+      for(let i=0;i<n;i++){ const x=cur[i]; if(x.d!==last){ last=x.d; f.appendChild(dayHead(x.d)); } const r=row(x); R.rows.set(x.id,r); f.appendChild(r); }
+      if(cur.length>n){ const m=el('button','ghost stMore','더 보기 — '+fmt(cur.length-n)+'건 남음'); m.type='button';
+        m.onclick=()=>{ const t=list.scrollTop; V.shown+=ST_PAGE; drawList(); list.scrollTop=t; }; f.appendChild(m); }
+      list.appendChild(f);
+      R.on=R.rows.get(V.sel)||null; if(R.on) R.on.classList.add('on'); };
+    const K={D, byDay, vocab, V, pick:id=>select(id,'det')};
+    // 고르기 — how: 'row'(목록 누름) · 'key'(화살표) · 'det'(상세의 같은 날 소식) · 없음(띠 · 처음)
+    const select=(id,how)=>{ const x=byId.get(id); if(!x||gen!==R.gen) return;
+      V.sel=id; if(R.on) R.on.classList.remove('on'); R.on=R.rows.get(id)||null;
+      if(R.on){ R.on.classList.add('on'); if(how==='key'||how==='det') stIntoList(list,R.on); }
+      stDetail(det,x,K); if(R.strip) R.strip.mark(x.d);
+      if(how==='row'||how==='det'){ const mr=mn.getBoundingClientRect(), dr=det.getBoundingClientRect();
+        if(dr.top<mr.top||dr.top>mr.bottom-60) mn.scrollTop+=dr.top-mr.top-10; } };
+    const refilter=()=>{ V.shown=ST_PAGE; drawChips(); drawOn(); drawList(); list.scrollTop=0;
+      if(cur.length&&!cur.some(x=>x.id===V.sel)) select(cur[0].id); };
+    // 띠에서 누른 날 — 목록을 그날(없으면 그 앞 가장 가까운 날)로 옮기고 첫 소식을 고른다
+    const goDay=d=>{ if(!cur.length) return; let i=cur.findIndex(x=>x.d<=d); if(i<0) i=cur.length-1;
+      if(i>=V.shown){ V.shown=Math.ceil((i+1)/ST_PAGE)*ST_PAGE; drawList(); }
+      const x=cur[i], r=R.rows.get(x.id), hd=r&&r.previousElementSibling&&r.previousElementSibling.classList.contains('stDay')?r.previousElementSibling:null;
+      if(r) list.scrollTop+=r.getBoundingClientRect().top-list.getBoundingClientRect().top-(hd?hd.offsetHeight:0);
+      if(hd){ hd.classList.add('flash'); setTimeout(()=>hd.classList.remove('flash'),900); }
+      select(x.id); };
+    list.addEventListener('click',e=>{ const r=e.target.closest('.stRow'); if(r) select(r.dataset.id,'row'); });
+    list.addEventListener('keydown',e=>{ if(e.key!=='ArrowDown'&&e.key!=='ArrowUp') return; const r=e.target.closest('.stRow'); if(!r) return;
+      let n=r; do{ n=e.key==='ArrowDown'?n.nextElementSibling:n.previousElementSibling; }while(n&&!n.classList.contains('stRow'));
+      if(!n) return; e.preventDefault(); n.focus({preventScroll:true}); select(n.dataset.id,'key'); });
+    body.innerHTML=''; body.appendChild(w);
+    fit(); drawChips(); drawOn(); drawList();
+    if(!byId.has(V.sel)) V.sel=cur.length?cur[0].id:items.length?items[0].id:null;
+    if(V.sel) select(V.sel);
+    else det.appendChild(el('div','stListE','소식이 들어오면 고른 소식이 여기에 자세히 보인다'));
+    if(foc){ inp.focus({preventScroll:true}); try{ inp.setSelectionRange(foc[0],foc[1]); }catch(e){} }   // 커서 놓기가 칸을 화면 안으로 끌 수 있어 스크롤보다 먼저
+    if(fid){ const r=R.rows.get(fid); if(r) r.focus({preventScroll:true}); }                                 // 화살표 이동이 끊기지 않게
+    if(lTop!=null) list.scrollTop=lTop; else if(R.on) stIntoList(list,R.on);
+    mn.scrollTop=mTop;
+  };
+  load();
+}
+// 목록 안에서만 스크롤해 그 줄을 보이게(날짜 머리가 위를 가리는 만큼 띄운다)
+function stIntoList(list,r){ const lr=list.getBoundingClientRect(), rr=r.getBoundingClientRect();
+  if(rr.top<lr.top+30) list.scrollTop-=lr.top+30-rr.top; else if(rr.bottom>lr.bottom) list.scrollTop+=rr.bottom-lr.bottom+4; }
+// 관심도 띠 — 최근 1년 날짜별 보이는 뉴스 건수 막대 + 수정 종가 선 + 공시 호재 ▲ · 악재 ▼ + 리포트 ◆. 올리면 그날 숫자(expHover), 누르면 go(날짜)
+function stStrip(D,byDay,go){
+  const days=D.days||{}, ser=((D.px||{}).series||[]).filter(x=>x&&x[0]&&x[1]!=null);
+  let end=(D.px||{}).date||''; Object.keys(days).forEach(d=>{ if(d>end) end=d; }); ser.forEach(x=>{ if(x[0]>end) end=x[0]; });
+  if(!end) return null;
+  const e1=stEp(end), e0=e1-365, inR=d=>{ const e=stEp(d); return e>=e0&&e<=e1; };
+  const ds=[...new Set(Object.keys(days).concat(ser.map(x=>x[0])))].filter(inR).sort();
+  if(ds.length<5) return null;
+  const W=1000,H=158,L=6,R=6,PT=8,PB=78,M1=89,M2=99,BT=106,BB=138;
+  const X=d=>L+(stEp(d)-e0)/365*(W-L-R), dw=(W-L-R)/365;
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'expTrend stStripSvg'});
+  // 달 눈금 — 1월엔 해
+  const y0=+end.slice(0,4), m0=+end.slice(4,6);
+  for(let k=0;k<=12;k++){ let y=y0, m=m0-k; while(m<1){ m+=12; y--; } const d=String(y)+String(m).padStart(2,'0')+'01'; if(!inR(d)) continue;
+    const x=X(d); svg.appendChild(svgEl('line',{x1:x,x2:x,y1:PT,y2:BB,class:'stGl'}));
+    const t=svgEl('text',{x:x>W-30?x-3:x+3,y:H-6,class:'stAx','text-anchor':x>W-30?'end':'start'}); t.textContent=m===1?String(y):m+'월'; svg.appendChild(t); }
+  // 막대 — 그날 보이는 뉴스 건수(아주 많은 날은 위를 잘라 진하게)
+  const nv=ds.map(d=>(days[d]||{}).news||0), pos=nv.filter(v=>v>0).sort((a,b)=>a-b);
+  const cap=Math.max(3,pos.length?pos[Math.min(pos.length-1,Math.floor(pos.length*0.97))]:3), bw=Math.max(1.2,dw*0.8);
+  ds.forEach((d,i)=>{ const v=nv[i]; if(!v) return; const h=Math.max(1.5,Math.min(1,v/cap)*(BB-BT));
+    svg.appendChild(svgEl('rect',{x:X(d)-bw/2,y:BB-h,width:bw,height:h,class:'stNb'+(v>cap?' hi':'')})); });
+  svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:BB+0.5,y2:BB+0.5,class:'stGl'}));
+  // 선 — 수정 종가
+  const pp=ser.filter(x=>inR(x[0])), pm=new Map(pp.map(x=>[x[0],x[1]])); let pY=null, lo=0, hi=0;
+  if(pp.length>1){ lo=Math.min(...pp.map(x=>x[1])); hi=Math.max(...pp.map(x=>x[1])); pY=v=>PT+(1-(v-lo)/((hi-lo)||1))*(PB-PT);
+    svg.appendChild(svgEl('path',{d:'M'+pp.map(x=>X(x[0]).toFixed(1)+','+pY(x[1]).toFixed(1)).join(' L'),class:'stPx'})); }
+  // 표시 — 공시 호재 ▲ · 악재 ▼(위 줄, 같은 날 둘 다면 나란히) · 리포트 ◆(아래 줄)
+  byDay.forEach((xs,d)=>{ if(!inR(d)) return; const cx=X(d); let g=0,b=0,r=0;
+    xs.forEach(x=>{ if(x.type==='disc'){ const t=(x.cls||{}).g||(x.tone>0?'good':x.tone<0?'bad':''); if(t==='good') g++; else if(t==='bad') b++; } else if(x.type==='report') r++; });
+    if(g) svg.appendChild(svgEl('path',{d:'M'+(b?cx-4:cx).toFixed(1)+','+(M1-4)+'l4,7h-8z',class:'stMg'}));
+    if(b) svg.appendChild(svgEl('path',{d:'M'+(g?cx+4:cx).toFixed(1)+','+(M1+3)+'l4,-7h-8z',class:'stMb'}));
+    if(r) svg.appendChild(svgEl('path',{d:'M'+cx.toFixed(1)+','+(M2-4)+'l4,4l-4,4l-4,-4z',class:'stMr'})); });
+  // 고른 소식의 날
+  const sel=svgEl('line',{y1:PT-4,y2:BB,class:'stSel'}); sel.style.display='none'; svg.appendChild(sel);
+  const dot=i=>{ const v=pm.get(ds[i]); return v!=null&&pY?pY(v):null; };
+  const lines=i=>{ const d=ds[i], m=days[d]||{}, out=[stDW(d)];
+    out.push(m.chg!=null?'주가 '+stPct(m.chg)+(m.mkt!=null?' · 시장 '+stPct(m.mkt):''):'거래 없음');
+    const k=[['news','뉴스'],['report','리포트'],['disc','공시'],['filing','보고서'],['alert','경보']].filter(z=>m[z[0]]).map(z=>z[1]+' '+m[z[0]]);
+    out.push(k.length?k.join(' · '):'소식 없음');
+    const xs=byDay.get(d)||[], top=xs.find(x=>!x.hide&&x.type!=='filing')||xs.find(x=>!x.hide);
+    if(top){ const t=top.title||''; out.push(t.length>32?t.slice(0,31)+'…':t); }
+    return out; };
+  const wrap=expHover(svg,W,H,ds.map(X),dw,lines,dot,[PT-4,BB]);
+  svg.querySelectorAll('rect.hit').forEach((h,i)=>h.addEventListener('click',()=>go(ds[i])));
+  const box=el('div','stStrip'); box.appendChild(wrap);
+  const key=el('div','stKey');
+  [['막대 = 그날 보이는 뉴스 건수'],['선 = 수정 종가'+(pp.length>1?'(1년 고 '+Math.round(hi).toLocaleString('ko-KR')+' · 저 '+Math.round(lo).toLocaleString('ko-KR')+')':'')],
+   ['▲ 호재 공시','g'],['▼ 악재 공시','b'],['◆ 리포트','r']].forEach(([t,k])=>key.appendChild(el('span',k||null,t)));
+  box.appendChild(key);
+  return {w:box, mark:d=>{ if(d&&inR(d)){ const x=X(d); sel.setAttribute('x1',x); sel.setAttribute('x2',x); sel.style.display=''; } else sel.style.display='none'; }};
+}
+// 상세 — 종류마다. K = {D, byDay, vocab(hot 낱말 → 보고서 낱말), V(거르기), pick(id)}
+function stDetail(box,x,K){
+  box.innerHTML='';
+  const T=ST_TYPE[x.type]||[x.type,''], badge=()=>el('span','tag '+T[1]+' stBadge',T[0]);
+  const head=el('div','rpH'), body=el('div','rpB'), foot=el('div','rpF');
+  const sec=(t,cls)=>{ const s=el('section','rpS'+(cls?' '+cls:'')); s.appendChild(el('h4',null,t)); body.appendChild(s); return s; };
+  const lk=(t,u)=>{ if(!u||!/^https?:\/\//.test(u)) return; const a=el('a','rpL',t); a.href=u; a.target='_blank'; a.rel='noopener'; foot.appendChild(a); };
+  const btn=(t,fn,no)=>{ const b=el('button','ghost',t); b.type='button'; b.onclick=fn; if(no){ b.disabled=true; b.title=no; } foot.appendChild(b); };
+  const when=stDW(x.d)+(x.t?' '+stHM(x.t):'');
+  const meta=()=>{ const m=el('div','rpMeta'); m.appendChild(badge()); m.appendChild(el('span','d',when)); head.appendChild(m); return m; };
+  const title=()=>head.appendChild(el('h3','rpT',x.title||'(제목 없음)'));
+  const dart=()=>lk('DART 원문 ↗',x.url||(x.rcept?'https://dart.fss.or.kr/dsaf001/main.do?rcpNo='+x.rcept:''));
+  if(x.type==='report'){
+    // 리포트 말풍선(repFill) 그대로 — 꼴만 맞춘다
+    repFill({date:x.d.slice(0,4)+'-'+x.d.slice(4,6)+'-'+x.d.slice(6,8), broker:x.broker, opinion:x.opinion, tp:x.tp, tp_prev:x.tp_prev, change:x.change,
+      price_at:x.price_at, kind:x.kind, name:x.kind==='기업'?K.D.name:null, title:x.title, lines:x.lines, est:x.est, risks:x.risks, concl:x.concl,
+      sections:x.sections, msg_url:x.msg_url, brk_url:x.brk_url, urls:x.url?[x.url]:[]},head,body,foot);
+    const m=head.querySelector('.rpMeta'); if(m){ m.insertBefore(badge(),m.firstChild); const d=m.querySelector('.d'); if(d) d.textContent=when; }
+    body.insertBefore(stReact(x,K.D),body.firstChild);
+    if(x.slim) body.appendChild(el('p','stHint','오래된 리포트라 목록 크기 한도로 투자포인트 · 전망 · 결론은 뺐다 — 아래 텔레그램 글 · 원문으로 본다(리포트 탭에는 다 있다)'));
+  } else if(x.type==='news'){
+    const m=meta(); if(x.src) m.appendChild(el('span','b',x.src)); if(x.n>1) m.appendChild(el('span','t','같은 제목 '+x.n+'건'));
+    title();
+    const s=sec('분류');
+    s.appendChild(el('p',null,(x.k?ST_K[x.k]||x.k:x.hide?'잡음 — 자동 목록 · 시세 띠 · 로봇 기사 · 시황 · 광고 중 하나':'분류 없음')+(x.hide?' · 기본 화면에선 숨김':'')));
+    if(x.c1&&x.c1!==K.D.code) s.appendChild(el('p','stHint','KIS 가 붙인 대표 종목은 '+x.c1+' — 이 종목은 함께 걸렸다'));
+    if(x.n>1) s.appendChild(el('p','stHint','같은 날 같은 제목 '+x.n+'건을 하나로 접었다 — 시각은 가장 이른 것'));
+    body.appendChild(stReact(x,K.D));
+    stTerms(body,x,K);
+    lk('기사 찾아보기 ↗',x.search||'https://search.naver.com/search.naver?where=news&query='+encodeURIComponent(x.title||''));
+    foot.appendChild(el('span','hint','네이버 뉴스 검색을 연다 — 서버는 기사를 받지 않는다'));
+  } else if(x.type==='disc'){
+    const m=meta(); m.appendChild(el('span','t',ST_DK[x.kind]||x.kind||'공시')); if(x.flr) m.appendChild(el('span',null,'제출 '+x.flr));
+    title();
+    const cl=x.cls||{}, s=sec('분류 — 호재 · 확인 · 악재'), rw=el('div','stCls');
+    if(cl.g){ rw.appendChild(el('span','stG '+cl.g,ST_G[cl.g]||cl.g)); if(cl.cat) rw.appendChild(el('b',null,cl.cat));
+      if(cl.w>0){ const wt=el('span','stW','●'.repeat(Math.min(3,cl.w))+'○'.repeat(Math.max(0,3-cl.w))); wt.title='강도 '+cl.w+' / 3'; rw.appendChild(wt); } }
+    else rw.appendChild(el('span','stG','분류 없음'));
+    s.appendChild(rw);
+    const why=cl.g?cl.desc:'제목이 호재 · 확인 · 악재 규칙에 걸리지 않았다 — 원문으로 본다'; if(why) s.appendChild(el('p','stHint',why));
+    if(x.contract) stContract(sec('계약 원문 칸'),x.contract);
+    body.appendChild(stReact(x,K.D));
+    dart();
+    if(x.kind==='KRX') foot.appendChild(el('span','hint',stEp(stToday())-stEp(x.d)<=3?'DART 공시목록에 아직 없는 공시 — 다음 날 아침 갱신 뒤 DART 공시로 바뀐다'
+      :'KIS 거래소 공시 제목 — 같은 날 DART 공시와 제목이 달라 따로 남았다'));
+  } else if(x.type==='filing'){
+    const m=meta(); m.appendChild(el('span','t',(x.label||'정기보고서')+(x.tag?' '+x.tag:'')));
+    title();
+    const s=sec('보고서'), dl=el('dl','stKv'), kv=(a,b)=>{ if(!b) return; dl.appendChild(el('dt',null,a)); dl.appendChild(el('dd',null,b)); };
+    kv('이름',[x.label,x.tag].filter(Boolean).join(' ')); kv('기간',x.stamp); kv('접수일',stDW(x.rcept?x.rcept.slice(0,8):x.d)); s.appendChild(dl);
+    const g=sec('한 줄 요약');
+    if(x.gist&&x.gist.length) x.gist.forEach(it=>{ const d=el('div','stGist'); if(it.sec) d.appendChild(el('span','sec',it.sec)); d.appendChild(el('p',null,it.text||''));
+      if((it.tags||[]).length){ const tg=el('div','stTags'); it.tags.forEach(t=>tg.appendChild(el('span','tag',t))); d.appendChild(tg); } g.appendChild(d); });
+    else g.appendChild(el('p','stHint',x.gist==null?'요약 없음 — 궤도 탭을 열면 만든다'
+      :x.first?'이 회사 자료의 첫 보고서 — 견줄 직전 보고서가 없다':'요약할 새 문장이 없다 — 직전 보고서와 거의 같다(숫자 · 날짜 갱신 위주)'));
+    if(x.re) body.appendChild(stReact(x,K.D));
+    const no=S.co&&S.co.reports.some(r=>r.rcept===x.rcept)?null:'수집한 보고서 목록에 없다';
+    btn('본문 열기',()=>stOpen(x,'read'),no); btn('변화 브리핑',()=>stOpen(x,'brief'),no);
+    if(x.gist==null) btn('궤도 탭 열기',()=>jump('orbit'));
+    dart();
+  } else {
+    const m=meta(); if(x.src) m.appendChild(el('span','b',x.src));
+    title();
+    body.appendChild(stReact(x,K.D));
+  }
+  // 같은 날 다른 소식 — 누르면 그걸 고른다
+  const same=(K.byDay.get(x.d)||[]).filter(y=>y.id!==x.id&&(K.V.noise||!y.hide));
+  if(same.length){ const s=sec('같은 날 다른 소식 · '+same.length+'건'), ls=el('div','stSame');
+    same.slice(0,15).forEach(y=>{ const b=el('button','stSameIt'), T2=ST_TYPE[y.type]||[y.type,'']; b.type='button';
+      b.appendChild(el('span','tag '+T2[1]+' stBadge',T2[0])); b.appendChild(el('span','ti',y.title||'(제목 없음)')); if(y.t) b.appendChild(el('span','tm',stHM(y.t)));
+      b.onclick=()=>K.pick(y.id); ls.appendChild(b); });
+    s.appendChild(ls); if(same.length>15) s.appendChild(el('p','stHint','그 밖 '+(same.length-15)+'건은 목록에서')); }
+  box.appendChild(head); box.appendChild(body); if(foot.children.length) box.appendChild(foot);
+}
+// 주가 반응 — 반응일(휴장 · 장 마감 뒤면 다음 거래일) 등락과 5거래일 누적, 같은 기간 시장(전 종목 중앙)
+function stReact(x,D){
+  const s=el('section','rpS'); s.appendChild(el('h4',null,'주가 반응 — 시장 = 그날 전 종목 등락 중앙값'));
+  const re=x.re;
+  if(!re){ const last=((D||{}).px||{}).date;
+    // 마지막 종가 날(또는 그 뒤, 10일 안 — 서버 REACT_GAP)의 소식이면 반응일이 아직 안 온 것 — 가장 새 소식들이 다 이렇다
+    const yet=last&&x.d>=last&&stEp(x.d)-stEp(last)<=10;
+    s.appendChild(el('p','stHint',yet?'반응일이 아직 오지 않았다 — '+(x.d===last&&x.t&&x.t>='1530'?'장 마감 뒤 소식이라 ':'')+'다음 거래일 종가가 들어오면 붙는다(마지막 종가 '+stD(last)+')':
+      '주가 자료가 없다 — 가격 파일이 없거나 그날 종가가 없다(상장 전 · 거래정지)')); return s; }
+  const g=el('div','stRe');
+  const cell=(l,v,mk,none)=>{ const c=el('div','c'); c.appendChild(el('span',null,l)); c.appendChild(el('b',v==null?null:stUD(v),stPct(v)));
+    c.appendChild(el('small',null,v==null?none:mk==null?'시장 중앙값 아직 없음':'시장 '+stPct(mk)+' · 차이 '+stPp(v-mk))); g.appendChild(c); };
+  const span=re.timed===false&&re.from;
+  cell(span?'공시일 '+stD(re.from)+' → '+stDW(re.day):'반응일'+(re.day?' '+stDW(re.day):''),re.chg,re.mkt,'그날 종가 없음');
+  cell('5거래일 뒤 누적',re.d5,re.d5m,'아직 5거래일이 안 지났다');
+  s.appendChild(g);
+  if(span) s.appendChild(el('p','stHint','공시 시각을 몰라 공시일 앞 종가 → 다음 거래일 종가(이틀)로 잰다 — 장중 공시든 장 마감 뒤 공시든 반응이 들어간다'));
+  else if(re.day&&re.day!==x.d) s.appendChild(el('p','stHint','소식 날짜와 반응일이 다르다 — 쉬는 날이거나 장 마감 뒤에 나와 다음 거래일로 잡았다'));
+  return s;
+}
+// '이 말, 회사는 언제부터?' — 제목에 걸린 회사 낱말(terms)마다 보고서 첫 언급 · 지금 단계 · 첫 문장(서버 vocab 지도)
+function stTerms(body,x,K){
+  const ts=x.terms||[]; if(!ts.length) return;
+  const s=el('section','rpS'); s.appendChild(el('h4',null,'이 말, 회사는 언제부터?'));
+  ts.forEach(t=>{ const v=K.vocab[t], d=el('div','stTerm'), h=el('div','stTermH'); h.appendChild(el('b',null,t));
+    if(v){ const bits=[];
+      if(v.from_start) bits.push('자료 첫 보고서('+(v.first_label||stD(v.first))+')부터 있던 말 — 그 앞은 자료가 없다');
+      else if(v.first_label||v.first) bits.push('보고서 첫 언급 '+(v.first_label||stD(v.first))+(v.first_label&&v.first?' ('+stD(v.first)+' 공시)':''));
+      if(v.take) bits.push('본격화 '+stD(v.take)); if(v.now) bits.push('지금 '+v.now);
+      if(bits.length) h.appendChild(el('span',null,bits.join(' · '))); }
+    const go=el('button','stLink','낱말 궤적 ›'); go.type='button'; go.title='키워드 추이 탭 — 이 말이 보고서에 나온 궤적';
+    go.onclick=()=>{ S.trendPick=(v&&v.term)||t; jump('trend'); }; h.appendChild(go); d.appendChild(h);
+    if(v&&v.snip) d.appendChild(el('p','stSnip',v.snip));
+    s.appendChild(d); });
+  if(ts.some(t=>!K.vocab[t])) s.appendChild(el('p','stHint','첫 언급 · 단계가 없는 말은 「낱말 궤적」에서 본다'));
+  body.appendChild(s);
+}
+// 계약 원문 칸(.cache/시너지/계약 에 있는 것만) — 금액 · 매출 대비 % · 상대 · 기간
+function stContract(s,k){
+  const dl=el('dl','stKv'), kv=(a,b,cls)=>{ if(b==null||b==='') return; dl.appendChild(el('dt',null,a)); dl.appendChild(el('dd',cls||null,String(b))); };
+  kv('종류',k.kind); kv('계약명',k.title); kv('계약 금액',stWon(k.amount)); kv('최근 매출액',stWon(k.revenue));
+  kv('매출 대비',k.pct!=null?k.pct.toFixed(1)+'%':null,k.pct>=10?'big':null); kv('상대',k.party); kv('지역',k.region);
+  kv('기간',k.start||k.end?(k.start||'?')+' ~ '+(k.end||'?'):null);
+  s.appendChild(dl);
+}
+// 정기보고서 → 본문 · 변화 브리핑 탭. 보고서 종류 거르기(S.kind)에 걸리면 전체로 풀어야 그 보고서가 열린다
+function stOpen(x,tab){
+  const r=S.co.reports.find(y=>y.rcept===x.rcept);
+  if(S.kind&&S.kind!==(r?r.label:x.label)){ S.kind=''; renderSide(); }
+  if(tab==='read') S.lastRead={rcept:x.rcept, file:x.file||(r&&r.sections[0]?r.sections[0].file:null)};
+  else S.briefRcept=x.rcept;
+  jump(tab);
 }
 
 // ---------------------------------------------------------- 탭 이동

@@ -24,6 +24,7 @@ import subprocess
 import shlex
 import webbrowser
 import urllib.parse
+import zlib
 from collections import Counter, defaultdict
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
@@ -9931,27 +9932,34 @@ except Exception as _e:
     REP = None
     print("리포트 모듈 로드 실패:", _e)
 REP_LOCK = threading.Lock()
+REP_BUILD_LOCK = threading.Lock()   # 다시 읽기는 한 번에 하나(콜드 74초 · 338MB — 32비트에서 둘이 겹치면 메모리가 모자란다)
 _REP = {"sig": None, "rows": [], "by_code": {}}
 REP_RUN = {"running": False, "at": 0, "msg": ""}
 
 
 def _rep_rows():
-    """쌓인 글 → 리포트 항목(종목별 묶음). 쌓인 파일이 바뀌었을 때만 다시 읽는다."""
+    """쌓인 글 → 리포트 항목(종목별 묶음). 쌓인 파일이 바뀌었을 때만 다시 읽는다.
+    누가 이미 읽는 중이면 기다렸다가 그 결과를 쓴다(내러티브 뒤 스레드 · 리포트 탭이 같이 불러도 한 번만)."""
     if REP is None:
         return _REP
     sig = REP.store_sig()
     with REP_LOCK:
         if _REP["sig"] == sig:
             return _REP
-    names = {c["name"]: c["code"] for c in INDEX["companies"]}
-    codes = {c["code"]: c["name"] for c in INDEX["companies"]}
-    rows = REP.build(names, codes)
-    by = {}
-    for r in rows:
-        if r.get("code"):
-            by.setdefault(r["code"], []).append(r)
-    with REP_LOCK:
-        _REP.update(sig=sig, rows=rows, by_code=by)
+    with REP_BUILD_LOCK:
+        sig = REP.store_sig()
+        with REP_LOCK:
+            if _REP["sig"] == sig:
+                return _REP
+        names = {c["name"]: c["code"] for c in INDEX["companies"]}
+        codes = {c["code"]: c["name"] for c in INDEX["companies"]}
+        rows = REP.build(names, codes)
+        by = {}
+        for r in rows:
+            if r.get("code"):
+                by.setdefault(r["code"], []).append(r)
+        with REP_LOCK:
+            _REP.update(sig=sig, rows=rows, by_code=by)
     return _REP
 
 
@@ -10315,6 +10323,409 @@ def trades_change(body):
     return trades_view()
 
 
+# ---------------------------------------------------------- 내러티브 — 이 종목 소식 피드 (2026-10-11)
+# 설계: docs/superpowers/specs/2026-10-11-story-feed-design.md 3절. 계산은 내러티브.py(표준 라이브러리만).
+# 언론 기사 제목(Tech 하위 프로세스가 KIS 에서 받은 캐시) · 리포트 · 공시 · 정기보고서를 날짜순 한 줄로.
+# 이름 주의: /api/narrative · narrative_view 는 키워드 추이 탭의 '말과 주가' — 이 탭은 story.
+# 무거운 것(_rep_rows 콜드 74초 · 공시 색인 첫 빌드 · 시장 중앙)은 뒤 스레드에서만. vocab · brief · 계약은 캐시 파일만 읽는다.
+NAR = _load_mod("내러티브")
+STORY_V = 1
+STORY_DIR = os.path.join(CACHE_DIR, "story")
+STORY_LOCK = threading.Lock()
+STORY = {"running": False, "code": None, "step": "", "want": {}, "err": {}, "memo": {}}
+STORY_WANT_TTL = 120              # 이만큼(초) 다시 안 물은 회사는 만들 차례에서 뺀다(화면을 떠났다)
+STORY_ERR_TTL = 600               # 같은 입력으로 실패했으면 이 동안 다시 만들지 않는다(폴링이 실패를 되풀이하지 않게)
+STORY_DISC_DIR = os.path.join(CACHE_DIR, "공시목록")
+STORY_DISC = {"building": False, "checked": 0.0, "error": None}
+STORY_DISC_LOCK = threading.Lock()   # 공시 색인은 전역 하나
+STORY_DISC_EVERY = 600            # 증분 확인 간격(초)
+STORY_MKT = {"building": False, "med": None, "built": None, "mtime": 0}
+STORY_MKT_DAYS = 800              # 시장 중앙값을 세는 기간(달력 일)
+STORY_NEWS = {"running": False, "code": None, "queue": {}, "tried": {}, "sup": (0.0, False)}   # queue = {code: 마지막으로 물은 때}
+STORY_NEWS_TTL = 1800             # 뉴스 파일이 이보다 묵으면 다시 받는다
+STORY_NEWS_TIMEOUT = 180
+
+
+def _story_path(code):
+    return os.path.join(STORY_DIR, code + ".json")
+
+
+def _story_news_path(code):
+    return os.path.join(TECH_DIR, "cache", "kis", "news", code + ".json")
+
+
+def _story_mtime(p):
+    try:
+        return int(os.path.getmtime(p))
+    except OSError:
+        return 0
+
+
+def _story_brief_mtime(code):
+    """brief 폴더와 그 안 파일들의 가장 늦은 시각(요약만 다시 써도 바뀌게)."""
+    p = os.path.join(CACHE_DIR, "brief", code)
+    try:
+        m = os.path.getmtime(p)
+        with os.scandir(p) as it:
+            for e in it:
+                m = max(m, e.stat().st_mtime)
+        return int(m)
+    except OSError:
+        return 0
+
+
+def _story_sig(c):
+    """뉴스 파일 · 리포트 · 공시 색인 + 열린 분기 · 보고서(가장 늦은 접수번호 · 수) · vocab · brief · 계약 캐시 폴더 ·
+    시장 중앙 · 주가 파일(price · ohlcv) · 오늘. c["reports"] 는 기간순이라 [-1] 은 옛 기간 [기재정정]을 놓친다 — max(rcept)."""
+    code = c["code"]
+    rep = "%08x" % (zlib.crc32(REP.store_sig().encode("utf-8")) & 0xffffffff) if REP is not None else "-"
+    return "|".join(str(x) for x in (
+        "%d.%d.%d" % (STORY_V, NAR.FEED_V, NAR.NEWS_RULE_V), _story_mtime(_story_news_path(code)), rep, NAR.disc_sig(STORY_DISC_DIR),
+        "%s.%d" % (max((r["rcept"] for r in c["reports"]), default=""), len(c["reports"])),
+        _story_mtime(os.path.join(CACHE_DIR, "vocab", code + ".json")), _story_brief_mtime(code),
+        _story_mtime(os.path.join(CACHE_DIR, "시너지", "계약")), STORY_MKT["built"] or "-",
+        _story_mtime(os.path.join(CACHE_DIR, "price", code + ".json")), _story_mtime(os.path.join(CACHE_DIR, "ohlcv", code + ".json")),
+        dt.date.today().strftime("%Y%m%d")))
+
+
+# ---- 공시 색인 · 시장 중앙 — 전역 하나씩, 뒤에서
+def _story_disc():
+    """공시 색인 — 없으면 만들고(전역 하나 · 처음 30초 안팎), 10분에 한 번까지 증분 확인. 뒤 스레드에서만 부른다."""
+    with STORY_DISC_LOCK:
+        ready = NAR.disc_index_ready(STORY_DISC_DIR)
+        if ready and time.time() - STORY_DISC["checked"] < STORY_DISC_EVERY:
+            return
+        STORY_DISC["building"] = not ready
+        try:
+            r = NAR.disc_index_update(STORY_DISC_DIR)
+            STORY_DISC["error"] = None
+            if r["mode"] != "none":
+                print("공시 색인(%s): 파일 %d · 줄 %d · %.1f초" % (r["mode"], r["files"], r["rows"], r["secs"]), flush=True)
+        except Exception as e:
+            STORY_DISC["error"] = "%s: %s" % (type(e).__name__, e)
+            print("공시 색인 실패: %s" % STORY_DISC["error"], flush=True)
+        finally:
+            STORY_DISC.update(building=False, checked=time.time())
+
+
+def _story_mkt_path():
+    return os.path.join(STORY_DIR, "_mkt_med.json")
+
+
+def _story_mkt_stale(built):
+    """하루 한 번 — 오늘 만든 것이 아니거나, 06:40(주가 새로 받은 뒤) 전에 만든 것을 그 뒤에 보면 다시."""
+    if not built:
+        return True
+    now = dt.datetime.now()
+    if built[:10] != now.strftime("%Y-%m-%d"):
+        return True
+    return built[11:16] < "06:40" <= now.strftime("%H:%M")
+
+
+def _story_mkt_run():
+    try:
+        since = (dt.date.today() - dt.timedelta(days=STORY_MKT_DAYS)).strftime("%Y%m%d")
+        t0 = time.time()
+        med = NAR.build_mkt_med(_px_file, _score_universe(), since)
+        built = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+        os.makedirs(STORY_DIR, exist_ok=True)
+        NAR._write_json(_story_mkt_path(), {"v": 1, "built": built, "since": since, "n": len(med), "med": med})
+        STORY_MKT.update(med=med, built=built, mtime=_story_mtime(_story_mkt_path()))
+        print("시장 중앙(내러티브): %d일 · %.0f초" % (len(med), time.time() - t0), flush=True)
+    except Exception as e:
+        print("시장 중앙(내러티브) 실패: %s: %s" % (type(e).__name__, e), flush=True)
+    finally:
+        STORY_MKT["building"] = False
+
+
+def _story_mkt():
+    """{YYYYMMDD: 그날 전 종목 등락 중앙값 %} 또는 None(준비 전). 파일은 하루 한 번 뒤에서 다시 만든다."""
+    p = _story_mkt_path()
+    m = _story_mtime(p)
+    if m and m != STORY_MKT["mtime"]:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+            STORY_MKT.update(med=d.get("med") or {}, built=d.get("built"), mtime=m)
+        except (OSError, ValueError):
+            pass
+    with STORY_LOCK:
+        if _story_mkt_stale(STORY_MKT["built"]) and not STORY_MKT["building"]:
+            STORY_MKT["building"] = True
+            threading.Thread(target=_story_mkt_run, daemon=True).start()
+    return STORY_MKT["med"]
+
+
+# ---- 뉴스 — Tech 하위 프로세스(64비트 venv · KIS 조회 전용 시세 API), 전역 하나씩
+def _story_news_ok():
+    """뉴스를 받을 수 있나 — Tech 파이썬이 있고 Tech CLI 가 news 하위 명령을 안다(옛 판이면 안 띄운다). 1분 기억."""
+    t, ok = STORY_NEWS["sup"]
+    if time.time() - t > 60:
+        ok = os.path.exists(TECH_PY) and _tech_supports('add_parser("news"')
+        STORY_NEWS["sup"] = (time.time(), ok)
+    return ok
+
+
+def _story_news_age(code):
+    try:
+        return time.time() - os.path.getmtime(_story_news_path(code))
+    except OSError:
+        return None
+
+
+def _story_news_kick(code, refresh=False):
+    """뉴스 파일이 없거나 30분보다 묵었으면(또는 refresh) 뒤에서 받는다. 반환: 이 회사 뉴스를 받는 중(또는 차례 대기)인가.
+    실패해도 30분(refresh 면 1분)은 다시 띄우지 않는다 — 폴링이 실패를 되풀이하지 않게.
+    차례는 가장 최근에 물은 회사부터 · STORY_WANT_TTL 동안 다시 안 물은 회사는 뺀다(화면을 떠났다 — 화면이 3초마다 묻는다)."""
+    if NAR is None or not _story_news_ok():
+        return False
+    with STORY_LOCK:
+        N = STORY_NEWS
+        if code == N["code"]:
+            return True
+        if code in N["queue"]:
+            N["queue"][code] = time.time()
+            return True
+        age = _story_news_age(code)
+        last = N["tried"].get(code)
+        due = refresh or age is None or age > STORY_NEWS_TTL
+        if last and time.time() - last[0] < (60 if refresh else STORY_NEWS_TTL):
+            due = False
+        if not due:
+            return False
+        N["queue"][code] = time.time()
+        if not N["running"]:
+            N["running"] = True
+            threading.Thread(target=_story_news_loop, daemon=True).start()
+    return True
+
+
+def _story_news_loop():
+    while True:
+        with STORY_LOCK:
+            N, now = STORY_NEWS, time.time()
+            for k in [k for k, t in N["queue"].items() if now - t > STORY_WANT_TTL]:
+                N["queue"].pop(k, None)             # 떠난 회사 — tried 에 안 남기니 다시 오면 다시 줄 선다
+            if not N["queue"]:
+                N.update(running=False, code=None)
+                return
+            code = max(N["queue"], key=N["queue"].get)     # 가장 최근에 물은 회사부터
+            N["queue"].pop(code, None)
+            N["code"] = code
+        first = not os.path.exists(_story_news_path(code))      # 첫 받기 60쪽/100초, 이후 10쪽/30초
+        cmd = [TECH_PY, "-m", "chart_screener", "news", "--codes", code,
+               "--pages", "60" if first else "10", "--budget", "100" if first else "30"]
+        rc, note = None, ""
+        try:
+            si = None
+            if os.name == "nt":
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                si.wShowWindow = 0          # SW_HIDE
+            r = subprocess.run(cmd, cwd=TECH_DIR, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               timeout=STORY_NEWS_TIMEOUT, env=dict(os.environ, PYTHONIOENCODING="utf-8"), startupinfo=si,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            rc = r.returncode
+            lines = [ln.split("\r")[-1].strip() for ln in (r.stdout or b"").decode("utf-8", "replace").splitlines()]
+            lines = [ln for ln in lines if ln]
+            if rc != 0:
+                note = (lines[-1] if lines else "종료 코드 %s" % rc)[:120]
+        except subprocess.TimeoutExpired:
+            rc, note = -1, "뉴스 받기가 %d초를 넘었습니다" % STORY_NEWS_TIMEOUT
+        except Exception as e:
+            rc, note = -2, "뉴스 받기를 띄우지 못했습니다: %s" % type(e).__name__
+        with STORY_LOCK:
+            STORY_NEWS["tried"][code] = (time.time(), rc, note)
+            STORY_NEWS["code"] = None
+
+
+def _story_news_read(code):
+    """Tech 뉴스 캐시 → (rows, 머리) 또는 (None, None)."""
+    try:
+        with open(_story_news_path(code), "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+    except (OSError, ValueError):
+        return None, None
+    if not isinstance(d, dict) or not isinstance(d.get("rows"), list):
+        return None, None
+    return d["rows"], {k: d.get(k) for k in ("at", "complete", "capped", "oldest", "newest", "floor", "pages")}
+
+
+# ---- 회사 하나 만들기 — 뒤 스레드 하나(한 번에 한 회사)
+def _story_gists(c):
+    """{rcept: {"gist": [...], "first": 첫 보고서인가}} — brief 캐시에 있고 gist_v 가 지금 판(GIST_V)일 때만(빈 gist 도 —
+    첫 보고서 · 바뀐 것 없음은 궤도 탭을 열어도 안 채워진다). 없는 요약을 만들지 않는다."""
+    out = {}
+    try:
+        have = set(os.listdir(os.path.join(CACHE_DIR, "brief", c["code"])))
+    except OSError:
+        return out
+    for r in c["reports"]:
+        if r["rcept"] + ".json" not in have:
+            continue
+        try:
+            with open(brief_path(c["code"], r["rcept"]), "r", encoding="utf-8") as fh:
+                b = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if b.get("gist_v") == GIST_V and isinstance(b.get("gist"), list):
+            out[r["rcept"]] = {"gist": b["gist"], "first": bool(b.get("first"))}
+    return out
+
+
+def _story_contracts(discs):
+    """{rcept: 계약 칸} — 단일판매 · 공급계약 공시 중 시너지 계약 캐시에 이미 있는 것만(DART 를 부르지 않는다)."""
+    out = {}
+    for x in discs or ():
+        if ORD_RX.search(x["title"]):
+            try:
+                with open(os.path.join(CACHE_DIR, "시너지", "계약", x["rcept"] + ".json"), "r", encoding="utf-8") as fh:
+                    out[x["rcept"]] = json.load(fh)
+            except (OSError, ValueError):
+                pass
+    return out
+
+
+def _story_build(code):
+    c = company_by_code(code)
+    if not c:
+        return
+    STORY["step"] = "공시 색인 확인"
+    _story_disc()                   # 처음이면 색인을 만든다(manifest 시각이 sig 에 들어가니 sig 는 그 뒤에)
+    sig = _story_sig(c)             # 읽기 전에 — 만드는 사이 입력이 바뀌면 다음 요청이 다시 만든다
+    discs = NAR.disc_rows(code, STORY_DISC_DIR)
+    STORY["step"] = "리포트 읽기"
+    reps = [dict(r) for r in _rep_rows()["by_code"].get(code, [])] if REP is not None else []
+    STORY["step"] = "뉴스 · 주가 · 보고서 요약 읽기"
+    news, meta = _story_news_read(code)
+    series = NAR.adjusted(_px_file(code) or {})
+    vocab = None
+    try:
+        with open(os.path.join(CACHE_DIR, "vocab", code + ".json"), "r", encoding="utf-8") as fh:
+            vocab = json.load(fh)
+    except (OSError, ValueError):
+        pass
+    STORY["step"] = "합치기"
+    d = NAR.build_feed(code, c["name"], today=dt.date.today(), news=news, news_meta=meta, reports=reps, discs=discs,
+                       filings=c["reports"], gists=_story_gists(c), series=series, mkt=_story_mkt(),
+                       links=NAR.vocab_links(vocab), classify_disc=GOOD.classify if GOOD is not None else None,
+                       contracts=_story_contracts(discs))
+    d["sig"] = sig
+    os.makedirs(STORY_DIR, exist_ok=True)
+    NAR._write_json(_story_path(code), d)
+
+
+def _story_loop():
+    while True:
+        with STORY_LOCK:
+            now = time.time()
+            for k in [k for k, t in STORY["want"].items() if now - t > STORY_WANT_TTL]:
+                STORY["want"].pop(k, None)
+            if not STORY["want"]:
+                STORY.update(running=False, code=None, step="")
+                return
+            code = max(STORY["want"], key=STORY["want"].get)     # 가장 최근에 물은 회사부터
+            STORY["want"].pop(code, None)
+            STORY.update(code=code, step="준비")
+        try:
+            _story_build(code)
+            STORY["err"].pop(code, None)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            try:
+                sig = _story_sig(company_by_code(code))      # 같은 입력이면 STORY_ERR_TTL 동안 다시 안 만든다
+            except Exception:
+                sig = ""
+            STORY["err"][code] = (time.time(), sig, "%s: %s" % (type(e).__name__, e))
+        finally:
+            with STORY_LOCK:
+                STORY.update(code=None, step="")
+
+
+def _story_kick(code):
+    with STORY_LOCK:
+        STORY["want"][code] = time.time()
+        if not STORY["running"]:
+            STORY["running"] = True
+            threading.Thread(target=_story_loop, daemon=True).start()
+
+
+def _story_read(code):
+    """캐시 payload — 파일 시각으로 기억(최근 몇 곳만)."""
+    p = _story_path(code)
+    try:
+        m = os.path.getmtime(p)
+    except OSError:
+        return None
+    hit = STORY["memo"].get(code)
+    if hit and hit[0] == m:
+        return hit[1]
+    try:
+        with open(p, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    with STORY_LOCK:
+        if len(STORY["memo"]) >= 3:
+            STORY["memo"].clear()
+        STORY["memo"][code] = (m, d)
+    return d
+
+
+def _story_news_note(code, running, has_news):
+    if running:
+        return "받는 중"
+    if not os.path.exists(TECH_PY):
+        return "Tech 파이썬이 없어 뉴스를 받지 못합니다"
+    if not _story_news_ok():
+        return "Tech 가 옛 판이라 뉴스 받기(news)를 모릅니다"
+    last = STORY_NEWS["tried"].get(code)
+    if last and last[1] not in (0, None):
+        return ("새로 받기 실패: " if has_news else "") + (last[2] or "한국투자증권 연결 없음")
+    return "" if has_news else "한국투자증권 연결 없음"
+
+
+def story_view(code, refresh=False):
+    """GET /api/story — 캐시가 입력(sig)과 같으면 그대로, 다르면 뒤에서 다시 만들고 그동안 있던 것을 stale 로.
+    없으면 {"pending", "step"}. 뉴스를 받는 중이면 news_running(화면이 3초마다 다시 묻는다)."""
+    c = company_by_code(code)
+    if not c:
+        return None
+    if NAR is None:
+        return {"error": "내러티브.py 를 읽지 못했습니다"}
+    _story_mkt()                    # 시장 중앙 — 하루 한 번 뒤에서(sig 의 한 조각이라 먼저)
+    sig = _story_sig(c)
+    d = _story_read(code)
+    running = _story_news_kick(code, refresh)
+    err = STORY["err"].get(code)
+    blocked = bool(err and err[1] == sig and time.time() - err[0] < STORY_ERR_TTL)
+    fresh = d is not None and d.get("sig") == sig
+    if not fresh and not blocked and STORY["code"] != code:     # 지금 만드는 중이면 그대로(끝난 뒤 sig 가 또 다르면 다음 요청이)
+        _story_kick(code)
+    if d is None:
+        if blocked:
+            return {"error": err[2], "news_running": running}
+        step = STORY["step"] if STORY["code"] == code else "차례를 기다리는 중"
+        if STORY_DISC["building"]:
+            step = "공시 색인 만드는 중(처음 한 번 · 30초 안팎)"
+        return {"pending": True, "step": step, "news_running": running}
+    out = dict(d)
+    out.pop("sig", None)
+    src = dict(out.get("src") or {})
+    sn = dict(src.get("news") or {})
+    sn["note"] = _story_news_note(code, running, bool(sn.get("ok"))) or sn.get("note", "")
+    src["news"] = sn
+    if STORY_DISC["building"] and (src.get("disc") or {}).get("index") != "ready":
+        src["disc"] = dict(src["disc"], index="building")
+    out["src"] = src
+    out["stale"] = not fresh and not blocked
+    out["news_running"] = running
+    if blocked:
+        out["build_error"] = err[2]     # 다시 만들기 실패 — 있던 payload 는 그대로 보여 준다("error" 는 payload 없을 때만)
+    return out
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
 
@@ -10656,6 +11067,11 @@ class Handler(BaseHTTPRequestHandler):
                 if d is None:
                     return self._send(404, {"error": "회사 없음"})
                 return self._send(200, d)
+            if path == "/api/story":
+                d = story_view(q.get("code", ""), q.get("refresh") == "1")
+                if d is None:
+                    return self._send(404, {"error": "회사 없음"})
+                return self._send(200, json.dumps(d, ensure_ascii=False, separators=(",", ":")))   # 1MB 가까운 응답 — 빈칸 없이
             if path == "/api/lineage":
                 c = company_by_code(q.get("code", ""))
                 if not c:
