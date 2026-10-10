@@ -2282,6 +2282,10 @@ table.csTbl td.emptyRow{color:var(--faint);text-align:center;padding:26px 0}
 .trdForm input,.trdForm select,.trdForm textarea{font:13px var(--sans);padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-width:0}
 .trdForm textarea{min-height:48px;resize:vertical}
 .trdForm .wide{grid-column:1/-1}
+.trdForm .duo{display:flex;gap:5px;align-items:center}
+.trdForm .duo input{flex:1 1 auto;width:0}
+.trdForm .duo input.pct{flex:0 0 58px}
+.trdForm .duo em{font-style:normal;color:var(--dim)}
 .trdForm .act{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
 .trdMsg{font-size:12.5px;color:var(--del)}
 .trdFlag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font:600 10.5px var(--sans);vertical-align:1px}
@@ -5497,8 +5501,29 @@ function trdForm(p, d, pre){
   const src=fld('어디서 나온 생각',sel((d.sources||[]).map(s=>[s.key,s.label]),P.source||'etc'));
   const setup=fld('셋업 · 근거 한 줄',inp('text',P.setup||'','예: 300억 눌림목 첫 진입'));
   const hz=fld('보유 계획',sel([['','정하지 않음']].concat((d.horizons||[]).map(h=>[h.key,h.label])),P.horizon||''));
-  const stop=fld('손절가 (원)',inp('number',P.stop!=null?P.stop:'')); stop.step='any';
-  const target=fld('목표가 (원, 선택)',inp('number',P.target!=null?P.target:'')); target.step='any';
+  // 손절 · 목표는 원으로 직접 넣거나, 옆 칸에 가격 대비 %로 넣는다 — %를 넣으면 가격에서 원을 계산(호가 단위로 맞춤)하고,
+  // 원을 넣으면 %를 보여 준다. 마지막에 손댄 쪽을 기준으로 가격이 바뀌어도 따라간다. 저장은 원.
+  const tick=v=>v<2000?1:v<5000?5:v<20000?10:v<50000?50:v<200000?100:v<500000?500:1000;   // KRX 호가 단위
+  const toTick=v=>{ const t=tick(v); return Math.round(v/t)*t; };
+  const duo=(lab,val,sign,ph)=>{    // sign −1 = 손절(가격 아래로 %), +1 = 목표(가격 위로 %)
+    const won=inp('number',val!=null?val:'','원'); won.step='any';
+    const pct=inp('number','',ph); pct.step='0.1'; pct.className='pct';
+    pct.title=sign<0?'가격에서 몇 % 아래 — 8 이면 가격 × 0.92':'가격에서 몇 % 위 — 20 이면 가격 × 1.2';
+    const row=el('div','duo'); row.appendChild(won); row.appendChild(pct); row.appendChild(el('em',null,'%'));
+    fld(lab,row);
+    let mode=won.value?'won':'';
+    const fromPct=()=>{ const px=Number(price.value), q=Number(pct.value);
+      if(!(px>0)||pct.value.trim()===''||!isFinite(q)) return; const w=toTick(px*(1+sign*q/100)); won.value=w>0?String(w):''; };
+    const fromWon=()=>{ const px=Number(price.value), w=Number(won.value);
+      pct.value=px>0&&w>0&&won.value.trim()!==''?String(Math.round(sign*(w/px-1)*1000)/10):''; };
+    pct.addEventListener('input',()=>{ mode=pct.value.trim()===''?'':'pct'; if(mode) fromPct(); else won.value=''; });
+    won.addEventListener('input',()=>{ mode=won.value.trim()===''?'':'won'; fromWon(); });
+    price.addEventListener('input',()=>{ if(mode==='pct') fromPct(); else if(mode==='won') fromWon(); });
+    fromWon();
+    return won;
+  };
+  const stop=duo('손절가 (원 / 가격 대비 −%)',P.stop,-1,'예 8');
+  const target=duo('목표가 (원 / +%, 선택)',P.target,1,'예 20');
   const reason=fld('',ta(P.reason,''),'wide');
   const thesis=fld('생각을 바꿀 조건 — 이 일이 생기면 판단이 틀린 것',ta(P.thesis_break,'예: 다음 분기 수주잔고가 줄면 · 종가가 손절가 아래면'),'wide');
   const memo=fld('메모',ta(P.memo,''),'wide');
@@ -5565,7 +5590,8 @@ async function viewTrades(p, data, pre){
   const w1=blk('보유 중',(bk.open||[]).length+'건 — 산 이유 · 생각을 바꿀 조건을 다시 읽고, 깨졌으면 판다');
   if(!(bk.open||[]).length) w1.appendChild(el('div','empty','보유 중인 종목이 없다.'));
   else{
-    const t=table(w1,[['종목'],['산 날'],['수량',1],['산 값',1],['현재가',1],['수익률',1],['평가손익',1],['보유일',1],['손절가',1],['같은 기간 중앙 대비',1],['출처 · 셋업'],['']]);
+    const t=table(w1,[['종목'],['산 날'],['수량',1],['산 값',1],['현재가',1],['수익률',1],['평가손익',1],['보유일',1],['손절가 · 목표가',1],['같은 기간 중앙 대비',1],['출처 · 셋업'],['']]);
+    const vsBuy=(x,r)=>{ const v=r.price>0?(x/r.price-1)*100:null; return v==null?'':' '+(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1)+'%'; };   // 산 값 대비
     bk.open.forEach(r=>{
       const tr=el('tr'); const td=nm(r);
       if(r.stop_broken) flag(td,'손절가 이탈','bad','현재가가 손절가 이하');
@@ -5580,7 +5606,10 @@ async function viewTrades(p, data, pre){
       tr.appendChild(el('td',trCls(r.ret),trPct(r.ret)));
       tr.appendChild(el('td',trCls(r.pnl),trW(r.pnl)));
       tr.appendChild(el('td','num',r.days+'일'));
-      tr.appendChild(el('td','num',r.stop?trW(r.stop):'—'));
+      const sv=el('td','num');
+      if(r.stop){ sv.appendChild(document.createTextNode(trW(r.stop))); sv.appendChild(el('small',null,vsBuy(r.stop,r))); } else sv.textContent='—';
+      if(r.target){ sv.appendChild(el('br')); sv.appendChild(el('small',null,'목표 '+trW(r.target)+vsBuy(r.target,r))); }
+      tr.appendChild(sv);
       tr.appendChild(el('td',trCls(r.excess),trPct(r.excess)));
       tr.appendChild(el('td',null,r.source_label+(r.setup?' · '+r.setup:'')+(r.horizon?' · '+r.horizon_label:'')));
       const tdb=el('td'), same=bk.open.filter(x=>x.code===r.code);
@@ -9110,16 +9139,16 @@ function drkChecks(R, now, K){
   return box;
 }
 
-// 네 판을 한 가로축에: 국면 띠 · 속도 · 마진 · 선행지표 · 주가 vs 이익. 가로 칸 = 분기 키(빈 분기도 칸을 둔다)
+// 네 판을 한 가로축에: 국면 띠 · 속도 · 마진 · 주가 vs 이익 · 선행지표. 가로 칸 = 분기 키(빈 분기도 칸을 둔다)
 function drkStack(R, K){
   const wrap=el('div','drkStackWrap'), C=K.C, M=K.M;
-  wrap.appendChild(el('div','spIdeasH','분기 궤적')).appendChild(el('em',null,'REGIME · SPEED · MARGIN · LEAD INDICATORS · PRICE vs EARNINGS'));
+  wrap.appendChild(el('div','spIdeasH','분기 궤적')).appendChild(el('em',null,'REGIME · SPEED · MARGIN · PRICE vs EARNINGS · LEAD INDICATORS'));
   const fig=el('div','orbFig'); wrap.appendChild(fig);
   const N=R.length, W=1000, L=56, Rr=112, T=24;
   const RIB=16, YRH=22, HA=160, HB=100, HC=104, HD=112, GAP=46;
-  const ribY=T, yTop=ribY+RIB+YRH-4, aT=ribY+RIB+YRH+GAP-10, bT=aT+HA+GAP, cT=bT+HB+GAP, dT=cT+HC+GAP, bot=dT+HD, H=bot+34;
+  const ribY=T, yTop=ribY+RIB+YRH-4, aT=ribY+RIB+YRH+GAP-10, bT=aT+HA+GAP, dT=bT+HB+GAP, cT=dT+HD+GAP, bot=cT+HC, H=bot+34;   // 주가 vs 이익(D)이 선행지표(C) 위
   const step=(W-L-Rr)/N, X=i=>L+i*step+step/2, bw=Math.max(3,Math.min(18,step*.62));
-  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'orbSvg drkSSvg',role:'img','aria-label':'분기별 속도·마진·선행지표·주가'});
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'orbSvg drkSSvg',role:'img','aria-label':'분기별 속도·마진·주가·선행지표'});
   const put=(tag,at)=>svg.appendChild(svgEl(tag,at));
   const GOLD='var(--p-gold2)', HI='var(--p-hi)', AR='#9fb1c4';
   // 연도 — 띠 · 구분선 · 위(국면 띠 바로 밑)와 맨 아래 두 줄에 이름
@@ -9239,9 +9268,11 @@ function drkStack(R, K){
   if(iI>=0) endLab(yi,'재고 '+Math.round(inv[iI])+'일');
   if(iA>=0) endLab(ya,'채권 '+Math.round(ar[iA])+'일','ar');
 
-  // D. 주가 vs 이익(EPS 는 분할 보정) — 3년 전(=100)에 맞춘 로그 눈금. 이익이 0 근처인 해를 기준으로 잡으면 지수가 수천으로 부푼다.
+  // D. 주가 vs 이익(EPS 는 분할 보정) — 주가 · EPS 가 다 있는 가장 이른 분기(=100)에 맞춘 로그 눈금(받은 기간 전부).
+  // 이익이 0 근처인 분기를 기준으로 잡으면 지수가 수천으로 부푼다 — EPS 가 흑자 분기 중앙값의 10% 도 안 되는 분기는 기준에서 뺀다.
   const okPE=r=>dNum(r['주가'])&&r['주가']>0&&dNum(r['EPS_TTM'])&&r['EPS_TTM']>0;
-  let bi=R.findIndex((r,i)=>i>=R.length-13&&okPE(r));
+  const posE=R.filter(okPE).map(r=>r['EPS_TTM']).sort((a,b)=>a-b), medE=posE.length?posE[posE.length>>1]:0;
+  let bi=R.findIndex(r=>okPE(r)&&r['EPS_TTM']>=medE*.1);
   if(bi<0) bi=R.findIndex(okPE);
   cap(dT-14,'주가 vs 이익',bi>=0?R[bi].label+' = 100 · 로그 눈금 · 주가 = 보고서 공시일 종가 · EPS 분할 보정':'');
   legend(dT-14,[['line','주가',HI],['line','이익(EPS TTM)',GOLD]]);
@@ -9257,11 +9288,14 @@ function drkStack(R, K){
     if(bx-L>150){
       put('rect',{x:L,y:dT,width:bx-L,height:HD,class:'drkVoid'});
       put('text',{x:(L+bx)/2,y:dT+HD/2+4,'text-anchor':'middle',class:'drkVoidT'}).textContent=
-        (bi>=R.length-13?'최근 3년만 견준다 — ':'흑자 분기부터 견준다 — ')+R[bi].label+' = 100';
+        '주가 · 흑자 EPS 가 갖춰진 분기부터 견준다 — '+R[bi].label+' = 100';
     }
-    [25,50,100,200,400,800,1600,3200].filter(v=>Math.log10(v)>=llo&&Math.log10(v)<=lhi).forEach(v=>{
+    // 눈금 = 100 × f^k — 기간이 길어 폭이 커지면 f 를 키워 6줄 이하로
+    const tks=f=>{ const o=[]; for(let k=-12;k<=12;k++){ const v=100*Math.pow(f,k), lv=Math.log10(v); if(lv>=llo&&lv<=lhi) o.push(v); } return o; };
+    const tk=[2,4,10,100].map(tks).find(o=>o.length<=6)||tks(1000);
+    tk.forEach(v=>{
       put('line',{x1:L,x2:W-Rr,y1:YD(v),y2:YD(v),class:'drkGrid'+(v===100?' z':'')});
-      put('text',{x:L-8,y:YD(v)+4,'text-anchor':'end',class:'orbTick'}).textContent=v; });
+      put('text',{x:L-8,y:YD(v)+4,'text-anchor':'end',class:'orbTick'}).textContent=v>=10?Math.round(v).toLocaleString('ko-KR'):+v.toPrecision(2); });
     put('path',{d:pathOf(ei,YD),class:'drkEps'});
     put('path',{d:pathOf(pi,YD),class:'drkPx'});
     R.forEach((r,i)=>{ if(dNum(pi[i])) mk(i,YD(pi[i]),HI); if(dNum(ei[i])) mk(i,YD(ei[i]),GOLD); });
