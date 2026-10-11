@@ -69,6 +69,15 @@ header{display:flex;align-items:center;gap:14px;padding:10px 16px;
 .ghost{padding:7px 12px;border:1px solid var(--line);border-radius:8px;
   background:var(--panel);cursor:pointer;white-space:nowrap}
 .ghost:hover{border-color:var(--accent);color:var(--accent)}
+/* 전 종목 미리 계산 — 진행은 배경 그라데이션(--pb)으로. 숫자 자리는 고정폭이라 머리줄이 흔들리지 않는다.
+   min-width = 가장 긴 이름('미리 계산 · 멈춤 · 풍경 1234/2700' 233px)보다 조금 넓게 — 상태가 바뀌어도(처음 136px ↔ 멈춤 218px) 820–900px 폭에서 머리줄이 접혔다 펴졌다 하지 않게 */
+#prebuild{font-variant-numeric:tabular-nums;min-width:16.8em}
+#prebuild.run{border-color:var(--accent);
+  background:linear-gradient(90deg,var(--accent) var(--pb,0%),transparent var(--pb,0%)) left bottom/100% 2px no-repeat,
+    linear-gradient(90deg,var(--accent-soft) var(--pb,0%),var(--panel) var(--pb,0%))}
+#prebuild.wait{background:linear-gradient(90deg,var(--line) var(--pb,0%),var(--panel) var(--pb,0%))}
+#prebuild.bad{border-color:var(--del);color:var(--del)}
+#prebuild:disabled{cursor:progress;opacity:.7}
 
 .body{flex:1;display:flex;min-height:0}
 aside{width:264px;flex:none;border-right:1px solid var(--line);background:var(--panel);
@@ -3031,6 +3040,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
     </div>
     <button class="ghost" id="screenbtn">전 종목 스크리닝</button>
     <button class="ghost" id="reindex">색인 갱신</button>
+    <button class="ghost" id="prebuild">전 종목 미리 계산</button>
   </header>
 
   <div class="body">
@@ -3187,6 +3197,128 @@ $('#reindex').onclick = async ()=>{
   $('#reindex').textContent='색인 갱신';
   if(S.co) pick(S.co.code);
 };
+
+// ---------------------------------------------------------- 전 종목 미리 계산 — 풍경 · 궤도를 뷰어 밖 자식 프로세스가 미리 (서버 /api/prebuild)
+// 페이지 열 때 한 번 묻고, 돌고 있으면 5초마다. 이름에 단계 · 진행, 배경 그라데이션에 비율, title 에 단계별 수 · DART · 마지막 로그.
+// 상태 {phase:'land'|'orbit'|'done', code, stopped, error, land:{…}, orbit:{…}, dart:{date,used,cap}, alive, running, log:[…], stop_pending, launch_error}
+const PB_QUIET='23:30–07:00';                // 이 시간엔 뷰어가 자동으로 띄우지 않는다 — 서버.py PREBUILD_AUTO_FROM/TO(07:00–23:30 에만 띄움)와 맞춘다
+const PB={d:null, t:0, grace:0, stopping:false, busy:false};
+const pbF=v=>fmt(+v||0);
+const pbOn=d=>!!(d&&(d.running||d.alive));
+const pbLaunchErr=d=>!!(d&&d.launch_error&&!pbOn(d));          // 띄우지 못함(실행기 없음 · stdout.log 못 엶 …) — 서버 메모리 PREBUILD.error
+const pbBad=d=>!!(d&&(d.stopped==='error'||d.error||pbLaunchErr(d)));
+const pbStopping=d=>PB.stopping||!!(d&&d.stop_pending);       // stop 파일이 있다 — 다시 열거나 다른 탭에서도 멈추는 중으로
+// 뷰어가 한 시간마다 이어 붙이는 판(서버 _prebuild_should_resume) — 멈추지 않은 풍경 · 궤도, DART 한도로 풍경을 미룬 채 끝난 판. 골라 돌린 판(codes)은 아님
+const pbAuto=d=>!!(d&&!d.codes&&d.stopped!=='user'&&(d.phase==='land'||d.phase==='orbit'||(d.phase==='done'&&+(d.land||{}).deferred)));
+// 풍경을 미룬 까닭 — land.stop: 'time'(23:30–07:00 밖이라 도구가 DART 를 안 씀) · 그 밖(cap · 020 · 800 …)은 DART
+const pbDefer=L=>L&&L.stop==='time'?'밤 시간이라':'DART 한도로';
+const pbWhen=t=>{ if(!t) return '—';
+  if(typeof t==='number'){ const x=new Date(t*1000), z=v=>String(v).padStart(2,'0');
+    return z(x.getMonth()+1)+'-'+z(x.getDate())+' '+z(x.getHours())+':'+z(x.getMinutes()); }
+  return String(t).replace('T',' ').slice(5,16); };
+const pbGrp=d=>(d.phase==='orbit'?d.orbit:d.land)||{};
+// '풍경  23/988' — done 을 total 자리수만큼 숫자폭 공백(U+2007)으로 채워 단추 폭이 그대로
+const pbCnt=d=>{ const g=pbGrp(d), T=+g.total||0; if(!T) return '준비 중';
+  return (d.phase==='orbit'?'궤도 ':'풍경 ')+String(+g.done||0).padStart(String(T).length,'\u2007')+'/'+T; };
+function pbLabel(d){
+  const on=pbOn(d);
+  if(on&&pbStopping(d)) return '미리 계산 · 멈추는 중…';
+  if(on) return d.phase==='done'?'미리 계산 끝':'미리 계산 · '+pbCnt(d);
+  if(Date.now()<PB.grace) return '미리 계산 · 시작하는 중…';
+  if(pbLaunchErr(d)) return '미리 계산 · 오류';
+  if(!d||!d.phase) return '전 종목 미리 계산';
+  if(pbBad(d)) return '미리 계산 · 오류';
+  if(d.phase==='done') return pbAuto(d)?'미리 계산 · 대기 · 풍경 미룸 '+pbF(d.land.deferred):'미리 계산 끝';
+  return '미리 계산 · '+(d.stopped==='user'?'멈춤':'대기')+' · '+pbCnt(d);
+}
+function pbTitle(d){
+  const on=pbOn(d), s=['전 종목 미리 계산 — 등록된 회사의 풍경 · 궤도를 뷰어 밖 프로세스가 미리 계산해 둔다. 그다음엔 두 탭이 기다리지 않고 바로 열린다.'];
+  if(!d||(!d.phase&&!on&&!pbLaunchErr(d))){ s.push('아직 돌린 적 없음. 누르면 무엇을 하는지 먼저 묻는다.'); return s.join('\n'); }
+  const L=d.land||{}, O=d.orbit||{}, D=d.dart||{};
+  const co=d.code&&S.companies.find(x=>x.code===d.code), at=d.code?' · '+(co?co.name+' ':'')+d.code:'';
+  let now;
+  if(on) now=(d.phase==='orbit'?'궤도':d.phase==='done'?'마무리':'풍경')+' 단계'+at+(pbStopping(d)?' · 지금 회사까지 마치고 멈추는 중':'');
+  else if(pbLaunchErr(d)) now='시작하지 못함 — '+String(d.launch_error).slice(0,200);
+  else if(pbBad(d)) now='오류로 멈춤';
+  else if(d.phase==='done') now=!pbAuto(d)?'끝'+(+L.deferred?' — '+pbDefer(L)+' 미룬 풍경 '+pbF(L.deferred)+'곳은 누르면 이어 한다':''):
+    '궤도까지 끝, 풍경 '+pbF(L.deferred)+'곳은 '+pbDefer(L)+' 미룸 — '+(L.stop==='time'?'07:00 뒤':'날짜가 바뀐 뒤')+' 뷰어가 한 시간마다 보고 이어 한다(밤 '+PB_QUIET+' 제외)';
+  else if(d.stopped==='user') now='직접 멈춤 — 누르면 이어 한다(직접 멈추면 자동으로 이어 하지 않는다)';
+  else now='쉬는 중 — '+(d.stopped==='dart'?'DART 한도. 날짜가 바뀐 뒤 ':'')+'뷰어가 한 시간마다 보고 이어 한다(밤 '+PB_QUIET+' 제외)';
+  s.push('지금: '+now);
+  if(L.total!=null) s.push('풍경 '+pbF(L.done)+'/'+pbF(L.total)+' — 새로 그림 '+pbF(L.built)+' · 이미 됨 '+pbF(L.fresh)+' · 이력 짧음 '+pbF(L.short)+
+    ' · 실패 '+pbF(L.failed)+(+L.deferred?' · '+pbDefer(L)+' 미룸 '+pbF(L.deferred):''));
+  if(O.total!=null) s.push('궤도 '+pbF(O.done)+'/'+pbF(O.total)+' — 보고서 '+pbF(O.reports)+'건 · 한 줄 요약 '+pbF(O.gists)+'건 · 이미 됨 '+pbF(O.fresh)+'곳');
+  if(D.cap) s.push('DART '+(D.date||'오늘')+' '+pbF(D.used)+' / '+pbF(D.cap)+'건');
+  if(d.started||d.at) s.push('시작 '+pbWhen(d.started)+' · 마지막 기록 '+pbWhen(d.at));
+  if(d.error) s.push('오류: '+String(d.error).slice(0,200));
+  const lg=(d.log||[]).map(x=>String(x).trim()).filter(Boolean).slice(-3);
+  if(lg.length) s.push('마지막 로그:\n'+lg.join('\n'));
+  s.push(on?(pbStopping(d)?'멈추는 중 — 지금 회사를 마치면 멈춘다.':'누르면 멈출지 묻는다.'):
+    '누르면 '+(d.phase==='done'?'다시 돌릴지(새 보고서 · 새 회사만)':d.phase?'이어 할지':'시작할지')+' 묻는다.');
+  return s.join('\n');
+}
+function pbDraw(d){
+  const b=$('#prebuild'), on=pbOn(d), g=d?pbGrp(d):{};
+  const run=on||Date.now()<PB.grace, bad=!run&&pbBad(d), wait=!run&&!bad&&d&&(d.phase==='land'||d.phase==='orbit'||pbAuto(d));
+  b.textContent=pbLabel(d);
+  b.title=pbTitle(d);
+  b.classList.toggle('run',run); b.classList.toggle('wait',!!wait); b.classList.toggle('bad',bad);
+  const T=+g.total||0;
+  b.style.setProperty('--pb',(on||wait)&&T&&d.phase!=='done'?Math.min(100,(+g.done||0)/T*100).toFixed(1)+'%':'0%');
+}
+async function pbPoll(){
+  clearTimeout(PB.t);
+  let ok=false;
+  try{ const r=await fetch('/api/prebuild'); if(r.ok){ PB.d=await r.json(); ok=true; } }catch(e){}
+  const d=PB.d, on=pbOn(d);
+  if(on) PB.grace=0; else { PB.stopping=false; if(pbLaunchErr(d)) PB.grace=0; }   // 띄우기 실패(대신 띄우기도 실패)면 '시작하는 중' 을 거둔다
+  pbDraw(d);
+  // 돌고 있거나 막 띄웠으면 5초마다. 쉬는 중(뷰어가 한 시간마다 이어 함)이면 5분마다 한 번 — 이어 붙으면 단추가 따라온다
+  if(on||Date.now()<PB.grace) PB.t=setTimeout(pbPoll, ok?5000:10000);
+  else if(pbAuto(d)) PB.t=setTimeout(pbPoll, 300000);
+}
+function pbRunMsg(d){
+  const n=S.companies.length, cap=(d&&d.dart&&+d.dart.cap)||3000;
+  const ph=d&&d.phase;
+  return [(ph==='done'?'전 종목 미리 계산을 다시 돌릴까요? 이미 된 것은 건너뛰고 새 보고서 · 새 회사만 계산합니다.':
+    ph?'전 종목 미리 계산을 이어 할까요? 이미 된 회사는 건너뜁니다.':'전 종목 미리 계산을 시작할까요?'), '',
+    '· 무엇을 — 등록된 회사 전부'+(n?'('+fmt(n)+'곳)':'')+'의 풍경 · 궤도를 미리 계산해 둡니다. 그다음부터 두 탭이 기다리지 않고 바로 열립니다. 계산은 뷰어 밖 프로세스가 하므로 뷰어는 그대로 쓸 수 있습니다.',
+    '· 얼마나 — 풍경은 몇 시간, 궤도는 여러 밤에 걸칩니다. 언제든 이 단추로 멈췄다 이어 할 수 있고, 뷰어를 꺼도 다음에 켜면 이어 합니다.',
+    '· DART — 하루 '+fmt(cap)+'건까지만 씁니다(수집기 · 공시목록과 하루 한도를 나눠 쓰므로). 다 쓰면 남은 풍경은 다음 날로 미루고 궤도로 넘어갑니다.',
+    '· 구글 드라이브 — 계산 결과가 약 2.5–3.5GB 늘어나고, 드라이브가 그만큼 올립니다.',
+    '· 밤 '+PB_QUIET+' 에는 뷰어가 자동으로 이어 하지 않고, 돌던 계산도 풍경(DART 쓰는 단계)은 미루고 궤도만 합니다(밤 수집 · 가속도 · 공시목록 · 가격 갱신과 겹치지 않게).'].join('\n');
+}
+function pbStopMsg(d){
+  const D=d.dart||{};
+  return ['전 종목 미리 계산을 멈출까요?', '',
+    '지금 '+pbCnt(d).replace(/\u2007/g,'')+(D.cap?' · DART 오늘 '+pbF(D.used)+'/'+pbF(D.cap)+'건':'')+'.',
+    '지금 계산하던 회사까지 마치고 멈춥니다(조금 걸릴 수 있음). 된 것은 그대로 남고, 다시 누르면 이어서 합니다.',
+    '직접 멈추면 뷰어가 자동으로 이어 하지 않습니다.'].join('\n');
+}
+$('#prebuild').onclick=async()=>{
+  const b=$('#prebuild');
+  if(PB.busy) return;
+  PB.busy=true; await pbPoll(); PB.busy=false;      // 지금 상태로 묻는다 — 오래 쉰 단추 · 다른 탭에서 멈춘 판이 옛 상태로 묻지 않게
+  const d=PB.d, on=pbOn(d);
+  if((on&&pbStopping(d))||(!on&&Date.now()<PB.grace)) return;
+  if(!confirm(on?pbStopMsg(d):pbRunMsg(d))) return;
+  PB.busy=true; b.disabled=true;
+  let r=null, j={};
+  try{ r=await fetch('/api/prebuild?'+(on?'stop=1':'run=1')); j=await r.json().catch(()=>({})); }catch(e){}
+  PB.busy=false; b.disabled=false;
+  // 상태가 아닌 {error} 만 온 경우(로컬이 아님 403 · 이미 돎 등)가 실패. 상태의 error 는 지난 판 오류라 실패가 아니다.
+  // 상태가 와도 launch_error 이고 안 돌면(실행기 없음 · stdout.log 못 엶) 띄우기 실패
+  const st=j&&('phase' in j||'alive' in j||'running' in j), lerr=!on&&st&&pbLaunchErr(j);
+  if(!r||!r.ok||(j&&j.error&&!st)||lerr){
+    alert('미리 계산을 '+(on?'멈추지':'시작하지')+' 못했다 — '+((lerr&&j.launch_error)||(j&&j.error)||(r?'HTTP '+r.status:'뷰어에 닿지 못함')));
+    if(lerr){ PB.grace=0; PB.d=j; pbDraw(j); }
+    pbPoll(); return; }
+  if(on) PB.stopping=true; else PB.grace=Date.now()+45000;     // 막 띄운 프로세스가 상태를 쓰기 전까지(빨리 죽으면 서버가 한 번 더 띄운다)
+  if(st) PB.d=j;
+  pbDraw(PB.d);
+  pbPoll();
+};
+pbPoll();
 
 // ---------------------------------------------------------- 회사 선택
 async function pick(code){
@@ -13617,6 +13749,7 @@ const LS_VER={결단:'go', 기다림:'wait', 관찰:'wait', '정점 경계':'wai
 const lsPct=(v,d=0)=>v===null||v===undefined?'—':(v>=0?'+':'')+v.toFixed(d)+'%';
 const lsD=s=>s? s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8):'—';
 const lsT=s=>Date.UTC(+s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8));
+const LS_RETRY=610000;   // ms — 서버 LAND_RETRY(600초): 새로 그리기 일시 오류 뒤 그동안은 다시 그리지 않는다. 그 뒤 한 번 더 묻는다
 
 async function viewLand(p){
   const c=S.co, code=c.code;
@@ -13625,20 +13758,44 @@ async function viewLand(p){
   const plate=el('section','synplate orbplate lsplate'); p.appendChild(plate);
   plate.appendChild(el('div','orbWait','15년치 원장과 주가를 한 장에 펴는 중…'));
   const led=el('div','lsLed'); p.appendChild(led);
+  // 지난 판(stale:true) — 서버가 날짜 지난 판을 바로 주고 뒤에서 새로 그린다. 판은 한 번만 그리고 2초마다 물어 새 판이 오면 바꿔 그린다.
+  // 새로 그리기가 일시 오류(주가 없음 · 주식 수 · 원장)면 지난 판에 refreshing:false · stale_error, 지난 판이 없으면 저장 안 한 판에 transient —
+  // 서버가 LAND_RETRY 동안 다시 그리지 않으므로 판에 까닭을 달고 묻기를 멈췄다가 그 뒤 한 번 더 묻는다.
+  let old=null, tag='지난 판', n=0;      // old = 그려 둔 판의 날짜('' = 모름), null = 아직 안 그림. tag = 그 판(지난 판 · 임시 판)
+  const oldNote=(cls,t)=>{ progBox.innerHTML=''; progBox.appendChild(el('div','stMsg '+cls,tag+(old?'('+old+')':'')+' — '+t)); };
+  const live=()=>S.tab==='land' && S.co && S.co.code===code && p.contains(plate);
+  const later=()=>{ n=0; setTimeout(tick,LS_RETRY); };
   async function tick(){
-    if(S.tab!=='land' || !S.co || S.co.code!==code || !p.contains(plate)) return;
+    if(!live()) return;
     let d;
     try{ d=await (await fetch('/api/landscape?code='+code)).json(); }
     catch(e){ setTimeout(tick,2500); return; }
+    if(!live()) return;
     progBox.innerHTML='';
+    if(d.stale || (d.pending && old!==null)){
+      if(old===null){ const sd=String(d.stale_date||''); old=/^\d{8}$/.test(sd)?lsD(sd):sd.slice(0,10);
+        lsPlate(plate,d,c,true); lsLedger(led,d); }
+      if(d.stale && (d.refreshing===false || d.stale_error)){ oldNote('warn',d.stale_error||'새로 그리지 못했다 — 잠시 뒤 다시'); later(); return; }
+      if(++n>150){ oldNote('warn','5분이 지나도 새 판이 오지 않았다. 탭을 다시 열면 다시 묻는다'); return; }
+      oldNote('run','새로 그리는 중, 다 되면 바뀐다'); setTimeout(tick,2000); return;
+    }
     if(d.pending){
       const pr=el('div','prog'); pr.appendChild(el('span',null,'풍경을 그리는 중 · '+(d.step||'')));
-      pr.appendChild(el('span',null,'처음 한 번만 걸립니다. 하루 한 번 주가만 새로 붙입니다.'));
+      pr.appendChild(el('span',null,'처음 한 번만 걸립니다. 그다음부터는 지난 판을 바로 보이고 새 판은 뒤에서 그려 바꿔 끼웁니다.'));
       progBox.appendChild(pr); setTimeout(tick,1000); return;
     }
-    if(d.error){ plate.innerHTML=''; plate.appendChild(el('div','orbWait',d.error)); return; }
-    lsPlate(plate,d,c,true);
+    if(d.error){
+      if(old!==null){ oldNote('warn','새로 그리지 못했다: '+d.error); return; }     // 그려 둔 지난 판은 그대로 둔다
+      plate.innerHTML=''; plate.appendChild(el('div','orbWait',d.error)); return;
+    }
+    lsPlate(plate,d,c,old===null);      // 지난 판 위에 바꿔 그릴 때는 그리는 움직임 없이
     lsLedger(led,d);
+    if(d.transient){                    // 저장 안 한 판 — 주가 · 주식 수 · 원장 일부가 빠졌을 수 있다
+      tag='임시 판'; old='';
+      const why=(String(d.transient).match(/\(([^()]+)\)/)||[])[1];
+      oldNote('warn','일부가 빠졌을 수 있어 저장하지 않았다'+(why?'('+why+')':'')+'. 10분 뒤 다시 그린다');     // why = 주가 없음 · 주식 수 일시 오류 · 연간 원장 일시 오류
+      later();
+    }
   }
   tick();
 }

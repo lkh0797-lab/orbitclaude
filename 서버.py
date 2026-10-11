@@ -25,6 +25,7 @@ import shlex
 import webbrowser
 import urllib.parse
 import zlib
+import hashlib
 from collections import Counter, defaultdict
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
@@ -795,6 +796,31 @@ def brief_pair(c, base, rep, kind):
     return out
 
 
+def _atomic_json(path, obj, tries=6):
+    """JSON 을 원자적으로 쓴다 — 프로세스 · 스레드마다 다른 tmp(path.pid.tid.tmp)에 쓰고 os.replace.
+    뷰어와 미리 계산 프로세스(도구/전종목_미리계산.py)가 같은 파일을 써도 반쯤 쓴 파일을 읽지 않는다.
+    대상 파일을 다른 쪽이 열고 있으면 Windows 가 PermissionError — 잠깐 쉬고 다시. 끝내 못 쓰면 tmp 를 지우고 False."""
+    tmp = "%s.%d.%d.tmp" % (path, os.getpid(), threading.get_ident())
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(obj, fh, ensure_ascii=False)
+        for i in range(tries):
+            try:
+                os.replace(tmp, path)
+                return True
+            except PermissionError:
+                if i + 1 >= tries:
+                    raise
+                time.sleep(0.2 * (i + 1))
+    except OSError:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+    return False
+
+
 def brief_path(code, rcept):
     return os.path.join(CACHE_DIR, "brief", code, rcept + ".json")
 
@@ -909,9 +935,7 @@ def build_brief(c, rep, force=False):
     if base is not None:
         out.update(_brief_core(c, base, rep))
 
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(out, fh, ensure_ascii=False)
+    _atomic_json(path, out)         # 원자적으로 — 미리 계산 프로세스와 같이 써도 결과가 같고(결정적) 반쯤 쓴 파일을 읽지 않는다
     return out
 
 
@@ -1300,13 +1324,7 @@ def _gist_of(c, rep, b, path, allow=True):
         print("요약 실패 %s %s: %s" % (c["code"], rep["rcept"], e), flush=True)
         return []
     b["gist"], b["gist_v"] = g, GIST_V
-    try:
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump(b, fh, ensure_ascii=False)
-        os.replace(tmp, path)
-    except OSError:
-        pass
+    _atomic_json(path, b)           # tmp 이름은 프로세스 · 스레드마다 다르게(뷰어 · 미리 계산이 같은 파일을 쓸 수 있다)
     return g
 
 
@@ -1330,6 +1348,19 @@ def inflect(code, force=False):
                 return old
         except Exception:
             pass
+    sbad = []
+    with _fin_watch() as bad:
+        out = _inflect_build(c, code, corp, sig, sbad)
+    if bad or sbad:
+        # 원장 · 주식 수 일시 오류(한도 · 점검 · 네트워크 · 미리 계산 DART 막힘)가 낀 판 — sig 가 오늘 날짜라 쓰면 그날 내내 굳는다. 돌려주기만
+        out["transient"] = "재무 원장 일시 오류" if bad else "주식 수 일시 오류"
+        return out
+    _atomic_json(cache, out)
+    return out
+
+
+def _inflect_build(c, code, corp, sig, sbad):
+    """inflect 의 계산(캐시는 부른 쪽). sbad(list)에 주식 수 일시 오류를 담는다 — 원장은 부른 쪽 _fin_watch 가 본다."""
     this = dt.date.today().year
     funds = INF.fundamentals(FIN, corp, list(range(this - 15, this + 1)))
 
@@ -1384,7 +1415,7 @@ def inflect(code, force=False):
         rc_of = {"03": "11013", "06": "11012", "09": "11014", "12": "11011"}
         lrep = max((r for r in c["reports"] if r["stamp"][5:7] in rc_of), key=lambda r: r["stamp"], default=None)
         latest = (int(lrep["stamp"][:4]), rc_of[lrep["stamp"][5:7]]) if lrep else None
-        S_adj, _spl, _raw = _land_shares([d for d in funds if d.get("rev") is not None or d.get("ni") is not None], corp, latest)
+        S_adj, _spl, _raw = _land_shares([d for d in funds if d.get("rev") is not None or d.get("ni") is not None], corp, latest, sbad)
         rnd = {f["year"]: f.get("rnd_pct") for f in feats}
         for d in funds:
             y = d["year"]
@@ -1451,8 +1482,6 @@ def inflect(code, force=False):
            "lenses": lens, "identity": ident, "came": came, "gone": gone, "term_years": ys,
            "funds": [{k: d.get(k) for k in keep} for d in funds],
            "years": [funds[0]["year"], funds[-1]["year"]] if funds else None}
-    os.makedirs(os.path.dirname(cache), exist_ok=True)
-    json.dump(out, open(cache, "w", encoding="utf-8"), ensure_ascii=False)
     return out
 
 
@@ -1839,6 +1868,225 @@ def _druck_auto_loop():
             _druck_prebuild()
         except Exception as e:
             print("가속도 밤 미리 계산: %s" % e, flush=True)
+
+
+# ---------------------------------------------------------------- 전 종목 미리 계산 — 풍경 · 궤도(2026-10-11)
+# 도구/전종목_미리계산.py 를 뷰어 밖 자식 프로세스로(64비트 BT_PY, 안 되면 서버 파이썬) 창 없이 띄운다. 32비트 뷰어는 이미 500–600MB ·
+# 'can't start new thread' 기록이 있어 안에서 돌리지 않는다. 상태는 그 프로세스가 쓰는 PREBUILD_DIR/state.json(뷰어를 다시 켜도 이어 본다),
+# 회사 한 줄 로그는 run.log, 멈춤은 stop 파일(회사 사이 · 궤도는 보고서 몇 건마다 본다). 설계: docs/superpowers/specs/2026-10-11-prebuild-all-design.md
+PREBUILD_DIR = os.environ.get("PREBUILD_DIR") or os.path.join(CACHE_DIR, "prebuild")
+PREBUILD = {"proc": None, "py": None, "started": None, "error": None}
+PREBUILD_LOCK = threading.Lock()
+PREBUILD_AUTO_FROM, PREBUILD_AUTO_TO = (7, 0), (23, 30)    # 자동 이어 하기를 띄우는 때 — 밤 수집 · 02:00 druck · 06:30 공시목록/가격과 겹치지 않게
+PREBUILD_ERR_WAIT = 3 * 3600    # 초 — 오류로 끝난 판은 이만큼 지난 뒤에만 자동으로 다시(한 시간마다 같은 오류로 뜨지 않게)
+
+
+def _prebuild_path(name):
+    return os.path.join(PREBUILD_DIR, name)
+
+
+def _pid_alive(pid, since=None):
+    """pid 프로세스가 살아 있나. since(에포크 초)를 주면 그보다 나중에 만들어진 프로세스(pid 재사용)는 남으로 본다."""
+    try:
+        pid = int(pid or 0)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    if os.name != "nt":
+        try:
+            os.kill(pid, 0)
+        except PermissionError:
+            return True
+        except OSError:
+            return False
+        return True
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)      # 전역 windll 의 argtypes 를 건드리지 않게 따로
+    k32.OpenProcess.restype = wintypes.HANDLE
+    k32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    k32.GetExitCodeProcess.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+    k32.GetProcessTimes.argtypes = (wintypes.HANDLE,) + (ctypes.POINTER(wintypes.FILETIME),) * 4
+    k32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    h = k32.OpenProcess(0x1000, False, pid)          # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return False
+    try:
+        rc = wintypes.DWORD()
+        if not k32.GetExitCodeProcess(h, ctypes.byref(rc)) or rc.value != 259:    # STILL_ACTIVE
+            return False
+        if since:
+            ft = [wintypes.FILETIME() for _ in range(4)]
+            if k32.GetProcessTimes(h, *[ctypes.byref(f) for f in ft]):
+                made = ((ft[0].dwHighDateTime << 32) | ft[0].dwLowDateTime) / 1e7 - 11644473600
+                if made > since + 5:
+                    return False
+        return True
+    finally:
+        k32.CloseHandle(h)
+
+
+def _prebuild_state():
+    """state.json — 없거나 깨졌으면 {}. 도구가 원자적으로 쓰지만 드라이브 동기화 중이면 한 번 더."""
+    for i in range(2):
+        try:
+            with open(_prebuild_path("state.json"), "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+            return d if isinstance(d, dict) else {}
+        except FileNotFoundError:
+            return {}
+        except (OSError, ValueError):
+            time.sleep(0.2)
+    return {}
+
+
+def _iso_ts(s):
+    try:
+        return dt.datetime.fromisoformat(s).timestamp()
+    except (TypeError, ValueError):
+        return None
+
+
+def _prebuild_alive(stt=None):
+    """미리 계산 프로세스가 도나 — 이 뷰어가 띄운 손잡이(py 런처)가 살아 있거나, state 의 pid 가 그 시작 시각 전에 만든 프로세스로 살아 있다."""
+    p = PREBUILD["proc"]
+    if p is not None and p.poll() is None:
+        return True
+    stt = _prebuild_state() if stt is None else stt
+    return _pid_alive(stt.get("pid"), _iso_ts(stt.get("started")))
+
+
+def _prebuild_log_tail(n=8):
+    try:
+        with open(_prebuild_path("run.log"), "rb") as fh:
+            fh.seek(0, 2)
+            fh.seek(max(0, fh.tell() - 16384))
+            lines = fh.read().decode("utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    return [ln for ln in lines if ln.strip()][-n:]
+
+
+def prebuild_status():
+    """GET /api/prebuild — state.json 그대로 + alive · running(프로세스가 도나) · log(run.log 꼬리 8줄) · stop_pending · launch_error.
+    방금 띄워 아직 state 를 안 쓴 동안은 phase "start"."""
+    stt = _prebuild_state()
+    alive = _prebuild_alive(stt)
+    out = dict(stt)
+    p, t0 = PREBUILD["proc"], PREBUILD["started"]
+    if alive and p is not None and p.poll() is None and t0 and (_iso_ts(stt.get("started")) or 0) < t0 - 2:
+        out = {"v": 1, "phase": "start", "started": dt.datetime.fromtimestamp(t0).isoformat(timespec="seconds"),
+               "py": PREBUILD["py"], "land": {}, "orbit": {}, "dart": stt.get("dart") or {}}
+    out.update(alive=alive, running=alive, log=_prebuild_log_tail(),
+               stop_pending=os.path.exists(_prebuild_path("stop")), launch_error=PREBUILD["error"])
+    return out
+
+
+def _prebuild_spawn(cmd, first):
+    """도구를 창 없이 띄운다. 실행기가 없으면(FileNotFoundError) False. 출력(import 실패 · 예외)은 stdout.log."""
+    si = None
+    if os.name == "nt":
+        si = subprocess.STARTUPINFO()
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = 0          # SW_HIDE
+    os.makedirs(PREBUILD_DIR, exist_ok=True)
+    with open(_prebuild_path("stdout.log"), "w" if first else "a", encoding="utf-8") as log:
+        log.write("== %s 실행: %s\n" % (dt.datetime.now().isoformat(timespec="seconds"), " ".join(cmd)))
+        log.flush()
+        try:
+            p = subprocess.Popen(
+                cmd + [os.path.join(BASE, "도구", "전종목_미리계산.py")], cwd=BASE,
+                stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                env=dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1", PREBUILD_DIR=PREBUILD_DIR), startupinfo=si,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        except FileNotFoundError as e:
+            log.write("실행기 없음: %s\n" % e)
+            return False
+    PREBUILD.update(proc=p, py=" ".join(cmd), started=time.time())
+    return True
+
+
+def _prebuild_watch(p):
+    """64비트 실행기가 BT_QUICK_FAIL 초 안에 0 아닌 코드로 끝나면(py 런처 103 — 3.13 없음 · import 실패) 서버 파이썬으로 한 번 더."""
+    try:
+        rc = p.wait(timeout=BT_QUICK_FAIL)
+    except subprocess.TimeoutExpired:
+        return
+    with PREBUILD_LOCK:
+        if rc != 0 and PREBUILD["proc"] is p and not _prebuild_alive():
+            try:
+                if not _prebuild_spawn([sys.executable], False):
+                    PREBUILD["error"] = "미리 계산을 띄우지 못했습니다(실행기 없음)"
+            except Exception as e:
+                PREBUILD["error"] = "미리 계산을 띄우지 못했습니다: %s" % e
+
+
+def prebuild_run(auto=False):
+    """미리 계산을 띄운다 — 이미 돌면 그대로(한 번에 하나). 반환: prebuild_status()."""
+    with PREBUILD_LOCK:
+        if _prebuild_alive():
+            return prebuild_status()
+        try:
+            os.remove(_prebuild_path("stop"))
+        except OSError:
+            pass
+        PREBUILD["error"] = None
+        try:
+            cmd = _bt_cmd()
+            if _prebuild_spawn(cmd, True):
+                if cmd != [sys.executable]:
+                    threading.Thread(target=_prebuild_watch, args=(PREBUILD["proc"],), daemon=True).start()
+            elif not _prebuild_spawn([sys.executable], False):
+                PREBUILD["error"] = "미리 계산을 띄우지 못했습니다(실행기 없음)"
+        except Exception as e:
+            PREBUILD["error"] = "미리 계산을 띄우지 못했습니다: %s" % e
+        if auto:
+            print("전 종목 미리 계산 — 자동으로 이어 함(%s)" % PREBUILD["py"], flush=True)
+    return prebuild_status()
+
+
+def prebuild_stop():
+    """돌고 있으면 stop 파일 — 도구가 회사 사이에서 보고 멈춘다. 안 돌면 state 에 stopped=user 만 남겨 자동 이어 하기를 막는다."""
+    with PREBUILD_LOCK:
+        stt = _prebuild_state()
+        if _prebuild_alive(stt):
+            os.makedirs(PREBUILD_DIR, exist_ok=True)
+            with open(_prebuild_path("stop"), "w", encoding="utf-8") as fh:
+                fh.write(dt.datetime.now().isoformat(timespec="seconds"))
+        elif stt and stt.get("stopped") != "user":
+            stt["stopped"] = "user"
+            _atomic_json(_prebuild_path("state.json"), stt)
+    return prebuild_status()
+
+
+def _prebuild_should_resume(stt, now):
+    """자동 이어 하기 — 끝나지 않았고(phase != done) 사용자가 멈춘 게 아니면. DART 상한으로 미룬 풍경(land.deferred)은 날짜가 바뀐 뒤에,
+    07:00–23:30 밖이라 미룬 풍경(land.stop "time" — 도구가 창 밖에서는 DART 를 안 쓴다)은 창 안이면 같은 날에도.
+    회사를 골라 돌린 판(codes) · state 가 없는 경우(한 번도 안 누름)는 띄우지 않는다. 오류로 끝난 판은 PREBUILD_ERR_WAIT 뒤에."""
+    if not stt or stt.get("codes") or stt.get("stopped") == "user":
+        return False
+    if stt.get("stopped") == "error" and now.timestamp() - (_iso_ts(stt.get("at")) or 0) < PREBUILD_ERR_WAIT:
+        return False
+    if stt.get("phase") != "done":
+        return True
+    L = stt.get("land") or {}
+    return bool(L.get("deferred")) and (L.get("stop") == "time" or (stt.get("dart") or {}).get("date") != now.date().isoformat())
+
+
+def _prebuild_auto_loop():
+    """뷰어가 켜지고 10분 뒤부터 한 시간마다 — 07:00–23:30 에만 띄운다."""
+    time.sleep(600)
+    while True:
+        try:
+            now = dt.datetime.now()
+            if PREBUILD_AUTO_FROM <= (now.hour, now.minute) < PREBUILD_AUTO_TO:
+                stt = _prebuild_state()
+                if _prebuild_should_resume(stt, now) and not _prebuild_alive(stt):
+                    prebuild_run(auto=True)
+        except Exception as e:
+            print("전 종목 미리 계산 자동 이어 하기: %s" % e, flush=True)
+        time.sleep(3600)
 
 
 def catalyst_view(days, level="sector", force=False, minw=2):
@@ -2884,45 +3132,110 @@ def orbit_worker(code):
     BUILDING.setdefault(code, {})["finished"] = True
 
 
-def orbit(code):
-    """보고서별 변화 점수 시계열. 캐시된 것만 모아 준다."""
-    c = company_by_code(code)
-    if not c:
+# ---------------------------------------------------------------- 궤도 요약 캐시(2026-10-11)
+# brief 캐시가 다 있어도 /api/orbit 이 매번 brief JSON 을 전부 읽어 5초 안팎(KB금융 103건 · 구글 드라이브 읽기).
+# 회사별로 행(orbit_scale 전 값)을 한 파일 .cache/orbit/{code}.json 에 모은다. sig = ORBIT_SUM_V | GIST_V | 보고서 rcept 목록 해시 —
+# 새 보고서 · 요약 규칙(GIST_V)이 바뀌면 무효. 모든 보고서에 brief 와 지금 판 gist 가 있을 때만 쓴다(뷰어 · 미리 계산 도구).
+ORBIT_SUM_V = 1
+ORBIT_ROW_KEYS = ("score", "kind", "top", "tags", "changed", "first", "vol", "add_chars", "rem_chars", "numeric", "gist")
+
+
+def _orbit_sum_path(code):
+    return os.path.join(CACHE_DIR, "orbit", code + ".json")
+
+
+def _orbit_sum_sig(c):
+    h = hashlib.sha1("|".join(r["rcept"] for r in c["reports"]).encode("utf-8")).hexdigest()[:16]
+    return "%d|%d|%d|%s" % (ORBIT_SUM_V, GIST_V, len(c["reports"]), h)
+
+
+def _orbit_row(rep, b, gist=None):
+    """brief 한 건 → 궤도 행(orbit_scale 전). b 가 깨졌으면 KeyError."""
+    secs = b["sections"]
+    return {
+        "stamp": rep["stamp"], "label": rep["label"],
+        "tag": rep["tag"], "rcept": rep["rcept"],
+        "score": b["score"], "kind": b["kind"],
+        "top": secs[0]["section"] if secs else "", "tags": b["tags"],
+        "changed": len(secs),
+        "first": b.get("first", False),
+        # 중요도를 곱한 '새로 쓴 분량'(글자). 점수는 이것의 섹션별 제곱근 합이다.
+        "vol": round(sum(s["weight"] * (s["added_chars"] + 0.6 * s["removed_chars"])
+                         for s in secs)),
+        "add_chars": sum(s["added_chars"] for s in secs),
+        "rem_chars": sum(s["removed_chars"] for s in secs),
+        "numeric": sum(s.get("numeric", 0) for s in secs),
+        "gist": gist,
+    }
+
+
+def _orbit_sum_rows(c):
+    """요약 파일이 지금 보고서 목록 · GIST_V 와 맞으면 행(orbit_scale 전, 보고서 순서), 아니면 None.
+    stamp · label · tag 는 색인 값을 쓴다(요약에는 rcept 와 brief 에서 나온 값만)."""
+    try:
+        with open(_orbit_sum_path(c["code"]), "r", encoding="utf-8") as fh:
+            s = json.load(fh)
+    except (OSError, ValueError):
         return None
-    rows, have = [], 0
-    # 요약은 잠깐만 여기서 뽑고 나머지는 뒤에서 — 첫 화면이 오래 멈추지 않게
-    deadline = time.time() + 1.0
+    got = s.get("rows") or []
+    if s.get("v") != ORBIT_SUM_V or s.get("sig") != _orbit_sum_sig(c) or len(got) != len(c["reports"]):
+        return None
+    rows = []
+    for rep, r in zip(c["reports"], got):
+        if r.get("rcept") != rep["rcept"]:
+            return None
+        row = {"stamp": rep["stamp"], "label": rep["label"], "tag": rep["tag"], "rcept": rep["rcept"]}
+        row.update((k, r.get(k)) for k in ORBIT_ROW_KEYS)
+        rows.append(row)
+    return rows
+
+
+def _orbit_sum_write(c, rows):
+    keep = [dict([("rcept", r["rcept"])] + [(k, r.get(k)) for k in ORBIT_ROW_KEYS]) for r in rows]
+    return _atomic_json(_orbit_sum_path(c["code"]), {"v": ORBIT_SUM_V, "sig": _orbit_sum_sig(c), "code": c["code"], "rows": keep})
+
+
+def _orbit_collect(c, deadline=None):
+    """brief 들을 읽어 행(orbit_scale 전)을 만든다. gist 는 deadline(에포크 초) 전까지만 여기서 뽑는다(None = 끝까지).
+    돌려줌 (rows, have, current) — current = 모든 보고서에 brief 와 지금 판 gist 가 있다(요약을 써도 된다)."""
+    rows, have, current = [], 0, True
     for rep in c["reports"]:
-        p = brief_path(code, rep["rcept"])
+        p = brief_path(c["code"], rep["rcept"])
         if os.path.exists(p):
             try:
                 with open(p, "r", encoding="utf-8") as fh:
                     b = json.load(fh)
-                have += 1
-                secs = b["sections"]
-                top = secs[0]["section"] if secs else ""
-                rows.append({
-                    "stamp": rep["stamp"], "label": rep["label"],
-                    "tag": rep["tag"], "rcept": rep["rcept"],
-                    "score": b["score"], "kind": b["kind"],
-                    "top": top, "tags": b["tags"],
-                    "changed": len(secs),
-                    "first": b.get("first", False),
-                    # 중요도를 곱한 '새로 쓴 분량'(글자). 점수는 이것의 섹션별 제곱근 합이다.
-                    "vol": round(sum(s["weight"] * (s["added_chars"] + 0.6 * s["removed_chars"])
-                                     for s in secs)),
-                    "add_chars": sum(s["added_chars"] for s in secs),
-                    "rem_chars": sum(s["removed_chars"] for s in secs),
-                    "numeric": sum(s.get("numeric", 0) for s in secs),
-                    "gist": _gist_of(c, rep, b, p, time.time() < deadline),
-                })
+                have += 1                   # 읽힌 파일은 센다(모양이 깨져도 — 예전 그대로, 화면이 '쌓는 중'에 갇히지 않게)
+                row = _orbit_row(rep, b)
+                row["gist"] = _gist_of(c, rep, b, p, deadline is None or time.time() < deadline)
+                rows.append(row)
+                if b.get("gist_v") != GIST_V:
+                    current = False
                 continue
             except Exception:
                 pass
+        current = False
         rows.append({"stamp": rep["stamp"], "label": rep["label"],
                      "tag": rep["tag"], "rcept": rep["rcept"],
                      "score": None, "kind": "", "top": "", "tags": {},
                      "changed": 0, "first": False, "vol": None, "gist": []})
+    return rows, have, current
+
+
+def orbit(code):
+    """보고서별 변화 점수 시계열. 캐시된 것만 모아 준다. 요약(_orbit_sum_rows)이 맞으면 brief 파일을 하나도 열지 않는다."""
+    c = company_by_code(code)
+    if not c:
+        return None
+    rows = _orbit_sum_rows(c)
+    if rows is not None:
+        orbit_scale(rows)
+        n = len(rows)
+        return {"rows": rows, "done": n, "total": n, "finished": True, "gist_pending": 0}
+    # 요약은 잠깐만 여기서 뽑고 나머지는 뒤에서 — 첫 화면이 오래 멈추지 않게
+    rows, have, current = _orbit_collect(c, time.time() + 1.0)
+    if current:
+        _orbit_sum_write(c, rows)
     orbit_scale(rows)
     if (any(r.get("score") is not None and r.get("gist") is None for r in rows)
             and not GISTING.get(code)):
@@ -3824,12 +4137,16 @@ def matrix_cached(c, corp, stmt="IS", mode="q", n=4, force=False):
                 return old
         except Exception:
             pass
-    res = FIN.statement_matrix(corp, years, stmt, mode)
+    with _fin_watch() as bad:
+        res = FIN.statement_matrix(corp, years, stmt, mode)
     res["sig"] = sig
     res["name"] = c["name"]
-    os.makedirs(os.path.dirname(cache), exist_ok=True)
-    with open(cache, "w", encoding="utf-8") as fh:
-        json.dump(res, fh, ensure_ascii=False)
+    if bad:
+        # 원장 일시 오류(한도 · 점검 · 네트워크 · 미리 계산 DART 막힘)가 낀 판 — sig 가 최신 접수번호라 쓰면 새 보고서까지 빈 칸이 굳는다.
+        # 이번 결과만 돌려주고 다음 부름에 다시 짠다(잘 받은 해는 재무.py 원장 캐시에 있어 다시 묻지 않는다)
+        res["transient"] = len(bad)
+        return res
+    _atomic_json(cache, res)        # 뷰어 · 미리 계산 프로세스가 같은 파일을 쓸 수 있다
     return res
 
 
@@ -6119,15 +6436,32 @@ def _land_q(vals, q):
     return s[i] + (s[min(i + 1, len(s) - 1)] - s[i]) * (k - i)
 
 
-def _land_shares(F, corp, latest=None):
+LAND_SHARES_FROM = 2015    # DART 주식 수 API(stockTotqySttus)는 2015 사업보고서부터 — 그 앞 해는 늘 빈값이라 묻지 않는다(캐시에 있으면 읽기만)
+
+
+def _shares_cached(corp, year, reprt):
+    return os.path.exists(os.path.join(FIN.FIN_DIR, "shares_%s_%s_%s.json" % (corp, year, reprt)))
+
+
+def _land_shares(F, corp, latest=None, bad=None):
     """연말 주식 수를 오늘 기준으로 — 한 해에 1.8배 넘게(또는 0.55배 아래로) 바뀌면 분할·무상증자로 보고
-    그 앞 해들에 비율을 곱한다. 2015년 이전(DART 에 없음)은 알려진 가장 이른 해 값으로 채운다."""
+    그 앞 해들에 비율을 곱한다. 2015년 이전(DART 에 없음)은 알려진 가장 이른 해 값으로 채운다.
+    bad(list)를 주면 일시 오류(한도 · 점검 · 네트워크 — 빈값인데 캐시 파일이 안 생김)로 못 받은 (연도, 보고서 코드)를 담는다."""
+    def get(y, reprt):
+        try:
+            v = FIN.fetch_shares(corp, y, reprt).get("shares")
+        except Exception:
+            v = None
+        if v is None and bad is not None and not _shares_cached(corp, y, reprt):
+            bad.append((y, reprt))
+        return v
     raw = {}
     for d in F:
-        try:
-            raw[d["year"]] = FIN.fetch_shares(corp, d["year"], "11011").get("shares")
-        except Exception:
-            raw[d["year"]] = None
+        y = d["year"]
+        if y < LAND_SHARES_FROM and not _shares_cached(corp, y, "11011"):
+            raw[y] = None                   # 회사당 DART 4–5건 절약(2011–14) — 2014 는 87곳 중 3곳만 값이 있어 캐시만 쓴다
+            continue
+        raw[y] = get(y, "11011")
     known = sorted(y for y, v in raw.items() if v)
     adj, splits = {}, []
     if not known:
@@ -6149,10 +6483,7 @@ def _land_shares(F, corp, latest=None):
     # 마지막 사업보고서 뒤의 분할 — 네이버 수정주가는 이미 새 주식 수 기준이다(엘에스일렉트릭 2026 5:1).
     # 수집된 가장 최근 정기보고서(분기·반기)의 주식 수로 한 번 더 맞춘다
     if latest and latest[0] >= known[-1]:
-        try:
-            now = FIN.fetch_shares(corp, latest[0], latest[1]).get("shares")
-        except Exception:
-            now = None
+        now = get(latest[0], latest[1])
         if now:
             r = now / raw[known[-1]]
             if r >= 1.8 or r <= 0.55:
@@ -6274,23 +6605,117 @@ def _land_ttm(c, corp, F):
             "inv_days": inv / rev * 365 if (inv is not None and rev and rev > 0) else None}
 
 
+class _FinWatch:
+    """FIN 대리 — fetch_statement 가 일시 오류(transient: 한도 · 점검 · 네트워크)를 낸 (연도, 보고서, 구분)을 bad 에 모은다. 나머지는 FIN 그대로.
+    변곡점.fundamentals 가 FIN 을 인자로 받으니 전역을 바꾸지 않고 이 빌드의 호출만 본다."""
+    def __init__(self, fin):
+        self._fin, self.bad = fin, []
+
+    def __getattr__(self, k):
+        return getattr(self._fin, k)
+
+    def fetch_statement(self, corp, year, reprt_code, fs_div="CFS", force=False):
+        out = self._fin.fetch_statement(corp, year, reprt_code, fs_div, force)
+        if out.get("transient"):
+            self.bad.append((year, reprt_code, fs_div))
+        return out
+
+
+# 원장 일시 오류 보기(2026-10-11) — matrix_cached 는 재무.statement_matrix 를 거치는데, 그 안은 fetch_statement 를 모듈 이름으로 불러
+# _FinWatch 같은 대리를 넘길 수 없다. 그래서 FIN.fetch_statement 를 한 번 감싸, 이 스레드가 _fin_watch() 안이면 transient
+# (한도 · 점검 · 네트워크 · 미리 계산 도구의 DART 상한 막힘) 결과를 그 목록에 남긴다. 밖에서 부르면 그대로다(결과도 같다).
+# 그런 판을 디스크에 쓰면 sig(최신 접수번호 · 오늘 날짜)가 같아 새 보고서 · 다음 날까지 빈 칸이 굳는다 — matrix · 변곡점 · 풍경은 쓰지 않는다.
+_FIN_TL = threading.local()
+_FIN_WRAP_LOCK = threading.Lock()
+
+
+def _fin_watch_install():
+    fin = FIN
+    if fin is None:
+        return
+    with _FIN_WRAP_LOCK:
+        orig = getattr(fin, "fetch_statement", None)
+        if orig is None or getattr(orig, "_fin_watch", False):
+            return
+
+        def fetch_statement(*a, **kw):
+            out = orig(*a, **kw)
+            st = getattr(_FIN_TL, "stack", None)
+            if st and isinstance(out, dict) and out.get("transient"):
+                for bad in st:
+                    bad.append(tuple(a[1:3]))
+            return out
+        fetch_statement._fin_watch = True
+        fetch_statement.__wrapped__ = orig
+        try:
+            fin.fetch_statement = fetch_statement
+        except (AttributeError, TypeError):
+            pass
+
+
+class _fin_watch:
+    """with _fin_watch() as bad: … — 그 안에서 이 스레드가 받은 FIN.fetch_statement 일시 오류(연도, 보고서)를 bad 에 모은다. 겹쳐 써도 된다(바깥에도 남는다)."""
+    def __enter__(self):
+        _fin_watch_install()
+        self.bad = []
+        st = getattr(_FIN_TL, "stack", None)
+        if st is None:
+            st = _FIN_TL.stack = []
+        st.append(self.bad)
+        return self.bad
+
+    def __exit__(self, *exc):
+        st = _FIN_TL.stack
+        for i in range(len(st) - 1, -1, -1):
+            if st[i] is self.bad:           # 빈 목록끼리는 == 가 같다 — 제 것만(is) 뺀다
+                del st[i]
+                break
+        return False
+
+
+LAND_SHORT = "연간 재무가 4년 치도 안 됩니다."
+
+
+def _price_fresh(code):
+    """주가 캐시가 24시간 안에 새로 받은 것인가 — 빈 주가({})가 네이버 일시 오류인지(캐시가 낡음) 정말 없는지(방금 받은 빈 캐시) 가른다."""
+    try:
+        return time.time() - os.path.getmtime(os.path.join(FIN.PRICE_DIR, code + ".json")) < 86400
+    except (OSError, AttributeError):
+        return False
+
+
 def landscape_build(c, prog=None):
+    """풍경 한 판. 일시 오류로 망가진 판이면 "_transient"(이유)를 단다 — 저장하지 않는다(land_build).
+    짧은 이력 오류도 연간 원장 일시 오류 때문이면 "_transient" — 부정 캐시로 굳히지 않는다.
+    빌드 전체(연간 원장 · 분기 matrix(_land_ttm) · 변곡점)의 원장 일시 오류를 _fin_watch 로 본다."""
+    with _fin_watch() as bad:
+        d = _landscape_build(c, prog)
+    if bad and not d.get("_transient"):
+        d["_transient"] = "재무 원장 일시 오류"
+    return d
+
+
+def _landscape_build(c, prog=None):
     code = c["code"]
     corp = corp_code_of(code)
     if not corp or FIN is None or INF is None:
         return {"error": "DART 고유번호나 재무 모듈이 없습니다."}
     this = dt.date.today().year
-    funds = INF.fundamentals(FIN, corp, list(range(this - 15, this + 1)))
+    fw = _FinWatch(FIN)
+    funds = INF.fundamentals(fw, corp, list(range(this - 15, this + 1)))
     F = [d for d in funds if d.get("rev") is not None or d.get("ni") is not None]
     if len(F) < 4:
-        return {"error": "연간 재무가 4년 치도 안 됩니다."}
+        return {"error": LAND_SHORT, "_transient": "연간 원장 일시 오류" if fw.bad else None}
     if prog is not None:
         prog["step"] = "주식 수·주가"
     rc_of = {"03": "11013", "06": "11012", "09": "11014", "12": "11011"}
     lrep = max((r for r in c["reports"] if r["stamp"][5:7] in rc_of), key=lambda r: r["stamp"], default=None)
     latest = (int(lrep["stamp"][:4]), rc_of[lrep["stamp"][5:7]]) if lrep else None
-    S_adj, splits, S_raw = _land_shares(F, corp, latest)
+    sbad = []
+    S_adj, splits, S_raw = _land_shares(F, corp, latest, sbad)
     prices = FIN.fetch_prices(code) or {}
+    transient = ("연간 원장 일시 오류" if fw.bad else "주식 수 일시 오류" if sbad
+                 else "주가 없음" if not prices and not _price_fresh(code) else None)
     ds = sorted(prices)
 
     def px_on(ymd):
@@ -6763,11 +7188,14 @@ def landscape_build(c, prog=None):
               "story": _short(ov[oy[-1]], 200) if oy else ""}
     if prog is not None:
         prog["step"] = "마무리"
-    return {"v": LAND_V, "code": code, "name": c["name"], "rows": rows, "quarters": qs, "line": line, "band": band,
-            "monthly": monthly, "splits": splits, "corr": corr, "gaps": gaps, "moments": moments,
-            "stats": {"버핏": summ("버핏"), "린치": summ("린치"), "base": base}, "chapters": merged,
-            "lessons": lessons, "decide": decide, "types": {k: list(v) for k, v in LAND_TYPES.items()},
-            "price_date": now_d}
+    out = {"v": LAND_V, "code": code, "name": c["name"], "rows": rows, "quarters": qs, "line": line, "band": band,
+           "monthly": monthly, "splits": splits, "corr": corr, "gaps": gaps, "moments": moments,
+           "stats": {"버핏": summ("버핏"), "린치": summ("린치"), "base": base}, "chapters": merged,
+           "lessons": lessons, "decide": decide, "types": {k: list(v) for k, v in LAND_TYPES.items()},
+           "price_date": now_d}
+    if transient:
+        out["_transient"] = transient
+    return out
 
 
 LANDING = {}
@@ -6783,50 +7211,127 @@ def _land_sig(c):
                             dt.date.today().isoformat(), LAND_V)
 
 
+def _land_nsig(c):
+    """날짜를 뺀 sig — 짧은 이력 오류(부정 캐시)는 새 보고서가 올 때까지 그대로다."""
+    return "%s:%d:%d" % (c["reports"][-1]["rcept"] if c["reports"] else "", len(c["reports"]), LAND_V)
+
+
+# 풍경 캐시 정책(2026-10-11) — 지난 판을 먼저 보이고 뒤에서 새로(stale-while-revalidate)
+#   · 캐시가 있고 LAND_V 가 같으면 날짜 · 새 보고서로 sig 가 달라도 그 판을 바로 돌려준다("stale": true, "stale_date") — 뒤에서 _run_land
+#   · 짧은 이력('연간 재무가 4년 치도 안 됩니다')은 부정 캐시 {"v", "error", "nsig"} — nsig 가 같으면 바로 오류(매번 3초씩 다시 세지 않게)
+#   · 일시 오류(가격 빔 · 주식 수 · 연간 원장 한도/점검)로 망가진 판은 저장하지 않는다 — 지난 판이 있으면 그것을, 없으면 그 판을 잠깐 메모리로만
+LAND_ERR_HOLD = 30          # 초 — 오류를 그대로 돌려주는 창(오류 난 시각부터)
+LAND_RETRY = 600            # 초 — 지난 판 · 메모리 판이 있을 때 새로 그리기에 실패하면 이만큼 뒤에 다시
+
+
+def _land_read(code):
+    try:
+        with open(_land_path(code), "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return None
+
+
+def _land_v(d):
+    """캐시의 LAND_V — 본문 v, 없으면 sig 끝자리."""
+    v = d.get("v")
+    if v is None:
+        try:
+            v = int(str(d.get("sig") or "").rsplit(":", 1)[-1])
+        except ValueError:
+            v = None
+    return v
+
+
+def land_build(c, prog=None, transient=None):
+    """풍경 한 판을 만들고 저장할 만하면 저장한다(_run_land · 도구/전종목_미리계산.py 가 같이 쓴다).
+    transient() → 이유|None: 부른 쪽이 따로 본 일시 오류(도구의 DART 셈 — 한도 · 점검 · 상한).
+    돌려줌 (d, how) — built(저장) · short(짧은 이력, 부정 캐시 저장) · transient(일시 오류 — 안 씀, d["transient"] = 이유) · error(안 씀)."""
+    d = landscape_build(c, prog)
+    tr = d.pop("_transient", None) or (transient() if transient else None)
+    if d.get("error"):
+        if d["error"] == LAND_SHORT and not tr:
+            _atomic_json(_land_path(c["code"]), {"v": LAND_V, "error": LAND_SHORT, "nsig": _land_nsig(c), "code": c["code"],
+                                                 "at": dt.datetime.now().isoformat(timespec="seconds")})
+            return d, "short"
+        if tr:
+            d["transient"] = tr
+        return d, "error"
+    if tr:
+        d["transient"] = tr
+        return d, "transient"
+    d["sig"] = _land_sig(c)
+    _atomic_json(_land_path(c["code"]), d)
+    return d, "built"
+
+
 def _run_land(code):
     st = LANDING[code]
     try:
         c = company_by_code(code)
-        d = landscape_build(c, st)
-        d["sig"] = _land_sig(c)
-        if not d.get("error"):
-            os.makedirs(os.path.dirname(_land_path(code)), exist_ok=True)
-            with open(_land_path(code), "w", encoding="utf-8") as fh:
-                json.dump(d, fh, ensure_ascii=False)
-        else:
-            st["error"] = d["error"]
+        d, how = land_build(c, st)
+        if how == "transient":
+            st.update(error="새로 그리지 못했습니다(%s) — 잠시 뒤 다시" % d["transient"], soft=d, err_at=time.time())
+            return
+        if how != "built":           # short 는 부정 캐시를 썼다 — 못 썼을 때를 위해 오류 창도 남긴다
+            st.update(error=d["error"], err_at=time.time())
             return
     except Exception as e:
         import traceback
         traceback.print_exc()
-        st["error"] = "%s: %s" % (type(e).__name__, e)
+        st.update(error=_no_secret("%s: %s" % (type(e).__name__, e)), err_at=time.time())
         return
     with LAND_LOCK:
         LANDING.pop(code, None)
 
 
-def landscape_view(code):
+def _land_stale(d, err=None):
+    """지난 판 + 표시 — stale_date = 그 판을 그린 날(sig 의 날짜). err = 새로 그리기 실패(그 뒤 LAND_RETRY 초 동안 다시 안 그린다)."""
+    parts = str(d.get("sig") or "").split(":")
+    out = dict(d, stale=True, stale_date=parts[2] if len(parts) == 4 else None, refreshing=err is None)
+    if err:
+        out["stale_error"] = err
+    return out
+
+
+def landscape_view(code, stale_ok=True):
+    """stale_ok=False 면 지난 판을 주지 않고 지금 판이 될 때까지 pending(⑥ 싸다 게이트 — 셋씩 기다리며 돈다)."""
     c = company_by_code(code)
     if not c:
         return None
-    p = _land_path(code)
-    if os.path.exists(p):
-        try:
-            with open(p, "r", encoding="utf-8") as fh:
-                d = json.load(fh)
-            if d.get("sig") == _land_sig(c):
-                return d
-        except Exception:
-            pass
+    d = _land_read(code)
+    if d is not None:
+        if d.get("error"):                  # 부정 캐시
+            if d.get("v") == LAND_V and d.get("nsig") == _land_nsig(c):
+                return {"error": d["error"]}
+            d = None
+        elif d.get("sig") == _land_sig(c):
+            return d
+        elif not stale_ok or _land_v(d) != LAND_V:
+            d = None
     with LAND_LOCK:
         st = LANDING.get(code)
         if st and st.get("error"):
-            if time.time() - st.get("at", 0) < 30:
+            age = time.time() - st.get("err_at", 0)
+            if d is not None:
+                if age < LAND_RETRY:
+                    return _land_stale(d, st["error"])
+            elif st.get("soft") is not None:
+                if age < LAND_RETRY:
+                    return dict(st["soft"], transient=st["error"])
+            elif age < LAND_ERR_HOLD:
                 return {"error": st["error"]}
             st = None
         if st is None:
             st = LANDING[code] = {"step": "연간 재무", "at": time.time()}
-            threading.Thread(target=_run_land, args=(code,), daemon=True).start()
+            try:
+                threading.Thread(target=_run_land, args=(code,), daemon=True).start()
+            except Exception as e:          # 32비트 뷰어 "can't start new thread" — 오류 없는 칸이 남으면 돌지 않는 빌드를 재시작까지 기다린다
+                st.update(error="새로 그리지 못했습니다(%s) — 잠시 뒤 다시" % _no_secret("%s: %s" % (type(e).__name__, e)),
+                          err_at=time.time())       # 오류 창(지난 판 LAND_RETRY · 없으면 LAND_ERR_HOLD) 뒤 다음 요청이 다시 띄운다
+                return _land_stale(d, st["error"]) if d is not None else {"error": st["error"]}
+    if d is not None:
+        return _land_stale(d)
     return {"pending": True, "step": st.get("step")}
 
 
@@ -8171,7 +8676,7 @@ def _run_dip():
                 live[row["code"]] = (row, time.time())
             for code, (row, t0) in list(live.items()):
                 try:
-                    lv = landscape_view(code)
+                    lv = landscape_view(code, stale_ok=False)     # 지난 판(어제 주가)이 아니라 오늘 판을 기다린다 — 셋씩만 돌게
                 except Exception:
                     lv = None
                 if lv and lv.get("pending") and time.time() - t0 < 150:
@@ -10754,6 +11259,23 @@ class Handler(BaseHTTPRequestHandler):
         port = self.server.server_address[1]
         return (self.headers.get("Host") or "").strip().lower() in ("127.0.0.1:%d" % port, "localhost:%d" % port)
 
+    def _same_origin_get(self):
+        """일을 시키는 GET(미리 계산 run · stop)이 이 화면에서 왔나 — Host 만으로는 다른 사이트의 <img src=…> · no-cors fetch 도
+        Host 127.0.0.1:포트 로 와서 통과한다. 브라우저가 붙이는 Sec-Fetch-Site 는 same-origin · none(주소창 · 즐겨찾기)만,
+        Origin · Referer 는 붙어 있으면 이 서버 주소여야 한다. 셋 다 없으면(curl 같은 이 PC 의 도구) Host 만 본다."""
+        if not self._local_host():
+            return False
+        port = self.server.server_address[1]
+        mine = ("http://127.0.0.1:%d" % port, "http://localhost:%d" % port)
+        sfs = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+        if sfs and sfs not in ("same-origin", "none"):          # cross-site · same-site(같은 localhost 의 다른 포트)
+            return False
+        origin = (self.headers.get("Origin") or "").strip().lower()
+        if origin and origin not in mine:                       # "null"(샌드박스 · file://) 도 막는다
+            return False
+        ref = (self.headers.get("Referer") or "").strip().lower()
+        return not ref or any(ref == m or ref.startswith(m + "/") for m in mine)
+
     def do_POST(self):
         """쓰기 요청 — 지금은 매매 일지만. 같은 출처(이 PC 의 이 화면)에서 온 JSON 만 받는다:
         Host · Origin 확인, Content-Type application/json(다른 사이트에서는 사전 확인에 막힌다), 64KB 한도."""
@@ -10950,6 +11472,13 @@ class Handler(BaseHTTPRequestHandler):
                 if q.get("run") == "1" and not DRUCK_PRE["running"]:
                     threading.Thread(target=_druck_prebuild, daemon=True).start()
                 return self._send(200, dict(DRUCK_PRE))
+            if path == "/api/prebuild":
+                # 전 종목 미리 계산(풍경 · 궤도) 상태. run=1 시작(이미 돌면 그대로) · stop=1 멈춤 — 둘 다 이 PC 의 이 화면에서만(Host + 같은 출처)
+                if q.get("run") == "1" or q.get("stop") == "1":
+                    if not self._same_origin_get():
+                        return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
+                    return self._send(200, prebuild_stop() if q.get("stop") == "1" else prebuild_run())
+                return self._send(200, prebuild_status())
             if path == "/api/druck/bt":
                 return self._send(200, druck_bt_view())
             if path == "/api/druck/events":
@@ -11159,6 +11688,7 @@ def main():
         threading.Thread(target=_ind_auto_loop, daemon=True).start()
         threading.Thread(target=_tech_auto_loop, daemon=True).start()
         threading.Thread(target=_druck_auto_loop, daemon=True).start()
+        threading.Thread(target=_prebuild_auto_loop, daemon=True).start()
     # 예전 보컬 탭은 '차트 발굴'(Tech)로 바뀌어 매일 07:00 전 시장 일봉 · 깔때기 계산을 껐다(2026-10-09, 사용자 결정).
     # /api/vocal 은 그대로 살아 있다(부르면 그때 센다). 다시 켜려면 아래 줄을 되살린다.
     # if VOC is not None:
