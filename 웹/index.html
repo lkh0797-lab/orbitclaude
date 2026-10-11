@@ -2961,6 +2961,16 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
 .stStripSvg .stSel{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 2;pointer-events:none}
 .stKey{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:11px;color:var(--faint);padding:2px 2px 5px}
 .stKey .g{color:var(--add)}.stKey .b{color:var(--del)}.stKey .r{color:var(--gal-tbl)}
+.stKey .up{color:var(--up)}.stKey .dn{color:var(--dn)}
+.stStripSvg .stNb.top{fill:var(--up);opacity:1}.stStripSvg .stNb.low{fill:var(--dn);opacity:1}
+.stStripSvg .stRk{font-size:9.5px;font-weight:700;text-anchor:middle;pointer-events:none}
+.stStripSvg .stRk.top{fill:var(--up)}.stStripSvg .stRk.low{fill:var(--dn)}
+.stRank{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;font-size:11.5px;padding:0 2px 6px}
+.stRank>b{font-weight:600;color:var(--dim);margin:0 2px 0 6px}.stRank>b:first-child{margin-left:0}
+.stRank button{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;padding:1px 9px;cursor:pointer}
+.stRank button.top{border-color:color-mix(in srgb,var(--up) 45%,var(--line))}.stRank button.low{border-color:color-mix(in srgb,var(--dn) 45%,var(--line))}
+.stRank .top .k,.stRank .top .n{color:var(--up);font-weight:700}.stRank .low .k,.stRank .low .n{color:var(--dn);font-weight:700}
+.stRank button small,.stRank>small{color:var(--faint)}.stRank>small{flex-basis:100%;font-size:10.5px}
 .stTools{display:flex;flex-direction:column;gap:8px;margin:16px 0 10px}
 .stTools2{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
 .stTools2 input[type=search]{flex:1;min-width:200px;max-width:420px;padding:6px 11px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:13px}
@@ -14930,8 +14940,19 @@ function stStrip(D,byDay,go){
   // 막대 — 그날 보이는 뉴스 건수(아주 많은 날은 위를 잘라 진하게)
   const nv=ds.map(d=>(days[d]||{}).news||0), pos=nv.filter(v=>v>0).sort((a,b)=>a-b);
   const cap=Math.max(3,pos.length?pos[Math.min(pos.length-1,Math.floor(pos.length*0.97))]:3), bw=Math.max(1.2,dw*0.8);
-  ds.forEach((d,i)=>{ const v=nv[i]; if(!v) return; const h=Math.max(1.5,Math.min(1,v/cap)*(BB-BT));
-    svg.appendChild(svgEl('rect',{x:X(d)-bw/2,y:BB-h,width:bw,height:h,class:'stNb'+(v>cap?' hi':'')})); });
+  // 뉴스 많은 날 TOP3 · 적은 날 LOW3 — 보이는 뉴스가 처음 있는 날부터만 센다(src.news.oldest 는 공시 제목까지라 더 이르다).
+  // 적은 날은 거래일 중(0건 포함)이고, 건수가 같으면 주가가 크게 움직인 날 먼저(뉴스 없이 움직인 날이 위로 온다)
+  const NS=(D.src||{}).news||{}, n0=NS.ok===false?'':(ds.find((d,i)=>nv[i]>0)||''), sset=new Set(ser.map(x=>x[0]));
+  const mv=i=>Math.abs((days[ds[i]]||{}).chg||0), trade=i=>(days[ds[i]]||{}).chg!=null||sset.has(ds[i]);
+  const span=n0?ds.map((d,i)=>i).filter(i=>ds[i]>=n0):[];
+  const top=span.filter(i=>nv[i]>0).sort((a,b)=>nv[b]-nv[a]||mv(b)-mv(a)).slice(0,3);
+  const low=span.filter(i=>!top.includes(i)&&trade(i)).sort((a,b)=>nv[a]-nv[b]||mv(b)-mv(a)).slice(0,3);
+  const rank=new Map(); top.forEach((i,k)=>rank.set(ds[i],['top',k+1])); low.forEach((i,k)=>rank.set(ds[i],['low',k+1]));
+  ds.forEach((d,i)=>{ const v=nv[i], rk=rank.get(d); if(!v&&!rk) return;
+    const h=v?Math.max(1.5,Math.min(1,v/cap)*(BB-BT)):0;
+    if(v) svg.appendChild(svgEl('rect',{x:X(d)-bw/2,y:BB-h,width:bw,height:h,class:'stNb'+(rk?' '+rk[0]:v>cap?' hi':'')}));
+    if(rk){ if(!v) svg.appendChild(svgEl('rect',{x:X(d)-Math.max(bw,3)/2,y:BB-2,width:Math.max(bw,3),height:2.5,class:'stNb low'}));   // 0건 날 = 바닥 눈금
+      const t=svgEl('text',{x:X(d),y:BB-h-3,class:'stRk '+rk[0]}); t.textContent=rk[1]; svg.appendChild(t); } });
   svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:BB+0.5,y2:BB+0.5,class:'stGl'}));
   // 선 — 수정 종가
   const pp=ser.filter(x=>inR(x[0])), pm=new Map(pp.map(x=>[x[0],x[1]])); let pY=null, lo=0, hi=0;
@@ -14946,7 +14967,7 @@ function stStrip(D,byDay,go){
   // 고른 소식의 날
   const sel=svgEl('line',{y1:PT-4,y2:BB,class:'stSel'}); sel.style.display='none'; svg.appendChild(sel);
   const dot=i=>{ const v=pm.get(ds[i]); return v!=null&&pY?pY(v):null; };
-  const lines=i=>{ const d=ds[i], m=days[d]||{}, out=[stDW(d)];
+  const lines=i=>{ const d=ds[i], m=days[d]||{}, rk=rank.get(d), out=[stDW(d)+(rk?' · 뉴스 '+(rk[0]==='top'?'많은':'적은')+' 날 '+rk[1]+'위':'')];
     out.push(m.chg!=null?'주가 '+stPct(m.chg)+(m.mkt!=null?' · 시장 '+stPct(m.mkt):''):'거래 없음');
     const k=[['news','뉴스'],['report','리포트'],['disc','공시'],['filing','보고서'],['alert','경보']].filter(z=>m[z[0]]).map(z=>z[1]+' '+m[z[0]]);
     out.push(k.length?k.join(' · '):'소식 없음');
@@ -14958,8 +14979,20 @@ function stStrip(D,byDay,go){
   const box=el('div','stStrip'); box.appendChild(wrap);
   const key=el('div','stKey');
   [['막대 = 그날 보이는 뉴스 건수'],['선 = 수정 종가'+(pp.length>1?'(1년 고 '+Math.round(hi).toLocaleString('ko-KR')+' · 저 '+Math.round(lo).toLocaleString('ko-KR')+')':'')],
-   ['▲ 호재 공시','g'],['▼ 악재 공시','b'],['◆ 리포트','r']].forEach(([t,k])=>key.appendChild(el('span',k||null,t)));
+   ['▲ 호재 공시','g'],['▼ 악재 공시','b'],['◆ 리포트','r']].concat(top.length?[['■ 뉴스 많은 날 TOP3','up'],['■ 적은 날 LOW3','dn']]:[])
+   .forEach(([t,k])=>key.appendChild(el('span',k||null,t)));
   box.appendChild(key);
+  // TOP3 · LOW3 날짜 — 누르면 목록이 그날로 간다
+  if(top.length||low.length){ const rw=el('div','stRank');
+    const add=(lab,arr,cls)=>{ if(!arr.length) return; rw.appendChild(el('b',null,lab));
+      arr.forEach((i,k)=>{ const d=ds[i], m=days[d]||{}, b=el('button',cls); b.type='button'; b.title='목록을 이 날로';
+        b.appendChild(el('span','k','①②③'[k])); b.appendChild(document.createTextNode(' '+stDW(d)+' ')); b.appendChild(el('span','n',nv[i]+'건'));
+        if(m.chg!=null) b.appendChild(el('small',null,' 주가 '+stPct(m.chg)));
+        b.onclick=()=>go(d); rw.appendChild(b); }); };
+    add('뉴스 많은 날',top,'top'); add('적은 날',low,'low');
+    const z=span.filter(i=>!nv[i]&&trade(i)).length;
+    rw.appendChild(el('small',null,'보이는 뉴스가 있는 '+stD(n0)+'~ 기준'+(z?' · 뉴스 0건 거래일 '+z+'일':'')+' · 건수가 같으면 주가가 크게 움직인 날 먼저'));
+    box.appendChild(rw); }
   return {w:box, mark:d=>{ if(d&&inR(d)){ const x=X(d); sel.setAttribute('x1',x); sel.setAttribute('x2',x); sel.style.display=''; } else sel.style.display='none'; }};
 }
 // 상세 — 종류마다. K = {D, byDay, vocab(hot 낱말 → 보고서 낱말), V(거르기), pick(id)}
