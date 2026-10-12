@@ -23,6 +23,10 @@
   --syn-1:#2a78d6; --syn-2:#eb6834; --syn-3:#1baf7a; --syn-other:#b9b6ae; --syn-wash:#2a78d6;
   /* 밸류체인 — 상류(원재료) · 계열 법인 경유 */
   --vc-up:#4f6f9f; --vc-up-soft:#eef2f8; --vc-via:#a8731c; --vc-via-soft:#f8efdc;
+  /* 밸류체인 한 장 — 선(상류 초록 · 하류 주황 · 동종 보라 점선 · 모회사/자회사 회색), 군(B 파랑 · C 분홍 · D 회색 · Fake 빨강), 부문 점 s0–s4 */
+  --vb-up:#3f8a5c; --vb-dn:#c9692a; --vb-peer:#7b5cc0; --vb-tie:#9a968d;
+  --vb-B:#3560c4; --vb-B-bg:#e8eefa; --vb-C:#c03f7c; --vb-C-bg:#fbe9f2; --vb-D:#8a867e; --vb-D-bg:#efede9; --vb-F:#c0392b; --vb-F-bg:#fbeae8;
+  --vb-s0:#1d7f86; --vb-s1:#a8790f; --vb-s2:#50699a; --vb-s3:#6b7a2a; --vb-s4:#8d4a78;
   /* 주가 오르내림 — 한국식(빨강 오름 · 파랑 내림). 분석 지표 증감(--add/--del)과 따로 */
   --up:#cf3b32; --dn:#2f62c9;
   --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
@@ -40,6 +44,9 @@
     --gal-mod:#e0b25e; --gal-num:#9aa4b0; --gal-tbl:#8e96e8;
     --syn-1:#3987e5; --syn-2:#d95926; --syn-3:#199e70; --syn-other:#5a5852; --syn-wash:#3987e5;
     --vc-up:#93acd6; --vc-up-soft:#222a36; --vc-via:#e0b25e; --vc-via-soft:#2f2717;
+    --vb-up:#7cc59a; --vb-dn:#e59a5f; --vb-peer:#ad95ea; --vb-tie:#77736b;
+    --vb-B:#7aa2f0; --vb-B-bg:#1e2638; --vb-C:#ee86b6; --vb-C-bg:#33202a; --vb-D:#97938b; --vb-D-bg:#2a2c28; --vb-F:#ef7a6e; --vb-F-bg:#351f1c;
+    --vb-s0:#5cc0c6; --vb-s1:#e0b35a; --vb-s2:#93acd6; --vb-s3:#b3c46a; --vb-s4:#d08bbd;
     --up:#f0716a; --dn:#6ea2f2;
   }
 }
@@ -293,6 +300,145 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .vcSubAll{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:8px}
 .vcGrp.flat::before{display:none}
 .vcTbl{font-size:12px}.vcTbl td,.vcTbl th{padding:3px 6px}.vcTbl th.r,.vcTbl td.r{text-align:right}.vcTbl td.neg{color:var(--del)}
+/* ---------- 밸류체인 한 장 (vcBoard) — 머리 띠 · 그물망 · 후속주 매트릭스. 지금 밸류체인 화면 위에 얹는다 ---------- */
+.vbBoard{margin:2px 0 26px;padding:0 0 18px;border-bottom:1px solid var(--line)}
+.vbTop{display:flex;align-items:flex-end;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin:0 0 10px}
+.vbTop .vcSecH{margin:0}
+.vbNote{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--dim);background:var(--panel);white-space:nowrap}
+.vbNote small{font-weight:400;color:var(--faint);margin-left:6px;font-variant-numeric:tabular-nums}
+.vbStat{display:flex;flex-direction:column;gap:6px;margin:0 0 10px}.vbStat:empty{display:none}
+.vbMsg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--dim);border:1px solid var(--line2);border-left:3px solid var(--line);border-radius:8px;background:var(--panel);padding:6px 11px}
+.vbMsg.run{border-left-color:var(--accent)}.vbMsg.warn{border-left-color:var(--warn);background:var(--warn-bg);color:var(--ink)}.vbMsg.bad{border-left-color:var(--del);background:var(--del-bg);color:var(--ink)}
+.vbMsg.run::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none;animation:stBlink 1.2s ease-in-out infinite}
+.vbUp{color:var(--up)}.vbDn{color:var(--dn)}
+.vbDot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none;background:var(--k,var(--faint))}
+/* 머리 띠 — 칸이 비면 숨기고 남은 칸이 폭을 나눈다 */
+.vbHead{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px}
+.vbHC{flex:1 1 190px;min-width:0;border:1px solid var(--line2);border-top:3px solid var(--line);border-radius:10px;background:var(--panel);padding:9px 12px 11px;display:flex;flex-direction:column;gap:5px}
+.vbHC.lead{border-top-color:var(--accent)}.vbHC.story{flex:1.5 1 250px;border-top-color:var(--vb-s0)}.vbHC.trig{flex:1.9 1 290px;border-top-color:var(--vb-dn)}.vbHC.cnt{flex:.8 1 170px;border-top-color:var(--vb-B)}
+.vbHC>.l{font-size:11.5px;font-weight:600;color:var(--dim)}
+.vbLead{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}.vbLead b{font:700 18px/1.25 'Noto Serif KR',serif;color:var(--ink);word-break:keep-all}.vbLead span{font:11.5px var(--mono);color:var(--faint)}
+.vbPx{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;font-variant-numeric:tabular-nums}.vbPx b{font-size:19px;font-weight:700;color:var(--ink);line-height:1.2}.vbPx span{font-size:11.5px;color:var(--faint)}
+.vbDd{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}.vbDd b{font-weight:700}
+.vbRet{display:flex;flex-wrap:wrap;gap:3px 10px;font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums}.vbRet b{font-weight:600;margin-left:3px}
+.vbWords{display:flex;flex-wrap:wrap;gap:4px}.vbWords span{font-size:12px;font-weight:600;padding:1px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.vbProds{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:12px;color:var(--ink);min-width:0}.vbProds>span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;max-width:100%;min-width:0}
+.vbProds .t{min-width:0;overflow:hidden;text-overflow:ellipsis}.vbProds b{font-weight:700;font-variant-numeric:tabular-nums;flex:none}
+.vbLine{font-size:12px;color:var(--dim);line-height:1.5;word-break:keep-all}.vbLine a,.vbTrg a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}.vbLine a:hover,.vbTrg a:hover{text-decoration-color:var(--accent)}
+.vbLine small,.vbTrg small{color:var(--faint);font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.vbTrg{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:baseline;gap:6px;font-size:12.5px;line-height:1.5;padding:3px 0;border-bottom:1px dashed var(--line2)}.vbTrg:last-child{border-bottom:none}
+.vbTrg>span:nth-child(2){min-width:0;color:var(--ink);word-break:keep-all}
+.vbSrc{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--line2);color:var(--dim);white-space:nowrap}.vbSrc.disc{background:var(--accent-soft);color:var(--accent)}
+.vbCnt{display:flex;align-items:baseline;gap:5px}.vbCnt b{font-size:24px;font-weight:700;color:var(--ink);line-height:1.1;font-variant-numeric:tabular-nums}.vbCnt span{font-size:12px;color:var(--dim)}
+.vbStack{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--line2)}.vbStack i{display:block;height:100%}.vbStack i+i{box-shadow:inset 1px 0 0 var(--panel)}
+.vbCntK{display:flex;flex-wrap:wrap;gap:2px 4px}
+.vbCntK button{display:inline-flex;align-items:center;gap:5px;border:0;background:none;padding:1px 5px;border-radius:5px;font-size:11.5px;color:var(--dim);cursor:pointer;font-variant-numeric:tabular-nums}.vbCntK button:hover{background:var(--line2);color:var(--ink)}.vbCntK b{color:var(--ink)}
+/* 군 색 — 꼬리표 · 막대 · 칩 */
+.vbBoard [data-g="B"]{--g:var(--vb-B);--gb:var(--vb-B-bg)}.vbBoard [data-g="C"]{--g:var(--vb-C);--gb:var(--vb-C-bg)}.vbBoard [data-g="D"]{--g:var(--vb-D);--gb:var(--vb-D-bg)}.vbBoard [data-g="Fake"]{--g:var(--vb-F);--gb:var(--vb-F-bg)}
+.vbG{display:inline-block;font-size:10.5px;font-weight:700;line-height:1.5;padding:0 7px;border-radius:999px;background:var(--gb,var(--line2));color:var(--g,var(--dim));white-space:nowrap}
+/* 그물망 — 3×3 칸 + 선 덧그림(노드 자리를 재서 긋는다). 좁으면(≤900px) 선 없이 목록 */
+.vbNetW{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin:0 0 18px;align-items:start}
+.vbBoard.wide .vbNetW.open{grid-template-columns:minmax(0,1fr) 300px}
+.vbNet{position:relative;border:1px solid var(--line2);border-radius:14px;background:var(--panel);padding:16px 18px 18px;min-width:0}
+.vbWires{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible}
+.vbW{fill:none;stroke-linecap:round;opacity:.42;transition:opacity .15s}
+.vbW.up{stroke:var(--vb-up)}.vbW.dn{stroke:var(--vb-dn)}.vbW.peer{stroke:var(--vb-peer);stroke-dasharray:5 5;opacity:.6}.vbW.tie{stroke:var(--vb-tie);opacity:.55}
+.vbE{stroke-width:2;fill:var(--panel)}.vbE.up{stroke:var(--vb-up)}.vbE.dn{stroke:var(--vb-dn)}.vbE.peer{stroke:var(--vb-peer)}.vbE.tie{stroke:var(--vb-tie)}
+.vbNet.hov .vbW,.vbNet.hov .vbE{opacity:.1}.vbNet.hov .vbW.hot,.vbNet.hov .vbE.hot{opacity:.95}
+.vbGrid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:30px;row-gap:46px;align-items:start}
+.vbNode{--k:var(--vb-tie);position:relative;min-width:0;border:1px solid var(--line);border-top:3px solid var(--k);border-radius:10px;background:var(--panel);padding:7px 11px 9px}
+.vbNode.up{--k:var(--vb-up)}.vbNode.dn{--k:var(--vb-dn)}.vbNode.peer{--k:var(--vb-peer);border-style:dashed;border-top-style:solid}
+.vbNodeH{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;padding:1px 0 6px;margin-bottom:3px;border-bottom:1px solid var(--line2);font-size:12.5px;font-weight:700;color:var(--ink);min-width:0}
+.vbNodeH>span:not(.vbDot){min-width:0;word-break:keep-all;overflow-wrap:anywhere}   /* 긴 부문 이름(패키지솔루션)은 잘라 먹지 않고 줄을 넘긴다 */
+.vbNodeH small{margin-left:auto;font-size:11px;font-weight:400;color:var(--faint);white-space:nowrap;font-variant-numeric:tabular-nums}
+.vbIt{padding:5px 0 4px;border-bottom:1px dashed var(--line2)}.vbIt:last-child{border-bottom:none}
+.vbIt .t{display:flex;align-items:baseline;gap:6px;font-size:12.5px;color:var(--ink);min-width:0}.vbIt .t>span{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+.vbIt .t b{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.vbIt.etc .t{color:var(--faint)}
+.vbIt .w{font-size:11px;color:var(--faint);line-height:1.45;margin-top:2px}
+.vbIt.grp{font-size:12px;color:var(--dim)}
+.vbCos{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.vbCo{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:11.5px;line-height:1.55;padding:0 7px;border-radius:6px;border:1px solid transparent;background:var(--line2);color:var(--faint);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button.vbCo{cursor:pointer;font-weight:700;color:var(--ink);background:var(--panel);border-color:var(--line)}
+button.vbCo:hover{border-color:var(--accent);color:var(--accent)}button.vbCo.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.vbCo small{font:500 10px var(--mono);color:var(--faint)}button.vbCo.on small{color:inherit;opacity:.75}
+.vbCo[data-g]{border-color:var(--g);border-style:dashed}
+.vbRowN{display:flex;align-items:center;gap:6px;min-width:0}
+.vbRowN .vbCo{flex:0 1 auto}.vbRowN .pc{margin-left:auto;font-size:12px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.vbBar{height:4px;border-radius:2px;background:var(--line2);overflow:hidden;margin-top:4px}.vbBar i{display:block;height:100%;background:var(--k);border-radius:2px}
+.vbUses{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding-top:6px}.vbUses .l{font-size:10.5px;color:var(--faint);margin-right:2px}.vbUses span:not(.l){font-size:11.5px;padding:0 7px;border-radius:6px;background:var(--line2);color:var(--dim)}
+.vbNone{font-size:12px;color:var(--faint);padding:4px 0}
+/* 가운데 — 고른 회사 */
+.vbMe{position:relative;justify-self:center;width:100%;max-width:330px;border:2px solid var(--accent);border-radius:16px;background:var(--accent-soft);padding:14px 14px 12px;text-align:center;box-shadow:0 10px 30px -16px rgba(0,0,0,.35)}
+.vbMe .n{font:700 20px/1.3 'Noto Serif KR',serif;color:var(--ink);word-break:keep-all}.vbMe .c{font:11px var(--mono);color:var(--faint);margin-top:1px}
+.vbMeP{margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);text-align:left;display:flex;flex-direction:column;gap:3px}
+.vbMeP .r{display:grid;grid-template-columns:auto minmax(0,1fr) 52px 38px;align-items:center;gap:6px;font-size:12px}
+.vbMeP .r>span:nth-child(2){white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.vbMeP .bar{height:5px;border-radius:3px;background:var(--panel);overflow:hidden}.vbMeP .bar i{display:block;height:100%;background:var(--k);border-radius:3px}
+.vbMeP .r b{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.vbKey{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;color:var(--faint);margin:10px 2px 0}
+.vbKey i{display:inline-block;width:18px;height:0;border-top:3px solid;vertical-align:middle;margin-right:6px}
+.vbNetE{border:1px dashed var(--line);border-radius:10px;padding:12px 14px;font-size:12.5px;color:var(--faint);line-height:1.55;margin:0 0 18px}
+.vbBoard.narrow .vbHC{flex-grow:1}   /* 줄에 혼자 남은 칸(후속주 후보 .8)도 폭을 다 채운다 */
+.vbBoard.narrow .vbGrid{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+.vbBoard.narrow .vbWires{display:none}
+.vbBoard.narrow .vbMe{order:-1;max-width:none}
+/* 심층 칸 — 노드를 누르면 오른쪽(좁으면 아래) */
+.vbDet{border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:12px;background:var(--panel);padding:10px 14px 12px;min-width:0;position:sticky;top:8px}
+.vbDetH{display:flex;align-items:flex-start;gap:8px}.vbDetH>div{flex:1;min-width:0}
+.vbDetH b{display:block;font:700 16px/1.35 'Noto Serif KR',serif;color:var(--ink);word-break:keep-all}.vbDetH span{font:11px var(--mono);color:var(--faint)}
+.vbX{border:0;background:none;color:var(--faint);font-size:15px;line-height:1;cursor:pointer;padding:4px 6px;border-radius:6px}.vbX:hover{background:var(--line2);color:var(--ink)}
+.vbDS{padding:8px 0 2px;border-top:1px dashed var(--line2);margin-top:8px}
+.vbDS>.l{display:block;font-size:10.5px;font-weight:700;color:var(--faint);margin-bottom:3px}
+.vbDS ul{margin:0;padding:0 0 0 15px;font-size:12px;line-height:1.6;color:var(--ink)}.vbDS ul li{word-break:keep-all;overflow-wrap:anywhere}
+.vbFacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:4px 10px;font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.vbFacts>span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.35}.vbFacts b{font-size:13px;font-weight:700;color:var(--ink)}.vbFacts b.vbUp{color:var(--up)}.vbFacts b.vbDn{color:var(--dn)}
+.vbFlags{display:flex;flex-wrap:wrap;gap:4px}.vbFlags span{font-size:11px;font-weight:700;padding:0 7px;border-radius:999px;background:var(--del-bg);color:var(--del)}.vbFlags span.ok{background:var(--line2);color:var(--dim);font-weight:400}
+.vbOld{display:inline-block;white-space:nowrap;font-size:10px;font-weight:700;padding:0 5px;border-radius:4px;background:var(--warn-bg);color:var(--warn);margin-left:4px;vertical-align:1px}
+.vbGo{margin-top:10px;padding:6px 13px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-size:12.5px;font-weight:600;cursor:pointer}.vbGo:hover{filter:brightness(1.07)}
+.vbGoN{font-size:11.5px;color:var(--del);margin-left:8px}
+/* 후속주 매트릭스 */
+.vbMxT{display:flex;align-items:flex-end;justify-content:space-between;gap:8px 14px;flex-wrap:wrap;margin:0 0 8px}.vbMxT .vcSecH{margin:0}
+.vbChips{display:flex;flex-wrap:wrap;gap:5px}
+.vbChips button{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer;font-variant-numeric:tabular-nums}
+.vbChips button i{width:8px;height:8px;border-radius:50%;background:var(--g,var(--faint))}
+.vbChips button em{font-style:normal;color:var(--faint);font-size:11px}
+.vbChips button.on{background:var(--g,var(--accent));border-color:var(--g,var(--accent));color:var(--accent-ink)}.vbChips button.on i{background:var(--accent-ink)}.vbChips button.on em{color:inherit;opacity:.8}
+.vbRows{border:1px solid var(--line2);border-radius:12px;background:var(--panel);overflow:hidden}
+.vbRow{border-bottom:1px solid var(--line2)}.vbRow:last-child{border-bottom:none}
+.vbRowB{display:grid;grid-template-columns:minmax(0,1fr) 128px minmax(90px,200px) 36px;align-items:center;gap:6px 16px;width:100%;text-align:left;border:0;background:none;padding:9px 14px;cursor:pointer;color:var(--ink);font:inherit}
+.vbRowB:hover{background:var(--bg)}.vbRow.open>.vbRowB{background:var(--bg)}
+.vbRowB:focus-visible,.vbChips button:focus-visible,button.vbCo:focus-visible,.vbGo:focus-visible,.vbCntK button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.vbRowB .nm{min-width:0}.vbRowB .nm b{font-size:13.5px;font-weight:700}.vbRowB .nm span{font:11px var(--mono);color:var(--faint);margin-left:6px}
+.vbRowB .nm em{display:block;font-style:normal;font-size:12px;color:var(--dim);line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vbRowB .tg{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.vbStar{font-size:11.5px;letter-spacing:1px;color:var(--line)}.vbStar b{font-weight:400;color:var(--g,var(--ink))}
+.vbScore{position:relative;height:8px;border-radius:4px;background:var(--line2);overflow:hidden}
+.vbScore i{display:block;height:100%;background:var(--g,var(--accent));border-radius:4px}
+.vbScore::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(20% - 1px),var(--panel) calc(20% - 1px),var(--panel) 20%)}
+.vbRowB .sc{text-align:right;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.vbRowD{padding:2px 14px 14px;background:var(--bg)}
+.vbParts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.vbPart{border:1px solid var(--line2);border-radius:9px;background:var(--panel);padding:7px 10px 8px;min-width:0}
+.vbPart .h{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px;font-weight:700;color:var(--dim)}
+.vbPart .h b{font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}.vbPart .h b small{font-size:10.5px;font-weight:400;color:var(--faint)}
+.vbPips{display:flex;gap:2px;margin:4px 0 5px}.vbPips i{flex:1;height:4px;border-radius:2px;background:var(--line2)}.vbPips i.on{background:var(--g,var(--accent))}
+.vbPart ul{margin:0;padding:0 0 0 14px;font-size:11.5px;line-height:1.55;color:var(--ink)}.vbPart ul li{word-break:keep-all;overflow-wrap:anywhere}
+.vbRowF{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 20px;margin-top:10px}.vbRowF .vbFacts{flex:1 1 360px}
+.vbRowF .vbGo{margin-top:0}
+.vbRisk{display:flex;flex-direction:column;gap:3px}.vbRisk>.l{font-size:10.5px;font-weight:700;color:var(--faint)}
+.vbRows>.vbNone{padding:14px;text-align:center}
+.vbMore{display:block;width:100%;border:0;border-top:1px solid var(--line2);background:none;padding:9px;font-size:12.5px;color:var(--accent);cursor:pointer}.vbMore:hover{background:var(--bg)}
+.vbMore:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.vbTrg em{display:block;font-style:normal;font-size:11px;color:var(--faint);margin-top:1px}
+.vbMxE{border:1px dashed var(--line);border-radius:10px;padding:14px;font-size:12.5px;color:var(--faint);text-align:center;line-height:1.55}
+.vbBoard.narrow .vbRowB{grid-template-columns:auto minmax(60px,1fr) 36px;grid-template-areas:"nm nm nm" "tg bar sc"}
+.vbBoard.narrow .vbRowB .nm{grid-area:nm}.vbBoard.narrow .vbRowB .tg{grid-area:tg}.vbBoard.narrow .vbRowB .vbScore{grid-area:bar}.vbBoard.narrow .vbRowB .sc{grid-area:sc}
+/* 꼬리 — 규칙 점수 · 기준 */
+.vbFoot{margin-top:10px;font-size:11.5px;color:var(--faint);line-height:1.6}
+.vbFoot>b{color:var(--del);font-weight:700}
+.vbRules{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:2px 18px;margin-top:4px}
+.vbRules span b{color:var(--dim);font-weight:700;margin-right:5px}.vbRules span:last-child{grid-column:1/-1}   /* 군 기준은 한 줄 통째 */
 /* ---------- 리포트 (증권사 텔레그램 채널) ---------- */
 .repBar{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--dim);margin:-2px 0 10px}
 .repSeg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:0 0 14px;background:var(--panel)}
@@ -11578,12 +11724,14 @@ function vcPrep(d){
 async function viewTimeline(p){
   const c=S.co; p.innerHTML='';
   if(VC_RO){ VC_RO.disconnect(); VC_RO=null; }
+  if(VB_RO){ VB_RO.disconnect(); VB_RO=null; }
   p.appendChild(el('div','loading','밸류체인을 읽는 중 — 사업보고서 「사업의 내용」 15년치'));
+  const vbq=vbFetch(c.code);                                       // 밸류체인 한 장 — 같이 띄워 두고 판이 붙으면 받는다(뒤에서 만드는 동안 아래 화면을 막지 않는다)
   let d;
   try{ d=await (await fetch('/api/valuechain?code='+c.code)).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
   if(!S.co||S.co.code!==c.code||S.tab!=='tl') return;
   p.innerHTML='';
-  if(d.error){ p.appendChild(el('div','err',d.error)); return vcReports(p,c); }
+  if(d.error){ p.appendChild(vcBoard(c,vbq)); p.appendChild(el('div','err',d.error)); return vcReports(p,c); }
   const V=vcPrep(d);
   const hd=el('div','dipHead'); hd.appendChild(el('b',null,'밸류체인'));
   const pd=(d.periods||{})[V.y1]||{}, annY=V.Y.filter(y=>!((d.periods||{})[y]||{}).partial);
@@ -11591,6 +11739,7 @@ async function viewTimeline(p){
     (pd.partial?' + '+vcYear(V.y1)+' '+pd.label:'')+' 「사업의 내용」. 비중은 보고서가 적은 그대로'));
   if(pd.partial) hd.appendChild(el('span','vcNow','지금 모습 = '+vcYear(V.y1)+' '+pd.label+'('+pd.stamp+') — 새 분기 · 반기 · 사업보고서가 수집되면 그날 아침 06:00에 다시 뽑는다'));
   p.appendChild(hd);
+  p.appendChild(vcBoard(c,vbq));
   p.appendChild(vcSignals(d,V));
   const map=vcMap(d,V,c); p.appendChild(map);
   const key=el('div','vcHint');
@@ -11768,6 +11917,394 @@ function vcArm(map){
   map.addEventListener('mouseover',e=>{ const n=e.target.closest('[data-k]'); const k=n&&map.contains(n)?n.dataset.k:null;
     map.classList.toggle('hov',!!k); map.querySelectorAll('.vcW').forEach(p=>p.classList.toggle('hot',!!k&&p.dataset.k===k)); });
   map.addEventListener('mouseleave',()=>map.classList.remove('hov'));
+}
+
+// ---------------------------------------------------------- 밸류체인 한 장 — 주도주 · 그물망 · 후속주 매트릭스 (/api/vcmap · 밸류체인_지도.py)
+// viewTimeline 맨 위(제목 다음, 신호 카드 앞). 지금 밸류체인 화면은 모두 그 아래 그대로.
+// 머리 띠(주도주 · 스토리 · 트리거 · 후보 수) → 그물망(3×3 칸, 선은 노드 자리를 재서 긋는다 — vcWire 와 같은 방식) → 매트릭스(25점 · 군 거르기 · 펼침).
+// 서버가 뒤 스레드에서 만드는 동안(pending) · 낡은 판을 다시 만드는 동안(stale) 2초마다 다시 묻는다 — 같은 탭 · 같은 회사 · 판이 붙어 있을 때만.
+// 점수는 규칙 점수 · 검증 전 — 예측이 아니다(문장 선행 점수 표본 외 실패, 국면 · 변곡 엣지 0 근처). 화면에 늘 적는다.
+let VB_RO=null;
+const VB_G=[['B','B군'],['C','C군'],['D','D군'],['Fake','Fake']], VB_GL={B:'B군',C:'C군',D:'D군',Fake:'Fake'};
+const VB_PART=[['link','연결'],['fund','실적'],['attn','주목'],['lag','덜 오름'],['safe','건전성']];
+const VB_RULE=[
+  ['연결','공급망 직접 5 · 같은 제품 4 · 리포트 동시 언급 3건+ 3 · 1–2건 2 · 테마만 1'],
+  ['실적','국면 확장 가속 5 · 확장 4 · 회복 3 · 둔화 2 · 수축 1 · 적자(OPM<0) 0 · 자료 없음 2'],
+  ['주목','키워드 리포트 180일 0건 0 · 1–2건 2 · 3–9건 3 · 10건+ 4, 상승여력 +30% 넘으면 +1'],
+  ['덜 오름','3개월 수익률 백분위가 주도주보다 30p+ 낮으면 5 · 15–30p 4 · 0–15p 3 · 더 높으면 1, 52주 고점 대비 −50% 아래 −1'],
+  ['건전성','5에서 — 작전주 꼴 · 상폐 절차 · 감사 비적정 · 자본잠식 −5, 투자경고 −3, 투자주의 · 자금조달 잦음 −2, 적자 −1'],
+  ['군','Fake = 건전성 2 이하 또는 (연결 1 이하 · 1개월 백분위 95+ · 실적 1 이하) · B = 연결 4+ · 합 15+ · C = 연결 2+ · 합 11+ · D = 나머지 · 별 = 연결 점수']];
+const vbD=d=>{ const t=String(d||'').replace(/\D/g,''); return t.length>=8?t.slice(2,4)+'.'+t.slice(4,6)+'.'+t.slice(6,8):''; };
+const vbR=v=>v==null||!isFinite(v)?'—':(v>0?'+':v<0?'−':'')+(Math.abs(v)>=100?Math.round(Math.abs(v)):Math.abs(v).toFixed(1))+'%';
+const vbUD=v=>v>0?'vbUp':v<0?'vbDn':'';                          // 주가는 한국식 — 빨강 오름 · 파랑 내림
+const vbWon=v=>v==null||!isFinite(v)?'—':Math.round(v).toLocaleString('ko-KR')+'원';
+const vbSeg=c=>'var(--vb-s'+((((c|0)%5)+5)%5)+')';               // 부문 색 번호 c → 제품 · 상류 묶음 · 점 색을 맞춘다
+const vbW=p=>(2+9*Math.sqrt(Math.max(0,Math.min(100,p||0))/100)).toFixed(1);   // 선 굵기 = 근거 크기(비중 · 지분 %)
+const vbItem=s=>String(s||'').replace(/\s*등$/,'');
+const vbP=v=>v==null||!isFinite(v)?'':v>0&&v<0.05?'0.1% 미만':(Math.round(v*10)/10)+'%';     // 지분 % — 소수 한 자리(23.69 → 23.7%)
+const vbPc=x=>x&&x.pct>0?x.pct:null;                              // 제품 비중 0 은 '못 읽음'으로(0% 막대를 그리지 않는다)
+// 계열 이름 — 서버가 name 을 주면 그것, 아니면 상장 계열사 이름들의 머리 두 글자 중 절반 넘게 겹치는 것(삼성 · SK · 대덕)
+function vbGrp(G){ if(G.name) return G.name; const ns=(G.names||[]).map(x=>Array.isArray(x)?x[0]:x&&x.name).filter(Boolean); if(ns.length<3) return '';
+  const c={}; ns.forEach(n=>{ const k=n.slice(0,2); c[k]=(c[k]||0)+1; }); const t=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]; return t[1]>=ns.length/2?t[0]:''; }
+const vbFetch=code=>fetch('/api/vcmap?code='+code).then(r=>r.json()).catch(()=>null);
+function vbA(t,url){ if(!url) return el('span',null,t); const a=el('a',null,t); a.href=url; a.target='_blank'; a.rel='noopener'; return a; }
+function vbStars(n){ n=Math.max(0,Math.min(5,n|0)); const s=el('span','vbStar'); s.appendChild(el('b',null,'★'.repeat(n))); s.appendChild(document.createTextNode('★'.repeat(5-n)));
+  s.title='별 '+n+' = 연결 칸 '+n+'/5'; s.setAttribute('aria-label','별 '+n+'개'); return s; }
+function vbRet(x){ x=x||{}; const ks=[['1개월',x.r1m],['3개월',x.r3m],['6개월',x.r6m]].filter(k=>k[1]!=null); if(!ks.length) return null;
+  const w=el('div','vbRet'); ks.forEach(([l,v])=>{ const s=el('span',null,l); s.appendChild(el('b',vbUD(v),vbR(v))); w.appendChild(s); }); return w; }
+// 주가 · 국면 · 리포트 한 칸 — 매트릭스 펼침과 심층 칸이 같이 쓴다
+function vbFacts(px,phase,old,rep,kw,exp){
+  const w=el('div','vbFacts'), f=(l,v,cls)=>{ const s=el('span',null,l); const b=el('b',cls||'',v); s.appendChild(b); w.appendChild(s); return b; };
+  px=px||{};
+  if(px.px!=null) f('종가',vbWon(px.px));
+  if(px.dd52!=null) f('52주 고점 대비',vbR(px.dd52),vbUD(px.dd52));
+  [['1개월',px.r1m],['3개월',px.r3m],['6개월',px.r6m]].forEach(([l,v])=>{ if(v!=null) f(l,vbR(v),vbUD(v)); });
+  const ph=f('국면',phase||'자료 없음'); if(old) ph.appendChild(el('span','vbOld','옛 판'));
+  if(typeof rep==='number') f('리포트 180일',rep+'건');
+  if(kw!=null) f('키워드 리포트',kw+'건');
+  else if(rep&&typeof rep!=='number'){ const m=String(rep).match(/(\d+)\s*건/); f('키워드 리포트',m?m[1]+'건':String(rep)).title=rep; }   // '주목' 근거 줄 — 칸에는 건수만
+  if(exp) f('수출',exp);
+  return w;
+}
+function vbFlags(fl){ const w=el('div','vbFlags'); (fl||[]).forEach(t=>w.appendChild(el('span',null,t))); if(!(fl||[]).length) w.appendChild(el('span','ok','위험 꼬리표 없음')); return w; }
+// 이 회사로 이동 — pick 이 S.tab(밸류체인)을 그대로 두고 다시 그린다. 수집하지 않은 회사면 pick 이 그냥 돌아온다
+function vbGoBtn(code){
+  const w=el('div'), b=el('button','vbGo','이 회사로 이동'); b.type='button'; w.appendChild(b);
+  b.onclick=e=>{ e.stopPropagation(); b.disabled=true;
+    pick(code).catch(()=>{}).then(()=>{
+      if(S.co&&S.co.code===code){ const top=()=>{ const m=$('main'); if(m&&S.co&&S.co.code===code) m.scrollTop=0; };   // 새 판이 그려진 뒤 한 번 더(그리는 사이 몇 px 밀린다)
+        top(); requestAnimationFrame(()=>requestAnimationFrame(top)); return; }
+      b.disabled=false; if(!w.querySelector('.vbGoN')) w.appendChild(el('span','vbGoN','수집한 회사가 아니라 열 수 없다')); }); };
+  return w;
+}
+
+function vcBoard(c,pre){
+  const code=c.code;
+  if(!S.vb||S.vb.code!==code) S.vb={code,filt:'',open:null,sel:null,more:false};   // 거르기 · 펼친 줄 · 고른 노드는 회사마다 — 폴링으로 다시 그려도 그대로
+  const V=S.vb, box=el('section','vbBoard');
+  const top=el('div','vbTop');
+  top.appendChild(vcSec('밸류체인 한 장 — 주도주 · 그물망 · 후속주','가운데 이 회사, 위로 모회사 · 원재료 매입처, 아래로 동종 후속주 · 자회사 · 고객. 코드가 붙은 회사를 누르면 근거 · 주가 · 국면'));
+  const note=el('span','vbNote','규칙 점수 · 검증 전 — 예측 아님'); top.appendChild(note);
+  const stat=el('div','vbStat'), body=el('div','vbBody');
+  body.appendChild(el('div','loading','밸류체인 한 장 불러오는 중…'));
+  box.appendChild(top); box.appendChild(stat); box.appendChild(body);
+  let D=null, timer=0;
+  const NC=new Map();                                              // 심층 칸 — /api/vcmap/node 받은 것(이 판 동안만)
+  const alive=()=>S.tab==='tl'&&!!S.co&&S.co.code===code&&box.isConnected;
+  const msg=(cls,t)=>stat.appendChild(el('div','vbMsg'+(cls?' '+cls:''),t));
+  const status=d=>{ stat.innerHTML='';
+    if(!d){ msg('bad','서버에 닿지 못했다 — 5초 뒤 다시 묻는다'); return; }
+    if(d.error) msg('bad',d.error==='no route'?'뷰어가 옛 판이다 — 뷰어를 다시 켜면 밸류체인 한 장이 붙는다'
+      :D||d.head?'다시 만들기 실패 — '+d.error+(D?' · 지금 보이는 것은 '+(D.built||'앞')+' 판':''):'밸류체인 한 장을 만들지 못했다 — '+d.error+' · 1분 뒤 다시 묻는다');
+    if(d.build_error) msg('warn','다시 만들기 실패 — '+d.build_error+' · 지금 보이는 것은 '+(d.built||'앞')+' 판');   // 있던 판은 그대로 보인다
+    if(d.pending) msg('run','밸류체인 한 장 만드는 중'+(d.step?' · '+d.step:'')+' — 캐시만 읽는다. 처음이면 리포트 · 주가 단면 읽기로 조금 더 걸린다');
+    else if(d.stale) msg('run','새 자료로 다시 만드는 중 — 지금 보이는 것은 '+(d.built||'앞')+' 판, 다 되면 저절로 바뀐다');
+  };
+  const draw=()=>{
+    if(VB_RO){ VB_RO.disconnect(); VB_RO=null; }
+    body.innerHTML=''; note.textContent=D.note||'규칙 점수 · 검증 전 — 예측 아님';
+    if(D.built) note.appendChild(el('small',null,D.built.slice(5,16)));
+    const ctx={D,V,NC,alive,M:new Map((D.matrix||[]).map(r=>[r.code,r]))};
+    body.appendChild(vbHead(D,ctx));
+    vbNet(body,D,ctx);
+    body.appendChild(vbMatrix(D,ctx));
+    body.appendChild(vbFoot(D));
+    vbArm(box);
+  };
+  // q = 미리 띄운 첫 요청(viewTimeline 이 밸류체인과 같이 띄운다). 첫 번은 판이 아직 안 붙었으니 받은 뒤에만 가드
+  const load=async q=>{
+    clearTimeout(timer); if(!q&&!alive()) return;
+    const d=await (q||vbFetch(code));
+    if(!alive()) return;
+    status(d);
+    if(!d){ timer=setTimeout(load,5000); return; }
+    const has=!!(d.head||d.net||(d.matrix||[]).length);
+    if(!has&&!D){ body.innerHTML=''; if(!d.pending&&!d.error) body.appendChild(el('div','vbNetE','이 회사는 밸류체인 한 장을 그릴 재료가 없다 — 주주 · 원재료 · 고객 표와 리포트 · 테마 어디에도 걸린 것이 없다')); }
+    if(has&&!d.pending&&(!D||d.built!==D.built)){ D=d; draw(); }     // built 가 같으면 다시 그리지 않는다
+    if(d.pending||d.stale) timer=setTimeout(load,2000);
+    else if(d.error&&!has&&d.error!=='no route') timer=setTimeout(load,60000);   // 서버가 실패를 잠깐(10분) 막아 둔다 — 풀리면 다시 만들게 천천히
+  };
+  load(pre);
+  return box;
+}
+
+// 머리 띠 — 주도주 · 스토리 · 트리거 · 후속주 후보. 비어 있는 칸은 숨기고 남은 칸이 폭을 나눈다
+function vbHead(D,ctx){
+  const H=D.head||{}, w=el('div','vbHead');
+  const card=(cls,lab)=>{ const b=el('div','vbHC '+cls); b.appendChild(el('span','l',lab)); w.appendChild(b); return b; };
+  const L=H.leader||{}, a=card('lead','주도주');
+  const nm=el('div','vbLead'); nm.appendChild(el('b',null,L.name||D.name||'')); nm.appendChild(el('span',null,L.code||D.code||'')); a.appendChild(nm);
+  if(L.px!=null){ const px=el('div','vbPx'); px.appendChild(el('b',null,vbWon(L.px))); if(L.date) px.appendChild(el('span',null,vbD(L.date)+' 종가')); a.appendChild(px); }
+  if(L.dd52!=null){ const dd=el('div','vbDd','52주 고점 대비 '); dd.appendChild(el('b',vbUD(L.dd52),vbR(L.dd52)));
+    if(L.hi52!=null) dd.title='52주 고점 '+vbWon(L.hi52)+(L.hi_date?' ('+vbD(L.hi_date)+')':''); a.appendChild(dd); }
+  const rt=vbRet(L); if(rt) a.appendChild(rt);
+  const lm=[L.phase?'국면 '+L.phase:'',L.p3m!=null?'3개월 백분위 '+L.p3m:''].filter(Boolean);   // 덜 오름 칸은 후보의 3개월 백분위를 이 값과 견준다
+  if(lm.length){ const x=el('div','vbDd',lm.join(' · ')); if(L.p3m!=null) x.title='전 종목 3개월 수익률 백분위 — 후속주 「덜 오름」 칸의 기준'; a.appendChild(x); }
+  // 스토리 — 리포트 hot 낱말 + 제품 매출 구성 + 최신 리포트 제목. 리포트가 없으면 제품 구성만
+  const st=H.story||{}, words=(st.words||[]).slice(0,4), prods=(st.products||[]).filter(x=>x&&x.item).slice(0,3), ln=st.line&&st.line.text?st.line:null;
+  if(words.length||prods.length||ln){ const b=card('story','스토리');
+    if(words.length){ const ws=el('div','vbWords'); words.forEach(x=>ws.appendChild(el('span',null,x))); b.appendChild(ws); }
+    if(prods.length){ const ps=el('div','vbProds');
+      prods.forEach(x=>{ const s=el('span'); const dt=el('i','vbDot'); dt.style.setProperty('--k',vbSeg(x.c)); s.appendChild(dt); s.appendChild(el('span','t',vbItem(x.item)));   // 긴 품목(TV, 모니터, 냉장고 …)은 말줄임 — 풍선에 전체
+        if(vbPc(x)) s.appendChild(el('b',null,vcPct(x.pct))); s.title=(x.seg?x.seg+' 부문 · ':'')+x.item; ps.appendChild(s); });
+      b.appendChild(ps); }
+    if(ln){ const r=el('div','vbLine'); r.appendChild(vbA('“'+ln.text+'”',ln.url)); const m=[ln.by,vbD(ln.date)].filter(Boolean).join(' · '); if(m) r.appendChild(el('small',null,'  '+m)); b.appendChild(r); } }
+  // 트리거 — 줄마다 출처 칩 · 날짜 · 링크. 공시가 리포트보다 먼저(서버 순서 그대로)
+  const tg=(H.triggers||[]).filter(t=>t&&t.text).slice(0,4);
+  if(tg.length){ const b=card('trig','트리거');
+    tg.forEach(t=>{ const r=el('div','vbTrg'); r.appendChild(el('span','vbSrc'+(t.src==='공시'?' disc':''),t.src||'')); const tx=el('span'); tx.appendChild(vbA(t.text,t.url)); if(t.note) tx.appendChild(el('em',null,t.note)); r.appendChild(tx);
+      r.appendChild(el('small',null,[t.src==='공시'?'':t.by,vbD(t.date)].filter(Boolean).join(' · '))); b.appendChild(r); }); }
+  // 후속주 후보 — 군 수를 누르면 매트릭스를 그 군으로
+  const n=H.counts;
+  if(n){ const b=card('cnt','후속주 후보'); const t=el('div','vbCnt'); t.appendChild(el('b',null,String(n.total||0))); t.appendChild(el('span',null,n.total?'곳':'곳 — 걸린 회사 없음')); b.appendChild(t);
+    if(n.total){ const sk=el('div','vbStack'); VB_G.forEach(([g])=>{ if(!n[g]) return; const i=el('i'); i.dataset.g=g; i.style.background='var(--g)'; i.style.width=(n[g]/n.total*100)+'%'; i.title=VB_GL[g]+' '+n[g]+'곳'; sk.appendChild(i); }); b.appendChild(sk);
+      const k=el('div','vbCntK'); VB_G.forEach(([g,l])=>{ const x=el('button'); x.type='button'; x.dataset.g=g; const dt=el('i','vbDot'); dt.style.setProperty('--k','var(--g)'); x.appendChild(dt);
+        x.appendChild(document.createTextNode(l+' ')); x.appendChild(el('b',null,String(n[g]||0))); x.title=l+'만 보기'; x.onclick=()=>ctx.filt&&ctx.filt(g,true); k.appendChild(x); }); b.appendChild(k); } }
+  return w;
+}
+
+// 그물망 — 위: 상류 묶음 A · 모회사 · 상류 묶음 B / 가운데: (상류 묶음 C) · 이 회사 / 아래: 동종 후속주 · 상장 자회사 · 지분 · 하류. 빈 칸은 숨긴다
+function vbNet(body,D,ctx){
+  const N=D.net, V=ctx.V; if(!N) return;
+  const REL=new Map();                                            // 코드 → 이 그림에서 걸린 관계 줄(심층 칸 「관계 근거」)
+  const rel=(code,name,t)=>{ if(!REL.has(code)) REL.set(code,{name,rel:[]}); const o=REL.get(code); if(t&&!o.rel.includes(t)) o.rel.push(t); };
+  // 코드가 있는 회사만 누를 수 있다 — 상장사는 굵게 · 코드, 해외 · 비상장은 흐리게
+  // 매입처는 이은 상장사 이름(co)으로 — 적힌 이름('COSMO')은 풍선에. 같은 칸에 'COSMO' · 코스모신소재가 따로 서지 않게
+  const co=(x,t,tail)=>{ const cn=x.co||x.name||'', nm=cn+(tail||''), bk=x.co&&x.name&&x.co!==x.name?'보고서 표기 '+x.name:'';
+    if(!x.code||x.code===D.code){ const s=el('span','vbCo',nm); if(bk) s.title=bk; return s; }
+    rel(x.code,cn,t);
+    const b=el('button','vbCo'+(V.sel&&V.sel.code===x.code?' on':'')); b.type='button'; b.dataset.code=x.code; if(x.group) b.dataset.g=x.group;
+    b.appendChild(document.createTextNode(nm+' ')); b.appendChild(el('small',null,x.code)); b.title=[t,bk].filter(Boolean).join(' · ')+(t||bk?' — ':'')+'누르면 근거 · 주가 · 국면';
+    b.onclick=e=>{ e.stopPropagation(); ctx.sel(x.code,b); }; return b; };
+  const node=(slot,kind,title,small,w)=>{ const n=el('div','vbNode '+kind); n.dataset.slot=slot; n.dataset.wire=kind; n.dataset.w=w; n.style.gridArea=slot;
+    const h=el('div','vbNodeH'); h.appendChild(el('i','vbDot')); h.appendChild(el('span',null,title)); if(small) h.appendChild(el('small',null,small)); n.appendChild(h); return n; };
+  const nodes={};
+  const prods=(N.products||(D.head&&D.head.story||{}).products||[]).filter(x=>x&&x.item);
+  const segPct={}; prods.forEach(x=>{ const k=x.c!=null?'c'+x.c:x.seg; segPct[k]=(segPct[k]||0)+(x.pct||0); });
+  // 모회사 — 법인이면 이름 · 지분 %, 개인이면 '최대주주 곽동신 33.5% (개인)'. 계열 상장사 수 꼬리
+  const O=N.owner, G=N.group||{};
+  if(O||G.listed){ const per=O&&/person|개인/.test(O.kind||''), n=node('own','tie',per?'최대주주':'모회사','',vbW(O&&O.pct));
+    if(O){ const r=el('div','vbIt'), t=el('div','t'), s=el('span');
+      if(per) s.appendChild(document.createTextNode('최대주주 '+O.name+(O.pct!=null?' '+vbP(O.pct):'')+' (개인)'));
+      else s.appendChild(co(O,'모회사 — '+[O.rel||'최대주주',O.pct!=null?'지분 '+vbP(O.pct):'',O.src].filter(Boolean).join(' · ')));   // 코드를 못 풀었다고 비상장이라 단정하지 않는다(약칭 · 해외 법인)
+      t.appendChild(s); if(!per&&O.pct!=null) t.appendChild(el('b',null,vbP(O.pct))); r.appendChild(t);
+      if(O.rel||O.src) r.appendChild(el('div','w',[O.rel,O.src].filter(Boolean).join(' · ')));
+      n.appendChild(r); }
+    if(G.listed){ const gn=vbGrp(G), g=el('div','vbIt grp',(gn?gn+' ':'')+'계열 상장 '+G.listed+'곳');
+      const ns=(G.names||[]).map(x=>Array.isArray(x)?x[0]:x&&x.name).filter(Boolean); if(ns.length) g.title=ns.join(' · '); n.appendChild(g); }
+    nodes.own=n; }
+  // 상류 — 제품 부문별 원재료 묶음(최대 3). 묶음 색 = 그 부문 점 색, 선은 초록
+  (N.up||[]).filter(u=>(u.items||[]).length||(u.listed||[]).length).slice(0,3).forEach((u,i)=>{
+    const slot=['u0','u1','u2'][i], sp=segPct[u.c!=null?'c'+u.c:u.seg];
+    const n=node(slot,'up',u.label||'상류 · '+(u.seg||'')+' 소재 · 장비',sp?u.seg+' 매출 '+vcPct(sp):'',vbW(sp||40));
+    n.style.setProperty('--k',vbSeg(u.c));
+    const shown=new Set();                                          // 이 칸에 매입처 칩으로 이미 선 코드
+    (u.items||[]).slice(0,5).forEach(it=>{ const r=el('div','vbIt'+(/^기타/.test(it.item||'')?' etc':'')), t=el('div','t');
+      t.appendChild(el('span',null,it.item)); if(it.pct!=null) t.appendChild(el('b',null,vcPct(it.pct))); r.appendChild(t);
+      if((it.sup||[]).length){ const cs=el('div','vbCos'); it.sup.slice(0,5).forEach(s=>{ if(s.code) shown.add(s.code); cs.appendChild(co(s,'상류 · '+(u.seg||'')+' — '+it.item+' 매입처')); }); r.appendChild(cs); }
+      n.appendChild(r); });
+    const ul=(u.listed||[]).filter(l=>l&&l.name);
+    // 나를 매출처로 적은 상장사 — 둘까지는 근거 줄째, 많으면 칩만(근거는 칩 풍선 · 심층 칸). 위 매입처 칩과 같은 회사면 칩 없이 근거 줄만(양쪽 보고서가 맞춰 준다)
+    if(ul.length<=2) ul.forEach(l=>{ const r=el('div','vbIt');
+      if(l.code&&shown.has(l.code)) rel(l.code,l.name,l.why); else { const cs=el('div','vbCos'); cs.appendChild(co(l,l.why)); r.appendChild(cs); }
+      if(l.why) r.appendChild(el('div','w',l.why)); if(r.firstChild) n.appendChild(r); });
+    else { const r=el('div','vbIt'), cs=el('div','vbCos'); r.appendChild(el('div','w','나를 매출처로 적은 상장사 '+ul.length+'곳')); ul.forEach(l=>cs.appendChild(co(l,l.why))); r.appendChild(cs); n.appendChild(r); }
+    nodes[slot]=n; });
+  // 하류 — 매출처 · 나를 매입처로 적은 회사 · 계약 상대 + 제품 용도 '수요처' 칩
+  const dn=(N.down||[]).filter(x=>x&&x.name), uses=(N.uses||[]).filter(Boolean);
+  if(dn.length||uses.length){ const mx=Math.max(0,...dn.filter(x=>x.kind!=='contract').map(x=>x.pct||0));
+    const n=node('down','dn','하류 · 고객 · 수요처',dn.length?dn.length+'곳':'',dn.length?vbW(mx||30):'2');
+    dn.slice(0,6).forEach(x=>{ const r=el('div','vbIt'), t=el('div','vbRowN');
+      t.appendChild(co(x,x.why));
+      t.appendChild(el('span','pc',x.kind==='contract'?[x.n?x.n+'건':'',x.amount?qWon(x.amount):''].filter(Boolean).join(' · '):x.pct!=null?vcPct(x.pct):''));
+      r.appendChild(t);
+      if(x.kind!=='contract'&&x.pct!=null){ const b=el('div','vbBar'), f=el('i'); f.style.width=Math.max(3,Math.min(100,x.pct))+'%'; b.appendChild(f); r.appendChild(b); }
+      if(x.why) r.appendChild(el('div','w',x.why)); n.appendChild(r); });
+    if(dn.length>6){ const r=el('div','vbIt'), cs=el('div','vbCos'); dn.slice(6).forEach(x=>cs.appendChild(co(x,x.why))); r.appendChild(el('div','w','외 '+(dn.length-6)+'곳')); r.appendChild(cs); n.appendChild(r); }
+    if(uses.length){ const u=el('div','vbUses'); u.appendChild(el('span','l','수요처')); uses.slice(0,8).forEach(x=>u.appendChild(el('span',null,x))); n.appendChild(u); }
+    nodes.down=n; }
+  // 동종 후속주 — 매트릭스 B · C 상위 6(점선, 군 색)
+  const pe=(N.peers||[]).filter(x=>x&&x.name).slice(0,6);
+  if(pe.length){ const n=node('peer','peer','동종 후속주','B · C 상위','2.4'); const cs=el('div','vbCos');
+    pe.forEach(x=>cs.appendChild(co(x,'동종 후속주 · '+(VB_GL[x.group]||x.group||'')))); n.appendChild(cs); nodes.peer=n; }
+  // 상장 자회사 · 지분 — 상장 종속 0 이면 '상장 자회사 없음', 상장 지분(관계 · 투자)은 이름 · % · 목적
+  const ho=(N.holdings||[]).filter(x=>x&&x.name);
+  if(N.listed_subs!=null||ho.length){ const mx=Math.max(0,...ho.map(x=>x.pct||0));
+    const n=node('sub','tie','상장 자회사 · 지분',ho.length?'상장 지분 '+ho.length+'곳':'',vbW(Math.max(mx,8)));
+    if(N.listed_subs!=null){ const s=el('div','vbNone',N.listed_subs?'상장 종속 '+N.listed_subs+'곳':'상장 자회사 없음'); if(N.subs_note) s.title=N.subs_note; n.appendChild(s); }
+    ho.slice(0,6).forEach(h=>{ const r=el('div','vbIt'), t=el('div','vbRowN'); t.appendChild(co(h,h.name+' 지분 '+vbP(h.pct)+(h.purpose?' · '+h.purpose:''))); t.appendChild(el('span','pc',vbP(h.pct)));
+      r.appendChild(t); if(h.purpose) r.appendChild(el('div','w',h.purpose)); n.appendChild(r); });
+    if(ho.length>6){ const r=el('div','vbIt'), cs=el('div','vbCos'); ho.slice(6).forEach(h=>cs.appendChild(co(h,h.name+' 지분 '+vbP(h.pct)+(h.purpose?' · '+h.purpose:''),' '+vbP(h.pct)))); r.appendChild(el('div','w','외 '+(ho.length-6)+'곳')); r.appendChild(cs); n.appendChild(r); }
+    nodes.sub=n; }
+  if(!Object.keys(nodes).length){ body.appendChild(el('div','vbNetE','그물망 재료가 없다 — 주주 · 원재료 · 고객 표와 동종 후보를 찾지 못했다. 아래 매트릭스와 지금 밸류체인 화면으로 본다')); return; }
+  // 가운데 — 이 회사 · 제품 라인 상위 3(비중), 부문마다 색 점
+  const me=el('div','vbMe'); me.style.gridArea='me';
+  me.appendChild(el('div','n',D.name||'')); me.appendChild(el('div','c',D.code||''));
+  if(prods.length){ const pm=el('div','vbMeP');
+    prods.slice(0,3).forEach(x=>{ const r=el('div','r'); r.style.setProperty('--k',vbSeg(x.c)); r.appendChild(el('i','vbDot')); r.appendChild(el('span',null,vbItem(x.item)));
+      const b=el('span','bar'), f=el('i'); f.style.width=vbPc(x)?Math.max(3,Math.min(100,x.pct))+'%':'0'; b.appendChild(f); r.appendChild(b); r.appendChild(el('b',null,vbPc(x)?vcPct(x.pct):''));
+      r.title=(x.seg?x.seg+' 부문 · ':'')+x.item; pm.appendChild(r); });
+    me.appendChild(pm); }
+  // 칸 배치 — 빈 줄은 뺀다(위 · 아래 줄이 다 비면 그 줄째)
+  const has=s=>!!nodes[s], rows=[];
+  if(has('u0')||has('own')||has('u1')) rows.push([has('u0')?'u0':'.',has('own')?'own':'.',has('u1')?'u1':'.']);
+  rows.push([has('u2')?'u2':'.','me','.']);
+  if(has('peer')||has('sub')||has('down')) rows.push([has('peer')?'peer':'.',has('sub')?'sub':'.',has('down')?'down':'.']);
+  const W=el('div','vbNetW'), net=el('div','vbNet'), grid=el('div','vbGrid');
+  grid.style.gridTemplateAreas=rows.map(r=>'"'+r.join(' ')+'"').join(' ');
+  net.appendChild(svgEl('svg',{class:'vbWires','aria-hidden':'true'}));
+  ['me','own','u0','u1','u2','down','peer','sub'].forEach(s=>{ if(s==='me') grid.appendChild(me); else if(nodes[s]) grid.appendChild(nodes[s]); });   // 좁을 때 목록 순서
+  net.appendChild(grid);
+  const key=el('div','vbKey'); [['up','상류 · 원재료'],['dn','하류 · 고객'],['peer','동종 후속주'],['tie','모회사 · 자회사']].forEach(([k,t])=>{ const s=el('span'); const i=el('i'); i.style.borderTopColor='var(--vb-'+k+')'; if(k==='peer') i.style.borderTopStyle='dashed'; s.appendChild(i); s.appendChild(document.createTextNode(t)); key.appendChild(s); });
+  key.appendChild(el('span',null,'굵기 = 비중 · 지분 크기 · 선은 근거가 있는 쪽만'));
+  net.appendChild(key); W.appendChild(net);
+  const det=el('div'); det.hidden=true; W.appendChild(det);
+  // 심층 칸 — 매트릭스에 있는 회사면 그 줄 값, 아니면 /api/vcmap/node 를 한 번 받아 둔다
+  let from=null;                                                   // 심층 칸을 연 칩 — × 로 닫으면 초점을 돌려준다(그대로 두면 body 로 떨어진다)
+  const back=c=>{ const b=from&&from.isConnected&&W.contains(from)?from:c&&W.querySelector('button.vbCo[data-code="'+c+'"]'); from=null; if(b) b.focus(); };
+  const paint=()=>{
+    W.querySelectorAll('button.vbCo').forEach(b=>b.classList.toggle('on',!!V.sel&&b.dataset.code===V.sel.code));
+    det.innerHTML=''; const on=!!(V.sel&&REL.has(V.sel.code)); W.classList.toggle('open',on); det.hidden=!on;
+    if(on) det.appendChild(vbDetail(D,ctx,V.sel.code,REL.get(V.sel.code),()=>{ const c=V.sel&&V.sel.code; V.sel=null; paint(); back(c); },paint));
+  };
+  ctx.sel=(code,b)=>{ V.sel=V.sel&&V.sel.code===code?null:{code}; from=V.sel&&b||null; paint(); if(V.sel&&!det.hidden&&!W.closest('.vbBoard.wide')) det.scrollIntoView({block:'nearest',behavior:'smooth'}); };
+  paint();
+  body.appendChild(W);
+}
+
+// 심층 칸 서버 값 — 회사마다 한 번만 묻고 약속(p)을 NC 에 둔다. 다 오기 전에 판이 새로 그려져도(폴링 stale → fresh) 새 칸이 같은 약속에 붙어 다시 그린다
+function vbNodeGet(ctx,code,of){
+  const o=ctx.NC.get(code); if(o) return o;
+  const p=fetch('/api/vcmap/node?code='+code+'&of='+of).then(r=>r.json()).catch(()=>({error:'서버에 닿지 못했다'}))
+    .then(j=>{ ctx.NC.set(code,j&&!j.error?j:{error:(j&&j.error)||'받지 못했다'}); });
+  const nd={loading:true,p}; ctx.NC.set(code,nd); return nd;
+}
+function vbDetail(D,ctx,code,R,close,repaint){
+  // 매트릭스 안 회사도 서버 근거 줄(어느 보고서 · 어느 표 · 몇 %)은 받는다 — 주가 · 국면 · 위험은 매트릭스 줄 값 그대로
+  const row=ctx.M.get(code), nd=vbNodeGet(ctx,code,D.code);
+  const w=el('div','vbDet'); if(row) w.dataset.g=row.group;
+  const h=el('div','vbDetH'), t=el('div'); t.appendChild(el('b',null,(row&&row.name)||(nd&&nd.name)||R.name||code)); t.appendChild(el('span',null,code)); h.appendChild(t);
+  const x=el('button','vbX','×'); x.type='button'; x.title='닫기'; x.setAttribute('aria-label','심층 칸 닫기'); x.onclick=close; h.appendChild(x); w.appendChild(h);
+  const sect=(l,node)=>{ const s=el('div','vbDS'); s.appendChild(el('span','l',l)); s.appendChild(node); w.appendChild(s); return s; };
+  const ul=a=>{ const u=el('ul'); a.forEach(z=>u.appendChild(el('li',null,z))); return u; };
+  if(row){ const g=el('div','vbRowN'); g.appendChild(el('span','vbG',VB_GL[row.group]||row.group)); g.appendChild(vbStars(row.stars)); g.appendChild(el('span','pc',(row.score!=null?row.score:'—')+' / 25'));
+    sect('후속주 매트릭스',g); if(row.why) w.lastChild.appendChild(el('div','vbNone',row.why)); }
+  // 서버 근거 줄이 오면 그것 — 그림에서 모은 줄(칩 풍선)과 같은 사실이라 겹쳐 적지 않는다. 매트릭스 안이면 '후속주 B군 18점' 줄은 위 칸과 겹쳐 뺀다
+  const srv=!nd.loading&&!nd.error?(nd.rel||[]).filter(z=>z&&!(row&&/^후속주 \S+군 \d+점/.test(z))):[];
+  const rels=[...new Set([...(srv.length?srv:R.rel||[]),...(row?(row.ev||{}).link||[]:[])])];
+  if(rels.length) sect('관계 근거',ul(rels));
+  // 받는 중이면 다 온 뒤 다시 그린다 — 이 칸이 아직 화면에 있을 때만(그새 판이 바뀌었으면 새 칸이 자기 것으로 붙는다)
+  if(nd.loading) nd.p.then(()=>{ if(ctx.alive()&&w.isConnected) repaint(); });
+  if(row){ sect('주가 · 국면 · 리포트',vbFacts(row.px,row.phase,row.old,vbRepOf(row),row.kw_n,row.exp)); sect('위험',vbFlags(row.flags)); }
+  else if(nd.loading) sect('주가 · 국면 · 리포트',el('div','vbNone','불러오는 중…'));
+  else if(nd.error) sect('주가 · 국면 · 리포트',el('div','vbNone','값을 받지 못했다 — '+nd.error));
+  else { sect('주가 · 국면 · 리포트',vbFacts(nd.px,nd.phase,nd.old!=null?nd.old:!!(nd.ph&&nd.ph.old),nd.reports_n!=null?nd.reports_n:null,nd.kw_n,nd.exp)); sect('위험',vbFlags(nd.flags)); }
+  if(nd&&nd.collected===false) w.appendChild(el('div','vbNone','수집한 회사가 아니라 이 뷰어로는 열 수 없다'));
+  else if(code!==D.code) w.appendChild(vbGoBtn(code));
+  return w;
+}
+// 매트릭스 줄의 리포트 수 — 서버가 reports_n 을 주면 그것, 아니면 '주목' 근거 중 리포트 줄
+function vbRepOf(r){ if(r.reports_n!=null) return r.reports_n; const t=((r.ev||{}).attn||[]).find(s=>/리포트/.test(s)); return t||null; }
+
+// 후속주 매트릭스 — 칩 전체 · B군 · C군 · D군 · Fake, 줄 = 이름 · 코드 · 이유 / 군 꼬리표 · 별 / 점수 막대(군 색) · 점수. 누르면 펼침
+function vbMatrix(D,ctx){
+  const GO={B:0,C:1,D:2,Fake:3}, V=ctx.V, rows=(D.matrix||[]).slice().sort((a,b)=>((GO[a.group]??4)-(GO[b.group]??4))||(b.score||0)-(a.score||0));   // 군(B → C → D → Fake) 다음 점수 — 서버 순서와 같다
+  const w=el('div','vbMx'), t=el('div','vbMxT');
+  t.appendChild(vcSec('후속주 매트릭스 · 25점 만점 · 행 클릭 시 심층분석','연결 · 실적 · 주목 · 덜 오름 · 건전성 다섯 칸 × 5점. 칸마다 근거 줄이 붙는다'));
+  const chips=el('div','vbChips'); t.appendChild(chips); w.appendChild(t);
+  const list=el('div','vbRows'); w.appendChild(list);
+  if(!rows.length){ list.className='vbMxE'; list.textContent='후속주 후보를 찾지 못했다 — 스토리 낱말 · 테마 · 공급망 · 같은 제품 어디에도 걸린 수집 회사가 없다'; return w; }
+  const cnt=g=>rows.filter(r=>r.group===g).length;
+  // 칩은 한 번 만들고 켜짐만 바꾼다 — 다시 만들면 방금 누른 칩의 초점이 body 로 떨어진다
+  const cb=[['','전체',rows.length],...VB_G.map(([g,l])=>[g,l,cnt(g)])].map(([g,l,n])=>{ const b=el('button'); b.type='button';
+    if(g){ b.dataset.g=g; b.appendChild(el('i')); } b.appendChild(document.createTextNode(l)); b.appendChild(el('em',null,String(n))); b.onclick=()=>{ V.filt=g; paint(); }; chips.appendChild(b); return [g,b]; });
+  const paint=()=>{
+    cb.forEach(([g,b])=>{ b.className=V.filt===g?'on':''; b.setAttribute('aria-pressed',String(V.filt===g)); });
+    list.innerHTML='';
+    const vis=rows.filter(r=>!V.filt||r.group===V.filt);
+    if(!vis.length) list.appendChild(el('div','vbNone','이 군에 든 회사가 없다'));
+    const lim=!V.filt&&!V.more&&vis.length>12?12:vis.length;     // 전체는 12줄 먼저 — 군을 고르면 그 군 전부
+    vis.slice(0,lim).forEach(r=>list.appendChild(vbRow(r,ctx)));
+    // 더 보기 — 단추가 사라지니 초점은 새로 드러난 첫 줄로
+    if(lim<vis.length){ const m=el('button','vbMore','나머지 '+(vis.length-lim)+'곳 더 보기'); m.type='button';
+      m.onclick=()=>{ const f=document.activeElement===m; V.more=true; paint(); const b=f&&list.querySelectorAll('.vbRowB')[lim]; if(b) b.focus(); }; list.appendChild(m); }
+  };
+  ctx.filt=(g,go)=>{ V.filt=V.filt===g?'':g; paint(); if(go) w.scrollIntoView({block:'start',behavior:'smooth'}); };
+  paint();
+  return w;
+}
+function vbRow(r,ctx){
+  const V=ctx.V, open=V.open===r.code, w=el('div','vbRow'+(open?' open':'')); w.dataset.g=r.group; w.dataset.code=r.code;
+  const b=el('button','vbRowB'); b.type='button'; b.setAttribute('aria-expanded',String(open));
+  const nm=el('span','nm'); nm.appendChild(el('b',null,r.name)); nm.appendChild(el('span',null,r.code)); nm.appendChild(el('em',null,r.why||'')); if(r.why) nm.title=r.why; b.appendChild(nm);
+  const tg=el('span','tg'); tg.appendChild(el('span','vbG',VB_GL[r.group]||r.group||'')); tg.appendChild(vbStars(r.stars)); b.appendChild(tg);
+  const sb=el('span','vbScore'), f=el('i'); f.style.width=Math.max(2,Math.min(100,(r.score||0)/25*100))+'%'; sb.appendChild(f);
+  const P=r.parts||{}; sb.title=VB_PART.map(([k,l])=>l+' '+(P[k]!=null?P[k]:'—')).join(' · '); b.appendChild(sb);
+  b.appendChild(el('span','sc',r.score!=null?String(r.score):'—'));
+  // 한 번에 한 줄만 펼친다 — 다시 그리지 않고 그 자리에서(초점 · 스크롤 유지)
+  b.onclick=()=>{ const was=V.open===r.code, list=w.parentNode;
+    if(list) list.querySelectorAll('.vbRow.open').forEach(x=>{ x.classList.remove('open'); x.firstChild.setAttribute('aria-expanded','false'); const d=x.querySelector('.vbRowD'); if(d) d.remove(); });
+    V.open=was?null:r.code;
+    if(!was){ w.classList.add('open'); b.setAttribute('aria-expanded','true'); w.appendChild(vbRowD(r)); } };
+  w.appendChild(b);
+  if(open) w.appendChild(vbRowD(r));
+  return w;
+}
+function vbRowD(r){
+  const d=el('div','vbRowD'), ps=el('div','vbParts'), P=r.parts||{}, E=r.ev||{};
+  VB_PART.forEach(([k,l])=>{ const c=el('div','vbPart'), h=el('div','h'); h.appendChild(el('span',null,l)); const b=el('b',null,P[k]!=null?String(P[k]):'—'); b.appendChild(el('small',null,' / 5')); h.appendChild(b); c.appendChild(h);
+    const pp=el('div','vbPips'); for(let i=0;i<5;i++) pp.appendChild(el('i',i<(P[k]||0)?'on':'')); c.appendChild(pp);
+    const ev=(E[k]||[]).filter(Boolean); if(ev.length){ const u=el('ul'); ev.forEach(z=>u.appendChild(el('li',null,z))); c.appendChild(u); } else c.appendChild(el('div','vbNone','근거 줄 없음'));
+    ps.appendChild(c); });
+  d.appendChild(ps);
+  const f=el('div','vbRowF'); f.appendChild(vbFacts(r.px,r.phase,r.old,vbRepOf(r),r.kw_n,r.exp));
+  const rk=el('div','vbRisk'); rk.appendChild(el('span','l','위험')); rk.appendChild(vbFlags(r.flags)); f.appendChild(rk);
+  f.appendChild(vbGoBtn(r.code)); d.appendChild(f);
+  return d;
+}
+function vbFoot(D){
+  const f=el('div','vbFoot'); f.appendChild(el('b',null,D.note||'규칙 점수 · 검증 전 — 예측 아님'));
+  f.appendChild(document.createTextNode(' — 근거를 줄 세운 점수이지 오를 회사를 고른 것이 아니다. 문장 선행 점수는 표본 밖에서 실패했고, 국면 · 변곡의 엣지도 0 근처다.'));
+  const s=D.src||{}, m=[(s.reports||{}).n!=null?'리포트 '+s.reports.n+'건':'',(s.xs||{}).date?'주가 단면 '+vbD(s.xs.date):'',(s.own||{}).rcept?'지분 '+s.own.rcept:''].filter(Boolean);
+  if(m.length) f.appendChild(el('div',null,'재료 — '+m.join(' · ')+' · 모두 캐시에서 읽음'+(D.built?' · 만든 때 '+D.built:'')));
+  const g=el('div','vbRules'); VB_RULE.forEach(([k,t])=>{ const x=el('span'); x.appendChild(el('b',null,k)); x.appendChild(document.createTextNode(t)); g.appendChild(x); }); f.appendChild(g);
+  return f;
+}
+
+// 선 — 노드 자리를 재서 긋는다. 위 줄은 노드 아래 → 회사 위, 아래 줄은 회사 아래 → 노드 위, 가운데 왼쪽(상류 C)은 옆으로
+function vbWire(net){
+  const svg=net.querySelector('svg.vbWires'); if(!svg) return;
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  const R=net.getBoundingClientRect(); svg.setAttribute('viewBox','0 0 '+R.width+' '+R.height);
+  if(net.closest('.vbBoard.narrow')) return;
+  const me=net.querySelector('.vbMe'); if(!me) return;
+  const rel=n=>{ const r=n.getBoundingClientRect(); return {l:r.left-R.left,r:r.right-R.left,t:r.top-R.top,b:r.bottom-R.top,w:r.width,cx:(r.left+r.right)/2-R.left,cy:(r.top+r.bottom)/2-R.top}; };
+  const m=rel(me), at={u0:.22,own:.5,u1:.78,peer:.22,sub:.5,down:.78};
+  const f=v=>v.toFixed(1);
+  const P=(x1,y1,x2,y2,horiz,cls,w,k)=>{ let d;
+    if(horiz){ const dx=Math.max(14,(x2-x1)*.5); d='M'+f(x1)+','+f(y1)+' C'+f(x1+dx)+','+f(y1)+' '+f(x2-dx)+','+f(y2)+' '+f(x2)+','+f(y2); }
+    else { const dy=Math.max(14,(y2-y1)*.5); d='M'+f(x1)+','+f(y1)+' C'+f(x1)+','+f(y1+dy)+' '+f(x2)+','+f(y2-dy)+' '+f(x2)+','+f(y2); }
+    const p=svgEl('path',{d,class:'vbW '+cls,'stroke-width':w}); p.dataset.k=k; svg.appendChild(p);
+    [[x1,y1],[x2,y2]].forEach(([x,y])=>{ const c=svgEl('circle',{cx:f(x),cy:f(y),r:3.2,class:'vbE '+cls}); c.dataset.k=k; svg.appendChild(c); }); };
+  net.querySelectorAll('.vbNode[data-slot]').forEach(n=>{
+    const s=n.dataset.slot, cls=n.dataset.wire, w=+n.dataset.w||2.5, r=rel(n);
+    if(s==='u2') return P(r.r,r.cy,m.l,m.cy,true,cls,w,s);
+    if(r.b<=m.t+1) P(r.cx,r.b,m.l+m.w*at[s],m.t,false,cls,w,s);
+    else P(m.l+m.w*at[s],m.b,r.cx,r.t,false,cls,w,s);
+  });
+}
+function vbArm(box){
+  const net=box.querySelector('.vbNet');
+  const draw=()=>{ if(!box.isConnected) return; const w=box.clientWidth;
+    box.classList.toggle('narrow',w<=900); box.classList.toggle('wide',w>=1100); if(net) vbWire(net); };
+  let raf=0; VB_RO=new ResizeObserver(()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(draw); });
+  VB_RO.observe(box); if(net) VB_RO.observe(net);
+  draw();
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>requestAnimationFrame(draw));
+  if(!net) return;
+  net.addEventListener('mouseover',e=>{ const n=e.target.closest('.vbNode[data-slot]'); const k=n&&net.contains(n)?n.dataset.slot:null;
+    net.classList.toggle('hov',!!k); net.querySelectorAll('.vbW,.vbE').forEach(p=>p.classList.toggle('hot',!!k&&p.dataset.k===k)); });
+  net.addEventListener('mouseleave',()=>net.classList.remove('hov'));
 }
 
 // 파급 경로 — 이 회사에 일어날 일이 누구에게 번지나
