@@ -11566,7 +11566,7 @@ function vcPrep(d){
   const mats=(d.materials||[]).filter(m=>m.item).map(m=>({...m}));
   const tot=mats.reduce((s,m)=>s+(m.amt||0),0);
   mats.forEach(m=>m.share=tot&&m.amt?m.amt/tot:null);
-  mats.sort((a,b)=>(b.amt||0)-(a.amt||0)||(b.pct||0)-(a.pct||0));
+  mats.sort((a,b)=>(!!a.etc-!!b.etc)||(b.amt||0)-(a.amt||0)||(b.pct||0)-(a.pct||0));        // '기타' 원재료(서버 etc)는 금액이 커도 뒤로
   const ex=d.export||{}, exY=Object.keys(ex).filter(y=>ex[y]!=null).sort();
   const segs=[...new Set([...(d.segments||[]).map(s=>s.segment),...mats.map(m=>m.segment),...groups.filter(g=>g.seg).map(g=>g.name)].filter(x=>x&&!/합\s*계|^기타|^구\s*분/.test(x)))];
   const nSupp=new Set(mats.flatMap(m=>(m.suppliers||[]).map(s=>s.name))).size;

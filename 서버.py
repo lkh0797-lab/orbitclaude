@@ -2605,6 +2605,7 @@ def _universe_info():
 
 
 _NAMES = {}
+_NAMES_EN = {}        # {"idx": 밸류체인.EnNames} — 영문만 적힌 매입처 · 고객을 상장사로(_listed_names 가 같이 채운다)
 
 
 _LATIN_KO = {"a": "에이", "b": "비", "c": "씨", "d": "디", "e": "이", "f": "에프", "g": "지",
@@ -2623,20 +2624,26 @@ def _norm_corp(nm):
 
 def _listed_names():
     """정규화한 회사명 → 종목코드. 계약 공시의 '계약상대'를 상장사로 이어 주는 데 쓴다.
-    수집 대상 이름과 DART 고유번호 목록(상장사만)의 공식 이름을 둘 다 넣는다."""
+    수집 대상 이름과 DART 고유번호 목록(상장사만)의 공식 이름을 둘 다 넣는다 — 같은 이름이 둘이면 modify_date 최신
+    (옛 상폐 corp 이 종목코드를 단 채 남아 있다: 삼성물산 000830 · 028260). 영문 이름 색인(_NAMES_EN, 밸류체인 매입처)도 같이 짠다."""
     if _NAMES:
         return _NAMES
     for c in INDEX["companies"]:
         _NAMES[_norm_corp(c["name"])] = c["code"]
     path = os.path.join(CACHE_DIR, "CORPCODE.xml")
+    rows = []
     if os.path.exists(path):
         text = open(path, "rb").read().decode("utf-8", errors="replace")
         for m in re.finditer(r"<list>(.*?)</list>", text, re.S):
             blob = m.group(1)
-            s = re.search(r"<stock_code>(.*?)</stock_code>", blob, re.S)
-            n = re.search(r"<corp_name>(.*?)</corp_name>", blob, re.S)
-            if s and n and s.group(1).strip():
-                _NAMES.setdefault(_norm_corp(html.unescape(n.group(1))), s.group(1).strip())
+            g = lambda k: html.unescape((re.search(r"<%s>(.*?)</%s>" % (k, k), blob, re.S) or [None, ""])[1].strip())     # noqa: E731
+            if g("stock_code"):
+                rows.append((g("stock_code"), g("corp_name"), g("corp_eng_name"), g("modify_date")))
+        del text
+    for sc, nm, _en, _md in sorted(rows, key=lambda r: r[3] or "", reverse=True):
+        _NAMES.setdefault(_norm_corp(nm), sc)
+    if VCM is not None:
+        _NAMES_EN["idx"] = VCM.EnNames(rows)
     return _NAMES
 
 
@@ -9968,7 +9975,8 @@ try:
 except Exception as _e:
     VCM = None
     print("밸류체인 모듈 로드 실패:", _e)
-VC_V = 16            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
+VC_V = 17            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
+                     # 17: 줄 조각 난 매출처 문장 · '10% 이상인 거래처는 A 및 종속회사' · 표 칸 안 빈 줄 · 수출 합계 행 · 점유율 표(2026-10-12)
 VC_DIR = os.path.join(CACHE_DIR, "밸류체인")
 VC_LOCK = threading.Lock()
 _VC_PEER = {"at": 0, "cust": {}, "supp": {}, "n": 0}
@@ -9990,10 +9998,25 @@ VC_ALIAS = {
 }
 
 
+def _vc_strip(name):
+    """'(주)' · '본사' · '등' 꼬리, 그리고 '및 종속회사' · '와 그 종속기업' · '및 삼성전자의 해외종속회사' 꼬리(같은 고객이다)를 뗀다."""
+    n = re.sub(r"\(\*+\)|\(주\)|㈜|주식회사|\s*본사$|\s*등$", "", name or "").strip()
+    return VCM.GROUP_TAIL.sub("", n).strip() if VCM is not None else n
+
+
+VC_ETC = re.compile(r"^(?:기타|그\s*외|원재료\s*외|부재료\s*외|원부재료\s*외)(?:\s*(?:원재료|원자재|부재료|원부재료|재료|자재|매입|품목))?(?:\s*등)?$")
+
+
+def _vc_etc(item, suppliers):
+    """'기타' 원재료 줄 — 금액이 커도 지도 카드 뒤로. '기타 반도체'(매입처 있음)는 품목이다."""
+    it = (item or "").strip()
+    return bool(VC_ETC.match(it)) or (it.startswith("기타") and not suppliers)
+
+
 def _vc_key(name):
     """회사 이름 맞추기 — 영문은 소문자 · 공백 · 구두점 제거, 한글은 _norm_corp. 'HICO America Sales & Tech, Inc.' ≈ 'HICO AMERICA SALES & TECH., IN'.
-    별명(VC_ALIAS)이 있으면 그 공식 이름의 키로."""
-    n = re.sub(r"\(\*+\)|\(주\)|㈜|주식회사|\s*본사$|\s*등$", "", name or "").strip()
+    별명(VC_ALIAS)이 있으면 그 공식 이름의 키로. '삼성전자 및 종속회사' = '삼성전자'."""
+    n = _vc_strip(name)
     n = re.sub(r"\b(?:co|ltd|inc|corp|corporation|company|limited|pvt|llc|gmbh|sa|plc)\b\.?", "", n, flags=re.I)
     n = re.sub(r"[\s.,'’&\-·ㆍ/()]", "", n).lower()
     canon = VC_ALIAS.get(n)
@@ -10003,11 +10026,11 @@ def _vc_key(name):
 
 
 def _vc_canon(name):
-    """화면에 적을 이름 — 별명이면 공식 이름, 아니면 적힌 대로."""
-    n = re.sub(r"\(\*+\)|\(주\)|㈜|주식회사|\s*본사$|\s*등$", "", name or "").strip()
+    """화면에 적을 이름 — 별명이면 공식 이름, 아니면 적힌 대로('및 종속회사' 꼬리만 뗀다)."""
+    n = _vc_strip(name)
     k = re.sub(r"\b(?:co|ltd|inc|corp|corporation|company|limited|pvt|llc|gmbh|sa|plc)\b\.?", "", n, flags=re.I)
     k = re.sub(r"[\s.,'’&\-·ㆍ/()]", "", k).lower()
-    return VC_ALIAS.get(k) or name
+    return VC_ALIAS.get(k) or (VCM.GROUP_TAIL.sub("", name or "").strip() if VCM is not None else name)
 
 
 def _vc_extract(c, r):
@@ -10181,15 +10204,23 @@ def valuechain_view(code):
     if not years:
         return {"error": "사업보고서 「사업의 내용」을 못 읽었습니다."}
     names = _listed_names()
+    en_idx = _NAMES_EN.get("idx")
     univ = {x["code"]: x for x in INDEX["companies"]}
+    peers = _vc_peers()
+    me_k = _vc_key(c["name"])
+    # 영문 한 낱말(COSMO)이 수집 회사 여럿과 맞으면 — 나를 고객으로 적은 회사(매입처 쪽) · 나를 매입처로 적은 회사(고객 쪽)로 좁힌다
+    pref_supp = {t[0] for t in peers["cust"].get(me_k, [])}
+    pref_cust = {t[0] for t in peers["supp"].get(me_k, [])}
 
-    def link(nm):
-        """이름 → 수집한 회사 코드(있으면). 별명 표를 거친다. 'Adani' 같은 해외 이름은 못 잇는다.
-        영문만 적힌 이름(KEC · Adani)은 별명 표에 있을 때만 잇는다 — 인도 KEC 가 한국 상장사 KEC 로 이어지던 것을 막는다."""
+    def link(nm, prefer=()):
+        """이름 → 상장사 코드(수집했으면 collected). 별명 표를 거친다.
+        영문만 적힌 이름은 별명 표, 그다음 DART 영문 이름(EnNames — DOOSAN → 두산, COSMO AMT → 코스모신소재)으로.
+        4글자 미만 영문(KEC)은 잇지 않는다 — 인도 KEC 가 한국 상장사 KEC 로 이어지던 것."""
         cn = _vc_canon(nm)
         ascii_only = not re.search(r"[가-힣]", nm or "")
         if ascii_only and cn == nm:
-            return None
+            cd = en_idx.code(nm, univ, prefer) if en_idx is not None else None
+            return {"code": cd, "collected": cd in univ, "name": None} if cd else None
         for cand in (cn, re.sub(r"\(\*+\)|\s*본사$|\(주\)|㈜|주식회사", "", nm or "").strip()):
             cd = names.get(_norm_corp(cand))
             if cd:
@@ -10202,7 +10233,8 @@ def valuechain_view(code):
     for y in years:
         dy = d["years"][y]
         seg_names |= {re.sub(r"\s+", "", v) for v in [x.get("seg") for x in dy.get("customers") or []] +
-                      [m.get("segment") for m in dy.get("materials") or []] + [g.get("segment") for g in dy.get("segments") or []] if v}
+                      [m.get("segment") for m in dy.get("materials") or []] + [g.get("segment") for g in dy.get("segments") or []] +
+                      [p_.get("segment") for p_ in dy.get("products") or []] if v}          # 부문 매출표 행('컴포넌트 49.32')은 고객이 아니다
     for y in years:
         for x in d["years"][y].get("customers") or []:
             if x.get("kind") != "named" or re.sub(r"\s+", "", x["name"]) in seg_names or re.search(r"수주\s*잔|잔고|매출액|당기말|전기말", x["name"]):
@@ -10216,11 +10248,11 @@ def valuechain_view(code):
             h["aka"].add(x["name"])
             h["name"] = _vc_canon(x["name"])
     for h in hist.values():
-        h["link"] = link(h["name"])
+        h["link"] = link(h["name"], pref_cust)
         h["first"], h["last"] = min(h["by_year"]), max(h["by_year"])
         h["pct"] = h["by_year"].get(years[-1])
         h["aka"] = sorted(a for a in h["aka"] if a != h["name"])
-        h["country"] = VCM._country(h["name"]) or h.get("country")
+        h["country"] = "한국" if h["link"] else (VCM._country(h["name"]) or h.get("country"))
     customers = sorted(hist.values(), key=lambda h: (h["last"] != years[-1], -(h["pct"] or 0), -(max(v or 0 for v in h["by_year"].values()))))
     hidden = [x for x in last.get("customers") or [] if x.get("kind") == "hidden"]
     no_major = any(x.get("kind") == "none" for x in last.get("customers") or [])      # 매출 10% 넘는 고객 없음(고루 퍼짐)
@@ -10249,7 +10281,12 @@ def valuechain_view(code):
     for mt in last.get("materials") or []:
         if not mt.get("item") or mt.get("item") == "-" or re.search(r"합\s*계", (mt.get("item") or "") + " " + (mt.get("segment") or "")):
             continue
-        mats.append(dict(mt, suppliers=[dict(sp, link=link(sp["name"])) for sp in mt.get("suppliers") or []]))
+        sps = []
+        for sp in mt.get("suppliers") or []:
+            lk = link(sp["name"], pref_supp)
+            sps.append(dict(sp, link=lk, country="한국" if lk else (VCM._country(sp["name"]) or sp.get("country"))))
+        mats.append(dict(mt, suppliers=sps, etc=_vc_etc(mt.get("item"), sps)))
+    mats.sort(key=lambda m: m["etc"])            # '기타' 원재료는 뒤로(안정 정렬) — 금액이 커서 지도 위 카드 여섯 자리를 둘 넘게 차지했다
     supp_hist = {}
     for y in years:
         for mt in d["years"][y].get("materials") or []:
@@ -10259,13 +10296,13 @@ def valuechain_view(code):
                 h["years"].append(y)
                 if mt.get("item"):
                     h["items"].add(mt["item"])
-    supp_hist = [dict(h, items=sorted(h["items"]), first=min(h["years"]), last=max(h["years"]), link=link(h["name"]), country=VCM._country(h["name"]))
+    supp_hist = [dict(h, items=sorted(h["items"]), first=min(h["years"]), last=max(h["years"]), link=link(h["name"], pref_supp))
                  for h in supp_hist.values()]
+    for h in supp_hist:
+        h["country"] = "한국" if h["link"] else VCM._country(h["name"])
     # 수출 비중 변천
     exp = {y: (d["years"][y].get("export") or {}).get("export_pct") for y in years if d["years"][y].get("export")}
     # 그물망 — 같은 고객을 적은 다른 회사(수혜 연대), 이 회사를 고객 · 매입처로 적은 회사(위 · 아래 이웃)
-    peers = _vc_peers()
-    me_k = _vc_key(c["name"])
     # 같은 그룹(지주 ↔ 자회사: 효성 · 효성중공업 · 효성티앤씨)은 연결 보고로 서로의 고객을 베껴 적는다 — 그물망에서 뺀다
     def _stem(nm):
         s = re.sub(r"\(주\)|㈜|주식회사|홀딩스|지주|그룹|^HS|^HD|^HL", "", nm or "").strip()
