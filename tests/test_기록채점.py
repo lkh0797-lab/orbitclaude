@@ -223,8 +223,9 @@ def test_load_journal_bom_zfill_leader(tmp_path):
     assert c["pattern"] == "" and "track_ret" not in a
 
 
-def _jrow(asof, code, pattern, stage, stop=None, close=100.0):
-    return {"asof": asof, "code": code, "pattern": pattern, "stage": stage, "stop": stop, "close": close}
+def _jrow(asof, code, pattern, stage, stop=None, close=100.0, rule=""):
+    """rule 이 비면 옛 탐지기 기록(2026-10-14 Tech 패턴 초기화 전) — 'tech_legacy' 로 센다."""
+    return {"asof": asof, "code": code, "pattern": pattern, "stage": stage, "stop": stop, "close": close, "rule": rule}
 
 
 def test_stop_target_first_by_closes():
@@ -242,10 +243,11 @@ def test_stop_target_first_by_closes():
             _jrow(D[4], "T3", "vcp", "forming", 90.0),        # 60일 다 지나 열린 채
             _jrow(D[280], "T4", "vcp", "breakout", 90.0),     # 아직 60일 안 됨 — 빼고 센다
             _jrow(D[4], "L", "leader", "")]                   # 손절가 없음 — 빼고 센다
-    tech = M.score([], rows, p, UNIV)["tech"]
+    tech = M.score([], rows, p, UNIV)["tech_legacy"]
     g = {x["key"]: x for x in tech["groups"]}
     a = g["all"]
     assert a["n_exit"] == 3 and a["stop_first"] == 33.33 and a["target_first"] == 33.33
+    assert a["n_nostop"] == 1 and "1건은 뺐다" in a["exit_note"]       # 옛 기록: 예전처럼 빼고 세되 뺀 건수를 적는다
     assert g["stage:breakout"]["n_exit"] == 2 and g["stage:breakout"]["stop_first"] == 50.0
     assert g["pattern:leader"]["n_exit"] == 0 and g["pattern:leader"]["stop_first"] is None
     assert M._evaluate(p, UNIV, "T1", D[4], stop=95.0)["exit"] == "stop"
@@ -278,7 +280,9 @@ def test_tech_groups_rec_avoid_new():
             _jrow(D[4], "F", "flat_base", "failed"),
             _jrow(D[5], "A", "big_value_pullback", "near_pivot"),
             _jrow(D[5], "G", "vcp", "breakout")]
-    tech = M.score([], rows, p, UNIV)["tech"]
+    res = M.score([], rows, p, UNIV)
+    assert res["tech"]["n_obs"] == 0                           # rule 없는 행은 전부 옛 기록
+    tech = res["tech_legacy"]
     g = {x["key"]: x for x in tech["groups"]}
     assert tech["dates"] == [D[4], D[5]]
     assert [x["key"] for x in tech["groups"]][:4] == ["all", "new", "rec", "avoid"]
@@ -288,7 +292,10 @@ def test_tech_groups_rec_avoid_new():
     assert g["avoid"]["n_obs"] == 3                            # 주도주 L · 이격 E · 실패 F
     assert g["pattern:canslim"]["n_obs"] == 2 and g["pattern:big_value_pullback"]["n_obs"] == 2
     assert g["stage:-"]["n_obs"] == 1 and g["stage:-"]["label"] == "단계 · 단계 없음"
-    assert g["pattern:vcp"]["label"] == "패턴 · VCP"
+    assert g["pattern:vcp"]["label"] == "패턴 · VCP (제거된 옛 식)"
+    assert g["rec"]["label"].startswith("옛 권장 셋업(제거된 식)") and g["avoid"]["label"].startswith("옛 피하기 범주")
+    assert tech["legacy"] is True and tech["ref"]["label"] == "옛 패턴 백테스트(제거된 식)"
+    assert "+3.3/+6.7" in tech["ref"]["text"] and "제거" in tech["ref"]["text"]
     assert g["all"]["h"]["5"]["median"] == 0.0 and g["all"]["h"]["5"]["win"] == 0.0
 
 
@@ -320,10 +327,11 @@ def test_run_output_is_json_safe(tmp_path):
     res = M.run(str(p_fwd), str(jp), loader(t), UNIV, today=D[100])
     s = json.dumps(res, ensure_ascii=False, allow_nan=False)
     back = json.loads(s)
-    assert back["value"]["dates"] == [D[4]] and back["tech"]["dates"] == [D[4]]
+    assert back["value"]["dates"] == [D[4]] and back["tech_legacy"]["dates"] == [D[4]]
+    assert back["tech"]["dates"] == [] and back["tech"]["n_obs"] == 0         # rule 칸 없는 일지 = 옛 기록
     assert back["price_last"] == D[100] and back["cutoff"] == D[100]
     assert set(back["value"]["groups"][0]["h"]) == {"5", "20", "60", "120", "250"}
-    assert back["tech"]["groups"][0]["n_obs"] == 1 and back["tech"]["groups"][0]["n_exit"] == 1
+    assert back["tech_legacy"]["groups"][0]["n_obs"] == 1 and back["tech_legacy"]["groups"][0]["n_exit"] == 1
     assert back["value"]["groups"][0]["h"]["5"]["median"] == 2.5
     assert back["notes"] and back["basis"] and back["value"]["ref"]["text"].startswith("저평가 묶음")
     assert M.run(str(tmp_path / "없음"), str(tmp_path / "없음.csv"), loader({}), [])["value"]["groups"][0]["n_obs"] == 0
@@ -350,3 +358,86 @@ def test_invalid_dates_are_ignored(tmp_path):
     (tmp_path / "20261341.json").write_text('{"rows":[{"code":"1"}]}', encoding="utf-8")
     assert M.load_forward(str(tmp_path)) == []
     assert M._d8("20261340") is None and M._d8("2026-10-08") == "20261008"
+
+
+def test_tech_split_current_rule_vs_legacy():
+    """2026-10-14 Tech 패턴 초기화: rule 칸이 있는 행(지금 식)과 없는 행(옛 탐지기)을 섞지 않는다."""
+    t = flat_univ()
+    for c in "ABCV":
+        t[c] = flat()
+    p = M.Prices(loader(t))
+    rows = [_jrow(D[4], "A", "vcp", "breakout", 95.0),                                      # 옛 기록
+            _jrow(D[4], "B", "", ""),                                                       # 옛 기록 — 보컬만 걸린 후보
+            _jrow(D[4], "A", "cup_with_handle", "breakout", rule="cwh_reference_v1.0.0"),  # 같은 날 같은 종목, 새 식
+            _jrow(D[5], "C", "cup_with_handle", "near_pivot", rule="cwh_reference_v1.0.0"),
+            _jrow(D[5], "V", "vocal", "forming", 90.0, rule="vocal")]
+    res = M.score([], rows, p, UNIV)
+    cur, old = res["tech"], res["tech_legacy"]
+    assert cur["n_obs"] == 3 and old["n_obs"] == 2 and cur["dates"] == [D[4], D[5]] and old["dates"] == [D[4]]
+    g = {x["key"]: x for x in cur["groups"]}
+    assert "rec" not in g and "avoid" not in g                       # 새 식은 백테스트 전 — 권장 · 피하기 묶음 없음
+    assert g["pattern:cup_with_handle"]["label"] == "패턴 · 컵 앤 핸들 (사용자 식)"
+    assert g["pattern:vocal"]["label"] == "패턴 · 보컬 (관찰용)"
+    assert g["new"]["n_obs"] == 3                                    # 새 식 첫날 A + 둘째 날 C · V (옛 기록과 비교 안 함)
+    assert cur["legacy"] is False and cur["ref"]["label"] == "지금 식 백테스트"
+    ref = cur["ref"]["text"]
+    assert "컵 앤 핸들(사용자 식): 백테스트 아직 없음" in ref
+    assert "346거래" in ref and "−2.4%" in ref and "승률 31%" in ref        # 보컬은 이미 백테스트됨(손실) — 숨기지 않는다
+    assert "+4.0" not in ref                                          # 옛 식 수치를 새 식에 붙이지 않는다
+    assert res["schema"] == M.SCHEMA == 2
+    go = {x["key"]: x for x in old["groups"]}
+    assert go["pattern:-"]["label"] == "패턴 · " + M.LEGACY_EMPTY
+    assert go["rec"]["n_obs"] == 1 and go["pattern:vcp"]["label"].endswith("(제거된 옛 식)")
+
+
+def test_current_rule_exit_rates_not_mixed_with_no_stop_rows():
+    """지금 식: 컵 앤 핸들(손절 규칙 없음)이 섞인 묶음은 손절 · +20% 먼저 비율을 내지 않는다 — 보컬 몇 건이 전체 비율로 보이지 않게."""
+    t = flat_univ()
+    t["A"], t["C"] = flat(), flat()
+    t["V"] = {d: (100.0 if i <= 5 else 85.0) for i, d in enumerate(D)}       # 보컬 — 손절가 90 아래로
+    p = M.Prices(loader(t))
+    rows = [_jrow(D[4], "A", "cup_with_handle", "breakout", rule="cwh_reference_v1.0.0"),
+            _jrow(D[4], "C", "cup_with_handle", "breakout", rule="cwh_reference_v1.0.0"),
+            _jrow(D[4], "V", "vocal", "breakout", 90.0, rule="vocal")]
+    g = {x["key"]: x for x in M.score([], rows, p, UNIV)["tech"]["groups"]}
+    for k in ("all", "new", "stage:breakout"):
+        assert g[k]["n_exit"] == 1 and g[k]["n_nostop"] == 2, k
+        assert g[k]["stop_first"] is None and g[k]["target_first"] is None and "섞여" in g[k]["exit_note"], k
+    cup = g["pattern:cup_with_handle"]
+    assert cup["stop_first"] is None and cup["exit_note"].startswith("손절 규칙 없음")
+    v = g["pattern:vocal"]
+    assert v["stop_first"] == 100.0 and v["n_nostop"] == 0 and "exit_note" not in v
+
+
+def test_server_hides_cached_result_from_old_scorer(tmp_path, monkeypatch):
+    """서버가 옛 기록채점이 쓴 _result.json(형식 판 schema 없음)을 지금 화면 이름표로 보이지 않고 다시 잰다."""
+    sp = ilu.spec_from_file_location("서버_채점시험", os.path.join(BASE, "서버.py"))
+    srv = ilu.module_from_spec(sp)
+    sp.loader.exec_module(srv)
+    if srv.SCR is None:
+        pytest.skip("서버가 기록채점.py 를 읽지 못함")
+    started = []
+    monkeypatch.setattr(srv, "SCORE_DIR", str(tmp_path))
+    monkeypatch.setattr(srv, "_score_inputs_mtime", lambda: 0.0)
+    monkeypatch.setattr(srv, "_run_score", lambda: started.append(1))
+    f = tmp_path / "_result.json"
+    f.write_text(json.dumps({"tech": {"ref": {"text": "컵 돌파 +3.3/+6.7"}}, "inputs_mtime": 1.0}), encoding="utf-8")
+    monkeypatch.setattr(srv, "SCORE", {"running": False, "at": None, "result": None, "error": None})
+    v = srv.score_view()
+    assert v["result"] is None and v["running"] is True              # 옛 결과는 보이지 않고 다시 잰다
+    f.write_text(json.dumps({"schema": srv.SCR.SCHEMA, "tech": {}, "tech_legacy": {}, "inputs_mtime": 1.0}),
+                 encoding="utf-8")
+    monkeypatch.setattr(srv, "SCORE", {"running": False, "at": None, "result": None, "error": None})
+    v = srv.score_view()
+    assert v["result"]["schema"] == srv.SCR.SCHEMA and v["running"] is False
+
+
+def test_load_journal_reads_rule_column(tmp_path):
+    f = tmp_path / "journal.csv"
+    f.write_text("asof,code,name,market,pattern,stage,pivot,stop,composite,rs,close,value,leader,rule\n"
+                 "2026-10-13,5930,삼성전자,KOSPI,vcp,breakout,1,1,1,1,1,1,False,\n"
+                 "2026-10-14,5930,삼성전자,KOSPI,cup_with_handle,near_pivot,1,,1,1,1,1,False,cwh_reference_v1.0.0\n",
+                 encoding="utf-8-sig")
+    a, b = M.load_journal(str(f))
+    assert a["rule"] == "" and M.is_legacy(a) and b["rule"] == "cwh_reference_v1.0.0" and not M.is_legacy(b)
+    assert b["stop"] is None and b["code"] == "005930"

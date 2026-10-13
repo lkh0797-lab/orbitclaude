@@ -5,6 +5,8 @@
 기록 두 가지:
   저평가 실전 기록  .cache/value/forward/YYYYMMDD.json — 아침 06:30, 장 열기 전에 price_d 까지의 종가로 고른 목록
   Tech 스캔 일지    Tech/output/journal.csv — asof 장 마감 뒤에 쓴 목록(읽기만 한다)
+                    rule 칸이 빈 행은 2026-10-14 Tech 패턴 초기화 전 옛 탐지기 기록 → 'tech_legacy' 로 따로 센다
+                    (지금 식 기록 'tech' 와 섞지 않는다 — 옛 백테스트 수치는 옛 기록에만 붙인다).
 
 규칙(저장소 백테스트와 같게):
   진입   기록 기준일 다음 거래일 종가. 거래일 = 그 종목 자기 주가 날짜.
@@ -13,7 +15,9 @@
   지금   마지막 종가 / 진입 − 1, 진입 뒤 1거래일 이상 지난 것만.
   초과   같은 기간(진입일 종가 → 같은 끝날 종가) 벤치마크 종목들 수익률 중앙값을 뺀 값.
   손절   Tech 기록 중 손절가가 있는 것 — 진입 뒤 60거래일 안에서 종가가 손절가 이하로 먼저 닫혔나,
-         진입 × 1.20 이상으로 먼저 닫혔나(종가 기준).
+         진입 × 1.20 이상으로 먼저 닫혔나(종가 기준). 지금 식 기록은 손절가 없는 기록(컵 앤 핸들 사용자 식 — 손절 규칙 없음)이
+         하나라도 섞인 묶음의 비율을 내지 않는다(exit_note) — 섞어 내면 보컬 몇 건의 비율이 묶음 전체 비율로 보인다.
+         옛 기록은 예전처럼 손절가 있는 것만 세고 뺀 건수를 적는다.
 
 주가는 밖에서 넣어 준다(Prices(load)) — 이 모듈은 주가 파일을 직접 읽지 않는다.
 """
@@ -37,9 +41,20 @@ V_TIER, O_TIER = "저평가", "관찰"
 
 VALUE_REF = {"label": "백테스트 기대(README)",
              "text": "저평가 묶음 12개월(250일) 초과 중앙 +3.3%, 이긴 비율 54%, −30% 이하 12%"}
-TECH_REF = {"label": "Tech 백테스트",
-            "text": "Tech 백테스트(2024-09~2026-10, 같은 날 무작위 대비 20/60일): "
-                    "300억 눌림목 첫 진입 +4.0/+9.3 · VCP 돌파 +2.9/+5.7 · 컵 돌파 +3.3/+6.7 — 손절 · 비용 전"}
+# 2026-10-14 Tech 패턴 초기화: 옛 탐지기(VCP · 옛 컵 · CAN SLIM · 300억 눌림목 · 주도주 …)를 지우고 사용자 식 컵 앤 핸들
+# (cwh_reference_v1.0.0)과 보컬(관찰)만 남겼다. 일지의 rule 칸이 빈 행 = 옛 탐지기 기록 — 지우지 않고 따로 센다.
+RESET_DAY = "2026-10-14"
+# 결과 형식 판 — 서버가 캐시(.cache/score/_result.json)의 schema 가 이것과 다르면 옛 코드가 쓴 결과로 보고 보이지 않고 다시 잰다
+# (2 = 패턴 초기화: tech / tech_legacy 분리 · 지금 식 손절 비율 규칙). 형식을 바꾸면 올린다.
+SCHEMA = 2
+TECH_REF = {"label": "지금 식 백테스트",
+            "text": "컵 앤 핸들(사용자 식): 백테스트 아직 없음 · 보컬(관찰용): 기업추적 보컬 백테스트(2013~2026 눌림목) "
+                    "346거래 거래당 −2.4% · 승률 31% · 20일 초과 중앙 −4.8%p(손실) — 옛 패턴 수치는 아래 옛 기록에만 "
+                    "(" + RESET_DAY + " 패턴 초기화)"}
+TECH_LEGACY_REF = {"label": "옛 패턴 백테스트(제거된 식)",
+                   "text": "Tech 백테스트(2024-09~2026-10, 같은 날 무작위 대비 20/60일): "
+                           "300억 눌림목 첫 진입 +4.0/+9.3 · VCP 돌파 +2.9/+5.7 · 컵 돌파 +3.3/+6.7 — 손절 · 비용 전. "
+                           "이 탐지기들은 %s 제거 — 지금 차트 발굴 칩과 다른 식" % RESET_DAY}
 
 BASIS = ("진입 = 기록 기준일 다음 거래일 종가(실전 기록은 파일 쓴 날보다 앞서지 않게) · "
          "수익률 = 진입 뒤 5/20/60/120/250 거래일 종가(분할 보정) · "
@@ -55,15 +70,18 @@ NOTES = [
     "주가가 30일 넘게 끊긴 종목(거래 정지 · 상장폐지)은 끊긴 날 종가로 끝난 것으로 센다 — 묶음마다 '끊김' 수를 적는다.",
 ]
 
-PATTERN_KO = {"big_value_pullback": "300억 눌림목", "vcp": "VCP", "cup_handle": "컵 손잡이",
-              "leader": "주도주", "canslim": "CAN SLIM", "long_base_breakout": "긴 바닥 돌파",
-              "flat_base": "평평한 바닥", "double_bottom": "쌍바닥", "three_weeks_tight": "3주 횡보",
-              "": "패턴 없음"}
+PATTERN_KO = {"cup_with_handle": "컵 앤 핸들 (사용자 식)", "vocal": "보컬 (관찰용)", "": "패턴 없음"}
+# 옛 탐지기 기록의 패턴 이름 — 지금 식과 헷갈리지 않게 '(제거된 옛 식)'을 붙인다
+LEGACY_PATTERN_KO = {"big_value_pullback": "300억 눌림목", "vcp": "VCP", "cup_handle": "컵 손잡이",
+                     "leader": "주도주", "canslim": "CAN SLIM", "long_base_breakout": "긴 바닥 돌파",
+                     "flat_base": "평평한 바닥", "double_bottom": "쌍바닥", "three_weeks_tight": "3주 횡보",
+                     "high_tight_flag": "하이 타이트 플래그", "pocket_pivot": "포켓 피벗"}
+LEGACY_EMPTY = "패턴 없음 (옛 기록 — 보컬만 걸린 후보도 여기에 섞임)"
 STAGE_KO = {"breakout": "돌파", "near_pivot": "피벗 근처", "forming": "만드는 중",
             "extended": "이격 과다", "failed": "실패", "": "단계 없음"}
 STAGE_ORDER = ("breakout", "near_pivot", "forming", "extended", "failed", "")
 
-J_TEXT = ("name", "market", "pattern", "stage")
+J_TEXT = ("name", "market", "pattern", "stage", "rule")
 J_NUM = ("pivot", "stop", "composite", "rs", "close", "value")
 
 
@@ -326,7 +344,14 @@ def _dedupe(obs):
     return out
 
 
-def _group(key, label, obs, with_exit=False):
+def _has_stop(row):
+    s = (row or {}).get("stop")
+    return isinstance(s, (int, float)) and s > 0
+
+
+def _group(key, label, obs, with_exit=False, strict_exit=False):
+    """strict_exit: 손절가 없는 기록이 하나라도 섞인 묶음은 손절 먼저 · +20% 먼저를 내지 않는다(지금 식 기록 —
+    컵 앤 핸들 사용자 식은 손절 규칙이 없어, 섞어 내면 보컬 몇 건의 비율이 묶음 전체 비율로 보인다)."""
     obs = _dedupe(obs)
     n_all = len(obs)
     evs = [o["ev"] for o in obs if o["ev"]]
@@ -337,9 +362,18 @@ def _group(key, label, obs, with_exit=False):
     if with_exit:
         done = [e["exit"] for e in evs if e["exit"] and e["exit_done"]]
         m = len(done)
+        nostop = sum(1 for o in obs if not _has_stop(o.get("row")))
         g["n_exit"] = m
+        g["n_nostop"] = nostop
         g["stop_first"] = round(100.0 * done.count("stop") / m, 2) if m else None
         g["target_first"] = round(100.0 * done.count("target") / m, 2) if m else None
+        if nostop and strict_exit:
+            g["stop_first"] = g["target_first"] = None
+            g["exit_note"] = ("손절 규칙 없음 — 이 묶음 기록에는 손절가가 없다(컵 앤 핸들 사용자 식)" if nostop == n_all
+                              else "손절가 없는 기록 %d건(손절 규칙 없는 식)이 섞여 이 묶음 비율은 내지 않음 — "
+                                   "손절가 있는 패턴(보컬) 줄 참고" % nostop)
+        elif nostop:
+            g["exit_note"] = "손절가 있는 기록만 셈 — 손절가 없는 %d건은 뺐다" % nostop
     return g
 
 
@@ -461,6 +495,7 @@ def _value_part(snaps, prices, univ, cutoff, glast=None):
 
 
 def _is_rec(r):
+    """옛 권장 셋업 — 옛 탐지기(제거됨)의 백테스트로 고른 묶음. 옛 기록에만 쓴다."""
     p, s = r.get("pattern"), r.get("stage")
     return (p == "big_value_pullback" and s in ("breakout", "near_pivot")) or \
            (p in ("vcp", "cup_handle") and s == "breakout")
@@ -470,7 +505,14 @@ def _is_avoid(r):
     return r.get("stage") in ("extended", "failed") or r.get("pattern") == "leader"
 
 
-def _tech_part(rows, prices, univ, cutoff, glast=None):
+def is_legacy(r):
+    """rule 칸이 빈 일지 행 = 2026-10-14 패턴 초기화 전 옛 탐지기 기록."""
+    return not (r.get("rule") or "").strip()
+
+
+def _tech_part(rows, prices, univ, cutoff, glast=None, legacy=False):
+    """Tech 일지 묶음. legacy=True 면 옛 탐지기 기록 — 옛 권장 · 피하기 묶음과 옛 백테스트 비교를 '제거된 옛 식'으로 붙인다.
+    지금 식 기록에는 권장 · 피하기 묶음을 만들지 않는다(그 식으로 잰 백테스트가 아직 없다)."""
     by_date = {}
     for r in rows:
         d = _d8(r.get("asof"))
@@ -486,22 +528,34 @@ def _tech_part(rows, prices, univ, cutoff, glast=None):
             obs_all.append({"code": code, "date": d, "row": r, "ev": ev,
                             "new": prev is None or code not in prev})
         prev = cur
-    groups = [_group("all", "전체", obs_all, True),
-              _group("new", "새로 들어온 날만", [o for o in obs_all if o["new"]], True),
-              _group("rec", "권장 셋업: 300억 눌림목 · VCP · 컵 돌파", [o for o in obs_all if _is_rec(o["row"])], True),
-              _group("avoid", "피하기 범주: 이격 과다 · 실패 · 주도주", [o for o in obs_all if _is_avoid(o["row"])], True)]
+
+    def grp(key, label, obs):          # 지금 식 기록은 손절가 없는 기록이 섞인 묶음의 손절 비율을 내지 않는다
+        return _group(key, label, obs, True, strict_exit=not legacy)
+
+    groups = [grp("all", "전체", obs_all),
+              grp("new", "새로 들어온 날만", [o for o in obs_all if o["new"]])]
+    if legacy:
+        groups += [grp("rec", "옛 권장 셋업(제거된 식): 300억 눌림목 · VCP · 컵 돌파",
+                       [o for o in obs_all if _is_rec(o["row"])]),
+                   grp("avoid", "옛 피하기 범주(제거된 식): 이격 과다 · 실패 · 주도주",
+                       [o for o in obs_all if _is_avoid(o["row"])])]
     pc = Counter((o["row"].get("pattern") or "") for o in obs_all)
     for p, _ in sorted(pc.items(), key=lambda kv: (-kv[1], kv[0])):
-        groups.append(_group("pattern:" + (p or "-"), "패턴 · " + PATTERN_KO.get(p, p),
-                             [o for o in obs_all if (o["row"].get("pattern") or "") == p], True))
+        if legacy:
+            name = (LEGACY_PATTERN_KO.get(p, p) + " (제거된 옛 식)") if p else LEGACY_EMPTY
+        else:
+            name = PATTERN_KO.get(p, p)
+        groups.append(grp("pattern:" + (p or "-"), "패턴 · " + name,
+                          [o for o in obs_all if (o["row"].get("pattern") or "") == p]))
     sc = Counter((o["row"].get("stage") or "") for o in obs_all)
     for s in sorted(sc, key=lambda x: (STAGE_ORDER.index(x) if x in STAGE_ORDER else 99, x)):
-        groups.append(_group("stage:" + (s or "-"), "단계 · " + STAGE_KO.get(s, s),
-                             [o for o in obs_all if (o["row"].get("stage") or "") == s], True))
+        groups.append(grp("stage:" + (s or "-"), "단계 · " + STAGE_KO.get(s, s),
+                          [o for o in obs_all if (o["row"].get("stage") or "") == s]))
     uniq = _dedupe(obs_all)
     return {"dates": dates, "n_codes": len({o["code"] for o in uniq}),
             "n_obs": len(uniq), "n_noprice": sum(1 for o in uniq if o["ev"] is None),
-            "groups": groups, "ref": dict(TECH_REF)}
+            "groups": groups, "ref": dict(TECH_LEGACY_REF if legacy else TECH_REF),
+            "legacy": bool(legacy)}
 
 
 def score(forward_snaps, journal_rows, prices, universe_codes, today=None):
@@ -515,13 +569,15 @@ def score(forward_snaps, journal_rows, prices, universe_codes, today=None):
     if cutoff and glast and glast > cutoff:
         glast = cutoff
     value = _value_part(forward_snaps or [], prices, univ, cutoff, glast)
-    tech = _tech_part(journal_rows or [], prices, univ, cutoff, glast)
+    jr = journal_rows or []
+    tech = _tech_part([r for r in jr if not is_legacy(r)], prices, univ, cutoff, glast)
+    tech_legacy = _tech_part([r for r in jr if is_legacy(r)], prices, univ, cutoff, glast, legacy=True)
     last = prices.last
     if cutoff and last and last > cutoff:
         last = cutoff
-    return {"at": dt.datetime.now().isoformat(timespec="seconds"), "cutoff": cutoff,
+    return {"schema": SCHEMA, "at": dt.datetime.now().isoformat(timespec="seconds"), "cutoff": cutoff,
             "basis": BASIS, "price_last": last, "horizons": list(HORIZONS),
-            "value": value, "tech": tech, "notes": list(NOTES)}
+            "value": value, "tech": tech, "tech_legacy": tech_legacy, "notes": list(NOTES)}
 
 
 def run(fwd_dir, journal_path, price_load, universe_codes, today=None):

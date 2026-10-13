@@ -10743,17 +10743,21 @@ def _run_score():
 def score_view(force=False):
     if SCR is None:
         return {"error": "기록채점.py 를 읽지 못했습니다"}
+    schema = getattr(SCR, "SCHEMA", None)
     with SCORE_LOCK:
         if SCORE["result"] is None and not SCORE["running"]:
             try:
                 p = os.path.join(SCORE_DIR, "_result.json")
                 with open(p, "r", encoding="utf-8") as fh:
-                    SCORE.update(result=json.load(fh), at=os.path.getmtime(p))
+                    cached = json.load(fh)
+                # 옛 기록채점이 쓴 결과(형식 판이 다름 — 예: 2026-10-14 패턴 초기화 전)는 지금 화면 이름표로 보이지 않는다
+                if isinstance(cached, dict) and cached.get("schema") == schema:
+                    SCORE.update(result=cached, at=os.path.getmtime(p))
             except (OSError, ValueError):
                 pass
         res = SCORE["result"]
         stale = force or res is None or time.time() - (SCORE["at"] or 0) > SCORE_MAX_AGE \
-            or _score_inputs_mtime() > (res or {}).get("inputs_mtime", 0)
+            or _score_inputs_mtime() > (res or {}).get("inputs_mtime", 0) or (res or {}).get("schema") != schema
         if stale and not SCORE["running"]:
             SCORE["running"] = True
             threading.Thread(target=_run_score, daemon=True).start()
