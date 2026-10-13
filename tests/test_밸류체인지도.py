@@ -808,7 +808,7 @@ def test_ev_objects_carry_sources_and_links():
     f = s["ev"]["fund"][0]
     assert f["t"] == "확장 가속 · 가속B +23.5 · OPM 17.5% (2026Q2)" and f["go"] == {"tab": "druck"} and f["date"] == "20260813" and "v4" in f["src"] and "옛 판" in f["src"]
     a = s["ev"]["attn"]
-    assert a[1]["t"] == "리포트 목표가 평균 190,000원 → +27%" and a[1]["src"] == "증권사 5곳 180일 증권사별 최신 목표가 평균" and a[1]["go"] == {"tab": "rep"}   # n 은 증권사 곳 수
+    assert a[1]["t"] == "리포트 목표가 평균 190,000원 → +27%" and a[1]["src"] == "증권사 5곳 180일 증권사별 최신 목표가 평균(미표기 글은 같은 값이면 한 집 · 중앙값 3배 밖 제외)" and a[1]["go"] == {"tab": "rep"}   # n 은 집 수
     assert s["ev"]["lag"] == [{"t": "3개월 수익률 백분위 87 (주도주 45) · 52주 고점 대비 -17.4%", "src": SRCS["xs"]}]      # 날짜는 출처 줄에
     assert s["ev"]["safe"] == [{"t": "위험 꼬리표 없음", "src": "공시위험 · KIS 종목 상태 20261013"}]          # 두 기준일이 같으면 한 번만
     e = s["expl"]
@@ -1035,9 +1035,11 @@ def test_upside_detail_counts_reports_and_brokers():
     rows = [{"date": "2026-10-01", "tp": 100, "broker": "A"}, {"date": "2026-09-01", "tp": 80, "broker": "A"}, {"date": "2026-09-15", "tp": 120, "broker": "B"},
             {"date": "2026-01-01", "tp": 50, "broker": "C"}, {"date": "2026-10-02", "broker": "D"}]
     u = M.upside_detail(rows, 100.0, "2026-04-15")
-    assert u == {"up": 10.0, "n": 2, "reps": 3, "avg": 110}                      # 증권사 2곳(A 최신 100 · B 120) · 목표가 적힌 글 3건
+    # 증권사 2곳(A 최신 100 · B 120) · 목표가 적힌 글 3건. 리포트 당시 주가(closes · 카드 현재가)가 없으면 up_at None (리포트.consensus 와 하나 — 2026-10-13)
+    assert u == {"up": 10.0, "n": 2, "reps": 3, "avg": 110, "med": 110, "up_at": None, "asof": "2026-10-01"}
     s = M.score(_c(themes=["x"]), lead_p3=45, px={"p3": 50, "dd": -1.0}, ph=None, up=u, lead_name="가", name="나", srcs=SRCS)
-    assert s["ev"]["attn"][1]["src"] == "리포트 3건 · 증권사 2곳 180일 증권사별 최신 목표가 평균"
+    assert s["ev"]["attn"][1]["src"] == "리포트 3건 · 증권사 2곳 180일 증권사별 최신 목표가 평균(미표기 글은 같은 값이면 한 집 · 중앙값 3배 밖 제외)"
+    assert s["ev"]["attn"][1]["date"] == "20261001"                              # ev() 가 날짜를 8자리로 맞춘다
 
 
 def _yr(stamp, label, rcept, customers=None, materials=None, products=None, partial=False):

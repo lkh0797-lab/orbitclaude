@@ -12544,7 +12544,13 @@ function repCompany(p,d,c){
   // 신호
   const sig=el('div','vcSig'); const card=(tone,l,b,s)=>{ const x=el('div','vcSigC '+(tone||'')); x.appendChild(el('span','l',l)); const v=el('div','v'); v.appendChild(el('b',null,b)); x.appendChild(v); if(s) x.appendChild(el('span','s',s)); sig.appendChild(x); };
   card('','최근 180일 리포트',d.n180+'건',d.brokers+'개 증권사'+(d.no_broker?' · 증권사 미표기 '+d.no_broker+'건':''));
-  if(d.tp_avg) card(d.upside>=15?'up':d.upside<0?'dn':'','평균 목표주가',Math.round(d.tp_avg).toLocaleString('ko-KR')+'원',(d.price?'현재가 '+Math.round(d.price).toLocaleString('ko-KR')+'원 · 괴리 '+(d.upside>=0?'+':'')+d.upside.toFixed(0)+'%':'')+(d.tp_max&&d.tp_min&&d.tp_max!==d.tp_min?' · 범위 '+d.tp_min.toLocaleString('ko-KR')+'~'+d.tp_max.toLocaleString('ko-KR'):''));
+  // 평균 = 증권사별 최신 목표가(미표기 카드는 같은 값이면 한 집) · 중앙값 3배 밖은 뺌. 목표가 뒤 주가가 크게 움직였으면 '리포트 당시' 괴리도(LG이노텍 2026-10 급락: +141% vs 당시 +80%대)
+  if(d.tp_avg) card(d.upside>=15?'up':d.upside<0?'dn':'','평균 목표주가'+(d.tp_n?' · '+d.tp_n+'곳':''),Math.round(d.tp_avg).toLocaleString('ko-KR')+'원',
+    (d.price&&d.upside!=null?'현재가 '+Math.round(d.price).toLocaleString('ko-KR')+'원 · 괴리 '+(d.upside>=0?'+':'')+d.upside.toFixed(0)+'%':'')
+    +(d.upside_at!=null&&d.upside!=null&&Math.abs(d.upside_at-d.upside)>=15?' (리포트 당시 주가 대비 '+(d.upside_at>=0?'+':'')+d.upside_at.toFixed(0)+'% — 목표가 뒤 주가가 '+(d.upside>d.upside_at?'내렸다':'올랐다')+')':'')
+    +(d.tp_med&&Math.round(d.tp_med)!==Math.round(d.tp_avg)?' · 중앙 '+Math.round(d.tp_med).toLocaleString('ko-KR'):'')
+    +(d.tp_max&&d.tp_min&&d.tp_max!==d.tp_min?' · 범위 '+d.tp_min.toLocaleString('ko-KR')+'~'+d.tp_max.toLocaleString('ko-KR'):'')
+    +((d.tp_dropped||[]).length?' · 중앙값 3배 밖 '+d.tp_dropped.length+'건 뺌':''));
   const ops=Object.entries(d.opinions||{}).sort((a,b)=>b[1]-a[1]); if(ops.length) card('','투자의견(180일)',ops[0][0]+' '+ops[0][1]+'건',ops.slice(1).map(o=>o[0]+' '+o[1]).join(' · ')||'');
   const ups=(d.latest||[]).filter(x=>x.tp_prev&&x.tp>x.tp_prev).length, dns=(d.latest||[]).filter(x=>x.tp_prev&&x.tp<x.tp_prev).length;
   if(ups||dns) card(ups>dns?'up':dns>ups?'dn':'','목표가 바꾼 증권사','▲ '+ups+' · ▼ '+dns,'증권사마다 가장 최근 리포트 기준');
@@ -12611,6 +12617,7 @@ function repFill(r,head,body,foot){
     const cell=(l,v,cls)=>{ const c=el('div','c'+(cls?' '+cls:'')); c.appendChild(el('span',null,l)); c.appendChild(el('b',null,v)); st.appendChild(c); };
     if(r.opinion) cell('투자의견',r.opinion,/Buy/.test(r.opinion)?'buy':/Sell/.test(r.opinion)?'sell':'');
     if(r.tp) cell('목표주가',(r.tp_prev&&r.tp_prev!==r.tp?r.tp_prev.toLocaleString('ko-KR')+' → ':'')+r.tp.toLocaleString('ko-KR')+'원'+(r.change?' · '+r.change:''),/상향/.test(r.change||'')?'up':/하향/.test(r.change||'')?'dn':'');
+    else if(r.tp_raw) cell('목표주가(의심)',r.tp_raw.toLocaleString('ko-KR')+'원 — 주가와 5배 넘게 어긋나 평균에서 뺌(다른 종목 · 자릿수 · 분할 전 값)','');
     if(r.price_at) cell('리포트 당시 주가',r.price_at.toLocaleString('ko-KR')+'원');
     if(r.price_at&&r.tp){ const u=(r.tp/r.price_at-1)*100; cell('상승여력',(u>=0?'+':'')+u.toFixed(0)+'%',u>=0?'up':'dn'); }
     head.appendChild(st); }

@@ -9,7 +9,7 @@ import bisect
 import datetime as dt
 from collections import Counter
 
-V = 4                     # 2: 근거마다 출처 객체(ev) · 설명 문장(expl) · 과거 공급망 · 같은 고객 · 건전성 차감 · 트리거 문장 자르기(2026-10-13 2차 개선)
+V = 5                     # 2: 근거마다 출처 객체(ev) · 설명 문장(expl) · 과거 공급망 · 같은 고객 · 건전성 차감 · 트리거 문장 자르기(2026-10-13 2차 개선) · 5: 상승여력 = 리포트.consensus(미표기 중복 · 3배 밖 제외) + 리포트 당시 주가 대비
                           # 3: 설명 문장 손질 — 조사는 끝소리로(3으로 · MLCC를 · 나노엔텍과), 리포트 건수 되풀이 안 함, 주목 · 위험 문장에 서술어, 매입 · 매출 비중 말(2026-10-13 통합)
                           # 4: 비중은 무엇의 몫인지 표 꼴대로(부문 · 매입처마다 한 줄인 표), 과거 공급망 해 목록(2021 · 2024년), 같은 제품 비중은 표 값만(금액 비율은 '추정'),
                           #    목표가 출처는 증권사 곳 수, 매출처 줄에서 품목 뺌(2026-10-13 3차 손질)
@@ -1234,25 +1234,36 @@ def phase_of(druck, cur_v=None):
             "yoy": r1(p.get("매출YoY")), "old": cur_v is not None and druck.get("v") != cur_v, "v": druck.get("v"), "asof": p.get("기준일")}
 
 
-def upside_detail(rows, px, since):
-    """증권사마다 최신 목표가(since 이후)의 평균 vs 지금 주가 → {up: 상승여력 %, n: 증권사 수, reps: 목표가 적힌 글 수, avg: 목표가 평균}
-    (reports_view 와 같은 식, 주가만 단면에서). n 은 증권사 곳 수(증권사 미표기 글은 글마다 하나) — 리포트 건수가 아니다. 없으면 None."""
-    latest, reps = {}, 0
-    for r in rows or ():
-        if (r.get("date") or "")[:10] < since or not r.get("tp"):
-            continue
-        reps += 1
-        b = r.get("broker") or ("미표기 · %s %s" % ((r.get("date") or "")[5:10], (r.get("title") or "")[:14]))
-        latest.setdefault(b, r["tp"])
-    if not latest or not px:
+def upside_detail(rows, px, since, closes=None):
+    """증권사마다 최신 목표가(since 이후)의 평균 vs 지금 주가 → {up: 상승여력 %, n: 집 수, reps: 목표가 적힌 글 수, avg · med: 목표가 평균 · 중앙,
+    up_at: 리포트 당시 주가 대비 상승여력 평균, asof: 최신 목표가 날짜}. 리포트.consensus 와 같은 식(reports_view 와 하나) — 증권사 미표기 글은 같은 목표가면
+    한 집, 중앙값 3배 밖은 뺌. closes = {YYYYMMDD: 종가}(캐시). n 은 집 수 — 리포트 건수가 아니다. 없으면 None."""
+    if not px:
         return None
-    avg = sum(latest.values()) / len(latest)
-    return {"up": round((avg / px - 1) * 100, 1), "n": len(latest), "reps": reps, "avg": int(round(avg))}
+    try:
+        import 리포트 as REP
+        cs = REP.consensus(rows, px, since, closes)
+    except ImportError:                                            # 리포트.py 없이 쓸 때 — 예전 식(증권사마다 최신 하나)
+        latest, reps = {}, 0
+        for r in rows or ():
+            if (r.get("date") or "")[:10] < since or not r.get("tp"):
+                continue
+            reps += 1
+            b = r.get("broker") or ("미표기 · %s %s" % ((r.get("date") or "")[5:10], (r.get("title") or "")[:14]))
+            latest.setdefault(b, r["tp"])
+        if not latest:
+            return None
+        avg = sum(latest.values()) / len(latest)
+        return {"up": round((avg / px - 1) * 100, 1), "n": len(latest), "reps": reps, "avg": int(round(avg)), "med": None, "up_at": None, "asof": None}
+    if not cs:
+        return None
+    return {"up": round(cs["up"], 1), "n": cs["n"], "reps": cs["reps"], "avg": int(round(cs["avg"])), "med": int(round(cs["med"])),
+            "up_at": round(cs["up_at"], 1) if cs.get("up_at") is not None else None, "asof": cs.get("asof")}
 
 
-def upside(rows, px, since):
+def upside(rows, px, since, closes=None):
     """상승여력 % 만(upside_detail 의 up)."""
-    d = upside_detail(rows, px, since)
+    d = upside_detail(rows, px, since, closes)
     return d["up"] if d else None
 
 
@@ -1463,9 +1474,11 @@ def score(c, *, lead_p3=None, px=None, ph=None, n_rep=0, up=None, risk=None, kis
                             "리포트 탭 — 텔레그램 증권사 채널(180일)" if n_rep else "180일 리포트 캐시에 이 회사 글 없음", None, None, {"tab": "rep"} if n_rep else None))
     ud = up if isinstance(up, dict) else ({"up": up} if up is not None else None)
     if ud and ud.get("up") is not None:
-        E["attn"].append(ev("리포트 목표가 평균%s → %+.0f%%" % (" {:,}원".format(ud["avg"]) if ud.get("avg") else "", ud["up"]),
-                            "%s180일 증권사별 최신 목표가 평균" % ((("리포트 %d건 · " % ud["reps"]) if ud.get("reps") else "") + ("증권사 %d곳 " % ud["n"] if ud.get("n") else "")),
-                            None, None, {"tab": "rep"}))         # n 은 증권사 곳 수 — '리포트 n건'이라 적으면 글 수(LG이노텍 30건 · 19곳)와 어긋난다
+        E["attn"].append(ev("리포트 목표가 평균%s → %+.0f%%" % (" {:,}원".format(ud["avg"]) if ud.get("avg") else "", ud["up"])
+                            + (" (리포트 당시 주가 대비 %+.0f%%)" % ud["up_at"] if ud.get("up_at") is not None and abs(ud["up_at"] - ud["up"]) >= 15 else ""),
+                            "%s180일 증권사별 최신 목표가 평균(미표기 글은 같은 값이면 한 집 · 중앙값 3배 밖 제외)" % (
+                                (("리포트 %d건 · " % ud["reps"]) if ud.get("reps") else "") + ("증권사 %d곳 " % ud["n"] if ud.get("n") else "")),
+                            ud.get("asof"), None, {"tab": "rep"}))         # n 은 집 수 — '리포트 n건'이라 적으면 글 수(LG이노텍 30건 · 10곳)와 어긋난다
         if ud["up"] >= 30:
             attn = min(5, attn + 1)
     # 덜 오름
@@ -1537,6 +1550,8 @@ def explain(name, lead, c, phr, ph, px, lead_p3, n_rep, ud, safe_items, S):
     upc = ""
     if ud and ud.get("up") is not None:
         upc = ("리포트 목표가 평균 {:,}원 기준 ".format(ud["avg"]) if ud.get("avg") else "리포트 목표가 평균 기준 ") + "상승여력은 %+.0f%%다" % ud["up"]
+        if ud.get("up_at") is not None and abs(ud["up_at"] - ud["up"]) >= 15:        # 목표가 뒤 주가가 크게 움직였다 — 당시 수치도 적어 둔다
+            upc = upc[:-1] + "(리포트 당시 주가 대비는 %+.0f%% — 목표가 뒤 주가가 %s)" % (ud["up_at"], "내렸다" if ud["up"] > ud["up_at"] else "올랐다")
     said = any("함께 언급됐다" in p for p in phr[:2])
     glnote = ("180일 글 %d건 중" % n_rep) if n_rep else "180일 글 없음"
     if c["rep_n"] and not said:

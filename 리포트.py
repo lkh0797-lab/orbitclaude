@@ -18,6 +18,8 @@ import os
 import re
 import json
 import time
+import bisect
+import statistics
 import datetime as dt
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -25,7 +27,7 @@ STORE_DIR = os.path.join(BASE, ".cache", "리포트")
 STATE_PATH = os.path.join(STORE_DIR, "_state.json")
 SESSION_DIR = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "기업추적")
 SESSION = os.path.join(SESSION_DIR, "telegram")          # Telethon 이 .session 을 붙인다
-RULE_V = 9                                               # 읽는 규칙이 바뀌면 올린다 — 쌓아 둔 원문을 다시 읽는다
+RULE_V = 10                                              # 읽는 규칙이 바뀌면 올린다 — 쌓아 둔 원문을 다시 읽는다. 10: 목표가 단위(만원) · 낱말 경계 · 다른 회사 줄 · 주가 대비 상한(2026-10-13)
 
 BROKERS = [
     ("미래에셋증권", r"미래에셋"), ("삼성증권", r"삼성증권|SAMSUNG\s*SEC|삼성\s*리서치|\[SAMSUNG\]"), ("한국투자증권", r"한국투자|한투증권|KIS\b"),
@@ -57,8 +59,15 @@ OPINION = re.compile(r"(?<![A-Za-z])(Strong\s*Buy|Trading\s*Buy|Buy|Outperform|O
 OP_NORM = [("Buy", r"strong\s*buy|^buy$|매수|outperform|overweight"), ("Trading Buy", r"trading\s*buy"), ("Hold", r"hold|중립|neutral|market\s*perform|marketperform"),
            ("Sell", r"sell|매도|underperform|underweight|reduce"), ("NR", r"not\s*rated|^nr$")]
 NUM = r"(\d{1,3}(?:,\d{3})+|\d{4,7})"
-TP_RX = re.compile(r"(?:목표\s*주?\s*가|적정\s*주가|TP|T\.P\.?|Target\s*Price|목표가)\s*(?:\(\s*원\s*\))?\s*[:：]?\s*(?:₩|KRW\s*)?" + NUM + r"\s*(?:원|KRW)?", re.I)
-TP_MOVE = re.compile(NUM + r"\s*원?\s*(?:→|->|⇒|에서)\s*" + NUM + r"\s*원?")
+# 목표가 숫자(세 그룹: 원 · 만원 · 천원) — '1,300,000원' · '130만원' · '4.5만원' · '1,300천원'. 뒤에 년 · 대 · 개 · % 가 붙은 수('2028년' · '머신 1,610대')는 목표가가 아니다
+TPNUM = (r"(?:(\d{1,3}(?:,\d{3})+|\d{4,7})(?![\d,.])(?!\s*(?:년|대|개|명|%|천|만|억|조|달러|\$|bp|배))"
+         r"|(\d{1,4}(?:\.\d{1,2})?)\s*만\s*원?|(\d{1,3}(?:,\d{3})?)\s*천\s*원)")
+# 'TP' 는 낱말로만 — 'STP0404(에이즈)' 의 TP 가 아니다
+TP_HEAD = r"(?<![A-Za-z0-9])(?:목표\s*주?\s*가|적정\s*주가|TP|T\.P\.?|Target\s*Price|목표가)(?![A-Za-z])"
+TP_RX = re.compile(TP_HEAD + r"\s*(?:\(\s*원\s*\))?\s*[:：]?\s*(?:₩|KRW\s*)?" + TPNUM + r"\s*(?:원|KRW)?", re.I)
+TP_MOVE = re.compile(TPNUM + r"\s*원?\s*(?:→|->|⇒|에서)\s*" + TPNUM + r"\s*원?")
+TP_BAND = (0.2, 5.0)        # 목표가 ÷ 주가(카드 현재가 · 없으면 그날 종가) 가 이 밖이면 다른 종목 목표가 · 자릿수 오류 · 분할 전 값 — 비운다(tp_raw 에 남김). 통신장비 담당의 4~5배 목표가는 안
+OUTLIER_X = 3.0             # 증권사별 최신 목표가 중앙값의 3배 밖(⅓ 아래)은 평균에서 뺀다(3곳 이상일 때)
 CHANGE = re.compile(r"(상향|하향|유지|신규|커버리지\s*개시|Initiat|Upgrade|Downgrade|Maintain)", re.I)
 CODE_RX = re.compile(r"(?<![\d])A?(\d{6})(?![\d])")
 URL_RX = re.compile(r"https?://\S+")
@@ -80,6 +89,80 @@ def _num(s):
         return int(s.replace(",", ""))
     except Exception:
         return None
+
+
+def _tp_val(m, base=0):
+    """TPNUM 짝(세 그룹: 원 · 만원 · 천원) → 원 단위 정수. base = 짝의 첫 그룹 번호 − 1 (TP_MOVE 의 뒤 짝은 3)."""
+    a, b, c = m.group(base + 1), m.group(base + 2), m.group(base + 3)
+    if a:
+        return _num(a)
+    if b:
+        try:
+            return int(round(float(b) * 10000))
+        except ValueError:
+            return None
+    if c:
+        v = _num(c)
+        return v * 1000 if v else None
+    return None
+
+
+def _line_of(text, pos):
+    """pos 가 든 줄과 그 줄의 시작 위치."""
+    a = text.rfind("\n", 0, pos) + 1
+    b = text.find("\n", pos)
+    return text[a:b if b >= 0 else len(text)], a
+
+
+_SUBJ_TAIL = re.compile(r"\s*\(\s*(?:A?\d{6}|[A-Za-z]{2,}|매수|중립|매도|TP|목표)")      # '우리금융(매수/TP …' · 'KT&G(BUY, TP' · '한섬(278470.KS'
+_LEAD_JUNK = " \t*•·-▶■◆●□▣◇►✅📌🔹🔸[『「<《\"'"
+
+
+def _tp_owner_ok(line, pos, code, nmap, nrx):
+    """줄 속 목표가(pos)가 이 종목 것인가. 줄에서 '종목 머리'로 적힌 이름 — 'KT&G(BUY, TP 21만원)' · '우리금융(매수/TP 43,000)' · 줄 머리의 '한온시스템, …' — 을 찾아,
+    목표가 바로 앞 종목 머리가 다른 회사면 아니다. 본문 속 고객 언급('삼성전자향 매출 … 목표주가 150,000원')은 종목 머리가 아니라 상관없다.
+    종목 코드가 줄에 있거나 어느 종목인지 모르면(code · 이름 색인 없음) 그대로 받는다."""
+    if not code or not nrx or not nmap:
+        return True
+    if re.search(r"(?<!\d)A?" + re.escape(code) + r"(?!\d)", line):
+        return True
+    subs = []
+    for m in nrx.finditer(line):
+        tail = line[m.end():m.end() + 16]
+        if _SUBJ_TAIL.match(tail) or (not line[:m.start()].strip(_LEAD_JUNK) and re.match(r"\s*[,:：;/]", tail)):
+            subs.append((m.start(), nmap.get(m.group(1))))
+    before = [c for p, c in subs if p < pos]
+    if before:
+        return before[-1] == code
+    return not subs or any(c == code for _, c in subs)
+
+
+def _tp_pair(text, code=None, nmap=None, nrx=None, strict=False):
+    """글(항목) 속 목표가 → (이전, 새). '이전 → 새' 는 바로 앞 40자에 목표 · TP 낱말이 있고 비율이 0.3~3 안일 때만
+    ('달러-원 환율은 1,386원에서 1,380원' · '머신 1,360→1,610대' 는 아니다). 다른 종목 머리 뒤의 목표가(_tp_owner_ok)는 건너뛰고 다음 것을 본다.
+    strict(종목이 여럿 적힌 뉴스 묶음 항목)면 우리 이름 · 코드가 적힌 줄의 목표가만 — '"SK하이닉스, 목표가 380만원 유지"' 줄이 NAVER 항목에 붙지 않게. 없으면 (None, None)."""
+    mine = None
+    if strict and code and nmap:
+        own = [re.escape(n) for n, c in nmap.items() if c == code]
+        mine = re.compile(r"(?<!\d)A?" + re.escape(code) + r"(?!\d)" + (("|" + "|".join(own)) if own else ""))
+
+    def ok(pos):
+        line, a = _line_of(text, pos)
+        if mine is not None and not mine.search(line):
+            return False
+        return _tp_owner_ok(line, pos - a, code, nmap, nrx)
+    for mv in TP_MOVE.finditer(text):
+        if not re.search(r"목표|TP|Target|적정", text[max(0, mv.start() - 40):mv.start()], re.I):
+            continue
+        a, b = _tp_val(mv, 0), _tp_val(mv, 3)
+        if a and b and 0.3 < b / a < 3 and ok(mv.start()):
+            return a, b
+    hits = sorted([(m.start(), m) for m in TP_RX.finditer(text)] + [(m.start(), m) for m in TP_ALT.finditer(text)], key=lambda x: x[0])
+    for pos, m in hits:
+        v = _tp_val(m)
+        if v and ok(pos):
+            return None, v
+    return None, None
 
 
 def broker_of(text, channel_title=""):
@@ -216,9 +299,8 @@ def _parse_card(text, codes, names=None):
                 i += 2
                 continue
             i += 1
-        tps = [_num(x) for x in TP_RX.findall(t)]
-        mv = TP_MOVE.search(t)
-        tp_prev, tp = (_num(mv.group(1)), _num(mv.group(2))) if mv else (None, tps[0] if tps else None)
+        nmap0, nrx0 = _name_index(names) if names else ({}, None)
+        tp_prev, tp = _tp_pair(t, code, nmap0, nrx0)
         op = OPINION.search(t)
         chm = re.search(r"목표\s*주?가\s*(상향|하향|유지)|(상향|하향)\s*조정", t)
         if re.search(r"신한생각", t):
@@ -266,7 +348,7 @@ def _gen_title(lines):
     return lines[0] if lines else ""
 
 
-TP_ALT = re.compile(r"(?:BUY|HOLD|매수|중립|Trading\s*Buy)\s*/\s*(?:TP\s*)?" + NUM, re.I)      # 'BUY/140,000원' · 'BUY/TP 500,000'
+TP_ALT = re.compile(r"(?<![A-Za-z])(?:BUY|HOLD|매수|중립|Trading\s*Buy)\s*/\s*(?:TP\s*)?" + TPNUM, re.I)      # 'BUY/140,000원' · 'BUY/TP 500,000' · 'BUY/TP 19만원'
 COMPLIANCE = re.compile(r"컴플라이언스|법적\s*책임|증빙\s*자료|사전\s*공표|승인을\s*받아|투자\s*판단의\s*최종|당사는\s*(?:동\s*)?자료")
 REPORT_WORD = re.compile(r"리포트|보고서|프리뷰|Preview|리뷰|Review|발간|코멘트|Comment|실적|투자\s*의견|목표\s*주?가|\bBUY\b|매수|\.pdf|자료\s*[:：]|원문", re.I)
 
@@ -304,25 +386,14 @@ def _whole_post(text, broker, nmap, nrx, codes):
         return None
     if len({m.group(1) for m in nrx.finditer(text) if re.match(r"\s*\(\s*(?:매수|중립|매도|Buy|BUY|Hold|HOLD|A?\d{6})", text[m.end():m.end() + 12])} if nrx else set()) >= 2:
         return None                       # 'KB금융(매수/TP …)과 신한지주(매수/TP …)' — 선호 종목 묶음
-    tp = tp_prev = None
-    mv = TP_MOVE.search(text)
-    if mv and re.search(r"목표|TP|Target", text[max(0, mv.start() - 40):mv.start()], re.I):
-        a, b = _num(mv.group(1)), _num(mv.group(2))
-        if a and b and 0.3 < b / a < 3:
-            tp_prev, tp = a, b
-    if tp is None:
-        m = TP_RX.search(text) or TP_ALT.search(text)
-        tp = _num(m.group(1)) if m else None
-    if tp is None:
-        m = re.search(r"(?:TP|목표\s*주?가)\s*[:：]?\s*(\d{1,4}(?:\.\d{1,2})?)\s*만\s*원", text)      # 'TP 4.5만원'
-        tp = int(round(float(m.group(1)) * 10000)) if m else None
+    tp_prev, tp = _tp_pair(text, code, nmap, nrx)       # '이전 → 새' · '목표주가 1,300,000원' · 'TP 4.5만원' · 'BUY/140,000'
     if not (tp or REPORT_WORD.search(text)):
         return None
     op = OPINION.search(text)
     if op and op.group(2) and not re.search(r"(?:의견\s*[:：]?\s*|[(/\[]\s*)$", text[max(0, op.start() - 12):op.start()]):
         op = None
     mc = re.search(r"\((?:유지|신규|상향|하향)\s*/\s*(유지|신규|상향|하향)\)", text)         # '(유지/상향)' — 뒤가 목표가
-    mtp = re.search(r"목표\s*주?\s*가[^\n]{0,30}?(상향|하향|유지|신규)|(상향|하향)\s*조정", text)
+    mtp = re.search(r"(?:목표\s*주?\s*가|적정\s*주가|(?<![A-Za-z])TP)[^\n]{0,30}?(상향|하향|유지|신규)|(상향|하향)\s*조정", text)   # 'TP 19만원(하향)' · '적정주가 …로 하향'
     change = ("상향" if tp > tp_prev else "하향" if tp < tp_prev else "유지") if (tp and tp_prev) else (
         mc.group(1) if mc else ((mtp.group(1) or mtp.group(2)) if mtp else None))
     title = _gen_title(lines)
@@ -377,16 +448,10 @@ def parse(text, channel_title="", names=None, codes=None):
                 # 증권사가 곧 상장사인 이름('키움증권 리서치센터')은 리포트 대상이 아니다. 두 글자 이름('대상')은 괄호 · 코드와 붙어 있을 때만
                 if any(rx.search(name) for _, rx in BROKER_RX) or (len(name) <= 2 and not re.search(r"[\[(]\s*" + re.escape(name) + r"\s*[\])/]|" + re.escape(name) + r"\s*\(\s*A?\d{6}", head)):
                     code = name = None
-        tps = [_num(x) for x in TP_RX.findall(it)]
-        mv = TP_MOVE.search(it)
-        tp_prev = tp = None
-        # '이전 → 새' 는 바로 앞에 '목표' 낱말이 있을 때만 — '달러-원 환율은 1,386원에서 1,380원' 같은 숫자를 목표가로 읽지 않게
-        if mv and re.search(r"목표|TP|Target", it[max(0, mv.start() - 40):mv.start()], re.I):
-            a, b = _num(mv.group(1)), _num(mv.group(2))
-            if a and b and 0.3 < b / a < 3:
-                tp_prev, tp = a, b
-        if tp is None and tps:
-            tp = tps[0]
+        # '이전 → 새' 는 바로 앞에 '목표' 낱말이 있을 때만 — '달러-원 환율은 1,386원에서 1,380원' 같은 숫자를 목표가로 읽지 않게(_tp_pair).
+        # 항목에 수집 종목이 둘 넘게 적혔으면(뉴스 머리기사 묶음 · 선호 종목 줄) 우리 이름이 적힌 줄의 목표가만
+        many = len({m.group(1) for m in CODE_RX.finditer(it) if m.group(1) in codes} | ({nmap[m.group(1)] for m in nrx.finditer(it)} if nrx else set())) >= 2
+        tp_prev, tp = _tp_pair(it, code, nmap, nrx, strict=bool(code) and many)
         op = OPINION.search(it)
         # 한글 의견(매수 · 매도)은 '투자의견' · '(매수' · '/매수' 꼴일 때만 — 시황 글의 '매도 물량' · '매수 복귀' 는 의견이 아니다
         if op and op.group(2) and not re.search(r"(?:의견\s*[:：]?\s*|[(/\[]\s*)$", it[max(0, op.start() - 12):op.start()]):
@@ -396,7 +461,7 @@ def parse(text, channel_title="", names=None, codes=None):
         if tp_prev and tp:
             change = "상향" if tp > tp_prev else ("하향" if tp < tp_prev else "유지")
         else:
-            mtp = re.search(r"목표\s*주?\s*가[^\n]{0,30}?(상향|하향|유지|신규)|(상향|하향)\s*조정", it)
+            mtp = re.search(r"(?:목표\s*주?\s*가|적정\s*주가|(?<![A-Za-z])TP)[^\n]{0,30}?(상향|하향|유지|신규)|(상향|하향)\s*조정", it)
             ch = CHANGE.search(it)
             change = (mtp.group(1) or mtp.group(2)) if mtp else (ch.group(1) if ch else None)
         title = _gen_title(lines)
@@ -582,9 +647,87 @@ def _attribute(cards, gens):
     return n
 
 
-def build(names, codes):
+def _close_at(closes, ks, date):
+    """{YYYYMMDD: 종가} · 정렬한 날짜들 → 글 날짜(ISO, 'YYYY-MM-DD HH:MM')의 '리포트 당시' 종가.
+    장 시작 전(09:00 전) 글은 전 거래일 종가(애널리스트가 본 값), 그 뒤는 그날 종가. 없으면 None."""
+    if not ks:
+        return None
+    k = (date or "")[:10].replace("-", "")
+    if not k:
+        return None
+    i = (bisect.bisect_left(ks, k) if (date or "")[11:16] < "09:00" else bisect.bisect_right(ks, k)) - 1
+    return closes[ks[i]] if i >= 0 else None
+
+
+def sanitize_tp(rows, px_of=None):
+    """목표가 ÷ 주가가 TP_BAND 밖인 글의 목표가를 비운다(tp_raw 에 남김) — 다른 종목 목표가('KT&G … TP 21만원' 이 디바이스에) · 자릿수('STP0404' 의 404 ·
+    '2028년') · 증권사가 적은 코드 오류('한섬(278470.KS)') · 분할 전 값. 주가는 카드의 현재가, 없으면 px_of(code) → {YYYYMMDD: 종가} 의 그날 종가. → 뺀 수."""
+    memo, n = {}, 0
+    for r in rows:
+        tp, code = r.get("tp"), r.get("code")
+        if not tp or not code:
+            continue
+        px = r.get("price_at")
+        if not px and px_of is not None:
+            if code not in memo:
+                s = px_of(code) or {}
+                memo[code] = (sorted(s), s)
+            ks, s = memo[code]
+            px = _close_at(s, ks, r.get("date"))
+        if px and not (TP_BAND[0] <= tp / px <= TP_BAND[1]):
+            r["tp_raw"], r["tp"], r["tp_prev"] = tp, None, None
+            n += 1
+    return n
+
+
+def consensus(rows, px, since, closes=None):
+    """한 종목 글들 → 증권사별 최신 목표가(since 이후)의 평균 · 중앙 · 상승여력. 없으면 None.
+      · 증권사마다 가장 최신 글 하나. 증권사 미표기 글(요약 채널 카드)은 같은 목표가면 같은 집(채널 둘이 같은 리포트를 올린 것 · 증권사 글과 같은 값이면 그 증권사)
+      · 3곳 이상이면 중앙값의 OUTLIER_X 배 밖 · ⅓ 아래는 뺀다(dropped — 다른 종목 목표가 · 오타)
+      · up = 평균 ÷ 지금 주가 − 1 (%). up_at = 집마다 '리포트 당시 주가'(카드 현재가 · 없으면 closes 의 그날 종가) 대비 상승여력의 평균 —
+        목표가가 나온 뒤 주가가 크게 움직였으면(LG이노텍 2026-10: 급락 뒤 +141% vs 당시 +80%대) 둘이 벌어진다. asof = 가장 최신 목표가 날짜.
+      closes = {YYYYMMDD: 종가}(캐시, 네트워크 없이)."""
+    rs = sorted((r for r in rows or () if r.get("tp") and (r.get("date") or "")[:10] >= since), key=lambda r: r["date"], reverse=True)
+    houses, seen = [], set()
+    for r in rs:                                   # 증권사 적힌 글 먼저 — 미표기 카드가 같은 값이면 그 증권사 것
+        if r.get("broker") and r["broker"] not in seen:
+            seen.add(r["broker"])
+            houses.append(r)
+    known = {h["tp"] for h in houses}
+    for r in rs:
+        if not r.get("broker") and r["tp"] not in known:
+            known.add(r["tp"])
+            houses.append(r)
+    if not houses:
+        return None
+    houses.sort(key=lambda r: r["date"], reverse=True)
+    tps = [h["tp"] for h in houses]
+    med = statistics.median(tps)
+    dropped = []
+    if len(houses) >= 3:
+        keep = [h for h in houses if med / OUTLIER_X <= h["tp"] <= med * OUTLIER_X]
+        dropped = [h for h in houses if h["tp"] < med / OUTLIER_X or h["tp"] > med * OUTLIER_X]
+        houses, tps = keep, [h["tp"] for h in keep]
+        med = statistics.median(tps)
+    avg = sum(tps) / len(tps)
+    ks = sorted(closes) if closes else []
+    out, ups = [], []
+    for h in houses:
+        p0 = h.get("price_at") or _close_at(closes, ks, h.get("date"))
+        if p0:
+            ups.append((h["tp"] / p0 - 1) * 100)
+        out.append({"broker": h.get("broker"), "tp": h["tp"], "tp_prev": h.get("tp_prev"), "date": h["date"], "opinion": h.get("opinion"),
+                    "px_at": p0, "url": h.get("msg_url"), "title": (h.get("title") or "")[:40]})
+    return {"avg": avg, "med": med, "n": len(out), "reps": len(rs), "tp_max": max(tps), "tp_min": min(tps),
+            "up": (avg / px - 1) * 100 if px else None, "up_at": (sum(ups) / len(ups)) if ups else None,
+            "asof": out[0]["date"][:10], "houses": out,
+            "dropped": [{"broker": h.get("broker"), "tp": h["tp"], "date": h["date"], "url": h.get("msg_url")} for h in dropped]}
+
+
+def build(names, codes, px_of=None):
     """쌓인 글 → 리포트 항목(글마다 parse). 카드 ↔ 증권사 채널 대조(_attribute)로 증권사를 채운 뒤,
-    같은 증권사 · 종목 · 날짜 · 목표가는 하나로(채널 둘이 같은 리포트를 올린 것). 증권사 없는 카드끼리는 제목도 봐야 다른 리포트를 합치지 않는다."""
+    같은 증권사 · 종목 · 날짜 · 목표가는 하나로(채널 둘이 같은 리포트를 올린 것). 증권사 없는 카드끼리는 제목도 봐야 다른 리포트를 합치지 않는다.
+    px_of(code) → {YYYYMMDD: 종가} 를 주면 주가 대비 TP_BAND 밖 목표가를 비운다(sanitize_tp)."""
     cards, gens = [], []
     for m in raw_messages():
         for r in parse(m.get("text", ""), m.get("channel_title", ""), names, codes):
@@ -610,6 +753,7 @@ def build(names, codes):
     for r in rows:
         for k in ("_d", "_bg", "_used", "ref"):
             r.pop(k, None)
+    sanitize_tp(rows, px_of)                   # 대조로 채운 목표가까지 포함해 — 카드에 증권사 글의 틀린 목표가가 옮겨 붙은 것도 비운다
     rows.sort(key=lambda r: r["date"], reverse=True)
     return rows
 

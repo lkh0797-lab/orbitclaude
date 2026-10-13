@@ -819,7 +819,7 @@ def test_rep_rows_single_flight(SRV, monkeypatch):
             return "sig-1"
 
         @staticmethod
-        def build(names, codes):
+        def build(names, codes, px_of=None):
             calls.append(1)
             gate.wait(5)
             return [{"code": CO, "title": "r"}]

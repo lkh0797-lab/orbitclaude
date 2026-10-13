@@ -10504,7 +10504,7 @@ def _rep_rows():
                 return _REP
         names = {c["name"]: c["code"] for c in INDEX["companies"]}
         codes = {c["code"]: c["name"] for c in INDEX["companies"]}
-        rows = REP.build(names, codes)
+        rows = REP.build(names, codes, px_of=_px_file)      # 종가 캐시(네트워크 없이)로 주가 대비 터무니없는 목표가를 비운다
         by = {}
         for r in rows:
             if r.get("code"):
@@ -10532,15 +10532,11 @@ def reports_view(code):
     R = _rep_rows()
     rows = R["by_code"].get(code, [])
     today = dt.date.today()
-    recent = [r for r in rows if r["date"][:10] >= (today - dt.timedelta(days=180)).isoformat()]
-    latest = {}
-    for r in rows:                               # 최근 것부터 — 증권사마다 첫 목표가가 최신(증권사를 안 적은 요약 채널 글은 리포트마다 따로)
-        b = r.get("broker") or ("미표기 · %s %s" % (r["date"][5:10], (r.get("title") or "")[:14]))
-        if r.get("tp") and b not in latest:
-            latest[b] = r
-    tps = [r["tp"] for b, r in latest.items() if r["date"][:10] >= (today - dt.timedelta(days=180)).isoformat()]
+    since = (today - dt.timedelta(days=180)).isoformat()
+    recent = [r for r in rows if r["date"][:10] >= since]
     price = None
     series = []
+    pr = {}
     if FIN is not None:
         try:
             since_px = (today - dt.timedelta(days=760)).strftime("%Y%m%d")
@@ -10555,12 +10551,12 @@ def reports_view(code):
     for r in recent:
         if r.get("opinion"):
             ops[r["opinion"]] = ops.get(r["opinion"], 0) + 1
-    avg = sum(tps) / len(tps) if tps else None
+    # 목표가 평균 — 증권사별 최신 하나(미표기 카드는 같은 값이면 한 집) · 중앙값 3배 밖 제외 · 리포트 당시 주가 대비도(리포트.consensus — 밸류체인 한 장과 같은 식)
+    cs = REP.consensus(rows, price, since, closes=pr) or {}
     return {"code": code, "name": c["name"], "rows": rows[:600], "n180": len(recent), "brokers": len({r.get("broker") for r in recent if r.get("broker")}), "no_broker": sum(1 for r in recent if not r.get("broker")),
-            "tp_avg": avg, "tp_max": max(tps) if tps else None, "tp_min": min(tps) if tps else None, "price": price,
-            "upside": (avg / price - 1) * 100 if avg and price else None, "opinions": ops,
-            "latest": sorted(({"broker": b, "tp": r["tp"], "tp_prev": r.get("tp_prev"), "date": r["date"], "opinion": r.get("opinion")} for b, r in latest.items()),
-                             key=lambda x: x["date"], reverse=True),
+            "tp_avg": cs.get("avg"), "tp_med": cs.get("med"), "tp_n": cs.get("n"), "tp_max": cs.get("tp_max"), "tp_min": cs.get("tp_min"), "price": price,
+            "upside": cs.get("up"), "upside_at": cs.get("up_at"), "tp_asof": cs.get("asof"), "tp_dropped": cs.get("dropped") or [], "opinions": ops,
+            "latest": cs.get("houses") or [],
             "tp_points": [{"date": r["date"][:10], "tp": r["tp"], "broker": r.get("broker")} for r in rows if r.get("tp")],
             "series": series, "status": reports_status()}
 
@@ -11970,7 +11966,8 @@ def _vcmap_build(code):
         for w in cnd["supply"]:                        # 같은 고객 — 그 회사 최신 칸 매출처 표
             if w.get("k") == "same" and not w.get("src"):
                 w["src"], w["date"], w["url"] = osrc(cd, univ.get(cd) or cd, "매출처 표")
-        s = VMAP.score(cnd, lead_p3=lead_x.get("p3"), px=x, ph=ph, n_rep=n180, up=VMAP.upside_detail(rr, (x or {}).get("px"), iso(180)),
+        s = VMAP.score(cnd, lead_p3=lead_x.get("p3"), px=x, ph=ph, n_rep=n180,
+                       up=VMAP.upside_detail(rr, (x or {}).get("px"), iso(180), closes=_px_file(cd) if rr else None),
                        risk=risk.get(cd), kis_bad=bad, kis_tags=tags, lead_name=nm0, name=univ.get(cd) or cd, srcs=srcs)
         pxo = VMAP.px_out(x) or {}
         rows.append(dict(s, code=cd, name=univ.get(cd) or cd, px={k: pxo.get(k) for k in ("px", "dd52", "r1m", "r3m", "r6m", "p1m", "p3m")},
