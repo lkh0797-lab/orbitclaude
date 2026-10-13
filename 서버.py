@@ -10165,7 +10165,7 @@ def _vc_peers():
         # 하루 한 번 — 다만 캐시 파일 수가 늘었으면(도구/밸류체인_전종목.py 가 돌아 채워진 것) 바로 다시 짠다
         if time.time() - _VC_PEER["at"] < 86400 and _VC_PEER["n"] and _VC_PEER.get("files") == n_files:
             return _VC_PEER
-    cust, supp, prod, n = {}, {}, {}, 0
+    cust, supp, prod, prod_y, n = {}, {}, {}, {}, 0
     for c in list(INDEX["companies"]):
         ann = [r for r in c["reports"] if r["label"] == "사업보고서" and not r["tag"]]
         if not ann:
@@ -10182,9 +10182,11 @@ def _vc_peers():
         y = max(d["years"])
         n += 1
         # 제품 색인(밸류체인 지도 '같은 제품' 후보) — 최신 칸에 없으면 그 앞 해 것
-        pr = next((d["years"][yy].get("products") for yy in sorted(d["years"], reverse=True) if d["years"][yy].get("products")), None) or []
+        pry = next((yy for yy in sorted(d["years"], reverse=True) if d["years"][yy].get("products")), None)
+        pr = (d["years"][pry].get("products") if pry else None) or []
         if VMAP is not None and pr:
-            prod[c["code"]] = [(x["item"], x["seg"], x["pct"]) for x in VMAP.products_of(pr, top=12)]
+            prod[c["code"]] = [(x["item"], x["seg"], x.get("raw", x["pct"]), bool(x.get("est"))) for x in VMAP.products_of(pr, top=12)]   # raw = 안 둥글린 비중 · est = 표 값이 아니라 금액 비율(지도는 '추정'이라 적는다)
+            prod_y[c["code"]] = pry                  # 그 제품 표의 칸 — 지도는 10년 넘게 묵은 표(현대바이오 2012 'LCD 모니터')를 같은 제품으로 안 본다
         for x in d["years"][y].get("customers") or []:
             if x.get("kind") == "named":
                 nm_ = VCM._strip_amount(x["name"])
@@ -10196,7 +10198,7 @@ def _vc_peers():
             for sp in mt.get("suppliers") or []:
                 supp.setdefault(_vc_key(sp["name"]), []).append((c["code"], c["name"], mt.get("pct"), sp["name"]))
     with VC_LOCK:
-        _VC_PEER.update(at=time.time(), cust=cust, supp=supp, prod=prod, n=n, files=n_files)
+        _VC_PEER.update(at=time.time(), cust=cust, supp=supp, prod=prod, prod_y=prod_y, n=n, files=n_files)
     return _VC_PEER
 
 
@@ -11280,8 +11282,10 @@ def story_view(code, refresh=False):
 # 재료는 모두 캐시 읽기 — 새 DART · KIS · 네이버 호출 없음(sector_map() · fetch_prices · druck() · inflect() 를 부르지 않는다).
 # 무거운 것(리포트 콜드 74초 · 988곳 주가 단면 17초)은 뒤 스레드 하나에서만, 한 번에 한 회사. 점수는 규칙 점수 · 검증 전 — 예측 아님.
 VMAP = _load_mod("밸류체인_지도")
-VCMAP_V = 6                       # 2: 동종 칸에서 위 · 아래 칸 공급망 회사를 뒤로(peer_nodes) · 3: 같은 제품 근거 줄 말줄임 · 5: 동시 언급에서 넓은 말(REP_DF_MAX 40곳) 빼기
+VCMAP_V = 9                       # 2: 동종 칸에서 위 · 아래 칸 공급망 회사를 뒤로(peer_nodes) · 3: 같은 제품 근거 줄 말줄임 · 5: 동시 언급에서 넓은 말(REP_DF_MAX 40곳) 빼기 · 8: 10년 넘게 묵은 제품 표는 같은 제품 아님 · 조사 끝소리(2026-10-13 통합)
+                                  # 9: 비중은 표 꼴대로(부문 · 매입처마다 한 줄), 과거 공급망 해 목록 · '지금은 빠짐'은 더 새 표가 있을 때만, 표 없는 최신 칸이면 그 앞 칸의 매출처 · 매입처(2026-10-13 3차 손질)
                                   # 6: 제품 낱말 5%↑ · 매출 구분 말 빼기, 묶음 매입 줄 경쟁사 빼기, 좁은 테마 채우기, 업종(industry) 거름, 트리거 규칙, 칩 거르기(2026-10-12 검토)
+                                  # 7: 근거마다 출처 객체(ev {t, src, date, url, go}) · 설명 문장(expl · group_note) · 과거 공급망 · 같은 고객+테마 · 건전성 차감 · 트리거 문장 자르기(2026-10-13)
 VCMAP_DIR = os.path.join(CACHE_DIR, "vcmap")
 OWN_DIR = os.path.join(CACHE_DIR, "own")
 OWN_V = 5                         # 2: 상장 지분 이름을 상장사 이름으로('iMarket Korea' → 아이마켓코리아, 적힌 이름은 as) · 4: 계열 상장 · 상장 지분 이름 머리 맞추기(Linker.listed_code), 최대주주가 계열 상장이면 listed
@@ -11290,6 +11294,7 @@ VCMAP_LOCK = threading.Lock()
 VCMAP_LK_LOCK = threading.Lock()   # CORPCODE 30MB 를 두 스레드가 같이 풀지 않게(_vcmap_linker)
 VCMAP = {"running": False, "code": None, "step": "", "want": {}, "err": {}, "memo": {}, "xs_fail": 0.0, "force": set()}
 VCMAP_WANT_TTL = 120              # 이만큼(초) 다시 안 물은 회사는 만들 차례에서 뺀다(화면을 떠났다 — 화면이 2초마다 묻는다)
+VCMAP_HIST_YEARS = 10             # 과거 공급망은 마지막 해가 이만큼(년) 안일 때만 — 2011년 한 해 삼성전기를 매출처로 적은 회사(키다리스튜디오)는 후속주 근거가 아니다
 VCMAP_ERR_TTL = 600               # 같은 입력으로 실패했으면 이 동안 다시 만들지 않는다(폴링이 실패를 되풀이하지 않게)
 VCMAP_XS_V = 1
 VCMAP_XS_AT = (6, 40)             # 단면은 하루 한 번 — 저평가가 06:30 에 전 종목 주가를 새로 받은 뒤
@@ -11327,8 +11332,12 @@ def _vcmap_file(path, conv=None):
 
 
 def _vcmap_themes():
-    """네이버 테마 분류표 {code: {themes, industry, sector}} — .cache/업종/map.json 파일만(sector_map() 은 하루 지나면 네이버를 부른다)."""
-    return _vcmap_file(os.path.join(CACHE_DIR, "업종", "map.json"), lambda d: d.get("stocks") or {}) or {}
+    """네이버 테마 분류표 {stocks: {code: {themes, industry, sector}}, date: 받은 날} — .cache/업종/map.json 파일만(sector_map() 은 하루 지나면 네이버를 부른다)."""
+    def conv(d):
+        b = d.get("built")
+        date = dt.datetime.fromtimestamp(b).strftime("%Y-%m-%d") if isinstance(b, (int, float)) else None
+        return {"stocks": d.get("stocks") or {}, "date": date}
+    return _vcmap_file(os.path.join(CACHE_DIR, "업종", "map.json"), conv) or {"stocks": {}, "date": None}
 
 
 def _vcmap_export():
@@ -11518,20 +11527,134 @@ def _vcmap_druck(code):
         return None
 
 
-def _vcmap_buyer_lines(bcode, me_key):
-    """나를 매입처로 적은 회사의 최신 칸 원재료 줄 중 내가 적힌 줄 → [(품목, 비중, [같은 줄 다른 매입처])]. 같은 줄 = 제품별 경쟁사."""
+def _mat_per_sup(rows):
+    """원재료 표 꼴 — (부문, 품목)마다 매입처 적힌 줄이 둘↑이면 '매입처마다 한 줄'(영풍 BASE 줄 일곱 · 아연정광 둘): 그 줄 비중은 매입처가 그 품목 매입에서 차지하는 몫.
+    → {(부문, 품목): True}. 품목마다 한 줄(삼성전기 FILM 'TORAY · COSMO')이면 비중은 품목이 (부문) 매입에서 차지하는 몫."""
+    cnt = Counter((((mt.get("segment") or "").strip()), (mt.get("item") or "").strip()) for mt in rows or () if any(sp.get("name") for sp in mt.get("suppliers") or ()))
+    return {k: n >= 2 for k, n in cnt.items()}
+
+
+def _vcmap_buyer_lines(bcode, me_key, y=None):
+    """나를 매입처로 적은 회사의 원재료 줄(y 칸 — 없으면 최신 칸) 중 내가 적힌 줄 → [{item, pct, others, seg, per_sup}]. others = 같은 줄 다른 매입처(제품별 경쟁사).
+    pct 는 그 줄에 적힌 비중 그대로 — 무엇의 몫인지는 seg · per_sup(_mat_per_sup)가 말한다(VMAP.buy_share)."""
     try:
         with open(os.path.join(VC_DIR, bcode + ".json"), "r", encoding="utf-8") as fh:
             d = json.load(fh)
     except (OSError, ValueError):
         return []
     ys = sorted(d.get("years") or {})
+    y = y if y in (d.get("years") or {}) else (ys[-1] if ys else None)
+    rows = (d["years"][y].get("materials") or ()) if y else ()
+    per = _mat_per_sup(rows)
     out = []
-    for mt in (d["years"][ys[-1]].get("materials") or ()) if ys else ():
+    for mt in rows:
         names = [sp.get("name") or "" for sp in mt.get("suppliers") or ()]
         if any(_vc_key(nm) == me_key for nm in names):
-            out.append(((mt.get("item") or "").strip(), mt.get("pct"), [nm for nm in names if _vc_key(nm) != me_key]))
+            seg, it = (mt.get("segment") or "").strip() or None, (mt.get("item") or "").strip()
+            out.append({"item": it, "pct": mt.get("pct"), "others": [nm for nm in names if _vc_key(nm) != me_key], "seg": seg, "per_sup": per.get((seg or "", it), False)})
     return out
+
+
+def _vcmap_vc_years(code):
+    """밸류체인 캐시 날것의 years — 해마다 {customers, materials, products, rcept, stamp, label}. 없으면 {}. 파일 하나(중앙값 19KB · 최대 135KB)."""
+    try:
+        with open(os.path.join(VC_DIR, code + ".json"), "r", encoding="utf-8") as fh:
+            return json.load(fh).get("years") or {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _vc_tab_last(ys):
+    """칸마다 표가 있나 — {cn: 이름 적힌 매출처가 있는 마지막 칸, ca: 매출처 표(이름 없이 유형 · 가려짐이라도)가 있는 마지막 칸, sn: 이름 적힌 매입처가 있는 마지막 칸, sa: 원재료 표가 있는 마지막 칸}.
+    없으면 None. '지금은 빠짐'은 더 새 표가 그 이름을 안 적었을 때만 말할 수 있다 — 최신 칸이 부분 반기라 표 자체가 없으면(HLB생명과학 2026-06) 빠진 게 아니라 모르는 것."""
+    cn = ca = sn = sa = None
+    for y in sorted(ys or {}):
+        yd = ys[y]
+        cs, ms = yd.get("customers") or [], yd.get("materials") or []
+        if cs:
+            ca = y
+        if any(x.get("kind") == "named" and x.get("name") for x in cs):
+            cn = y
+        if ms:
+            sa = y
+        if any(sp.get("name") for mt in ms for sp in mt.get("suppliers") or ()):
+            sn = y
+    return {"cn": cn, "ca": ca, "sn": sn, "sa": sa}
+
+
+def _vcmap_meta(code, memo):
+    """회사 캐시 한 번 읽어 근거 출처용 요약 {latest: 마지막 칸, prod_y: 제품 표를 쓴 칸(최신 — _vc_peers 와 같은 규칙), years: {칸: {rcept, name}},
+    cust_last · supp_last: 이름 적힌 매출처 · 매입처가 있는 마지막 칸(_vc_tab_last cn · sn), tab: _vc_tab_last, cust: 그 마지막 매출처 표의 {이름키: {pct, seg, basis}}(나를 적은 줄의 비중이 무엇의 몫인지)}.
+    name = '2026 반기보고서' · '2025 사업보고서'. memo 에 기억(한 빌드 안 — 같은 회사를 두 번 읽지 않는다)."""
+    if code in memo:
+        return memo[code]
+    ys = _vcmap_vc_years(code)
+    tab = _vc_tab_last(ys)
+    cust = {}
+    for x in (ys.get(tab["cn"]) or {}).get("customers") or () if tab["cn"] else ():
+        if x.get("kind") == "named" and x.get("name"):
+            k = _vc_key(VCM._strip_amount(x["name"]) if VCM is not None else x["name"])
+            if k not in cust or (x.get("pct") or 0) > (cust[k].get("pct") or 0):
+                cust[k] = {"pct": x.get("pct"), "seg": x.get("seg"), "basis": x.get("basis")}
+    m = {"latest": max(ys) if ys else None,
+         "prod_y": next((y for y in sorted(ys, reverse=True) if ys[y].get("products")), None),
+         "cust_last": tab["cn"], "supp_last": tab["sn"], "tab": tab, "cust": cust,
+         "years": {y: {"rcept": v.get("rcept"), "name": VMAP.report_name(VMAP.period_label({"stamp": v.get("stamp"), "label": v.get("label")}))}
+                   for y, v in ys.items()}}
+    memo[code] = m
+    return m
+
+
+def _vcmap_src(nm, meta, y, table):
+    """출처 한 줄 (src, date, url) — '{회사} {2026 반기보고서} {표 이름}' · 접수일 · DART 링크. 그 칸이 없으면 보고서 이름 없이."""
+    yi = ((meta or {}).get("years") or {}).get(y) if y else None
+    if not yi:
+        return "%s 보고서 %s" % (nm, table), None, None
+    rc = yi.get("rcept")
+    return "%s %s %s" % (nm, yi["name"], table), (rc[:8] if rc else None), (VMAP.DART % rc if rc else None)
+
+
+_VCMAP_HIST = {"at": 0.0, "files": 0, "cust": {}, "supp": {}, "latest": {}, "last": {}}
+
+
+def _vcmap_hist():
+    """과거 공급망 색인 — 전 종목 밸류체인 캐시의 해마다 매출처 · 매입처 이름 {이름키: {code: {ys: [적힌 칸…], item: 품목}}} 과 회사마다 마지막 칸(latest) ·
+    표가 있는 마지막 칸(last — _vc_tab_last {cn, ca, sn, sa}). 적힌 칸을 다 두어야 '2021 · 2024년'처럼 끊긴 해를 그대로 적는다(처음–마지막만 두면 없는 해까지 적은 셈).
+    _vc_peers 는 최신 칸만 색인한다(지금 관계). 하루 한 번 · 뒤 스레드에서만(988곳 JSON 23MB 를 한 번 훑는다 — 2초 안팎, 색인 몇 MB)."""
+    try:
+        n_files = len([f for f in os.listdir(VC_DIR) if f.endswith(".json")])
+    except OSError:
+        n_files = 0
+    with VCMAP_LOCK:
+        if time.time() - _VCMAP_HIST["at"] < 86400 and _VCMAP_HIST["files"] == n_files and _VCMAP_HIST["latest"]:
+            return _VCMAP_HIST
+    cust, supp, latest, last = {}, {}, {}, {}
+    for c in list(INDEX["companies"]):
+        cd = c["code"]
+        ys = _vcmap_vc_years(cd)
+        if not ys:
+            continue
+        latest[cd] = max(ys)
+        last[cd] = _vc_tab_last(ys)
+        for y in sorted(ys):
+            yd = ys[y]
+            for x in yd.get("customers") or ():
+                if x.get("kind") == "named" and x.get("name"):
+                    k = _vc_key(VCM._strip_amount(x["name"]) if VCM is not None else x["name"])
+                    e = cust.setdefault(k, {}).setdefault(cd, {"ys": []})
+                    if y not in e["ys"]:
+                        e["ys"].append(y)
+            for mt in yd.get("materials") or ():
+                for sp in mt.get("suppliers") or ():
+                    if sp.get("name"):
+                        k = _vc_key(sp["name"])
+                        e = supp.setdefault(k, {}).setdefault(cd, {"ys": [], "item": ""})
+                        if y not in e["ys"]:
+                            e["ys"].append(y)
+                        e["item"] = e["item"] or (mt.get("item") or "").strip()
+    with VCMAP_LOCK:
+        _VCMAP_HIST.update(at=time.time(), files=n_files, cust=cust, supp=supp, latest=latest, last=last)
+    return _VCMAP_HIST
 
 
 def _vcmap_line_link(nm, item, link, prod, univ):
@@ -11565,7 +11688,8 @@ def _vcmap_weak_buyers(cands, buyer_codes):
             continue
         for s in c["supply"]:
             if s.get("k") == "buyer" and not s.get("weak"):
-                s.update(weak=True, w=s["w"] + " — 연결 자회사(%s) 매입" % subs[0]["name"], s="연결 자회사 매입 · %s" % subs[0]["name"])
+                s.update(weak=True, w=s["w"] + " — 연결 자회사(%s) 매입" % subs[0]["name"], s="연결 자회사 매입 · %s" % subs[0]["name"],
+                         d=dict(s.get("d") or {}, sub=subs[0]["name"]))
 
 
 def _vcmap_sig(c, xs):
@@ -11599,6 +11723,7 @@ def _vcmap_build(code):
         return                           # 단면만 새로 했고 날짜가 그대로 — 다시 만들 것 없다
     today = dt.date.today()
     iso = lambda k: (today - dt.timedelta(days=k)).isoformat()      # noqa: E731
+    recent = lambda y: bool(y) and str(y)[:4].isdigit() and int(str(y)[:4]) >= today.year - VCMAP_HIST_YEARS     # noqa: E731 — 10년 넘게 묵은 칸(과거 공급망 · 제품 표)은 안 쓴다
     X = xs["rows"]
     VCMAP["step"] = "밸류체인 읽기"
     miss = []                            # 못 읽은 재료 — 화면 src.miss(칸은 비워 둔다)
@@ -11633,7 +11758,8 @@ def _vcmap_build(code):
     words12 = [w["w"] for w in VMAP.story_words(lead_rows, iso(90), c["name"], NAR.hot_words if NAR is not None else None, code=code, top=12)]
     shared = VMAP.shared_rows(by, iso(180))
     df = Counter()                                  # 넓은 말 셈은 느슨하게(두 글자 한글 말 앞 글자 조건 없이 — '비율'은 '자본비율'로 흔하다)
-    hits = VMAP.rep_hits(by, iso(180), [(w, VMAP.kw_norm(w)) for w in words12 if VMAP.specific(w)], shared, univ, excl | {code}, df=df)
+    refs = {}                                       # 동시 언급 행마다 출처(증권사 · 날짜 · t.me) — 근거 줄의 '최신 1건 · 그다음 1건(more)'
+    hits = VMAP.rep_hits(by, iso(180), [(w, VMAP.kw_norm(w)) for w in words12 if VMAP.specific(w)], shared, univ, excl | {code}, df=df, refs=refs)
     broad = VMAP.broad_words(None, df=df)
     words = [w for w in words12 if w not in broad][:4]
     story_kw = [w for w in words if VMAP.specific(w)]
@@ -11645,31 +11771,55 @@ def _vcmap_build(code):
     prod_keys = [(w, VMAP.kw_norm(w)) for w in pwords]
     lead_equip = any(VMAP.EQUIP_RX.search(p["item"]) and (p["pct"] or 0) >= 30 for p in prods)
     peers = _vc_peers() if VCM is not None else {}
-    prod_idx = peers.get("prod") or {}
+    pry = peers.get("prod_y") or {}                # 제품 표가 10년 넘게 묵은 회사(현대바이오 2012 'LCD 모니터' → 삼성전자 '같은 모니터')는 같은 제품 후보가 아니다
+    prod_idx = {cd: it for cd, it in (peers.get("prod") or {}).items() if recent(pry.get(cd, "9999"))}
     # 공급망 — 나를 매입처로 적은 회사(+ 같은 줄 다른 매입처 = 제품별 경쟁사) · 나를 매출처로 적은 회사 · 내 매입처 · 내 매출처
+    # 근거마다 출처(어느 회사 어느 보고서 어느 표 · DART 링크)를 붙인다 — 숫자 · 보고서 이름은 모두 밸류체인 캐시에서 읽은 것(지어내지 않는다)
     me_k, nm0 = _vc_key(c["name"]), c["name"]
+    ys = vc.get("years") or []
+    metas = {}                                    # 회사 → 캐시 요약(어느 칸 · 접수번호) — 한 빌드 안에서만
+    lm = _vcmap_meta(code, metas)
+    lsrc = lambda table, y=None: _vcmap_src(nm0, lm, y or lm["latest"], table)           # noqa: E731 — 내 보고서 표
+    osrc = lambda cd, nm, table, y=None: _vcmap_src(nm, _vcmap_meta(cd, metas), y or _vcmap_meta(cd, metas)["latest"], table)   # noqa: E731 — 남의 보고서 표
+    # 표가 있는 마지막 칸 — 최신 칸이 부분 반기라 매출처 · 원재료 표가 없거나 이름이 없으면(HLB생명과학 2026-06) 그 앞 칸의 표를 '지금'으로 본다.
+    # 그 사이에 빠졌다고 말할 근거가 없다('지금은 빠짐'은 더 새 표가 그 이름을 안 적었을 때만)
+    cust_y = next((y for y in reversed(vc.get("cust_years") or ()) if y), None) or lm.get("cust_last") or (ys[-1] if ys else None)
+    mats, mat_y = vc.get("materials") or [], (ys[-1] if ys else None)
+    if not any(sp.get("name") for mt in mats for sp in mt.get("suppliers") or ()) and lm.get("supp_last"):
+        mat_y = lm["supp_last"]                   # 날것 줄(link 없음 — 아래 link() 로 잇는다. up_groups 도 이 줄을 쓴다)
+        mats = [mt for mt in (_vcmap_vc_years(code).get(mat_y) or {}).get("materials") or () if mt.get("item") and mt["item"] != "-"]
+    per_me = _mat_per_sup(mats)                   # 내 원재료 표 꼴 — 매입처마다 한 줄이면 비중은 매입처 몫
     sellers = [s for s in vc.get("sellers") or () if s.get("code")]
     prefer = {s["code"] for s in sellers} | {b["code"] for b in vc.get("buyers") or ()}
     link = lambda nm: _vcmap_link(nm, prefer)     # noqa: E731
     supply = {}
 
-    def sup(cd, why, short, kind=""):
+    def sup(cd, why, short, kind="", src=(None, None, None), d=None):
         if cd and cd != code and why not in [w["w"] for w in supply.setdefault(cd, [])]:
-            supply[cd].append({"w": why, "s": short, "k": kind})
-    mine = {}                                     # 내 매입처로 잡힌 상장사 → 품목
-    for mt in vc.get("materials") or ():
+            supply[cd].append({"w": why, "s": short, "k": kind, "src": src[0], "date": src[1], "url": src[2], "d": d or {}})
+    mine = {}                                     # 내 매입처로 잡힌 상장사 → {item, seg, pct(그 줄 비중 — 무엇의 몫인지는 seg · per_sup), as(적힌 이름)}
+    for mt in mats:
+        seg, it = (mt.get("segment") or "").strip() or None, (mt.get("item") or "").strip()
         for sp in mt.get("suppliers") or ():
             cd = link(sp.get("name"))
             if cd:
-                mine.setdefault(cd, mt.get("item") or "")
+                mine.setdefault(cd, {"item": it, "seg": seg, "pct": mt.get("pct"), "as": VMAP.short_name(sp.get("name") or ""), "per_sup": per_me.get((seg or "", it), False)})
     buyers = []
     for b in vc.get("buyers") or ():
+        if any(x["code"] == b["code"] for x in buyers):
+            continue                               # 같은 회사가 줄마다(영풍 BASE · BGA PCB) — 한 번만, 줄은 lines 에 다 있다
         lines = _vcmap_buyer_lines(b["code"], me_k)
-        items = list(dict.fromkeys(it for it, _, _ in lines if it))
-        buyers.append(dict(b, items=items))
-        sup(b["code"], "%s%s %s를 매입처로 적음%s" % (b["name"], VMAP._ga(b["name"]), nm0, " · " + items[0] if items else ""),
-            "%s 고객%s" % (nm0, " · " + items[0] if items else ""), "buyer")
-        for it, _, others in lines:
+        items = list(dict.fromkeys(ln["item"] for ln in lines if ln["item"]))
+        l0 = next((ln for ln in lines if ln["item"]), lines[0] if lines else {})
+        bs = osrc(b["code"], b["name"], "「사업의 내용」 원재료 매입처 표")
+        # 비중은 그 줄 그대로 — 무엇의 몫인지는 표 꼴(VMAP.buy_share: 매입처마다 한 줄이면 '… BASE 매입 중 삼성전기 31.5%', 품목 줄이면 '전자부품 매입 중 수동소자 10.4%')
+        bd = {"name": b["name"], "item": l0.get("item") or "", "pct": l0.get("pct"), "seg": l0.get("seg"), "per_sup": bool(l0.get("per_sup"))}
+        buyers.append(dict(b, items=items, pct=bd["pct"], seg=bd["seg"], per_sup=bd["per_sup"], src=bs[0], date=bs[1], url=bs[2]))
+        share = (" (%s)" % VMAP.buy_share(bd, nm0)) if isinstance(bd["pct"], (int, float)) else ""
+        sup(b["code"], "%s%s %s%s %s매입처로 적음%s" % (b["name"], VMAP._ga(b["name"]), nm0, VMAP._eul(nm0), (bd["item"] + " ") if bd["item"] else "", share),
+            "%s 고객%s" % (nm0, " · " + items[0] if items else ""), "buyer", bs, bd)
+        for ln in lines:
+            it, others = ln["item"], ln["others"]
             # 같은 줄 = 제품별 경쟁사 — 묶음 줄('WAFER 외' · '강재, 기자재, 의장재 등')이나 상장 공급사가 넷↑인 줄은 아니다
             # (LX세미콘 'WAFER 외'가 LG이노텍을 삼성전자 동종으로, 현대제철 강재 줄이 한화엔진 · 두산에너빌리티를 끌어왔다)
             got = [(nm, _vcmap_line_link(nm, it, link, prod_idx, univ)) for nm in others]
@@ -11677,31 +11827,134 @@ def _vcmap_build(code):
             if VMAP.BUNDLE_RX.search(it or "") or len(got) > 3:
                 continue
             for nm, cd in got:
-                sup(cd, "%s %s 매입처에 함께 적힘(제품별 경쟁사)" % (b["name"], it or "같은 줄"), "%s 동종 공급사" % (it or b["name"]))
-    for s in VMAP.dedup_sellers(sellers, set(mine)):
+                sup(cd, "%s %s 매입처에 %s%s 함께 적힘(제품별 경쟁사)" % (b["name"], it or "같은 줄", nm0, VMAP._wa(nm0)), "%s 동종 공급사" % (it or b["name"]), "line", bs,
+                    {"name": b["name"], "item": it or ""})
+    for s in sellers:                             # 출처는 거르기 전에 모두 — up_groups 는 다른 placed 로 다시 거르니, 거른 뒤 찍으면 출처 없는 줄이 남는다(코스모화학)
+        ss = osrc(s["code"], s["name"], "매출처 표")
+        s.update(src=ss[0], date=ss[1], url=ss[2])
+    keep = VMAP.dedup_sellers(sellers, set(mine))   # up_groups 에도 같은 목록(지주가 연결로 베껴 적은 것 — 코스모화학 = 코스모신소재)
+    for s in keep:
         if not s.get("group"):
-            sup(s["code"], "%s%s %s를 매출처로 적음" % (s["name"], VMAP._ga(s["name"]), nm0) + (" · %s" % mine[s["code"]] if mine.get(s["code"]) else ""),
-                "%s 공급사%s" % (nm0, " · " + mine[s["code"]] if mine.get(s["code"]) else ""))
-    for cd, it in mine.items():
-        sup(cd, "%s 매입처 · %s" % (nm0, it), "%s 공급사 · %s" % (nm0, it))
-    ys = vc.get("years") or []
-    custs = [h for h in vc.get("customers") or () if ys and h.get("last") == ys[-1] and not h.get("own")]
+            # 비중은 그 회사 매출처 표의 내 줄(_vcmap_meta cust — 부문 표면 그 부문 매출의 몫)에서만 — 종속회사 표에서 온 것(_vc_peers)은 무엇의 몫인지 몰라 안 적는다.
+            # 품목은 적지 않는다 — 그 회사 매출처 표가 아니라 내 원재료 표에 적힌 것(mine 줄이 그 출처로 말한다)
+            row = (_vcmap_meta(s["code"], metas).get("cust") or {}).get(me_k) or {}
+            sd = {"name": s["name"], "pct": row.get("pct"), "seg": row.get("seg"), "basis": row.get("basis")}
+            share = (" (%s)" % VMAP.sell_share(sd, nm0)) if isinstance(sd["pct"], (int, float)) else ""
+            sup(s["code"], "%s%s %s%s 매출처로 적음%s" % (s["name"], VMAP._ga(s["name"]), nm0, VMAP._eul(nm0), share), "%s 공급사" % nm0, "seller",
+                (s["src"], s["date"], s["url"]), sd)
+    msrc = lsrc("원재료 표", mat_y)
+    for cd, m in mine.items():
+        sup(cd, "%s %s 매입처 '%s'%s" % (nm0, m["item"], m["as"], (" (%s)" % VMAP.buy_share(m, m["as"])) if isinstance(m.get("pct"), (int, float)) else ""),
+            "%s 공급사 · %s" % (nm0, m["item"]), "mine", msrc, m)
+    custs = []
+    for h in vc.get("customers") or ():
+        if not cust_y or h.get("last") != cust_y or h.get("own"):
+            continue
+        custs.append(dict(h, pct=(h.get("by_year") or {}).get(cust_y, h.get("pct"))))   # 표가 있는 마지막 칸의 비중(최신 칸에 표가 없으면 valuechain_view 의 pct 는 None)
+    csrc = lsrc("매출처 표", cust_y)
     for h in custs:
+        h.update(src=csrc[0], date=csrc[1], url=csrc[2])         # down_nodes 매출처 노드에도
+        seg = (h.get("seg") or "").strip() if h.get("basis") == "부문" else ""      # 부문별 매출처 표면 그 부문 매출의 몫
         if h.get("pct"):
-            sup((h.get("link") or {}).get("code"), "%s 매출처 %.1f%%" % (nm0, h["pct"]), "%s 고객 %.0f%%" % (nm0, h["pct"]))
+            sup((h.get("link") or {}).get("code"), "%s %s매출처 %.1f%%" % (nm0, (seg + " ") if seg else "", h["pct"]), "%s 고객 %.0f%%" % (nm0, h["pct"]), "cust", csrc,
+                {"pct": h["pct"], "seg": seg or None, "basis": h.get("basis")})
+        elif not VMAP.NOT_CO.search(h.get("name") or ""):         # 이름만 적힌 매출처(비중 없음 — HLB생명과학 'SD BIOSENSOR' · 코스모신소재 '삼성전기')도 그 표의 고객이다
+            sup((h.get("link") or {}).get("code"), "%s %s매출처 (비중 미기재)" % (nm0, (seg + " ") if seg else ""), "%s 고객" % nm0, "cust", csrc, {"pct": None, "seg": seg or None, "basis": h.get("basis")})
+    for o in vc.get("orders") or ():
+        o.update(src="공시 · 단일판매ㆍ공급계약 체결(최근 2년 · 시너지 계약 캐시)", date=o.get("last"))
+    # 과거 공급망(연결 3) — 지금 칸엔 없고 과거 칸에 있는 것. 주도주 쪽: 내 15년 매입처 · 매출처(valuechain_view suppliers_hist · customers), 후보 쪽: 전 종목 해마다 색인(_vcmap_hist)
+    VCMAP["step"] = "과거 공급망 색인"
+    hist = {}
+    hist_src = lambda tab, y: lsrc(tab, y)            # noqa: E731
+
+    def hadd(cd, w, short, kind, src, d):
+        if cd and cd in univ and cd != code and cd not in excl and cd not in supply and recent(d.get("y2")) and w not in [x["w"] for x in hist.setdefault(cd, [])]:
+            hist[cd].append({"w": w, "s": short, "k": kind, "src": src[0], "date": src[1], "url": src[2], "d": d})
+    # 해는 캐시에 적힌 칸 그대로(VMAP.yrs_of — '2021 · 2024년'). '지금'은 표가 있는 마지막 칸(mat_y · cust_y) — 그보다 앞이면 더 새 표가 이름을 안 적은 것이라 '지금은 빠짐'
+    for h in vc.get("suppliers_hist") or ():
+        if not mat_y or not h.get("last") or h["last"] >= mat_y:
+            continue                                   # 지금(표가 있는 마지막 칸)도 매입처 — 위에서 잡았다
+        cd = link(h.get("name"))
+        it = next(iter(h.get("items") or ()), "")
+        y1, y2 = h.get("first"), h.get("last")
+        yl = sorted(h.get("years") or ()) or [y1, y2]
+        if cd and cd not in mine:
+            hadd(cd, "%s %s %s 매입처 '%s' (지금은 빠짐)" % (VMAP.yrs_of(yl), nm0, it, VMAP.short_name(h["name"])), "과거 %s 매입처 · %s" % (nm0, it), "hist_sup",
+                 hist_src("원재료 표", y2), {"item": it, "y1": y1, "y2": y2, "ys": yl, "as": VMAP.short_name(h["name"])})
+    for h in vc.get("customers") or ():
+        if not cust_y or not h.get("last") or h["last"] >= cust_y or h.get("own"):
+            continue
+        cd = (h.get("link") or {}).get("code")
+        y1, y2 = h.get("first"), h.get("last")
+        yl = sorted(h.get("by_year") or ()) or [y1, y2]
+        pct = (h.get("by_year") or {}).get(y2)
+        hadd(cd, "%s %s 매출처 '%s'%s (지금은 빠짐)" % (VMAP.yrs_of(yl), nm0, h.get("name"), " %.1f%%" % pct if isinstance(pct, (int, float)) else ""),
+             "과거 %s 고객" % nm0, "hist_cust", hist_src("매출처 표", y2), {"y1": y1, "y2": y2, "ys": yl, "pct": pct})
+    try:
+        H = _vcmap_hist()
+    except Exception as e:
+        H = {"cust": {}, "supp": {}, "latest": {}, "last": {}}
+        miss.append("과거 공급망 색인: %s: %s" % (type(e).__name__, e))
+
+    def htail(cd, ey, kind):
+        """후보 쪽 과거 줄의 꼬리 — 그 회사의 더 새 표(이름 적힌)가 나를 안 적었으면 '지금은 빠짐'. 더 새 보고서에 그 표 · 이름이 아예 없으면(부분 반기 · 유형만 · 가려짐)
+        빠진 게 아니라 모르는 것 — '최신 2026 반기보고서엔 매출처 표 없음'. 표가 있는 마지막 칸에 적혀 있으면(= 지금) None(위 buyers · sellers 가 잡는다)."""
+        L = (H.get("last") or {}).get(cd) or {}
+        named, anyy = (L.get("cn"), L.get("ca")) if kind == "cust" else (L.get("sn"), L.get("sa"))
+        latest = (H.get("latest") or {}).get(cd)
+        if named and named > ey:
+            return "지금은 빠짐"
+        if latest and latest > ey:
+            rn = ((_vcmap_meta(cd, metas).get("years") or {}).get(latest) or {}).get("name") or "보고서"
+            return "최신 %s엔 %s %s" % (rn, "매출처" if kind == "cust" else "매입처", "이름 없음" if anyy == latest else "표 없음")
+        return None
+    buyer_codes = {b["code"] for b in buyers}
+    for cd, e in (H["supp"].get(me_k) or {}).items():          # 과거에 나를 매입처로 적은 회사(지금 칸엔 없음)
+        yl = e.get("ys") or []
+        tl = None if cd in buyer_codes or not yl else htail(cd, yl[-1], "supp")
+        nm = univ.get(cd)
+        if nm and tl:
+            hadd(cd, "%s %s%s %s%s %s매입처로 적음 (%s)" % (VMAP.yrs_of(yl), nm, VMAP._ga(nm), nm0, VMAP._eul(nm0), (e["item"] + " ") if e.get("item") else "", tl),
+                 ("과거 %s 고객" % nm0) if tl == "지금은 빠짐" else ("%s 고객 · 최신 표 없음" % nm0), "hist_buyer",
+                 osrc(cd, nm, "「사업의 내용」 원재료 매입처 표", yl[-1]), {"name": nm, "item": e.get("item") or "", "y1": yl[0], "y2": yl[-1], "ys": yl, "tail": tl})
+    seller_codes = {s["code"] for s in sellers}
+    for cd, e in (H["cust"].get(me_k) or {}).items():          # 과거에 나를 매출처로 적은 회사
+        yl = e.get("ys") or []
+        tl = None if cd in seller_codes or not yl else htail(cd, yl[-1], "cust")
+        nm = univ.get(cd)
+        if nm and tl:
+            hadd(cd, "%s %s%s %s%s 매출처로 적음 (%s)" % (VMAP.yrs_of(yl), nm, VMAP._ga(nm), nm0, VMAP._eul(nm0), tl),
+                 ("과거 %s 공급사" % nm0) if tl == "지금은 빠짐" else ("%s 공급사 · 최신 표 없음" % nm0), "hist_seller",
+                 osrc(cd, nm, "매출처 표", yl[-1]), {"name": nm, "y1": yl[0], "y2": yl[-1], "ys": yl, "tail": tl})
+    # 같은 고객 — 내 매출처(이름 적힌 상장사 고객)에 파는 다른 상장사. 주도주와 맞는 테마 · 제품 낱말을 함께 가질 때만 후보(candidates 가 거른다)
+    same = {}
+    for h in custs[:12]:
+        if not h.get("pct"):
+            continue
+        for cd, nm, pct, raw in (peers.get("cust") or {}).get(_vc_key(h["name"]), []):
+            if cd != code and cd in univ and cd not in excl and cd not in same:
+                same[cd] = {"cust": h["name"], "pct": pct, "lead_pct": h["pct"], "name": nm}
     # 후보 → 점수(근거 많은 순 30곳)
-    cands = VMAP.candidates(code, univ=univ, stocks=_vcmap_themes(), theme_keys=theme_keys, story_keys=[VMAP.kw_norm(w) for w in story_kw],
+    VCMAP["step"] = "후속주 고르기"
+    themes = _vcmap_themes()
+    cands = VMAP.candidates(code, univ=univ, stocks=themes.get("stocks"), theme_keys=theme_keys, story_keys=[VMAP.kw_norm(w) for w in story_kw],
                             phrases=VMAP.phrase_tokens(vc.get("products")), reps=by, since180=iso(180),
                             rep_keys=rep_keys, supply=supply, prod_index=prod_idx, prod_keys=prod_keys,
-                            lead_equip=lead_equip, exclude=excl, hits=hits, shared=shared, broad=broad)
+                            lead_equip=lead_equip, exclude=excl, hits=hits, shared=shared, broad=broad,
+                            rep_refs=refs, hist=hist, samecust=same, lead_name=nm0)
     _vcmap_weak_buyers(cands, [b["code"] for b in buyers])
     caps = {cd: (u or {}).get("cap") or 0 for cd, u in (_universe_info()[0] or {}).items()}
     top = sorted(cands, key=lambda cd: VMAP.evidence_rank(cands[cd]) + (caps.get(cd, 0), cd), reverse=True)[:VMAP.MAX_ROWS]   # 동점은 시가총액 큰 순
     lead_x = X.get(code) or {}
-    risk = (_disc_risk() or {}).get("codes") or {}
-    snap = (_kis_snapshot() or {}).get("status") or {}
+    drisk = _disc_risk() or {}
+    risk = drisk.get("codes") or {}
+    ksnap = _kis_snapshot() or {}
+    snap = ksnap.get("status") or {}
     expo = _vcmap_export()
     cur_v = DRK.VERSION if DRK is not None else None
+    srcs0 = {"theme": "네이버 금융 테마 분류%s" % (" " + themes["date"] if themes.get("date") else ""),
+             "xs": "종가 %s · 전 종목 %d곳 단면" % (xs.get("date"), xs.get("n") or len(X)), "xs_date": xs.get("date"),
+             "kis_date": ksnap.get("date"), "risk_date": drisk.get("기준일")}
     rows = []
     for cd in top:
         x = X.get(cd)
@@ -11709,11 +11962,19 @@ def _vcmap_build(code):
         rr = by.get(cd) or []
         n180 = sum(1 for r in rr if (r.get("date") or "")[:10] >= iso(180))
         bad, tags = _kis_tags(snap.get(cd))
-        s = VMAP.score(cands[cd], lead_p3=lead_x.get("p3"), px=x, ph=ph, n_rep=n180, up=VMAP.upside(rr, (x or {}).get("px"), iso(180)),
-                       risk=risk.get(cd), kis_bad=bad, kis_tags=tags)
+        cnd = cands[cd]
+        srcs = dict(srcs0)
+        if cnd["prod"]:                                # 같은 제품 — 그 회사의 제품 표를 쓴 칸(최신)의 보고서 · DART
+            pm = _vcmap_meta(cd, metas)
+            srcs["prod"] = _vcmap_src(univ.get(cd) or cd, pm, pm.get("prod_y"), "「사업의 내용」 주요 제품 표")
+        for w in cnd["supply"]:                        # 같은 고객 — 그 회사 최신 칸 매출처 표
+            if w.get("k") == "same" and not w.get("src"):
+                w["src"], w["date"], w["url"] = osrc(cd, univ.get(cd) or cd, "매출처 표")
+        s = VMAP.score(cnd, lead_p3=lead_x.get("p3"), px=x, ph=ph, n_rep=n180, up=VMAP.upside_detail(rr, (x or {}).get("px"), iso(180)),
+                       risk=risk.get(cd), kis_bad=bad, kis_tags=tags, lead_name=nm0, name=univ.get(cd) or cd, srcs=srcs)
         pxo = VMAP.px_out(x) or {}
         rows.append(dict(s, code=cd, name=univ.get(cd) or cd, px={k: pxo.get(k) for k in ("px", "dd52", "r1m", "r3m", "r6m", "p1m", "p3m")},
-                         phase=ph["phase"] if ph else None, old=bool(ph and ph["old"]), reports_n=n180, kw_n=cands[cd]["rep_n"], exp=expo.get(cd)))
+                         phase=ph["phase"] if ph else None, old=bool(ph and ph["old"]), reports_n=n180, kw_n=cnd["rep_n"], exp=expo.get(cd)))
     rows = VMAP.sort_rows(rows)
     # 머리 띠 — 주도주 · 스토리 · 트리거
     VCMAP["step"] = "트리거 · 그물망"
@@ -11725,17 +11986,22 @@ def _vcmap_build(code):
     story = {"words": words, "products": [{k: p[k] for k in ("item", "seg", "pct", "c")} for p in prods[:3]], "line": VMAP.lead_line(lead_rows)}
     grp = own.get("group") or {}
     period = VMAP.period_label((vc.get("periods") or {}).get(ys[-1])) if ys else ""
-    up = VMAP.up_groups(vc.get("materials"), prods, link, sellers=sellers, skip=excl | {h["code"] for h in holds if h.get("code")},
+    cperiod = (VMAP.period_label((vc.get("periods") or {}).get(cust_y)) if cust_y else "") or period      # 매출처 표를 쓴 칸(최신 칸에 표가 없으면 그 앞)
+    mperiod = (VMAP.period_label((vc.get("periods") or {}).get(mat_y)) if mat_y else "") or period
+    up = VMAP.up_groups(mats, prods, link, sellers=keep, skip=excl | {h["code"] for h in holds if h.get("code")},
                         lead_name=c["name"], name_of=_vcmap_linker().name_of.get)
-    down = VMAP.down_nodes(custs, buyers, vc.get("orders"), link, period)
+    down = VMAP.down_nodes(custs, buyers, vc.get("orders"), link, cperiod, lead_name=nm0)
     net = {"owner": owner, "group": {"listed": grp.get("n"), "names": (grp.get("names") or [])[:40]},
            "listed_subs": own.get("listed_subs"), "subs_note": own.get("subs_note"), "holdings": holds[:12],
            "products": [{k: p[k] for k in ("item", "seg", "pct", "c")} for p in prods[:8]],
            "up": up, "down": down, "uses": VMAP.uses_of(vc.get("products")),
            "peers": VMAP.peer_nodes(rows, up, down)}          # 동종 칸 — 위 · 아래 칸에 이미 있는 공급망 회사는 뒤로
-    src = {"reports": {"n": sum(1 for r in lead_rows if (r.get("date") or "")[:10] >= iso(180))}, "xs": {"date": xs.get("date")},
-           "own": {"rcept": own.get("rcept"), "src": own.get("src")}, "vc": {"stamp": vc.get("stamp"), "period": period},
+    src = {"reports": {"n": sum(1 for r in lead_rows if (r.get("date") or "")[:10] >= iso(180))}, "xs": {"date": xs.get("date"), "n": xs.get("n")},
+           "own": {"rcept": own.get("rcept"), "src": own.get("src")},
+           "vc": dict({"stamp": vc.get("stamp"), "period": period, "rcept": ((lm.get("years") or {}).get(lm.get("latest")) or {}).get("rcept"), "cust_y": cust_y, "mat_y": mat_y},
+                      **({"mat_period": mperiod, "mat_rcept": ((lm.get("years") or {}).get(mat_y) or {}).get("rcept")} if ys and mat_y and mat_y != ys[-1] else {})),
            "keys": {"story": story_kw, "theme": theme_kw, "product": pwords, "themes": len(theme_keys)}, "cands": len(cands), "miss": miss,
+           "hist": {"n": len(hist), "same": len(same)}, "dates": {"theme": themes.get("date"), "kis": ksnap.get("date"), "risk": drisk.get("기준일")},
            "took": round(time.time() - t0, 1)}
     d = VMAP.payload(code=code, name=c["name"], built=dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), leader=leader, story=story,
                      triggers=trig, net=net, matrix=rows, src=src)

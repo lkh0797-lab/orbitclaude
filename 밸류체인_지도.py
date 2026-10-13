@@ -9,14 +9,44 @@ import bisect
 import datetime as dt
 from collections import Counter
 
-V = 1
+V = 4                     # 2: 근거마다 출처 객체(ev) · 설명 문장(expl) · 과거 공급망 · 같은 고객 · 건전성 차감 · 트리거 문장 자르기(2026-10-13 2차 개선)
+                          # 3: 설명 문장 손질 — 조사는 끝소리로(3으로 · MLCC를 · 나노엔텍과), 리포트 건수 되풀이 안 함, 주목 · 위험 문장에 서술어, 매입 · 매출 비중 말(2026-10-13 통합)
+                          # 4: 비중은 무엇의 몫인지 표 꼴대로(부문 · 매입처마다 한 줄인 표), 과거 공급망 해 목록(2021 · 2024년), 같은 제품 비중은 표 값만(금액 비율은 '추정'),
+                          #    목표가 출처는 증권사 곳 수, 매출처 줄에서 품목 뺌(2026-10-13 3차 손질)
 NOTE = "규칙 점수 · 검증 전 — 예측 아님"
+GROUP_NOTE = {"B": "연결 세고 점수 높음", "C": "연결 있으나 일부만 확인", "D": "테마 위주 · 근거 약함",
+              "Fake": "위험 꼬리표 또는 급등 + 근거 약함 — 후속주로 보기 어려움"}
 MAX_ROWS = 30             # 매트릭스 최대 줄(근거 많은 순)
 MAX_TRIG = 4
 REP_DF_MAX = 40          # 리포트 동시 언급 낱말이 180일 리포트에서 이만큼(종목 수) 넘게 걸리면 넓은 말 — 리포트 있는 곳 약 710 중.
                          # 2026-10-12 실측: MLCC 5 · FC-BGA 7 · DRAM 16 · 은행 20 · HBM 24 · 광고 26 / 기판 47 · 방산 55 · 플랫폼 83 · 제시 212.
                          # 40 을 넘는 업종 말(방산 · ESS · 임상)은 테마 쪽으로 이미 잡힌다
 DART = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=%s"
+
+
+def d8(s):
+    """'2026-10-08 07:25' · '20261008' · 접수번호 → 'YYYYMMDD'(여덟 자리가 안 되면 None)."""
+    t = re.sub(r"\D", "", (s or "")[:10])
+    return t[:8] if len(t) >= 8 else None
+
+
+def ev(t, src=None, date=None, url=None, go=None, **more):
+    """근거 한 줄 — 화면 계약 {t, src, date, url, go}(없는 값은 키를 뺀다 — 화면 vbEv 는 없는 키를 비어 있다고 읽는다).
+    숫자 · 문구는 모두 캐시 값에서 온 것이어야 한다(지어내지 않는다). go = {tab, code} 탭 이동."""
+    d = {"t": t, "src": src}
+    for k, v in (("date", d8(date) if date else None), ("url", url), ("go", go)):
+        if v:
+            d[k] = v
+    d.update({k: v for k, v in more.items() if v})
+    return d
+
+
+def report_name(period):
+    """period_label 꼴 → 보고서 이름: '2026 반기' → '2026 반기보고서', '2026 1분기' → '2026 1분기보고서', '2025' → '2025 사업보고서'."""
+    p = (period or "").strip()
+    if not p:
+        return "보고서"
+    return p + ("보고서" if re.search(r"(?:반기|분기)$", p) else " 사업보고서")
 
 
 # ---------------------------------------------------------------- 1. 이름 → 종목코드
@@ -459,8 +489,8 @@ def product_label(p):
     """제품 줄 → 화면 이름. '수동소자(MLCC, Inductor, Chip Resistor 등)' → '수동소자(MLCC 등)', '제품상품'처럼 뭉뚱그린 품목이면 용도로.
     글자 없는 품목(날짜 조각 "('11.1.1~09.30)" — KB금융)은 빈 이름(products_of 가 뺀다)."""
     item = re.sub(r"\s+", " ", (p.get("item") or "").strip())
-    if GEN_ITEM.match(item) and p.get("use") and not GEN_ITEM.match(p["use"].strip()):
-        item = p["use"].strip()
+    if GEN_ITEM.match(item) and p.get("use") and not GEN_ITEM.match(p["use"].strip()) and not re.match(r"^기타", item):
+        item = p["use"].strip()          # '기타제품 등'(용도 '후판,선재 등')은 용도로 바꾸지 않는다 — 제품 이름이 아니라 같은 제품 맞추기에 쓰면 안 된다(POSCO홀딩스 → 세아홀딩스 '선재')
     if not re.search(r"[가-힣A-Za-z]", item):
         return ""
     m = re.match(r"^(.*?)\(([^)]*,[^)]*)\)\s*$", item)
@@ -470,22 +500,28 @@ def product_label(p):
     return item[:40]
 
 
+SUM_ROW = re.compile(r"합\s*계|소\s*계|총\s*계|매출\s*총계|내부\s*거래|연결\s*조정|단순\s*합계")       # 합계 · 조정 줄(품목 · 부문 · 용도 · 구분 칸 어디에 있든)
+
+
 def products_of(prods, top=None):
-    """밸류체인 제품 매출 구성 → [{item, seg, pct, use, c}] 비중 큰 순. 합계 · 기타 · 내부거래 · 단위 줄은 빼고 같은 이름은 합친다.
-    비중이 없으면 금액으로 나눈다. c = 부문 색 번호(부문 합 큰 순 0,1,2… — 부문이 없으면 품목마다)."""
+    """밸류체인 제품 매출 구성 → [{item, seg, pct, use, c(, est)}] 비중 큰 순. 합계 · 기타 · 내부거래 · 단위 줄은 빼고 같은 이름은 합친다.
+    비중이 없으면 금액으로 나눈다 — 그 줄은 est(금액 비율 추정, 표의 비중이 아니다). 합계 · 내부거래제거 · 연결조정 줄은 용도 · 구분 칸에 적혀 있어도 나누기 전에 뺀다
+    (POSCO홀딩스 '물류등부문 단순합계' 가 분모에 들어 '후판,선재 등 9.8%' 가 나왔다). c = 부문 색 번호(부문 합 큰 순 0,1,2… — 부문이 없으면 품목마다)."""
     rows = []
     for p in prods or ():
         lab = product_label(p)
         seg = (p.get("segment") or "").strip() or None
-        if not lab or GEN_ITEM.match(lab) or re.search(r"합\s*계|소\s*계|총\s*계|매출\s*총계|내부\s*거래|연결\s*조정", lab + " " + (seg or "")):
+        if not lab or GEN_ITEM.match(lab) or SUM_ROW.search(" ".join(x for x in (lab, seg, p.get("use"), p.get("kind")) if x)):
             continue
         if seg and GEN_ITEM.match(seg):
             seg = None
         rows.append({"item": lab, "seg": seg, "pct": p.get("pct"), "amt": p.get("amt"), "use": p.get("use")})
     if not rows:
         return []
+    est = False
     if any(r["pct"] is None for r in rows) and all(isinstance(r["amt"], (int, float)) and r["amt"] > 0 for r in rows):
         tot = sum(r["amt"] for r in rows)
+        est = True
         for r in rows:
             r["pct"] = r["amt"] / tot * 100
     big = [r for r in rows if (r["pct"] or 0) >= 99.5]
@@ -505,9 +541,14 @@ def products_of(prods, top=None):
     for r in rows:
         segs[r["seg"] or "·" + r["item"]] += r["pct"] or 0
     cmap = {s: i for i, (s, _) in enumerate(sorted(segs.items(), key=lambda kv: -kv[1]))}
-    out = [{"item": r["item"], "seg": r["seg"], "pct": round(r["pct"], 1) if r["pct"] is not None else None,
-            "use": r["use"], "c": cmap[r["seg"] or "·" + r["item"]]} for r in rows]
+    out = [dict({"item": r["item"], "seg": r["seg"], "pct": round(r["pct"], 1) if r["pct"] is not None else None, "raw": r["pct"],
+                 "use": r["use"], "c": cmap[r["seg"] or "·" + r["item"]]}, **({"est": True} if est else {})) for r in rows]     # raw = 안 둥글린 값(pct0 가 두 번 둥글리지 않게)
     return out[:top] if top else out
+
+
+def pct0(p):
+    """비중을 정수 %로 — 반올림은 ROUND_HALF_UP(34.5 → 35. '%.0f' 는 짝수로 가 34.52(표) → 34.5 → '34' 였다)."""
+    return "%d%%" % int(p + 0.5) if p >= 0 else "%d%%" % -int(-p + 0.5)
 
 
 def big_lines(prods, min_pct=PROD_MIN_PCT):
@@ -630,6 +671,41 @@ def clip(line, m, n=60):
     return ("…" if a else "") + s[a:b].strip() + ("…" if b < len(s) else "")
 
 
+STRONG_B = re.compile(r"(?<=[.!?。:：])(?=\s|$)")     # 문장 경계 — 마침표 · 콜론 뒤에 공백(숫자 '4.27' 안의 점은 아니다)
+WEAK_B = re.compile(r"(?<=[며고])(?=[,\s]|$)")         # 이음 경계 — '…하며,' · '…하고 ' 뒤
+
+
+def clip_sent(line, m, n=60):
+    """트리거 줄을 문장 경계에서 자른다 — 맞은 자리가 든 문장을 통째(앞 '…' 없이). n자를 넘으면 그 안의 마지막 경계(마침표 · '며' · '고' 뒤)까지,
+    그래도 안 맞으면 앞 이음 경계부터. 경계가 아예 없으면 clip(맞은 자리 둘레 n자 · '…'). m 은 공백을 하나로 모은 줄(정규화한 꼴)에서 맞춘 것."""
+    s = re.sub(r"\s+", " ", line or "").strip()
+    if len(s) <= n + 16:
+        return s
+    strong = {0, len(s)} | {b.start() for b in STRONG_B.finditer(s)}
+    weak = strong | {b.start() for b in WEAK_B.finditer(s)}
+    st = max(b for b in strong if b <= m.start())
+    en = min(b for b in strong if b >= m.end())
+    if en - st > n:
+        inner = [b for b in weak if m.end() <= b <= st + n]
+        if inner:
+            en = max(inner)
+        else:
+            back = [b for b in weak if b <= m.start() and en - b <= n]
+            if back:
+                st = max(back)
+            else:
+                st = max([b for b in weak if b <= m.start()] or [st])
+                inner = [b for b in weak if m.end() <= b <= st + n]
+                if inner:
+                    en = max(inner)
+                else:                                   # 뒤에 경계가 없다 — 앞은 경계부터('…' 없이), 뒤는 n자 안 마지막 낱말까지 + '…'
+                    sp = s.rfind(" ", m.end(), st + n + 1)
+                    if sp <= m.end():
+                        return clip(s, m, n)
+                    return s[st:sp].strip(" ,:") + "…"
+    return s[st:en].strip(" ,:")
+
+
 def disc_triggers(discs, contracts, classify, today):
     """공시 트리거 — 최근 1년 공급계약(계약 캐시 금액 합 · 매출 대비 % 합)과 설비투자 공시. discs = 내러티브.disc_rows 꼴(최신 먼저)."""
     since = (today - dt.timedelta(days=365)).strftime("%Y%m%d")
@@ -672,16 +748,17 @@ def report_triggers(rows, since, words=(), skip=(), name=""):
             continue
         mine = not (skip and _rkey(r) in skip) or bool(nk and nk in _KW_STRIP.sub("", r.get("title") or "").lower())
         for ln in [r.get("title") or ""] + list(r.get("lines") or []) + [r.get("concl") or ""]:
-            if not mine and not (nk and nk in _KW_STRIP.sub("", ln or "").lower()):
+            ln = re.sub(r"\s+", " ", ln or "").strip()          # 공백을 하나로 — clip_sent 의 경계 자리와 맞춘다
+            if not mine and not (nk and nk in _KW_STRIP.sub("", ln).lower()):
                 continue
             for cat, rx in TRIG_RULES:
-                m = rx.search(ln or "")
+                m = rx.search(ln)
                 if not m or (cat in ("order", "capex") and TRIG_SKIP.search(ln)) or (cat == "capex" and _not_capex(ln, m)):
                     continue
                 hit = any(k in kw_norm(ln) for k in keys)
                 rank = (d, hit)
                 if cat not in best or rank > best[cat][0]:
-                    best[cat] = (rank, {"kind": cat, "text": clip(ln, m), "src": "리포트", "by": r.get("broker"), "date": d,
+                    best[cat] = (rank, {"kind": cat, "text": clip_sent(ln, m), "src": "리포트", "by": r.get("broker"), "date": d,
                                         "url": r.get("msg_url") or next(iter(r.get("urls") or []), None)})
                 break                 # 한 줄은 앞 범주 하나만 — 수주 줄('수주 5.4조원 … 반도체 팹')이 수주 공시에 밀려 설비투자로 오지 않게
     return {k: v[1] for k, v in best.items()}
@@ -820,10 +897,11 @@ def _low(s):
     return n
 
 
-def rep_scan(rows, since, keys, skip=(), loose=None):
+def rep_scan(rows, since, keys, skip=(), loose=None, refs=None):
     """한 종목 리포트 중 since 이후 · 키워드(kw_norm) 든 행 → 행마다 걸린 낱말(disp) 묶음 목록. skip = shared_rows 꼴의 열쇠.
     행 수 = 동시 언급 건수. 묶음으로 두는 것은 넓은 말(candidates 의 문서 빈도)을 빼고 다시 세기 위해서.
-    loose(set)를 주면 두 글자 한글 말의 앞 글자 조건 없이 걸린 낱말도 모은다 — 넓은 말 셈은 느슨하게('비율'은 '자본비율'로 흔하다)."""
+    loose(set)를 주면 두 글자 한글 말의 앞 글자 조건 없이 걸린 낱말도 모은다 — 넓은 말 셈은 느슨하게('비율'은 '자본비율'로 흔하다).
+    refs(list)를 주면 걸린 행마다 출처 {date, by, url, title}를 같은 순서로 담는다(근거 줄의 '{증권사} {날짜} · t.me')."""
     mk = _key_rx(keys)
     out = []
     for r in rows or ():
@@ -844,23 +922,30 @@ def rep_scan(rows, since, keys, skip=(), loose=None):
             got.add(disp)
         if got:
             out.append(got)
+            if refs is not None:
+                refs.append({"date": (r.get("date") or "")[:10], "by": r.get("broker"), "title": re.sub(r"\s+", " ", r.get("title") or "").strip()[:40],
+                             "url": r.get("msg_url") or next(iter(r.get("urls") or []), None)})
     return out
 
 
-def rep_hits(reps, since, keys, skip=(), codes=None, exclude=(), df=None):
+def rep_hits(reps, since, keys, skip=(), codes=None, exclude=(), df=None, refs=None):
     """종목마다 rep_scan → {code: [행마다 걸린 낱말 묶음]}. codes = 볼 종목(수집 회사), exclude = 뺄 종목. 서버가 한 번 세서
-    스토리 칩 거르기(broad_words)와 candidates(hits=)에 같이 쓴다 — 180일 리포트를 두 번 훑지 않게. df(Counter)를 주면 느슨한 문서 빈도를 센다."""
+    스토리 칩 거르기(broad_words)와 candidates(hits=)에 같이 쓴다 — 180일 리포트를 두 번 훑지 않게. df(Counter)를 주면 느슨한 문서 빈도를 센다.
+    refs(dict)를 주면 {code: [행마다 출처]}를 같은 순서로 채운다."""
     mk = _key_rx(keys)
     out = {}
     for cd, rows in (reps or {}).items():
         if (codes is not None and cd not in codes) or cd in exclude:
             continue
         lo = set() if df is not None else None
-        hs = rep_scan(rows, since, mk, skip, lo)
+        rf = [] if refs is not None else None
+        hs = rep_scan(rows, since, mk, skip, lo, rf)
         if lo:
             df.update(lo)
         if hs:
             out[cd] = hs
+            if refs is not None:
+                refs[cd] = rf
     return out
 
 
@@ -878,17 +963,21 @@ def _phrases(item):
 
 
 def prod_hits(items, keys, lead_equip=False, min_pct=5.0):
-    """다른 회사 제품 줄 [(item, seg, pct)] 중 내 제품 낱말로 끝나는 제품 이름이 있는 것 → [(낱말, 품목)].
-    '끝나는' — 머리 낱말이 같아야 같은 제품('회로기판 소재'는 기판이 아니라 소재). 비중 min_pct 미만 · 장비 · 검사 품목(내 제품도 장비가 아니면)은 뺀다."""
+    """다른 회사 제품 줄 [(item, seg, pct(, est))] 중 내 제품 낱말로 끝나는 제품 이름이 있는 것 → [(낱말, 품목, 비중, est)].
+    est = 비중이 표 값이 아니라 금액 비율 추정(products_of). '끝나는' — 머리 낱말이 같아야 같은 제품('회로기판 소재'는 기판이 아니라 소재).
+    비중 min_pct 미만 · 장비 · 검사 품목(내 제품도 장비가 아니면)은 뺀다."""
     out = []
     for it in items or ():
-        item, pct = (it[0], it[2] if len(it) > 2 else None) if isinstance(it, (list, tuple)) else (it.get("item"), it.get("pct"))
+        if isinstance(it, (list, tuple)):
+            item, pct, est = it[0], it[2] if len(it) > 2 else None, bool(it[3]) if len(it) > 3 else False
+        else:
+            item, pct, est = it.get("item"), it.get("pct"), bool(it.get("est"))
         if not item or GEN_ITEM.match(item.strip()) or (EQUIP_RX.search(item) and not lead_equip) or (pct is not None and pct < min_pct):
             continue
         ends = [e for e in (kw_norm(p) for p in _phrases(item)) if not REV_TAIL.search(e)]      # '상품매출(의류 등)'은 제품이 아니다
         hit = next((disp for disp, kk in keys if kk and any(e.endswith(kk) for e in ends)), None)
         if hit:
-            out.append((hit, item))
+            out.append((hit, item, pct, est))
     return out
 
 
@@ -925,18 +1014,21 @@ FILL_MIN = 5
 
 
 def candidates(lead, *, univ, stocks=None, theme_keys=(), story_keys=(), phrases=(), reps=None, since180="", rep_keys=(), supply=None,
-               prod_index=None, prod_keys=(), lead_equip=False, exclude=(), rep_df_max=None, hits=None, shared=None, broad=None):
-    """후속주 후보 — {code: {themes, st, nth, n180, rep_n, rep_by, supply, prod}}. 고른 회사 · exclude(모회사 · 계열 · 큰 지분)는 뺀다. 수집 회사(univ) 안만.
-    1 스토리 테마(주도주 테마 중 맞는 것, 주도주 테마가 없으면 전체 테마에서) · 2 리포트 키워드 동시 언급(180일) · 3 공급망 · 4 같은 제품.
+               prod_index=None, prod_keys=(), lead_equip=False, exclude=(), rep_df_max=None, hits=None, shared=None, broad=None,
+               rep_refs=None, hist=None, samecust=None, lead_name=""):
+    """후속주 후보 — {code: {themes, st, nth, n180, rep_n, rep_by, rep_refs, supply, prod}}. 고른 회사 · exclude(모회사 · 계열 · 큰 지분)는 뺀다. 수집 회사(univ) 안만.
+    1 스토리 테마(주도주 테마 중 맞는 것, 주도주 테마가 없으면 전체 테마에서) · 2 리포트 키워드 동시 언급(180일) · 3 공급망(지금 · 과거 · 같은 고객) · 4 같은 제품.
     맞는 테마가 없거나 후보가 FILL_MIN 곳 미만이면 주도주의 좁은 테마(NARROW_THEME 곳 이하, 작은 것부터 둘)로 채운다(손해보험 · 조선기자재 · MLCC).
     st = 스토리 낱말(story_keys)로 맞은 테마 수 — 제품 낱말로만 맞은 테마(PCB · 유리 기판)보다 앞에 세운다. nth = 주도주 테마(META 빼고) 중 같이 든 수,
-    n180 = 180일 리포트 수 — 30줄 자르기의 동점 가르기(evidence_rank). hits · broad = rep_hits 결과와 넓은 말(서버가 미리 센 것 — 없으면 여기서 센다)."""
+    n180 = 180일 리포트 수 — 30줄 자르기의 동점 가르기(evidence_rank). hits · broad = rep_hits 결과와 넓은 말(서버가 미리 센 것 — 없으면 여기서 센다).
+    rep_refs = rep_hits(refs=) 결과(행마다 출처) — 걸린 행 중 최신 둘을 rep_refs 로 남긴다. hist = {code: [공급망 근거 dict]} 과거 공급망(지금 칸엔 없고 과거 칸에 있는 것 — 연결 3),
+    samecust = {code: {cust, pct, lead_pct, name}} 같은 고객에 파는 회사 — 주도주와 맞는 테마 · 제품 낱말을 함께 가질 때만 후보(연결 3). 같은 고객만으로는 아니다."""
     rep_df_max = REP_DF_MAX if rep_df_max is None else rep_df_max
     skip = set(exclude) | {lead}
     out = {}
 
     def row(cd):
-        return out.setdefault(cd, {"themes": [], "st": 0, "rep_n": 0, "rep_by": Counter(), "supply": [], "prod": []})
+        return out.setdefault(cd, {"themes": [], "st": 0, "rep_n": 0, "rep_by": Counter(), "rep_refs": [], "supply": [], "prod": []})
     stocks = stocks or {}
     mine = (stocks.get(lead) or {}).get("themes") or []
     th = match_themes(mine, theme_keys, phrases) if mine else []
@@ -954,19 +1046,27 @@ def candidates(lead, *, univ, stocks=None, theme_keys=(), story_keys=(), phrases
     if rep_keys:
         if hits is None:
             df = Counter()
-            hits = rep_hits(reps, since180, rep_keys, shared_rows(reps, since180) if shared is None else shared, univ, skip, df=df)
+            rep_refs = {} if rep_refs is None else rep_refs
+            hits = rep_hits(reps, since180, rep_keys, shared_rows(reps, since180) if shared is None else shared, univ, skip, df=df, refs=rep_refs)
             broad = broad_words(None, rep_df_max, df)
         want = {disp for disp, _ in rep_keys}
-        hits = {cd: [h & want for h in hs if h & want] for cd, hs in hits.items() if cd in univ and cd not in skip}
-        hits = {cd: hs for cd, hs in hits.items() if hs}           # 종목 → 맞은 행마다 걸린 낱말 묶음
-        # 넓은 말 — 180일 리포트에서 rep_df_max 곳 넘게 걸리는 낱말('제시' 212곳 · '플랫폼' 83곳 — 바이오 '기술 플랫폼'까지)은 동시 언급에 쓰지 않는다
-        broad = broad if broad is not None else broad_words(hits, rep_df_max)
+        refs = rep_refs or {}
+        pairs = {}                                                 # 종목 → [(맞은 행의 낱말 묶음, 그 행 출처)]
         for cd, hs in hits.items():
-            hs = [h - broad for h in hs]
-            hs = [h for h in hs if h]
-            if hs:
+            if cd not in univ or cd in skip:
+                continue
+            rf = refs.get(cd) or []
+            ps = [(h & want, rf[i] if i < len(rf) else None) for i, h in enumerate(hs) if h & want]
+            if ps:
+                pairs[cd] = ps
+        # 넓은 말 — 180일 리포트에서 rep_df_max 곳 넘게 걸리는 낱말('제시' 212곳 · '플랫폼' 83곳 — 바이오 '기술 플랫폼'까지)은 동시 언급에 쓰지 않는다
+        broad = broad if broad is not None else broad_words({cd: [h for h, _ in ps] for cd, ps in pairs.items()}, rep_df_max)
+        for cd, ps in pairs.items():
+            ps = [(h - broad, rf) for h, rf in ps if h - broad]
+            if ps:
                 r = row(cd)
-                r["rep_n"], r["rep_by"] = len(hs), Counter(w for h in hs for w in h)
+                r["rep_n"], r["rep_by"] = len(ps), Counter(w for h, _ in ps for w in h)
+                r["rep_refs"] = sorted((rf for _, rf in ps if rf), key=lambda x: x.get("date") or "", reverse=True)[:2]
     for cd, why in (supply or {}).items():
         if cd in univ and cd not in skip:
             row(cd)["supply"] = list(why)
@@ -996,11 +1096,30 @@ def candidates(lead, *, univ, stocks=None, theme_keys=(), story_keys=(), phrases
                 if hit:
                     r = row(cd)
                     r["themes"] = r["themes"] + [t for t in hit if t not in r["themes"]]
+    # 과거 공급망(연결 3) — 지금 칸엔 없고 과거 칸에 있는 매입처 · 매출처(주도주 쪽 · 후보 쪽). 서버가 근거 dict(w · s · k · src · date · url · d)로 넘긴다
+    for cd, ws in (hist or {}).items():
+        if cd in univ and cd not in skip and ws:
+            r = row(cd)
+            have = {x["w"] for x in r["supply"] if isinstance(x, dict)}
+            r["supply"] += [dict(w, weak=True, k=w.get("k") or "hist") for w in ws if w.get("w") and w["w"] not in have]
+    # 같은 고객 + 같은 테마 · 제품(연결 3) — 같은 고객만으로는 후보가 아니다(삼성전자에 파는 반도체 장비사가 끌려오지 않게)
+    for cd, sc in (samecust or {}).items():
+        r = out.get(cd)
+        if cd not in univ or cd in skip or not r or not (r["themes"] or r["prod"]):
+            continue
+        tag = (re.sub(r"\(.*$", "", r["themes"][0]).strip() + " 테마") if r["themes"] else "%s 동종" % r["prod"][0][0]
+        w = "%s에 매출 %s (%s도 %s) · %s" % (sc.get("cust"), pct_s(sc.get("pct")), lead_name or "주도주", pct_s(sc.get("lead_pct")), tag)
+        if w not in {x["w"] for x in r["supply"] if isinstance(x, dict)}:
+            r["supply"].append({"w": w, "s": "같은 고객 %s · %s" % (sc.get("cust"), tag), "k": "same", "weak": True, "d": dict(sc, tag=tag)})
     core = {t for t in mine if not META_THEME.search(t)}
     for cd, r in out.items():
         r["nth"] = len(core & set(info(cd).get("themes") or ()))
         r["n180"] = sum(1 for x in (reps or {}).get(cd) or () if (x.get("date") or "")[:10] >= since180)
     return out
+
+
+def pct_s(p):
+    return ("%.0f%%" % p) if isinstance(p, (int, float)) else "비중 미기재"
 
 
 def _weak(s):
@@ -1037,37 +1156,69 @@ LIGHT_CATS = ("사채조기상환", "금전대여")    # '작전주 꼴'이 이�
 KIS_SEVERE = ("관리종목", "거래정지", "정리매매", "투자위험")
 
 
-def risk_flags(risk, kis_bad=(), kis_tags=(), opm=None):
-    """건전성 칸 — 5에서: 작전주 꼴 · 상폐 절차 · 보고서 없음 · 감사 비적정 · 자본잠식(그 밖 상폐 사유) −5, 관리 · 정지 · 투자위험 −5,
-    투자경고 −3, 투자주의 · 단기과열 · 자금조달 잦음 · 자금 거래(사채 풋 · 금전대여만으로 선 작전주 꼴) −2, 적자(OPM<0) −1. 최저 0. → (점수, [꼬리표])."""
+WARN_PEN = {"횡령배임": 3, "보고서지연": 2, "투자주의환기": 2, "불성실_지정": 1}      # 2026-10-13: 꼬리표만 붙고 안 깎이던 것(삼영전자공업 · 영풍 · 이수페타시스)
+
+
+def risk_items(risk, kis_bad=(), kis_tags=(), opm=None, kis_date=None, risk_date=None, druck_src=None):
+    """건전성 칸 — (점수, [근거 객체 ev]). 5에서: 작전주 꼴 · 상폐 절차 · 보고서 없음 · 감사 비적정 · 자본잠식(그 밖 상폐 사유) −5, 관리 · 정지 · 투자위험 −5,
+    투자경고 −3 · 횡령 · 배임 혐의 −3, 투자주의 · 단기과열 · 자금조달 잦음 · 자금 거래(사채 풋 · 금전대여만으로 선 작전주 꼴) · 보고서 지연 · 투자주의 환기 −2,
+    불성실공시 −1, 적자(OPM<0) −1. 최저 0. 출처: 공시위험(기준일 — 맞은 공시 제목 · 날짜 · DART 링크), KIS 종목 상태(스냅샷 날짜), 적자는 가속도 분기 재무."""
     rk = risk or {}
-    pen, flags = 0, []
-    light = rk.get("level") == "작전주 꼴" and bool(rk.get("hits")) and all(h.get("cat") in LIGHT_CATS for h in rk["hits"])
+    pen, out = 0, []
+    dsrc = ("공시위험 %s" % risk_date) if risk_date else "공시위험"
+    ksrc = ("KIS 종목 상태 %s" % kis_date) if kis_date else "KIS 종목 상태"
+    hits = rk.get("hits") or []
+
+    def disc(t, rows=None):
+        r = next((x for x in rows or () if x and len(x) >= 3), None)          # [날짜, 제목, 접수번호]
+        return ev(t, "%s — %s %s" % (dsrc, r[1], r[0]), r[0], DART % r[2]) if r else ev(t, dsrc)
+
+    def rows_of(cats):
+        return next((h.get("rows") for h in hits if h.get("cat") in cats and h.get("rows")), None)
+    light = rk.get("level") == "작전주 꼴" and bool(hits) and all(h.get("cat") in LIGHT_CATS for h in hits)
     if rk.get("level") in SEVERE_LEVEL and not light:
         pen += 5
-        flags.append(rk["level"])
-    sev = [SEVERE_REF[r["cat"]] for r in rk.get("ref") or () if r.get("cat") in SEVERE_REF]
+        out.append(disc(rk["level"], rows_of({h.get("cat") for h in hits})))
+    sev = [r for r in rk.get("ref") or () if r.get("cat") in SEVERE_REF]
     if sev:
         pen += 5
-        flags += sev
-    flags += [WARN_REF[r["cat"]] for r in rk.get("ref") or () if r.get("cat") in WARN_REF]
+        out += [disc(SEVERE_REF[r["cat"]], r.get("rows")) for r in sev]
+    for r in rk.get("ref") or ():
+        if r.get("cat") in WARN_REF:
+            pen += WARN_PEN.get(r["cat"], 0)
+            out.append(disc(WARN_REF[r["cat"]], r.get("rows")))
     bad = [b for b in kis_bad or () if b in KIS_SEVERE]
     if bad:
         pen += 5
-        flags += bad
+        out += [ev(b, ksrc, kis_date) for b in bad]
     tags = list(kis_tags or ())
     if "투자경고" in tags:
         pen += 3
-        flags.append("투자경고")
+        out.append(ev("투자경고", ksrc, kis_date))
     soft = [t for t in tags if t in ("투자주의", "단기과열")]
-    fund = rk.get("level") == "자금조달 잦음" or len([h for h in rk.get("hits") or () if h.get("cat") in FUND_CATS and (h.get("days") or 0) >= 2]) > 0
+    fund = rk.get("level") == "자금조달 잦음" or len([h for h in hits if h.get("cat") in FUND_CATS and (h.get("days") or 0) >= 2]) > 0
     if soft or fund or light:
         pen += 2
-        flags += soft + (["자금조달 잦음"] if fund else []) + (["자금 거래"] if light else [])
+        out += [ev(t, ksrc, kis_date) for t in soft]
+        if fund:
+            out.append(disc("자금조달 잦음", rows_of(FUND_CATS)))
+        if light:
+            out.append(disc("자금 거래", rows_of(LIGHT_CATS)))
     if opm is not None and opm < 0:
         pen += 1
-        flags.append("적자")
-    return max(0, 5 - pen), list(dict.fromkeys(flags))
+        out.append(ev("적자", druck_src or "가속도 분기 재무"))
+    seen, uniq = set(), []
+    for x in out:
+        if x["t"] not in seen:
+            seen.add(x["t"])
+            uniq.append(x)
+    return max(0, 5 - pen), uniq
+
+
+def risk_flags(risk, kis_bad=(), kis_tags=(), opm=None):
+    """(점수, [꼬리표 이름]) — risk_items 의 이름만(심층 칸 flags · 옛 호출)."""
+    s, items = risk_items(risk, kis_bad, kis_tags, opm)
+    return s, [x["t"] for x in items]
 
 
 def phase_of(druck, cur_v=None):
@@ -1080,72 +1231,260 @@ def phase_of(druck, cur_v=None):
     p = pts[-1]
     r1 = lambda v: None if v is None else round(v, 1)       # noqa: E731
     return {"label": p.get("label"), "phase": p.get("국면"), "B": r1(p.get("가속B")), "opm": r1(p.get("영업이익률")),
-            "yoy": r1(p.get("매출YoY")), "old": cur_v is not None and druck.get("v") != cur_v}
+            "yoy": r1(p.get("매출YoY")), "old": cur_v is not None and druck.get("v") != cur_v, "v": druck.get("v"), "asof": p.get("기준일")}
 
 
-def upside(rows, px, since):
-    """증권사마다 최신 목표가(since 이후)의 평균 vs 지금 주가 → 상승여력 %(reports_view 와 같은 식, 주가만 단면에서)."""
-    latest = {}
+def upside_detail(rows, px, since):
+    """증권사마다 최신 목표가(since 이후)의 평균 vs 지금 주가 → {up: 상승여력 %, n: 증권사 수, reps: 목표가 적힌 글 수, avg: 목표가 평균}
+    (reports_view 와 같은 식, 주가만 단면에서). n 은 증권사 곳 수(증권사 미표기 글은 글마다 하나) — 리포트 건수가 아니다. 없으면 None."""
+    latest, reps = {}, 0
     for r in rows or ():
         if (r.get("date") or "")[:10] < since or not r.get("tp"):
             continue
+        reps += 1
         b = r.get("broker") or ("미표기 · %s %s" % ((r.get("date") or "")[5:10], (r.get("title") or "")[:14]))
         latest.setdefault(b, r["tp"])
     if not latest or not px:
         return None
-    return round((sum(latest.values()) / len(latest) / px - 1) * 100, 1)
+    avg = sum(latest.values()) / len(latest)
+    return {"up": round((avg / px - 1) * 100, 1), "n": len(latest), "reps": reps, "avg": int(round(avg))}
 
 
-def score(c, *, lead_p3=None, px=None, ph=None, n_rep=0, up=None, risk=None, kis_bad=(), kis_tags=()):
-    """후보 한 곳 → {parts, ev, group, stars, why, flags}. 칸마다 근거 줄을 남긴다. 25점 = 연결 · 실적 · 주목 · 덜 오름 · 건전성 × 5."""
-    ev = {"link": [], "fund": [], "attn": [], "lag": [], "safe": []}
+def upside(rows, px, since):
+    """상승여력 % 만(upside_detail 의 up)."""
+    d = upside_detail(rows, px, since)
+    return d["up"] if d else None
+
+
+def _eun(nm):
+    """조사 '은/는'."""
+    return "은" if _ga(nm) == "이" else "는"
+
+
+def _yrs(a, b):
+    """'2020'–'2022' → '2020–2022년', 같으면 '2020년'. 분기 칸('2026-06')은 해만. (처음 · 마지막만 알 때 — 사이 해가 다 있다는 뜻은 아니다. 해 목록이 있으면 yrs_of)"""
+    a, b = (a or "")[:4], (b or "")[:4]
+    return ("%s년" % a) if a == b or not b else "%s–%s년" % (a, b)
+
+
+def yrs_of(ys):
+    """캐시에 적힌 해 목록 → 글. 이어지면 '2014–2022년', 끊기면 그대로 '2021 · 2024년', 네 토막 넘게 끊기면 '2012–2022년 중 6개 해(2012 · 2015 · 2018 · 2020–2022)'
+    — 처음–마지막만 적으면 캐시에 없는 해(코리아써키트 2022 · 2023)까지 적은 셈이 된다."""
+    yy = sorted({int(str(y)[:4]) for y in ys or () if str(y)[:4].isdigit()})
+    if not yy:
+        return ""
+    runs = []
+    for y in yy:
+        if runs and y == runs[-1][1] + 1:
+            runs[-1][1] = y
+        else:
+            runs.append([y, y])
+    txt = " · ".join(("%d–%d" % (a, b)) if a != b else str(a) for a, b in runs)
+    if len(runs) <= 3:
+        return txt + "년"
+    return "%d–%d년 중 %d개 해(%s)" % (yy[0], yy[-1], len(yy), txt)
+
+
+def _hist_yrs(d):
+    """과거 공급망 근거의 해 — 해 목록(ys)이 있으면 그대로, 없으면 처음 · 마지막(y1 · y2)."""
+    return yrs_of(d.get("ys")) if d.get("ys") else _yrs(d.get("y1"), d.get("y2"))
+
+
+_LETTER_BATCHIM = set("LMNR")       # 영문 글자 이름이 받침으로 끝나는 것 — 엘 · 엠 · 엔 · 알
+_DIGIT_BATCHIM = set("013678")      # 영 · 일 · 삼 · 육 · 칠 · 팔
+# 제품 표 · 매입 줄에 흔한 영문 낱말의 우리말 소리 끝 받침 — True 을(디램 · 필름), False 를(플래시 · 웨이퍼). 표에 없는 낱말은 모른다('을(를)')
+_ENG_BATCHIM = {"DRAM": True, "NAND": True, "FLASH": False, "FILM": True, "WAFER": False, "PASTE": False, "POWDER": False, "MODULE": True, "PANEL": True,
+                "CELL": True, "BASE": False, "GLASS": False, "RESIN": True, "TAPE": False, "MASK": False, "FRAME": True, "CABLE": True, "SENSOR": False,
+                "MOTOR": False, "CAMERA": False, "FOIL": True, "INK": False, "SUBSTRATE": False, "PACKAGE": False, "CHIP": True, "BOARD": False,
+                "DISPLAY": False, "BATTERY": False, "STEEL": True, "COIL": True, "PLATE": False, "FIBER": False, "SHEET": False, "LENS": False}
+
+
+def _batchim(w):
+    """끝소리 받침 — 한글은 받침 글자, 영문 낱말은 표(_ENG_BATCHIM — 디램 · 플래시), 대문자 약어(MLCC · PCB · FC-BGA: 3자 이하거나 모음 글자 없음)는 끝 글자 이름(씨 · 비 · 에이),
+    숫자는 읽는 소리(삼 · 육). 그 밖의 영문 낱말(Camera Module)은 소리를 모르니 None."""
+    w = (w or "").rstrip()
+    ch = w[-1:]
+    if not ch:
+        return None
+    if "가" <= ch <= "힣":
+        return bool((ord(ch) - 0xAC00) % 28)
+    if ch.isdigit():
+        return ch in _DIGIT_BATCHIM
+    m = re.search(r"[A-Za-z]+$", w)
+    if m and m.group().upper() in _ENG_BATCHIM:
+        return _ENG_BATCHIM[m.group().upper()]
+    if m and m.group().isupper() and (len(m.group()) <= 3 or not re.search(r"[AEIOU]", m.group())):
+        return ch in _LETTER_BATCHIM
+    return None
+
+
+def _eul(w):
+    """목적격 조사 — 받침 있으면 '을', 없으면 '를'(MLCC를 · HBM을), 소리를 모르면(영문 낱말) '을(를)'."""
+    b = _batchim(w)
+    return "을(를)" if b is None else ("을" if b else "를")
+
+
+def _wa(w):
+    """조사 '와/과' — 받침 있으면 '과'(나노엔텍과), 없으면 '와'(삼성전기와), 소리를 모르면 '와(과)'."""
+    b = _batchim(w)
+    return "와(과)" if b is None else ("과" if b else "와")
+
+
+def _ro(n):
+    """숫자 뒤 '로/으로' — 끝자리 소리가 영 · 삼 · 육이면 '으로', ㄹ받침(일 · 칠 · 팔)과 받침 없음은 '로'(백분위 3으로 · 87로)."""
+    return "으로" if str(n)[-1:] in ("0", "3", "6") else "로"
+
+
+def short_src(src):
+    """설명 문장 안의 출처 — 회사 이름 · 「사업의 내용」을 떼고 '2026 반기보고서 원재료 매입처 표'만(문장의 주어가 이미 그 회사다). 연도가 없으면 그대로."""
+    s = re.sub(r"\s*「사업의 내용」\s*", " ", src or "").strip()
+    m = re.search(r"\d{4} (?:반기|[1-4]분기|사업)보고서", s)
+    return s[m.start():].strip() if m else s
+
+
+def buy_share(d, who):
+    """매입 비중 구절 — 표 꼴대로 무엇의 몫인지. 매입처마다 한 줄인 표(per_sup — 영풍 BASE 줄 일곱)면 그 줄 비중은 그 매입처가 그 품목 매입에서 차지하는 몫
+    → 'FPCB, PCB 부문 BASE 매입 중 삼성전기 31.5%'. 품목마다 한 줄인 표면 그 품목이 (부문) 매입에서 차지하는 몫 → '전자부품 매입 중 수동소자 10.4%'.
+    부문이 있으면 늘 적는다(두 부문 표의 10.4% 는 전자부품 매입의 몫이지 솔루엠 전체 매입의 몫이 아니다)."""
+    seg = ((d.get("seg") or "").strip() + " ") if d.get("seg") else ""
+    it, pct = (d.get("item") or "그 품목"), d.get("pct")
+    if d.get("per_sup"):
+        return "%s%s 매입 중 %s %.1f%%" % (seg, it, who, pct)
+    return "%s매입 중 %s %.1f%%" % (seg, it, pct)
+
+
+def sell_share(d, lead):
+    """매출 비중 구절 — 주도주가 그 회사 매출에서 차지하는 몫 '삼성전자가 매출의 96.0%'. 부문별 매출처 표(basis 부문)면 그 부문 매출의 몫 'IT부문 매출 중 삼성전자 96.0%'."""
+    seg = (d.get("seg") or "").strip()
+    if d.get("basis") == "부문" and seg:
+        return "%s 매출 중 %s %.1f%%" % (seg, lead, d.get("pct"))
+    return "%s%s 매출의 %.1f%%" % (lead, _ga(lead), d.get("pct"))
+
+
+def _sup_phrase(w, lead, subj=""):
+    """공급망 근거 dict → 설명 문장 구절(동사 꼴). d(세부 — name · item · seg · pct · as · y1 · y2 · cust · sub …)로 짓고, 모르는 꼴이면 근거 문구 그대로.
+    출처는 괄호 안에 짧게(short_src — 문장 주어가 그 회사니 이름을 되풀이하지 않는다) — 숫자 · 보고서 이름은 모두 서버가 캐시에서 읽어 넣은 것.
+    subj = 문장 주어(후보 이름) — 근거의 회사가 주어와 같으면('코스모신소재는 코스모신소재가 …') 이름을 뺀다."""
+    if not isinstance(w, dict):
+        return str(w)
+    d, k = w.get("d") or {}, w.get("k") or ""
+    src = short_src(w.get("src"))
+    nm, item = d.get("name") or "", d.get("item") or ""
+    who = "" if nm == subj or not nm else "%s%s " % (nm, _ga(nm))
+    tail = lambda *xs: ("(%s)" % " · ".join(x for x in (src,) + xs if x)) if (src or any(xs)) else ""     # noqa: E731
+    pct = d.get("pct") if isinstance(d.get("pct"), (int, float)) else None
+    L = lead + _eul(lead)                                  # '삼성전기를' · '현대제철을'
+    seg = (d.get("seg") or "").strip()
+    ht = d.get("tail") or "지금은 빠짐"                     # 과거 줄 꼬리 — 서버가 그 회사의 더 새 표를 보고 정한 말('지금은 빠짐' · '최신 2026 반기보고서엔 매출처 표 없음')
+    if k == "buyer":
+        via = "연결 자회사(%s) 매입으로 " % d["sub"] if d.get("sub") else ""
+        return "%s%s%s %s매입처로 적었다%s" % (who, via, L, (item + " ") if item else "", tail(buy_share(d, lead) if pct is not None else ""))
+    if k == "line":
+        return "%s의 %s 매입처에 %s%s 함께 적혔다%s" % (nm, item or "같은 줄", lead, _wa(lead), tail())
+    if k == "seller":                                      # 비중은 주도주가 그 회사 매출에서 차지하는 몫(부문 표면 그 부문 매출의 몫). 품목은 주도주 원재료 표의 것이라 여기 안 적는다(mine 줄)
+        return "%s%s 매출처로 적었다%s" % (who, L, tail(sell_share(d, lead) if pct is not None else ""))
+    if k == "mine":
+        return "%s의 %s 매입처다%s" % (lead, item or "원재료", tail(buy_share(d, d.get("as") or "그 매입처") if pct is not None else "",
+                                                                 "보고서 표기 '%s'" % d["as"] if d.get("as") else ""))
+    if k == "cust":                                        # 비중 없이 이름만 적힌 매출처(HLB생명과학 'SD BIOSENSOR')는 '매출 비중 미기재'
+        return "%s의 매출처다%s" % (lead, tail(("%s %s 매출의 %.1f%%" % (lead, seg, pct) if d.get("basis") == "부문" and seg else "%s 매출의 %.1f%%" % (lead, pct)) if pct is not None else "매출 비중 미기재"))
+    if k == "hist_sup":
+        return "%s %s의 %s 매입처였다(%s%s)" % (_hist_yrs(d), lead, item or "원재료", ht, (" · " + src) if src else "")
+    if k == "hist_cust":
+        return "%s %s의 매출처였다(%s%s%s)" % (_hist_yrs(d), lead, ht, " · 마지막 해 %.1f%%" % pct if pct is not None else "", (" · " + src) if src else "")
+    if k == "hist_buyer":
+        return "%s %s %s매입처로 적었다(%s%s)" % (_hist_yrs(d), L, (item + " ") if item else "", ht, (" · " + src) if src else "")
+    if k == "hist_seller":
+        return "%s %s 매출처로 적었다(%s%s)" % (_hist_yrs(d), L, ht, (" · " + src) if src else "")
+    if k == "same":                                        # 같은 고객 + 테마 · 제품 — 꼬리표를 서술어 뒤에 매달지 않고 한 구절로
+        tag = d.get("tag") or ""
+        also = ("네이버 테마 '%s'에도 같이 들었다" % tag[:-3]) if tag.endswith(" 테마") else ("같은 제품(%s)도 만든다" % tag[:-3]) if tag.endswith(" 동종") else ""
+        return "%s%s 같은 고객 %s에 %s(매출 %s, %s도 %s%s)%s" % (lead, _wa(lead), d.get("cust"), "팔고" if also else "판다", pct_s(d.get("pct")), lead, pct_s(d.get("lead_pct")),
+                                                           (" · " + src) if src else "", (" " + also) if also else "")
+    return w.get("w") or ""
+
+
+def score(c, *, lead_p3=None, px=None, ph=None, n_rep=0, up=None, risk=None, kis_bad=(), kis_tags=(), lead_name="", name="", srcs=None):
+    """후보 한 곳 → {parts, ev, group, group_note, stars, why, flags, expl}. 칸마다 근거 객체(ev — {t, src, date, url, go})를 남긴다.
+    25점 = 연결 · 실적 · 주목 · 덜 오름 · 건전성 × 5. srcs = 서버가 모은 출처 {theme, xs, xs_date, kis_date, risk_date, prod:(src, date, url)}.
+    up 은 upside_detail 꼴 {up, n, avg} 또는 숫자. 모든 숫자는 캐시 값(근거에 적힌 출처)에서만 — 없으면 '없음'이라 적는다."""
+    S = srcs or {}
+    E = {"link": [], "fund": [], "attn": [], "lag": [], "safe": []}
+    phr = []                                     # 설명 문장용 연결 근거 구절(센 것부터)
     link = link_score(c)
-    for w in c["supply"][:3]:
-        ev["link"].append(w["w"] if isinstance(w, dict) else w)
-    for kw, item in c["prod"][:2]:
-        ev["link"].append("같은 제품: %s" % (item if len(item) <= 30 else item[:29].rstrip(" ,") + "…"))     # 자른 자리는 말줄임으로
-    if c["rep_n"]:
+    sups = [w for w in c["supply"] if not _weak(w)][:3]
+    for w in sups:                               # 공급망 직접(5)
+        E["link"].append(ev(w["w"] if isinstance(w, dict) else w, *(_src3(w))))
+        phr.append(_sup_phrase(w, lead_name, name))
+    ps_, pd_, pu_ = S.get("prod") or (None, None, None)
+    for p in c["prod"][:2]:                      # 같은 제품(4) — 비중은 표에 적힌 값만 '매출 비중', 금액으로 나눈 것(products_of est)은 '금액 비율 추정'
+        kw, item, pct, est = p[0], p[1], p[2] if len(p) > 2 else None, bool(p[3]) if len(p) > 3 else False
+        it = item if len(item) <= 30 else item[:29].rstrip(" ,") + "…"      # 자른 자리는 말줄임으로
+        pt = ((" (금액 비율 추정 %s)" if est else " (매출 비중 %s)") % pct0(pct)) if isinstance(pct, (int, float)) else ""
+        E["link"].append(ev("같은 제품 '%s'%s" % (it, pt), ps_, pd_, pu_))
+        phr.append("%s%s 같은 %s%s 만든다(%s'%s'%s)" % (lead_name, _wa(lead_name), kw, _eul(kw), (short_src(ps_) + " ") if ps_ else "", it,
+                                                    ((" 금액 비율 추정 %s" if est else " %s") % pct0(pct)) if isinstance(pct, (int, float)) else ""))
+    for w in [w for w in c["supply"] if _weak(w)][:3]:        # 약한 공급망(3) — 연결 자회사 매입 · 과거 공급망 · 같은 고객
+        E["link"].append(ev(w["w"], *(_src3(w))))
+        phr.append(_sup_phrase(w, lead_name, name))
+    if c["rep_n"]:                               # 리포트 동시 언급(3 · 2)
         kw = c["rep_by"].most_common(1)[0][0]
-        ev["link"].append("%s 리포트 %d건(180일)" % (kw, c["rep_n"]))
-    for t in c["themes"][:2]:
-        ev["link"].append("%s 테마" % t)
+        refs = c.get("rep_refs") or []
+        r0 = refs[0] if refs else {}
+        more = {"src": "%s %s" % (refs[1].get("by") or "증권사 미표기", refs[1].get("date") or ""), "date": d8(refs[1].get("date")), "url": refs[1].get("url")} if len(refs) > 1 else None
+        E["link"].append(ev("%s 리포트 %d건(180일)%s" % (kw, c["rep_n"], " — 최신 '%s'" % r0["title"] if r0.get("title") else ""),
+                            ("%s %s" % (r0.get("by") or "증권사 미표기", r0.get("date") or "")) if r0 else "리포트 탭 — 180일 키워드 동시 언급",
+                            r0.get("date"), r0.get("url"), {"tab": "rep"}, more=more))
+        phr.append("최근 180일 %s 리포트 %d건에 함께 언급됐다%s" % (kw, c["rep_n"], "(최신 %s %s)" % (r0.get("by") or "증권사 미표기", r0.get("date") or "") if r0 else ""))
+    if c["themes"]:                              # 테마(1) — 둘까지 한 줄에(출처가 같다)
+        E["link"].append(ev("네이버 테마 %s 같이 소속" % " · ".join("'%s'" % t for t in c["themes"][:2]), S.get("theme") or "네이버 금융 테마 분류"))
     # 실적
     opm = ph.get("opm") if ph else None
+    dsrc = ("가속도 탭 · DART 분기 재무 (druck v%s%s)" % (ph.get("v"), " · 옛 판" if ph.get("old") else "")) if ph else None
+    go_d = {"tab": "druck"}
     if not ph:
         fund = 2
-        ev["fund"].append("국면 자료 없음")
+        E["fund"].append(ev("가속도 자료 없음", "분기 재무 캐시 없음(.cache/druck)"))
     elif opm is not None and opm < 0:
         fund = 0
-        ev["fund"].append("적자 · OPM %.1f%% (%s)" % (opm, ph.get("label")))
+        E["fund"].append(ev("적자 · OPM %.1f%% (%s)" % (opm, ph.get("label")), dsrc, ph.get("asof"), None, go_d))
     else:
         fund = PHASE_PTS.get(ph["phase"], 2)
-        ev["fund"].append("%s%s%s (%s)" % (ph["phase"], " · 가속B %+.1f" % ph["B"] if ph.get("B") is not None else "",
-                                            " · OPM %.1f%%" % opm if opm is not None else "", ph.get("label")))
+        E["fund"].append(ev("%s%s%s (%s)" % (ph["phase"], " · 가속B %+.1f" % ph["B"] if ph.get("B") is not None else "",
+                                               " · OPM %.1f%%" % opm if opm is not None else "", ph.get("label")), dsrc, ph.get("asof"), None, go_d))
     # 주목
     attn = 0 if not c["rep_n"] else 2 if c["rep_n"] <= 2 else 3 if c["rep_n"] <= 9 else 4
     if c["rep_n"]:
-        ev["attn"].append("%s 리포트 %d건(180일)" % (c["rep_by"].most_common(1)[0][0], c["rep_n"]))
+        r0 = (c.get("rep_refs") or [{}])[0]
+        E["attn"].append(ev("%s 리포트 %d건(180일)" % (c["rep_by"].most_common(1)[0][0], c["rep_n"]),
+                            ("최신 %s %s" % (r0.get("by") or "증권사 미표기", r0.get("date") or "")) if r0 else "리포트 탭", r0.get("date"), r0.get("url"), {"tab": "rep"}))
     else:
-        ev["attn"].append("키워드 리포트 없음(180일)" + (" · 전체 %d건" % n_rep if n_rep else ""))
-    if up is not None:
-        ev["attn"].append("상승여력 %+.0f%%" % up)
-        if up >= 30:
+        E["attn"].append(ev("키워드 리포트 없음(180일)" + (" · 전체 %d건" % n_rep if n_rep else ""),
+                            "리포트 탭 — 텔레그램 증권사 채널(180일)" if n_rep else "180일 리포트 캐시에 이 회사 글 없음", None, None, {"tab": "rep"} if n_rep else None))
+    ud = up if isinstance(up, dict) else ({"up": up} if up is not None else None)
+    if ud and ud.get("up") is not None:
+        E["attn"].append(ev("리포트 목표가 평균%s → %+.0f%%" % (" {:,}원".format(ud["avg"]) if ud.get("avg") else "", ud["up"]),
+                            "%s180일 증권사별 최신 목표가 평균" % ((("리포트 %d건 · " % ud["reps"]) if ud.get("reps") else "") + ("증권사 %d곳 " % ud["n"] if ud.get("n") else "")),
+                            None, None, {"tab": "rep"}))         # n 은 증권사 곳 수 — '리포트 n건'이라 적으면 글 수(LG이노텍 30건 · 19곳)와 어긋난다
+        if ud["up"] >= 30:
             attn = min(5, attn + 1)
     # 덜 오름
-    p3 = (px or {}).get("p3")
-    if p3 is None or lead_p3 is None:
+    p3, dd = (px or {}).get("p3"), (px or {}).get("dd")
+    xsrc, xdate = S.get("xs") or "전 종목 주가 단면", S.get("xs_date")
+    if p3 is None or lead_p3 is None:            # 단면 출처 줄(xsrc)에 날짜가 있어 date 는 따로 안 붙인다(판 크기)
         lag = 2
-        ev["lag"].append("3개월 백분위 자료 없음")
+        E["lag"].append(ev("3개월 백분위 자료 없음" + (" · 52주 고점 대비 %.1f%%" % dd if dd is not None else ""), xsrc))
     else:
         d = lead_p3 - p3
         lag = 5 if d >= 30 else 4 if d >= 15 else 3 if d >= 0 else 1
-        ev["lag"].append("3개월 백분위 %d vs 주도주 %d" % (p3, lead_p3))
-    if (px or {}).get("dd") is not None and px["dd"] < -50:
+        E["lag"].append(ev("3개월 수익률 백분위 %d (주도주 %d)" % (p3, lead_p3) + (" · 52주 고점 대비 %.1f%%" % dd if dd is not None else ""), xsrc))
+    if dd is not None and dd < -50:
         lag = max(0, lag - 1)
-        ev["lag"].append("52주 고점 대비 %.0f%% — 망가짐" % px["dd"])
+        E["lag"].append(ev("52주 고점 대비 %.0f%% — 망가짐" % dd, xsrc))
     # 건전성
-    safe, flags = risk_flags(risk, kis_bad, kis_tags, opm)
-    ev["safe"] = flags[:] or ["위험 꼬리표 없음"]
+    safe, items = risk_items(risk, kis_bad, kis_tags, opm, S.get("kis_date"), S.get("risk_date"), dsrc)
+    flags = [x["t"] for x in items]
+    E["safe"] = items[:] or [ev("위험 꼬리표 없음", _none_src(S))]
     parts = {"link": link, "fund": fund, "attn": attn, "lag": lag, "safe": safe}
     tot = sum(parts.values())
     p1 = (px or {}).get("p1")
@@ -1157,8 +1496,77 @@ def score(c, *, lead_p3=None, px=None, ph=None, n_rep=0, up=None, risk=None, kis
         grp = "C"
     else:
         grp = "D"
-    return {"score": tot, "parts": parts, "ev": ev, "group": grp, "stars": max(1, link), "flags": flags,
-            "why": why_line(c, ph, fund, grp, flags)}
+    return {"score": tot, "parts": parts, "ev": E, "group": grp, "group_note": GROUP_NOTE[grp], "stars": max(1, link), "flags": flags,
+            "why": why_line(c, ph, fund, grp, flags),
+            "expl": explain(name or "이 회사", lead_name or "주도주", c, phr, ph, px, lead_p3, n_rep, ud, items, S)}
+
+
+def _src3(w):
+    return (w.get("src"), w.get("date"), w.get("url")) if isinstance(w, dict) else (None, None, None)
+
+
+def _none_src(S):
+    """위험 꼬리표가 없을 때의 출처 — 두 기준일이 같으면 한 번만('공시위험 · KIS 종목 상태 20261013')."""
+    rd, kd = S.get("risk_date"), S.get("kis_date")
+    if rd and rd == kd:
+        return "공시위험 · KIS 종목 상태 %s" % rd
+    bits = [("공시위험 %s" % rd) if rd else None, ("KIS 종목 상태 %s" % kd) if kd else None]
+    return " · ".join(b for b in bits if b) or "공시위험 · KIS 종목 상태 캐시"
+
+
+def explain(name, lead, c, phr, ph, px, lead_p3, n_rep, ud, safe_items, S):
+    """설명 문단(규칙 조립, LLM 없음) — {이름}은(는) {연결 근거}. {실적 · 주목}. {주가 위치 · 위험}. 연결 근거가 둘이면 '또 …' 한 문장 더.
+    없는 건 없다고 쓴다(…근거는 찾지 못했다 · 자료는 없다). 숫자는 모두 근거 객체와 같은 캐시 값."""
+    s = []
+    if phr:
+        s.append("%s%s %s." % (name, _eun(name), phr[0]))
+        if len(phr) > 1:
+            s.append("또 %s." % phr[1])
+    elif c["themes"]:
+        s.append("%s%s 네이버 테마 '%s' 소속 외에 보고서 · 리포트에서 %s%s의 직접 연결 근거는 찾지 못했다." % (name, _eun(name), re.sub(r"\(.*$", "", c["themes"][0]).strip(), lead, _wa(lead)))
+    else:
+        s.append("%s%s 보고서 · 리포트 · 테마 어디서도 %s%s의 연결 근거를 찾지 못했다." % (name, _eun(name), lead, _wa(lead)))
+    # 둘째 — 실적 · 주목. 연결 문장에서 이미 말한 리포트 건수('…리포트 2건에 함께 언급됐다')는 되풀이하지 않는다
+    opm = ph.get("opm") if ph else None
+    if not ph:
+        f, fe = "가속도 자료는 없고(분기 재무 캐시 없음)", "가속도 자료는 없다(분기 재무 캐시 없음)"
+    else:
+        core = ("실적은 적자(%s · OPM %.1f%%)" % (ph.get("label"), opm)) if opm is not None and opm < 0 else \
+            "실적 국면은 %s(%s%s%s)" % (ph["phase"], ph.get("label"), " · 가속B %+.1f" % ph["B"] if ph.get("B") is not None else "", " · OPM %.1f%%" % opm if opm is not None else "")
+        f, fe = core + "이고", core + "이다"
+    upc = ""
+    if ud and ud.get("up") is not None:
+        upc = ("리포트 목표가 평균 {:,}원 기준 ".format(ud["avg"]) if ud.get("avg") else "리포트 목표가 평균 기준 ") + "상승여력은 %+.0f%%다" % ud["up"]
+    said = any("함께 언급됐다" in p for p in phr[:2])
+    glnote = ("180일 글 %d건 중" % n_rep) if n_rep else "180일 글 없음"
+    if c["rep_n"] and not said:
+        a = "최근 180일 %s 리포트 %d건이 있" % (c["rep_by"].most_common(1)[0][0], c["rep_n"]) + (("으며, " + upc) if upc else "다")
+    elif c["rep_n"]:
+        a = upc
+    else:
+        a = "키워드 리포트는 없" + (("으며(%s) " % glnote + upc) if upc else "다(%s)" % glnote)
+    s.append(("%s %s." % (f, a)) if a else fe + ".")
+    # 셋째 — 주가 위치 · 위험
+    p3, dd = (px or {}).get("p3"), (px or {}).get("dd")
+    if p3 is not None and lead_p3 is not None:
+        cmp_ = "앞섰고" if p3 > lead_p3 else "뒤졌고" if p3 < lead_p3 else "같고"
+        g = "주가는 3개월 수익률 백분위 %d%s 주도주(%d)보다 %s" % (p3, _ro(p3), lead_p3, cmp_)
+    else:
+        g = "주가는 3개월 백분위 자료가 없고"
+    g += (" 52주 고점 대비 %.1f%%이며" % dd) if dd is not None else " 52주 고점 자료도 없으며"
+    if safe_items:                               # 출처는 짧게(공시 날짜 · KIS 날짜 · 분기) — 긴 공시 제목 · 링크는 ev.safe 에
+        def where(x):
+            src = x.get("src") or ""
+            if src.startswith("KIS"):
+                return ("KIS %s" % x.get("date", "")).strip()
+            if src.startswith("가속도"):           # 적자 — 가속도 분기 재무(druck 판 이름은 ev.safe 에)
+                return "분기 재무%s" % ((" " + ph["label"]) if ph and ph.get("label") else "")
+            return ("공시 %s" % x["date"]) if x.get("date") else src
+        r = "위험 꼬리표는 " + " · ".join("%s(%s)" % (x["t"], where(x)) for x in safe_items) + "다"
+    else:
+        r = "위험 꼬리표는 없다(%s)" % _none_src(S).replace("KIS 종목 상태", "KIS")
+    s.append("%s, %s." % (g, r))
+    return " ".join(s)
 
 
 def _short_link(c):
@@ -1207,9 +1615,8 @@ def sort_rows(rows):
 
 # ---------------------------------------------------------------- 8. 그물망
 def _ga(nm):
-    """조사 '이/가' — 끝 글자 받침."""
-    ch = (nm or "")[-1:]
-    return "이" if ch and "가" <= ch <= "힣" and (ord(ch) - 0xAC00) % 28 else "가"
+    """조사 '이/가' — 끝소리 받침(_batchim: 한글 · 대문자 약어 · 숫자), 모르면 '가'."""
+    return "이" if _batchim(nm) else "가"
 
 
 def _seg_key(s):
@@ -1281,39 +1688,49 @@ def up_groups(materials, products, link, sellers=(), skip=(), lead_name="", max_
             if not s.get("code") or s["code"] in skip or s.get("group"):
                 continue
             home = next((g for g in out for it in g["items"] for sp in it["sup"] if sp["code"] == s["code"]), None)
-            item = next((it["item"] for it in (home or {}).get("items", []) for sp in it["sup"] if sp["code"] == s["code"]), None)
-            why = "%s%s %s를 매출처로 적음" % (s["name"], _ga(s["name"]), lead_name) + (" · %s" % item if item else "")
-            (home or out[0])["listed"].append({"name": s["name"], "code": s["code"], "why": why})
+            # 품목은 적지 않는다 — 그 회사 매출처 표가 아니라 주도주 원재료 표(그 묶음 줄)에 적힌 것이라 출처가 다르다
+            why = "%s%s %s%s 매출처로 적음" % (s["name"], _ga(s["name"]), lead_name, _eul(lead_name))
+            (home or out[0])["listed"].append(dict({"name": s["name"], "code": s["code"], "why": why}, **{k: s[k] for k in ("src", "date", "url") if s.get(k)}))
     return out
 
 
 NOT_CO = re.compile(r"스왑|선도|옵션|파생|통화|이자율|주식$|자산$|소계|수익$|거래처$|^[A-Z]\s*거래처")   # 매출처 칸에 든 회사 아닌 줄(이자율스왑 · 카드론수익 · A 거래처)
 
 
-def down_nodes(customers, buyers, orders, link=None, period="", max_cust=5, max_buy=5, max_ord=3):
-    """하류 — 매출처(비중) · 나를 매입처로 적은 회사(그쪽 매입 중 비중 · 품목) · 계약 상대(건수 · 합계).
-    회사가 아닌 매출처 줄(NOT_CO)은 빼고, 같은 회사(코드)가 둘이면 한 노드로('매출처 26.0% · 매입 중 Camera Module 7.9%')."""
+def down_nodes(customers, buyers, orders, link=None, period="", max_cust=5, max_buy=5, max_ord=3, lead_name=""):
+    """하류 — 매출처(비중) · 나를 매입처로 적은 회사(그 줄의 비중 — 표 꼴대로 무엇의 몫인지, buy_share) · 계약 상대(건수 · 합계).
+    회사가 아닌 매출처 줄(NOT_CO)은 빼고, 같은 회사(코드)가 둘이면 한 노드로('매출처 26.0% · DX 부문 매입 중 Camera Module 7.9%').
+    매입처 줄은 서버가 첫 줄(items[0])의 seg · pct · per_sup 를 붙여 보낸다 — 줄마다 다른 비중 중 큰 것을 고르지 않는다(영풍 BASE 31.5 와 BGA PCB 68.8 은 다른 줄).
+    줄에 src · date · url 이 붙어 있으면(서버가 어느 보고서 · DART 링크를 적은 것) 노드에 그대로 옮긴다(심층 칸 근거 출처)."""
+    srcs = lambda h: {k: h[k] for k in ("src", "date", "url") if h.get(k)}       # noqa: E731
     out = []
-    for h in [h for h in customers or () if h.get("pct") and not h.get("self") and not NOT_CO.search(re.sub(r"\s+", " ", h.get("name") or "").strip())][:max_cust]:
+    for h in [h for h in customers or () if h.get("name") and not h.get("self") and not NOT_CO.search(re.sub(r"\s+", " ", h.get("name") or "").strip())][:max_cust]:
         cd = (h.get("link") or {}).get("code") or (link(h["name"]) if link else None)
-        out.append({"kind": "customer", "name": h["name"], "code": cd, "pct": h["pct"],
-                    "why": "매출처 %.1f%%" % h["pct"] + (" (%s)" % period if period else "")})
+        seg = (h.get("seg") or "").strip() if h.get("basis") == "부문" else ""
+        pc = ("%.1f%%" % h["pct"]) if isinstance(h.get("pct"), (int, float)) and h["pct"] else "(비중 미기재)"       # 이름만 적힌 매출처도 그 표의 고객(HLB생명과학 'SD BIOSENSOR')
+        out.append(dict({"kind": "customer", "name": h["name"], "code": cd, "pct": h.get("pct"),
+                         "why": "%s매출처 %s" % ((seg + " ") if seg else "", pc) + (" (%s)" % period if period else "")}, **srcs(h)))
     by = {}
     for b in buyers or ():
-        x = by.setdefault(b["code"], {"kind": "buyer", "name": b["name"], "code": b["code"], "pct": None, "items": []})
-        if b.get("pct") is not None and (x["pct"] is None or b["pct"] > x["pct"]):
-            x["pct"] = b["pct"]
+        x = by.get(b["code"])
+        if x is None:
+            x = by[b["code"]] = dict({"kind": "buyer", "name": b["name"], "code": b["code"], "pct": b.get("pct"), "items": [],
+                                      "seg": b.get("seg"), "per_sup": bool(b.get("per_sup"))}, **srcs(b))
         for it in b.get("items") or ():
             if it not in x["items"]:
                 x["items"].append(it)
     for x in sorted(by.values(), key=lambda x: -(x["pct"] or 0))[:max_buy]:
-        it = " · ".join(x["items"][:2])
-        x["why"] = "%s 매입 중 %s%s" % (x["name"], (it + " ") if it else "", "%.1f%%" % x["pct"] if x["pct"] is not None else "(비중 미기재)")
-        out.append({k: x[k] for k in ("kind", "name", "code", "pct", "why")})
+        it0 = x["items"][0] if x["items"] else ""
+        if x["pct"] is not None:
+            w = buy_share({"item": it0, "seg": x["seg"], "pct": x["pct"], "per_sup": x["per_sup"]}, lead_name or "이 회사")
+        else:
+            w = "%s매입 중 %s(비중 미기재)" % (((x["seg"] or "") + " ") if x.get("seg") else "", (it0 + " ") if it0 else "")
+        x["why"] = "%s %s%s" % (x["name"], w, (" · %s 줄에도" % x["items"][1]) if len(x["items"]) > 1 else "")
+        out.append({k: x[k] for k in ("kind", "name", "code", "pct", "why", "src", "date", "url") if k in x})
     for o in (orders or ())[:max_ord]:
         cd = (o.get("link") or {}).get("code")
-        out.append({"kind": "contract", "name": o["party"], "code": cd, "n": o["n"], "amount": o.get("amount"),
-                    "why": "공급계약 %d건 · %s" % (o["n"], won(o.get("amount")) if o.get("amount") else "금액 미확인")})
+        out.append(dict({"kind": "contract", "name": o["party"], "code": cd, "n": o["n"], "amount": o.get("amount"),
+                         "why": "공급계약 %d건 · %s" % (o["n"], won(o.get("amount")) if o.get("amount") else "금액 미확인")}, **srcs(o)))
     merged, at = [], {}
     for x in out:
         if x.get("code") and x["code"] in at:
@@ -1352,41 +1769,58 @@ def peer_nodes(rows, up=(), down=(), n=6):
 
 
 def node_rel(d, code):
-    """지도 payload 에서 한 노드(code)에 걸린 근거 줄 — 심층 칸(/api/vcmap/node)이 쓴다."""
+    """지도 payload 에서 한 노드(code)에 걸린 근거 줄 — 심층 칸(/api/vcmap/node)이 쓴다. 매트릭스 ev 와 같은 객체 꼴 {t, src, date, url, go}.
+    출처: 최대주주 · 상장 지분은 소유 캐시의 보고서(DART 접수번호), 원재료 · 매출처는 밸류체인 최신 칸(src.vc.rcept), 나를 적은 회사 줄은 서버가 붙인 src · url."""
     if not d or not code:
         return []
     out = []
     net = d.get("net") or {}
     ow = net.get("owner") or {}
     src = d.get("src") or {}
+    me = d.get("name") or ""
     vcp = (src.get("vc") or {}).get("period") or ""                          # '2026 반기' — 어느 보고서 · 어느 표
+    vrc = (src.get("vc") or {}).get("rcept")
+    vsrc = "%s %s" % (me, report_name(vcp)) if vcp else "%s 보고서" % me               # 서버 공급망 근거(원재료 표 · 매출처 표)와 같은 출처 글 — 겹침 거르기
+    mcp = (src.get("vc") or {}).get("mat_period") or vcp                     # 원재료 표를 쓴 칸 — 최신 칸에 표가 없으면(부분 반기) 그 앞 칸
+    mrc = (src.get("vc") or {}).get("mat_rcept") or vrc
+    msrc = "%s %s" % (me, report_name(mcp)) if mcp else vsrc
     osrc = ((src.get("own") or {}).get("src") or "").split(" · ")[0]          # '2026-06 반기보고서'
+    orc = (src.get("own") or {}).get("rcept")
     if ow.get("code") == code:                  # 관계 칸('최대주주 본인' · '本人')은 그쪽 회사 기준 말이라 적지 않는다
-        out.append("%s 최대주주%s%s" % (d.get("name") or "", " %.2f%%" % ow["pct"] if ow.get("pct") is not None else "",
-                                       " (%s)" % ow["src"] if ow.get("src") else ""))
+        rc = ow.get("rcept")
+        out.append(ev("%s 최대주주%s" % (me, " %.2f%%" % ow["pct"] if ow.get("pct") is not None else ""), ow.get("src") or None, rc, DART % rc if rc else None))
     for h in net.get("holdings") or ():
         if h.get("code") == code:
-            out.append("%s 보유 %.2f%%%s%s" % (d.get("name"), h["pct"], " · " + h["purpose"] if h.get("purpose") else "",
-                                               " (%s · 타법인출자 현황)" % osrc if osrc else ""))
+            out.append(ev("%s 보유 %.2f%%%s" % (me, h["pct"], " · " + h["purpose"] if h.get("purpose") else ""),
+                          ("%s · 타법인출자 현황(상세)" % osrc) if osrc else None, orc, DART % orc if orc else None))
     for g in net.get("up") or ():
         for it in g.get("items") or ():
             for sp in it.get("sup") or ():
                 if sp.get("code") == code:           # 비중은 품목 몫(매입처 몫이 아니다) — 적힌 이름이 상장 이름과 다르면 그대로 붙인다
-                    out.append("%s원재료 %s 매입처%s%s%s" % (g["seg"] + " " if g.get("seg") else "", it["item"],
-                                                         " · 매입 비중 %.1f%%" % it["pct"] if it.get("pct") is not None else "",
-                                                         " · 보고서 표기 '%s'" % sp["name"] if sp.get("co") else "",
-                                                         " (%s · 주요 원재료)" % vcp if vcp else ""))
+                    out.append(ev("%s원재료 %s 매입처%s%s" % (g["seg"] + " " if g.get("seg") else "", it["item"],
+                                                          " · 매입 비중 %.1f%%" % it["pct"] if it.get("pct") is not None else "",
+                                                          " · 보고서 표기 '%s'" % sp["name"] if sp.get("co") else ""),
+                                  msrc + " 원재료 표", mrc, DART % mrc if mrc else None))
         for x in g.get("listed") or ():
             if x.get("code") == code:
-                out.append(x["why"])
+                out.append(ev(x["why"], x.get("src"), x.get("date"), x.get("url")))
     for x in net.get("down") or ():
         if x.get("code") == code:
-            out.append(x["why"])
+            out.append(ev(x["why"], x.get("src") or (vsrc + " 매출처 표" if x.get("kind") == "customer" else None), x.get("date") or (vrc if x.get("kind") == "customer" else None),
+                          x.get("url") or (DART % vrc if x.get("kind") == "customer" and vrc else None)))
     for r in d.get("matrix") or ():
         if r.get("code") == code:
-            out.append("후속주 %s군 %d점 — %s" % (r["group"], r["score"], r.get("why") or ""))
-            out += [w for w in (r.get("ev") or {}).get("link") or () if w not in out]
-    return list(dict.fromkeys(out))
+            out.append(ev("후속주 %s군 %d점 — %s" % (r["group"], r["score"], r.get("why") or ""), NOTE))
+            # 매트릭스 연결 근거 — 그림 줄과 같은 보고서 · 같은 링크(원재료 표의 매입처 = '삼성전기 FILM 매입처')면 겹쳐 적지 않는다
+            had = {(x.get("src"), x.get("url")) for x in out if x.get("url")}
+            out += [w for w in ((w if isinstance(w, dict) else ev(w)) for w in (r.get("ev") or {}).get("link") or ())
+                    if not (w.get("url") and (w.get("src"), w.get("url")) in had)]
+    seen, uniq = set(), []
+    for x in out:
+        if x["t"] not in seen:
+            seen.add(x["t"])
+            uniq.append(x)
+    return uniq
 
 
 # ---------------------------------------------------------------- 9. payload

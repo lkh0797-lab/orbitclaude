@@ -418,12 +418,31 @@ button.vbCo small{font:500 10px var(--mono);color:var(--faint)}button.vbCo.on sm
 .vbScore::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(20% - 1px),var(--panel) calc(20% - 1px),var(--panel) 20%)}
 .vbRowB .sc{text-align:right;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
 .vbRowD{padding:2px 14px 14px;background:var(--bg)}
-.vbParts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+/* 줄 펼침 ① 설명 문단 — 군 색 왼줄, 아래 군 뜻 한 줄 작게 */
+.vbExpl{font-size:13px;line-height:1.65;color:var(--ink);word-break:keep-all;overflow-wrap:anywhere;margin:6px 0 10px;padding:8px 12px;border-left:3px solid var(--g,var(--accent));background:var(--panel);border-radius:0 9px 9px 0}
+.vbGN{display:block;font-size:11px;color:var(--faint);margin-top:4px}.vbGN b{color:var(--g,var(--dim));font-weight:700}
+.vbDet .vbExpl{font-size:12px;line-height:1.6;margin:6px 0 0;padding:6px 10px}
+/* ② 다섯 칸 점수 — 점수 · 눈금만(근거는 ③으로) */
+.vbParts{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
 .vbPart{border:1px solid var(--line2);border-radius:9px;background:var(--panel);padding:7px 10px 8px;min-width:0}
 .vbPart .h{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px;font-weight:700;color:var(--dim)}
 .vbPart .h b{font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}.vbPart .h b small{font-size:10.5px;font-weight:400;color:var(--faint)}
 .vbPips{display:flex;gap:2px;margin:4px 0 5px}.vbPips i{flex:1;height:4px;border-radius:2px;background:var(--line2)}.vbPips i.on{background:var(--g,var(--accent))}
-.vbPart ul{margin:0;padding:0 0 0 14px;font-size:11.5px;line-height:1.55;color:var(--ink)}.vbPart ul li{word-break:keep-all;overflow-wrap:anywhere}
+/* ③ 근거 — 칸별 목록. 줄 = 문구 + 작은 출처 · 날짜 + 링크(↗ DART · t.me, › 탭 이동). 심층 칸 「관계 근거」도 같은 꼴 */
+.vbEvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px;margin-top:8px}
+.vbBoard.narrow .vbEvs{grid-template-columns:minmax(0,1fr)}
+.vbEvP{border:1px solid var(--line2);border-radius:9px;background:var(--panel);padding:7px 10px 8px;min-width:0}
+.vbEvP>.l{display:flex;align-items:baseline;gap:6px;font-size:11.5px;font-weight:700;color:var(--dim);margin-bottom:2px}.vbEvP>.l b{color:var(--ink);font-variant-numeric:tabular-nums;font-size:11px}
+.vbEv,.vbDS .vbEv{list-style:none;margin:0;padding:0}
+.vbEvL{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 8px;padding:3px 0;border-bottom:1px dashed var(--line2);font-size:12px;line-height:1.5}.vbEvL:last-child{border-bottom:none}
+.vbEvL>.t{flex:1 1 200px;min-width:0;color:var(--ink);word-break:keep-all;overflow-wrap:anywhere}
+.vbEvL>.m{flex:0 1 auto;display:inline-flex;align-items:center;gap:4px;max-width:100%;min-width:0}
+.vbEvL>.m small{font-size:11.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}   /* 출처 — 이 기능의 핵심이라 흐린 글(--faint 3.0:1)이 아니라 --dim(5.4:1) */
+.vbLnk{display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;border-radius:5px;border:1px solid var(--line);background:var(--panel);color:var(--accent);font:700 11px/1 var(--sans);text-decoration:none;cursor:pointer;padding:0;margin:0}
+.vbLnk:hover{background:var(--accent-soft);border-color:var(--accent)}.vbLnk:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.vbLnk.tab{font-size:14px}.vbLnk.off,.vbLnk:disabled{color:var(--faint);border-style:dashed;cursor:default;background:var(--panel)}   /* › 탭 이동 — 이름이 .go 면 전역 .go(기본 단추) 규칙에 밀린다 */
+.vbLnk.more{width:auto;padding:0 4px;font-size:10px;color:var(--dim)}   /* 리포트 동시 언급 — 그다음 1건 */
+.vbBoard.narrow .vbEvL>.m{gap:8px}.vbBoard.narrow .vbLnk{min-width:24px;height:24px}   /* 좁은 폭 — 손가락 크기 24px · 사이 8px(18px 에 4px 면 옆 단추가 눌린다) */
 .vbRowF{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 20px;margin-top:10px}.vbRowF .vbFacts{flex:1 1 360px}
 .vbRowF .vbGo{margin-top:0}
 .vbRisk{display:flex;flex-direction:column;gap:3px}.vbRisk>.l{font-size:10.5px;font-weight:700;color:var(--faint)}
@@ -11947,7 +11966,38 @@ const vbPc=x=>x&&x.pct>0?x.pct:null;                              // 제품 비�
 function vbGrp(G){ if(G.name) return G.name; const ns=(G.names||[]).map(x=>Array.isArray(x)?x[0]:x&&x.name).filter(Boolean); if(ns.length<3) return '';
   const c={}; ns.forEach(n=>{ const k=n.slice(0,2); c[k]=(c[k]||0)+1; }); const t=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]; return t[1]>=ns.length/2?t[0]:''; }
 const vbFetch=code=>fetch('/api/vcmap?code='+code).then(r=>r.json()).catch(()=>null);
-function vbA(t,url){ if(!url) return el('span',null,t); const a=el('a',null,t); a.href=url; a.target='_blank'; a.rel='noopener'; return a; }
+const vbOk=u=>/^https?:\/\//i.test(u||'');                        // 캐시 판(.cache/vcmap)의 url 은 http(s) 만 링크로 — 스킴 없는 글('dart.fss.or.kr/x')은 뷰어 원점 상대로 풀리고 javascript: 는 실행된다
+function vbA(t,url){ if(!vbOk(url)) return el('span',null,t); const a=el('a',null,t); a.href=url; a.target='_blank'; a.rel='noopener'; return a; }
+// 근거 한 줄 — 서버는 {t,src,date,url,go} 객체, 옛 판은 문자열. 둘 다 받는다(빈 것은 버린다)
+const vbEv=z=>typeof z==='string'?(z?{t:z}:null):z&&typeof z==='object'&&(z.t||z.text)?Object.assign({},z,{t:z.t||z.text}):null;
+const vbEvs=a=>(Array.isArray(a)?a:[]).map(vbEv).filter(Boolean);
+const vbTabL=t=>{ const b=t&&document.querySelector('#tabs [data-t="'+t+'"]'); return b?b.textContent.trim():''; };   // 탭 이름은 단추에서 — 없는 탭이면 › 를 달지 않는다
+const vbUrlL=u=>/dart\.fss\.or\.kr/.test(u)?'DART 공시':/\bt\.me\//.test(u)?'텔레그램 리포트':/naver\.com/.test(u)?'네이버 금융':'링크';
+// › — 그 회사를 고르고(pick) 그 탭으로. 이미 보는 회사면 탭만.
+// 목표 탭을 먼저 켜 두고 pick 한다 — pick 끝의 show(S.tab) 이 바로 그 탭을 그린다. 밸류체인 탭인 채로 pick 하면 viewTimeline 이
+// 그 회사 밸류체인 한 장(/api/vcmap)을 서버에 통째로 만들게 하고서야 탭을 옮겼다(빌더는 한 번에 한 회사 — 쓸모없는 빌드가 앞에 낀다).
+// 수집 안 한 회사면 pick 이 그냥 돌아온다 — 탭을 되돌리고 단추를 흐리게, 풍선에 적는다
+function vbGoTab(b,go){ const code=go.code, tab=go.tab;
+  if(S.co&&S.co.code===code){ jump(tab); return; }
+  const was=S.tab, on=t=>[...$('#tabs').children].forEach(x=>x.classList.toggle('on',x.dataset.t===t));
+  b.disabled=true; on(tab); S.tab=tab;
+  pick(code).catch(()=>{}).then(()=>{ b.disabled=false; if(S.co&&S.co.code===code) return;
+    if(S.tab===tab){ S.tab=was; on(was); }                           // 실패 — 그사이 다른 탭으로 갔으면 그대로 둔다
+    b.classList.add('off'); b.title='수집한 회사가 아니라 열 수 없다'; }); }
+// 출처 글 옆의 날짜 — 출처 글에 그 날짜가 이미 있으면(리포트 '증권사 미표기 2026-10-08' · '공시위험 … 20260624') 되풀이하지 않는다
+const vbSrcD=(src,date)=>{ const d=vbD(date); if(!d) return ''; const c=String(date||'').replace(/\D/g,'').slice(0,8), iso=c.slice(0,4)+'-'+c.slice(4,6)+'-'+c.slice(6,8);
+  return src&&(src.includes(c)||src.includes(iso)||src.includes(d))?'':d; };
+const vbSrcL=z=>[z.src,vbSrcD(z.src,z.date)].filter(Boolean).join(' · ');
+// dc = go.code 가 비었을 때의 회사(그 줄 회사)
+function vbEvLi(z,dc){ const li=el('li','vbEvL'); li.appendChild(el('span','t',z.t));
+  const m=el('span','m'), sm=vbSrcL(z); if(sm){ const s=el('small',null,sm); s.title=sm; m.appendChild(s); }
+  const lnk=(u,l,cls,tx)=>{ const a=el('a','vbLnk'+(cls?' '+cls:''),tx||'↗'); a.href=u; a.target='_blank'; a.rel='noopener'; a.title=l; a.setAttribute('aria-label',l); m.appendChild(a); };
+  if(vbOk(z.url)) lnk(z.url,vbUrlL(z.url)+' 열기');
+  if(z.more&&vbOk(z.more.url)){ const ml=vbSrcL(z.more); lnk(z.more.url,'그다음 '+vbUrlL(z.more.url)+' 열기'+(ml?' — '+ml:''),'more','↗2'); }   // 리포트 동시 언급 — 그다음 1건
+  const go=z.go&&z.go.tab?{tab:z.go.tab,code:z.go.code||dc}:null, tl=go&&go.code?vbTabL(go.tab):'';
+  if(tl){ const g=el('button','vbLnk tab','›'); g.type='button'; g.title=tl+' 탭으로'; g.setAttribute('aria-label',tl+' 탭으로'); g.onclick=e=>{ e.stopPropagation(); vbGoTab(g,go); }; m.appendChild(g); }
+  if(m.firstChild) li.appendChild(m); return li; }
+function vbEvUl(a,dc){ const ev=vbEvs(a); if(!ev.length) return null; const u=el('ul','vbEv'); ev.forEach(z=>u.appendChild(vbEvLi(z,dc))); return u; }
 function vbStars(n){ n=Math.max(0,Math.min(5,n|0)); const s=el('span','vbStar'); s.appendChild(el('b',null,'★'.repeat(n))); s.appendChild(document.createTextNode('★'.repeat(5-n)));
   s.title='별 '+n+' = 연결 칸 '+n+'/5'; s.setAttribute('aria-label','별 '+n+'개'); return s; }
 function vbRet(x){ x=x||{}; const ks=[['1개월',x.r1m],['3개월',x.r3m],['6개월',x.r6m]].filter(k=>k[1]!=null); if(!ks.length) return null;
@@ -12186,13 +12236,15 @@ function vbDetail(D,ctx,code,R,close,repaint){
   const h=el('div','vbDetH'), t=el('div'); t.appendChild(el('b',null,(row&&row.name)||(nd&&nd.name)||R.name||code)); t.appendChild(el('span',null,code)); h.appendChild(t);
   const x=el('button','vbX','×'); x.type='button'; x.title='닫기'; x.setAttribute('aria-label','심층 칸 닫기'); x.onclick=close; h.appendChild(x); w.appendChild(h);
   const sect=(l,node)=>{ const s=el('div','vbDS'); s.appendChild(el('span','l',l)); s.appendChild(node); w.appendChild(s); return s; };
-  const ul=a=>{ const u=el('ul'); a.forEach(z=>u.appendChild(el('li',null,z))); return u; };
   if(row){ const g=el('div','vbRowN'); g.appendChild(el('span','vbG',VB_GL[row.group]||row.group)); g.appendChild(vbStars(row.stars)); g.appendChild(el('span','pc',(row.score!=null?row.score:'—')+' / 25'));
-    sect('후속주 매트릭스',g); if(row.why) w.lastChild.appendChild(el('div','vbNone',row.why)); }
-  // 서버 근거 줄이 오면 그것 — 그림에서 모은 줄(칩 풍선)과 같은 사실이라 겹쳐 적지 않는다. 매트릭스 안이면 '후속주 B군 18점' 줄은 위 칸과 겹쳐 뺀다
-  const srv=!nd.loading&&!nd.error?(nd.rel||[]).filter(z=>z&&!(row&&/^후속주 \S+군 \d+점/.test(z))):[];
-  const rels=[...new Set([...(srv.length?srv:R.rel||[]),...(row?(row.ev||{}).link||[]:[])])];
-  if(rels.length) sect('관계 근거',ul(rels));
+    sect('후속주 매트릭스',g); if(row.why) w.lastChild.appendChild(el('div','vbNone',row.why));
+    if(row.expl) w.lastChild.appendChild(el('div','vbExpl',row.expl)); }   // 설명 문단은 줄 펼침과 같은 글 — 군 뜻 한 줄은 매트릭스 쪽에만
+  // 서버 근거 줄({t,src,url,go})이 오면 그것 — 그림에서 모은 줄(칩 풍선 문자열)과 같은 사실이라 겹쳐 적지 않는다. 매트릭스 안이면 '후속주 B군 18점' 줄은 위 칸과 겹쳐 뺀다
+  const srv=!nd.loading&&!nd.error?vbEvs(nd.rel).filter(z=>!(row&&/^후속주 \S+군 \d+점/.test(z.t))):[];
+  // 문구가 같으면 하나(출처가 붙은 쪽이 먼저). 매트릭스 연결 줄이 서버 줄과 같은 보고서 · 같은 링크면(원재료 표의 매입처 = '삼성전기 FILM 매입처') 같은 사실이라 겹쳐 적지 않는다 — 서버 node_rel 과 같은 규칙
+  const seen=new Set(), key=z=>(z.src||'')+'|'+z.url, had=new Set(srv.filter(z=>z.url).map(key));
+  const rels=[...(srv.length?srv:vbEvs(R.rel)),...(row?vbEvs((row.ev||{}).link).filter(z=>!(z.url&&had.has(key(z)))):[])].filter(z=>!seen.has(z.t)&&seen.add(z.t));
+  if(rels.length){ const u=el('ul','vbEv'); rels.forEach(z=>u.appendChild(vbEvLi(z,code))); sect('관계 근거',u); }
   // 받는 중이면 다 온 뒤 다시 그린다 — 이 칸이 아직 화면에 있을 때만(그새 판이 바뀌었으면 새 칸이 자기 것으로 붙는다)
   if(nd.loading) nd.p.then(()=>{ if(ctx.alive()&&w.isConnected) repaint(); });
   if(row){ sect('주가 · 국면 · 리포트',vbFacts(row.px,row.phase,row.old,vbRepOf(row),row.kw_n,row.exp)); sect('위험',vbFlags(row.flags)); }
@@ -12204,7 +12256,7 @@ function vbDetail(D,ctx,code,R,close,repaint){
   return w;
 }
 // 매트릭스 줄의 리포트 수 — 서버가 reports_n 을 주면 그것, 아니면 '주목' 근거 중 리포트 줄
-function vbRepOf(r){ if(r.reports_n!=null) return r.reports_n; const t=((r.ev||{}).attn||[]).find(s=>/리포트/.test(s)); return t||null; }
+function vbRepOf(r){ if(r.reports_n!=null) return r.reports_n; const t=vbEvs((r.ev||{}).attn).find(z=>/리포트/.test(z.t)); return t?t.t:null; }
 
 // 후속주 매트릭스 — 칩 전체 · B군 · C군 · D군 · Fake, 줄 = 이름 · 코드 · 이유 / 군 꼬리표 · 별 / 점수 막대(군 색) · 점수. 누르면 펼침
 function vbMatrix(D,ctx){
@@ -12245,18 +12297,25 @@ function vbRow(r,ctx){
   b.onclick=()=>{ const was=V.open===r.code, list=w.parentNode;
     if(list) list.querySelectorAll('.vbRow.open').forEach(x=>{ x.classList.remove('open'); x.firstChild.setAttribute('aria-expanded','false'); const d=x.querySelector('.vbRowD'); if(d) d.remove(); });
     V.open=was?null:r.code;
-    if(!was){ w.classList.add('open'); b.setAttribute('aria-expanded','true'); w.appendChild(vbRowD(r)); } };
+    if(!was){ w.classList.add('open'); b.setAttribute('aria-expanded','true'); w.appendChild(vbRowD(r,ctx)); } };
   w.appendChild(b);
-  if(open) w.appendChild(vbRowD(r));
+  if(open) w.appendChild(vbRowD(r,ctx));
   return w;
 }
-function vbRowD(r){
-  const d=el('div','vbRowD'), ps=el('div','vbParts'), P=r.parts||{}, E=r.ev||{};
+// 줄 펼침 — ① 설명 문단(expl, 군 뜻 한 줄) ② 다섯 칸 점수 ③ 칸별 근거(문구 · 출처 · 링크) ④ 주가 · 국면 · 위험 · 이동
+function vbRowD(r,ctx){
+  const d=el('div','vbRowD'), P=r.parts||{}, E=r.ev||{};
+  if(r.expl||r.group_note){ const x=el('div','vbExpl'); if(r.expl) x.appendChild(document.createTextNode(r.expl));
+    if(r.group_note){ const g=el('span','vbGN'); g.appendChild(el('b',null,VB_GL[r.group]||r.group||'')); g.appendChild(document.createTextNode(' — '+r.group_note)); x.appendChild(g); }
+    d.appendChild(x); }
+  const ps=el('div','vbParts');
   VB_PART.forEach(([k,l])=>{ const c=el('div','vbPart'), h=el('div','h'); h.appendChild(el('span',null,l)); const b=el('b',null,P[k]!=null?String(P[k]):'—'); b.appendChild(el('small',null,' / 5')); h.appendChild(b); c.appendChild(h);
-    const pp=el('div','vbPips'); for(let i=0;i<5;i++) pp.appendChild(el('i',i<(P[k]||0)?'on':'')); c.appendChild(pp);
-    const ev=(E[k]||[]).filter(Boolean); if(ev.length){ const u=el('ul'); ev.forEach(z=>u.appendChild(el('li',null,z))); c.appendChild(u); } else c.appendChild(el('div','vbNone','근거 줄 없음'));
-    ps.appendChild(c); });
+    const pp=el('div','vbPips'); for(let i=0;i<5;i++) pp.appendChild(el('i',i<(P[k]||0)?'on':'')); c.appendChild(pp); ps.appendChild(c); });
   d.appendChild(ps);
+  const es=el('div','vbEvs');
+  VB_PART.forEach(([k,l])=>{ const c=el('div','vbEvP'), h=el('div','l'); h.appendChild(el('span',null,l)); if(P[k]!=null) h.appendChild(el('b',null,P[k]+'점')); c.appendChild(h);
+    c.appendChild(vbEvUl(E[k],r.code)||el('div','vbNone','근거 줄 없음')); es.appendChild(c); });
+  d.appendChild(es);
   const f=el('div','vbRowF'); f.appendChild(vbFacts(r.px,r.phase,r.old,vbRepOf(r),r.kw_n,r.exp));
   const rk=el('div','vbRisk'); rk.appendChild(el('span','l','위험')); rk.appendChild(vbFlags(r.flags)); f.appendChild(rk);
   f.appendChild(vbGoBtn(r.code)); d.appendChild(f);
