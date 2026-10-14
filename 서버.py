@@ -9650,7 +9650,9 @@ TECH_LOG = os.path.join(TECH_OUT, "viewer_scan.log")
 TECH_RISK = os.path.join(CACHE_DIR, "공시목록", "공시위험.json")   # 보컬 잡주 거르기(작전주 꼴 · 상폐 절차 · 자금조달 잦음 …)
 TECH = {"proc": None, "started": 0, "phase": "", "error": None}
 TECH_LOCK = threading.Lock()
-TECH_DAILY_AT = (16, 0)          # 평일 장 마감(15:30) · 일봉 확정(15:45) 뒤
+TECH_DAILY_AT = (20, 15)         # 평일 — 그날 일봉 값이 굳은 뒤(재무.FINAL_AT 20:10, 넥스트레이드 애프터마켓 ~20:00 끝).
+#   예전 16:00 은 시간외 체결이 섞인 확정 전 종가로 판정했다(10-13 저녁 스캔 일지 57줄 중 48줄 종가가 확정 값과 0.1~1.8% 차이).
+#   사용자 결정(2026-10-14): 통합 시세 유지 · 자동 스캔 20:15
 
 
 def _tech_reports():
@@ -9762,15 +9764,13 @@ def tech_report_html(name=""):
 
 
 def _tech_auto_loop():
-    """평일 16:00 · 뷰어를 켰을 때(10분 뒤) — 마지막 리포트가 가장 최근 거래일 장 마감(15:45, 주말은 금요일) 전 것이면 한 번.
-    16:00 를 뷰어가 꺼져 놓쳤으면 다음에 켤 때 따라잡는다. 휴장일(공휴일)은 Tech 가 증권사 휴장일 조회로 스스로 건너뛴다(--skip-holiday)."""
+    """평일 20:15 · 뷰어를 켰을 때(10분 뒤) — 마지막 리포트가 그날 값이 가장 최근에 굳은 때(평일 20:10, 주말은 금요일) 전
+    것이면 한 번. 20:15 를 뷰어가 꺼져 놓쳤으면 다음에 켤 때 따라잡는다. 휴장일(공휴일)은 Tech 가 증권사 휴장일 조회로 스스로
+    건너뛴다(--skip-holiday)."""
     time.sleep(600)
     while True:
         try:
-            n = dt.datetime.now()
-            lc = n.replace(hour=15, minute=45, second=0, microsecond=0)
-            while lc > n or lc.weekday() >= 5:
-                lc -= dt.timedelta(days=1)
+            _, lc, _ = _last_close()        # 가장 최근 FINAL_AT(평일 20:10)
             rep = _tech_reports()
             last = dt.datetime.fromtimestamp(rep[0][0]) if rep else None
             if last is None or last < lc:
