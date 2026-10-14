@@ -12,17 +12,29 @@ viewer_readonly.py 가 서버 모듈을 읽기 **전에** enable(base=기업추�
 쓰기 돌리기
   builtins.open / io.open 의 w · a · x · + 모드, os.open 의 쓰기 플래그, os.replace · rename · remove · unlink · makedirs · mkdir ·
   rmdir · utime (+ truncate · chmod). 상대 경로는 cwd 기준으로 풀고 normcase 로 비교한다. base 밖 경로는 그대로.
+  '\\\\?\\' · '\\\\.\\' · '\\\\?\\UNC\\' 접두는 벗기고 비교한다(같은 파일의 다른 표기로 base 를 지나치지 않게).
+  패치 전에 원래 open 을 잡아 둔 모듈(bz2._builtin_open · tarfile.bltn_open)도 바꾼다.
   a · + 모드 · utime · truncate 는 base 파일을 shadow 로 먼저 복사한 뒤(copy-on-write) 고친다. base 쪽 지우기 · 옮기기는
   base 를 그대로 두고 '이번 실행에서는 없는 것'(_gone) 으로만 친다.
 읽기
   이번 실행에서 shadow 에 쓴 것(_mine)은 shadow 에서, 나머지는 base 에서 — open 읽기 · os.stat · os.lstat
   (os.path.exists · isfile · isdir · getmtime · getsize 가 이 위에 선다).
   shadow 는 켤 때 비운다 — 지난 실행에서 쓴 것이 드라이브가 새로 받아 온 파일을 가리지 않게. 표시 파일(MARK)이 있는 폴더만 비운다.
+감사 훅 백스톱(sys.addaudithook — 닫힌 쪽으로 실패)
+  위 패치를 거치지 않는 길(io.FileIO · _io.open · os.link · os.symlink · sqlite3.connect · 3.12+ shutil.copy2 의 _winapi.CopyFile2 ·
+  junction · subst · 심볼릭 링크로 base 를 가리키는 경로)이 base 를 바꾸려 하면 PermissionError(winerror 5 — copy2 는 이걸 보고
+  패치된 copyfile 로 물러나 shadow 로 간다). C 수준 socket(_socket) 의 connect · sendto · sendmsg · DNS 와 프로세스 실행도 막는다.
+  훅은 프로세스에서 지울 수 없어 disable() 뒤에는 아무것도 안 한다(_on 을 본다).
+바깥 연결
+  loopback 아닌 연결(create_connection · connect · connect_ex · sendto · sendmsg · asyncio sock_connect)과 DNS 질의
+  (getaddrinfo · gethostbyname(_ex) · gethostbyaddr · getnameinfo — loopback 이름 · IP 리터럴만 통과, 나머지는 socket.gaierror)를 막는다.
+  프록시 환경변수가 있어도 NO_PROXY=* 로 직접 연결하게 해서 막힌다.
 못 하는 것(알려진 한계)
   os.listdir · os.scandir · glob 은 base 만 본다(이번 실행에서 새로 만든 파일은 목록에 안 나온다).
-  C 확장이 직접 여는 파일(sqlite · pyarrow 등)은 못 돌린다 — 기업추적은 쓰지 않는다.
-  importlib 의 pyc 쓰기는 os.open 패치를 거치지 않는다(nt 모듈 직접) — 그래서 sys.dont_write_bytecode=True 가 꼭 있어야 하고 여기서도 켠다.
-  DNS 조회(getaddrinfo)는 막지 않는다 — 연결만 막는다. 프록시 환경변수가 있어도 NO_PROXY=* 로 직접 연결하게 해서 막힌다.
+  C · C++ 확장이 파이썬 감사 이벤트 없이 직접 여는 파일(pyarrow 등)은 못 막는다 — 기업추적은 쓰지 않는다.
+  importlib 의 pyc 쓰기는 os.open 패치를 거치지 않는다(nt 모듈 직접) — 그래서 sys.dont_write_bytecode=True 가 꼭 있어야 하고 여기서도 켠다
+  (켜 두지 않아도 감사 훅이 막고 importlib 은 쓰기 실패를 넘긴다).
+  _socket.socket.connect((이름, 포트)) 처럼 C 가 이름을 직접 푸는 길은 DNS 질의가 나간 뒤 연결에서 막힌다.
 """
 import builtins
 import errno
@@ -38,6 +50,7 @@ import threading
 
 MSG_NET = "조회 전용 — 바깥 호출 안 함"
 MSG_PROC = "조회 전용 — 다른 프로그램을 띄우지 않음"
+MSG_WRITE = "조회 전용 — 드라이브(기업추적 폴더)를 바꾸지 않음"
 MARK = ".조회전용_shadow"           # shadow 폴더 표시 — 이게 있는 폴더만 켤 때 비운다
 
 # 원래 함수 — 이 모듈을 읽을 때(패치 전) 잡아 둔다
@@ -58,13 +71,22 @@ _olistdir = os.listdir
 _ocreate_connection = socket.create_connection
 _osock_connect = socket.socket.connect
 _osock_connect_ex = socket.socket.connect_ex
+_osock_sendto = socket.socket.sendto
+_osock_sendmsg = getattr(socket.socket, "sendmsg", None)
+_ogetaddrinfo = socket.getaddrinfo
+_ogethostbyname = socket.gethostbyname
+_ogethostbyname_ex = socket.gethostbyname_ex
+_ogethostbyaddr = socket.gethostbyaddr
+_ogetnameinfo = socket.getnameinfo
 
 _WFLAGS = os.O_WRONLY | os.O_RDWR | os.O_APPEND | os.O_CREAT | os.O_TRUNC
 _MISSING = object()
 
 _lock = threading.RLock()
 _on = False
-_base = _base_nc = _shadow = None
+_hooked = False     # 감사 훅은 프로세스에 한 번만 건다(지울 수 없다)
+_base = _base_nc = _shadow = _shadow_nc = None
+_base_real_nc = None    # realpath(base) — junction · subst 로 base 를 가리키는 경로를 감사 훅이 알아본다
 _mine = set()       # normcase 상대 경로 — 이번 실행에서 shadow 에 만든 파일 · 폴더
 _gone = set()       # normcase 상대 경로 — 이번 실행에서 지운(것으로 친) base 파일 · 폴더
 _patched = []       # (대상, 이름, 원래 값) — disable() 이 되돌린다
@@ -84,6 +106,22 @@ def _fs(p):
     return p
 
 
+def _plain(s):
+    """Windows 긴 경로 · 장치 접두를 벗긴다: '\\\\?\\G:\\x' · '\\\\.\\G:\\x' → 'G:\\x', '\\\\?\\UNC\\서버\\공유' → '\\\\서버\\공유'.
+    os.path.abspath 는 접두를 그대로 둬서, 그대로 비교하면 같은 base 파일이 base 밖으로 보인다(2026-10-15 검토 RO-4).
+    드라이브 문자가 아닌 장치 이름('\\\\.\\pipe\\…' · '\\\\?\\Volume{…}\\…')은 그대로 — 감사 훅이 realpath 로 다시 본다."""
+    if os.name != "nt" or len(s) < 6 or s[0] not in "\\/" or s[1] not in "\\/":
+        return s
+    t = s.replace("/", "\\")
+    if t[2] not in "?." or t[3] != "\\":
+        return s
+    if t[4:8].upper() == "UNC\\":
+        return "\\\\" + t[8:]
+    if t[4].isalpha() and t[5] == ":":
+        return t[4:]
+    return s
+
+
 def _rel(p):
     """base 아래면 base 기준 상대 경로('' = base 자신), 아니면 None."""
     if not _on:
@@ -91,7 +129,7 @@ def _rel(p):
     s = _fs(p)
     if s is None or s == "":
         return None
-    a = os.path.abspath(s)
+    a = os.path.abspath(_plain(s))
     n = os.path.normcase(a)
     if n == _base_nc:
         return ""
@@ -538,6 +576,75 @@ def _addr_ok(address):
     return isinstance(address, (str, bytes))    # AF_UNIX 경로 — 이 PC 안
 
 
+def _name_ok(host):
+    """DNS 를 묻지 않고 풀리는 이름인가 — None · ''(이 PC) · localhost · IP 리터럴(바깥 IP 여도 연결에서 막힌다)."""
+    if host is None:
+        return True
+    if isinstance(host, bytes):
+        host = host.decode("ascii", "replace")
+    if not isinstance(host, str):
+        return False
+    h = host.strip().lower()
+    if h in ("", "localhost", "localhost."):
+        return True
+    if h.startswith("[") and h.endswith("]"):
+        h = h[1:-1]
+    try:
+        ipaddress.ip_address(h.split("%", 1)[0])
+        return True
+    except ValueError:
+        return False
+
+
+def _gai_denied():
+    return socket.gaierror(getattr(socket, "EAI_NONAME", 8), MSG_NET)
+
+
+def _p_getaddrinfo(host, port, *args, **kwargs):
+    if not _name_ok(host):
+        raise _gai_denied()
+    return _ogetaddrinfo(host, port, *args, **kwargs)
+
+
+def _p_gethostbyname(hostname):
+    if not _name_ok(hostname):
+        raise _gai_denied()
+    return _ogethostbyname(hostname)
+
+
+def _p_gethostbyname_ex(hostname):
+    if not _name_ok(hostname):
+        raise _gai_denied()
+    return _ogethostbyname_ex(hostname)
+
+
+def _p_gethostbyaddr(ip_address):
+    if not _loopback(ip_address):                # 거꾸로 찾기(PTR)도 DNS 질의 — loopback 만
+        raise _gai_denied()
+    return _ogethostbyaddr(ip_address)
+
+
+def _p_getnameinfo(sockaddr, flags):
+    # 감사 이벤트(socket.getnameinfo)에는 flags 가 없어 NI_NUMERICHOST 여부를 모른다 — 둘 다 loopback 만(같은 규칙)
+    if not (isinstance(sockaddr, (tuple, list)) and sockaddr and _loopback(sockaddr[0])):
+        raise _gai_denied()
+    return _ogetnameinfo(sockaddr, flags)
+
+
+def _p_sendto(self, data, *args):
+    """sendto(data, address) · sendto(data, flags, address) — UDP 는 connect 없이 바로 나간다(검토 RO-5)."""
+    if args and not _addr_ok(args[-1]):
+        raise OSError(MSG_NET)
+    return _osock_sendto(self, data, *args)
+
+
+def _p_sendmsg(self, buffers, *args):
+    """sendmsg(buffers[, ancdata[, flags[, address]]]) — 주소가 있으면(연결 없이 보냄) loopback 만."""
+    if len(args) >= 3 and args[2] is not None and not _addr_ok(args[2]):
+        raise OSError(MSG_NET)
+    return _osock_sendmsg(self, buffers, *args)
+
+
 def _p_create_connection(address, *args, **kwargs):
     if not _addr_ok(address):
         raise OSError(MSG_NET)
@@ -570,6 +677,104 @@ def _no_proc(*args, **kwargs):
 
 def _no_popen(self, *args, **kwargs):
     raise OSError(MSG_PROC)
+
+
+# ------------------------------------------------------------------ 감사 훅 백스톱(2026-10-15 검토 RO-3 · RO-4 · RO-5)
+# 위 패치는 파이썬 이름을 바꿔 치는 것이라, 패치 전에 잡아 둔 함수나 C 수준 길(io.FileIO · _io.open · os.link · sqlite3 ·
+# _winapi.CopyFile2 · _socket)은 지나친다. 감사 이벤트는 그 길도 다 지나가므로 여기서 마지막으로 막는다 — 닫힌 쪽으로.
+# 패치가 이미 shadow 로 돌린 호출은 실제 경로가 shadow 라 그냥 지나간다. 이벤트 이름 · 인자는 파이썬 감사 이벤트 표(3.8+) 그대로.
+_tl = threading.local()
+_HOOK_PATHS = {                     # 이벤트 → 경로 인자 자리
+    "os.rename": (0, 1), "os.remove": (0,), "os.rmdir": (0,), "os.mkdir": (0,), "os.link": (0, 1),
+    "os.symlink": (0, 1), "os.truncate": (0,), "os.utime": (0,), "os.chmod": (0,), "os.chown": (0,),
+    "os.chflags": (0,), "os.setxattr": (0,), "os.removexattr": (0,), "os.mkfifo": (0,), "os.mknod": (0,),
+    "_winapi.CopyFile2": (1,),
+}
+_HOOK_NET = {"socket.connect", "socket.sendto", "socket.sendmsg"}
+_HOOK_DNS = {"socket.getaddrinfo", "socket.gethostbyname", "socket.gethostbyaddr", "socket.getnameinfo"}
+_HOOK_PROC = {"subprocess.Popen", "os.system", "os.startfile", "os.spawn", "os.exec", "os.posix_spawn",
+              "os.fork", "os.forkpty", "_winapi.CreateProcess", "pty.spawn"}
+
+
+def _within(n, root):
+    return bool(root) and (n == root or n.startswith(root + os.sep))
+
+
+def _hits_base(p):
+    """감사 훅 — 이 경로를 바꾸면 base(드라이브)가 바뀌나. 접두 · junction · subst · 심볼릭 링크도 본다. 확인 못 하면 True(닫힌 쪽)."""
+    s = _fs(p)
+    if s is None or s == "":
+        return False                            # fd — 이미 연 파일(열 때 검사했다)
+    try:
+        n = os.path.normcase(os.path.abspath(_plain(s)))
+        if _within(n, _shadow_nc):
+            return False
+        if _within(n, _base_nc):
+            return True
+        r = os.path.normcase(_plain(os.path.realpath(s)))
+        return _within(r, _base_real_nc) or _within(r, _base_nc)
+    except Exception:
+        return True
+
+
+def _deny_write(p):
+    s = _fs(p)
+    return PermissionError(errno.EACCES, MSG_WRITE, s if s is not None else str(p), 5)   # winerror 5 = ERROR_ACCESS_DENIED
+
+
+def _sqlite_target(db):
+    """sqlite3.connect 의 database → 바꿀 수 있는 파일 경로 | None(메모리 · 읽기 전용 URI)."""
+    s = _fs(db)
+    if s is None or s in ("", ":memory:"):
+        return None
+    if s.startswith("file:"):
+        path, _, q = s[5:].partition("?")
+        if "mode=ro" in q or "immutable=1" in q or path in ("", ":memory:") or "mode=memory" in q:
+            return None
+        return path
+    return s
+
+
+def _audit(event, args):
+    if not _on:
+        return
+    if not (event in _HOOK_PATHS or event == "open" or event == "sqlite3.connect"
+            or event in _HOOK_NET or event in _HOOK_DNS or event in _HOOK_PROC):
+        return
+    if getattr(_tl, "busy", False):             # 훅 안에서 부른 것(realpath 등)은 다시 보지 않는다
+        return
+    _tl.busy = True
+    try:
+        if event == "open":                     # (path, mode, flags) — io.FileIO · _io.open · os.open 모두
+            fl = args[2] if len(args) > 2 else 0
+            if isinstance(fl, int) and fl & _WFLAGS and _hits_base(args[0]):
+                raise _deny_write(args[0])
+        elif event in _HOOK_PATHS:
+            for i in _HOOK_PATHS[event]:
+                if i < len(args) and _hits_base(args[i]):
+                    raise _deny_write(args[i])
+        elif event == "sqlite3.connect":
+            t = _sqlite_target(args[0] if args else None)
+            if t is not None and _hits_base(t):
+                raise _deny_write(t)
+        elif event in _HOOK_NET:                # (socket, address) — address None = 이미 연결된 소켓
+            a = args[1] if len(args) > 1 else None
+            if a is not None and not _addr_ok(a):
+                raise OSError(MSG_NET)
+        elif event in _HOOK_DNS:
+            a = args[0] if args else None
+            if event == "socket.getaddrinfo" or event == "socket.gethostbyname":
+                ok = _name_ok(a)
+            elif event == "socket.getnameinfo":
+                ok = isinstance(a, (tuple, list)) and bool(a) and _loopback(a[0])
+            else:
+                ok = _loopback(a)
+            if not ok:
+                raise _gai_denied()
+        else:
+            raise OSError(MSG_PROC)
+    finally:
+        _tl.busy = False
 
 
 # ------------------------------------------------------------------ 켜기 · 끄기
@@ -609,26 +814,37 @@ def _prepare_shadow(shadow, fresh):
 def enable(base, shadow, fresh=True):
     """조회 전용을 켠다. base: 기업추적 폴더(드라이브), shadow: 드라이브 밖 폴더(쓰기가 여기로).
     fresh=True 면 shadow 를 비우고 시작한다. 두 폴더가 겹치면 ValueError."""
-    global _on, _base, _base_nc, _shadow
-    b = os.path.abspath(_fs(base))
-    s = os.path.abspath(_fs(shadow))
+    global _on, _hooked, _base, _base_nc, _shadow, _shadow_nc, _base_real_nc
+    b = os.path.abspath(_plain(_fs(base)))
+    s = os.path.abspath(_plain(_fs(shadow)))
     nb = os.path.normcase(b).rstrip(os.sep)
     ns = os.path.normcase(s).rstrip(os.sep)
     with _lock:
         if _on:
-            if (nb, ns) == (_base_nc, os.path.normcase(_shadow).rstrip(os.sep)):
+            if (nb, ns) == (_base_nc, _shadow_nc):
                 return
             raise RuntimeError("조회 전용이 이미 다른 폴더로 켜져 있다")
         if not os.path.isdir(b):
             raise ValueError("base 폴더가 없다: %s" % b)
-        if ns == nb or ns.startswith(nb + os.sep) or nb.startswith(ns + os.sep):
-            raise ValueError("shadow 는 base 밖, base 는 shadow 밖이어야 한다: base=%s shadow=%s" % (b, s))
+
+        def _real(p):
+            try:
+                return os.path.normcase(_plain(os.path.realpath(p))).rstrip(os.sep)
+            except (OSError, ValueError):
+                return os.path.normcase(p).rstrip(os.sep)
+        rb, rs = _real(b), _real(s)
+        for x, y in ((nb, ns), (rb, rs), (nb, rs), (rb, ns)):     # junction · subst 로 겹쳐도 안 된다
+            if y == x or y.startswith(x + os.sep) or x.startswith(y + os.sep):
+                raise ValueError("shadow 는 base 밖, base 는 shadow 밖이어야 한다: base=%s shadow=%s" % (b, s))
         sys.dont_write_bytecode = True          # importlib 의 pyc 쓰기는 아래 패치를 안 거친다
         _prepare_shadow(s, fresh)
-        _base, _base_nc, _shadow = b, nb, s
+        _base, _base_nc, _shadow, _shadow_nc, _base_real_nc = b, nb, s, ns, rb
         _mine.clear()
         _gone.clear()
         _on = True
+        if not _hooked:                         # 백스톱 — 지울 수 없으니 한 번만, 꺼지면(_on False) 아무것도 안 한다
+            sys.addaudithook(_audit)
+            _hooked = True
 
         _set(builtins, "open", _p_open)
         _set(io, "open", _p_open)
@@ -650,10 +866,23 @@ def enable(base, shadow, fresh=True):
             f = getattr(os.path, n)
             if getattr(f, "__module__", "") != "genericpath":
                 _set(os.path, n, _wrap_pathq(f))
+        # 이 모듈보다 먼저 읽혀 원래 open 을 잡아 둔 표준 모듈 — shutil 이 bz2 를 읽는다(검토 RO-3)
+        for mod, name in (("bz2", "_builtin_open"), ("tarfile", "bltn_open")):
+            m = sys.modules.get(mod)
+            if m is not None and hasattr(m, name):
+                _set(m, name, _p_open)
 
         _set(socket, "create_connection", _p_create_connection)
         _set(socket.socket, "connect", _p_connect)
         _set(socket.socket, "connect_ex", _p_connect_ex)
+        _set(socket.socket, "sendto", _p_sendto)
+        if _osock_sendmsg is not None:
+            _set(socket.socket, "sendmsg", _p_sendmsg)
+        _set(socket, "getaddrinfo", _p_getaddrinfo)          # DNS 질의도 바깥 호출(검토 RO-2) — requests · urllib3 · asyncio 가 이걸 부른다
+        _set(socket, "gethostbyname", _p_gethostbyname)
+        _set(socket, "gethostbyname_ex", _p_gethostbyname_ex)
+        _set(socket, "gethostbyaddr", _p_gethostbyaddr)
+        _set(socket, "getnameinfo", _p_getnameinfo)
         try:
             import asyncio.selector_events as _ase
             import asyncio.proactor_events as _ape
@@ -704,5 +933,6 @@ def is_on():
 
 
 def state():
-    """/api/mode 등에 — 켜졌나 · 폴더 · 이번 실행에서 shadow 로 돌린 수."""
-    return {"readonly": _on, "base": _base, "shadow": _shadow, "written": len(_mine), "hidden": len(_gone)}
+    """/api/mode 등에 — 켜졌나 · 폴더 · 이번 실행에서 shadow 로 돌린 수 · 감사 훅."""
+    return {"readonly": _on, "base": _base, "shadow": _shadow, "written": len(_mine), "hidden": len(_gone),
+            "audit_hook": _hooked and _on}

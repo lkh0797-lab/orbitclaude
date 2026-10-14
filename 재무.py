@@ -280,6 +280,8 @@ def fetch_shares(corp_code, year, reprt_code):
                 return json.load(fh)
         except Exception:
             pass
+    if _readonly():                         # 조회 전용 — 캐시가 없으면 묻지 않는다(DART 는 메인 PC 몫). 캐시도 쓰지 않는다
+        return {"shares": None}
     try:
         r = requests.get(DART + "/stockTotqySttus.json", timeout=60, params={
             "crtfc_key": API_KEY, "corp_code": corp_code,
@@ -602,6 +604,8 @@ def fetch_consensus(stock_code, period="quarter"):
                 return json.load(fh)
         except Exception:
             pass
+    if _readonly():                         # 조회 전용 — 캐시 없는 기간은 묻지 않는다(네이버 호출)
+        return {"cols": [], "rows": {}}
     try:
         r = requests.get(NAVER_FIN % (stock_code, period), timeout=30,
                          headers={"User-Agent": "Mozilla/5.0",

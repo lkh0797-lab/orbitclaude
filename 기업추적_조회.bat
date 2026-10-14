@@ -17,10 +17,15 @@ rem   2. port 8765 LISTENING on this PC (the main viewer) -> open it in the brow
 rem   3. port 8770 LISTENING (read-only viewer already up) -> open it, done
 rem   4. Python package requests missing -> pip install --user requests openpyxl
 rem   5. desktop shortcut to this file missing -> viewer_readonly.py makes it
-rem      (Python + PowerShell -EncodedCommand, because its name is Korean)
+rem      (Python + PowerShell -EncodedCommand, because its name is Korean).
+rem      It checks where a shortcut points, not only its name: when the usual
+rem      name already opens something else (the main viewer), it uses a second name.
 rem   6. start the read-only server with pythonw (no console window),
-rem      wait up to 90 s for port 8770 LISTENING, then open the browser
+rem      wait up to 90 s for port 8770 LISTENING, then open the browser;
+rem      stop waiting early when no pythonw.exe is left (the server quit)
 rem Log: viewer_ro.log under %LOCALAPPDATA% (outside the drive), path printed on failure.
+rem      Microsoft Store Python keeps it under %LOCALAPPDATA%\Packages\<package>\LocalCache\Local
+rem      instead; viewer_readonly.py --where-log prints the real place.
 rem
 rem Test switches (environment):
 rem   GIUP_RO_DRYRUN=1   print what it would do (browser, pip, shortcut, start) instead of doing it
@@ -110,11 +115,19 @@ if defined DRY (
   exit /b 0
 )
 start "" "%PYWEXE%" "%HERE%viewer_readonly.py" --no-shortcut --port %GIUP_RO_PORT%
+rem Only pythonw.exe can be watched by image name (python.exe also runs this window).
+set "WATCH="
+for %%F in ("%PYWEXE%") do if /I "%%~nxF"=="pythonw.exe" set "WATCH=1"
 set /a WAITED=0
 :wait_loop
 call :listening %GIUP_RO_PORT%
 if not errorlevel 1 goto :ready
 if %WAITED% GEQ 90 goto :not_ready
+rem Stopped right away (missing package, port taken, broken file)? Then stop waiting.
+if defined WATCH if %WAITED% GEQ 3 (
+  tasklist /FI "IMAGENAME eq pythonw.exe" /NH 2>nul | findstr /I /C:"pythonw.exe" >nul
+  if errorlevel 1 goto :died
+)
 ping -n 2 127.0.0.1 >nul
 set /a WAITED+=1
 goto :wait_loop
@@ -123,11 +136,23 @@ goto :wait_loop
 call :open "http://127.0.0.1:%GIUP_RO_PORT%/"
 exit /b 0
 
+:died
+echo.
+echo   The read-only viewer stopped right after it started.
+echo   The reason is at the end of its log file:
+"%PYEXE%" "%HERE%viewer_readonly.py" --where-log
+echo.
+pause
+exit /b 1
+
 :not_ready
 echo.
 echo   The read-only viewer did not open port %GIUP_RO_PORT% within 90 seconds.
+echo   It may still be starting - the first start over Google Drive can be slow.
+echo   Wait a minute or two, then double-click this file again: as soon as
+echo   port %GIUP_RO_PORT% is open it only opens the browser.
 echo   Its log file:
-"%PYEXE%" -c "import os; print('  ' + os.path.join(os.environ.get('LOCALAPPDATA', ''), '\uae30\uc5c5\ucd94\uc801', '\uc870\ud68c\uc804\uc6a9', 'viewer_ro.log'))"
+"%PYEXE%" "%HERE%viewer_readonly.py" --where-log
 echo.
 pause
 exit /b 1

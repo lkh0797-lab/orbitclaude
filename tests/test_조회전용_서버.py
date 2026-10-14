@@ -367,3 +367,201 @@ def test_dip_get_readonly_keeps_old_cache(monkeypatch, tmp_path):
     assert SRV._dip_get("http://x", {}, "k") == {"status": "000", "list": [1]} and hits == []
     monkeypatch.setattr(SRV, "READONLY", False)
     assert SRV._dip_get("http://x", {}, "k") is None and len(hits) == 1
+
+
+# ------------------------------------------------------------------ 키 없는 GET 이 전 종목 뒤 계산을 다시 시작하지 않는다(2026-10-15 검토 RO-1)
+@pytest.fixture
+def starts(monkeypatch):
+    """이 시험 모듈의 서버 사본에서만 threading.Thread 를 '띄운 이름 기록'으로 — 진짜로 돌지 않게."""
+    got = []
+
+    class FakeThread:
+        def __init__(self, target=None, args=(), daemon=None, **kw):
+            self.target = target
+
+        def start(self):
+            got.append(getattr(self.target, "__name__", str(self.target)))
+    monkeypatch.setattr(SRV, "threading", types.SimpleNamespace(Thread=FakeThread, Timer=FakeThread, Lock=SRV.threading.Lock))
+    return got
+
+
+OLD = time.time() - 30 * 86400          # 한 달 묵은 결과(메인 PC 가 드라이브에 남긴 판)
+
+
+def _old_world(monkeypatch):
+    for k, v in {"running": False, "at": OLD, "rows": [{"x": 1}], "funnel": {}, "drop": []}.items():
+        monkeypatch.setitem(SRV.DIP, k, v)
+    monkeypatch.setattr(SRV, "_dip_bt", lambda: {})
+    monkeypatch.setattr(SRV, "_dip_v2", lambda: None)
+    for k, v in {"running": False, "at": OLD, "rows": [], "done": 0, "total": 0}.items():
+        monkeypatch.setitem(SRV.BACKLOG, k, v)
+    for k, v in {"running": False, "at": OLD, "rows": [{"reliable": False}]}.items():
+        monkeypatch.setitem(SRV.SYNERGY, k, v)
+    monkeypatch.setattr(SRV, "_syn_bt", lambda: None)
+    for k, v in {"running": False, "built": OLD, "rows": []}.items():
+        monkeypatch.setitem(SRV.SCREEN, k, v)
+    if SRV.SCR is not None:
+        for k, v in {"running": False, "at": OLD, "error": None,
+                     "result": {"schema": getattr(SRV.SCR, "SCHEMA", None), "inputs_mtime": 0}}.items():
+            monkeypatch.setitem(SRV.SCORE, k, v)
+        monkeypatch.setattr(SRV, "_score_inputs_mtime", lambda: time.time())    # 재료도 새로 왔다
+    if SRV.VOC is not None:
+        for k, v in {"running": False, "at": OLD, "results": {"short": {}}, "error": None, "_loaded": True}.items():
+            monkeypatch.setitem(SRV.VOCAL, k, v)
+        monkeypatch.setattr(SRV, "_vocal_bt", lambda: None)
+
+
+def _call_views():
+    SRV.dip_view()
+    SRV.backlog_view()
+    SRV.synergy_view()
+    SRV.screen()
+    if SRV.SCR is not None:
+        SRV.score_view()
+    if SRV.VOC is not None and SRV.FIN is not None:
+        SRV.vocal_view()
+
+
+def test_readonly_views_keep_old_results(monkeypatch, starts):
+    _old_world(monkeypatch)
+    monkeypatch.setattr(SRV, "READONLY", True)
+    _call_views()
+    assert starts == []                                   # 하나도 다시 세지 않는다
+    assert SRV.DIP["running"] is False and SRV.SYNERGY["running"] is False and SRV.BACKLOG["running"] is False
+    assert SRV.dip_view()["rows"] == [{"x": 1}]           # 드라이브의 메인 PC 판 그대로
+
+
+def test_main_views_still_refresh_old_results(monkeypatch, starts):
+    _old_world(monkeypatch)
+    monkeypatch.setattr(SRV, "READONLY", False)
+    _call_views()
+    want = {"_run_dip", "_run_backlog", "_run_synergy"}
+    want |= {"_run_score"} if SRV.SCR is not None else set()
+    want |= {"_run_vocal"} if SRV.VOC is not None and SRV.FIN is not None else set()
+    assert want <= set(starts) and "_run_screen" in starts     # 메인은 전처럼(스크리너는 행이 비면 다시)
+
+
+def test_readonly_views_compute_once_when_nothing_saved(monkeypatch, starts):
+    # 메모리에만 있는 결과(수주 · 시너지 · 스크리너)는 새 프로세스에서 한 번은 센다 — 그 뒤엔 0줄이어도 다시 안 센다
+    monkeypatch.setattr(SRV, "READONLY", True)
+    for d, k in ((SRV.BACKLOG, "at"), (SRV.SYNERGY, "at"), (SRV.SCREEN, "built")):
+        monkeypatch.setitem(d, k, 0)
+        monkeypatch.setitem(d, "rows", [])
+        monkeypatch.setitem(d, "running", False)
+    monkeypatch.setattr(SRV, "_syn_bt", lambda: None)
+    SRV.backlog_view()
+    SRV.synergy_view()
+    SRV.screen()
+    assert sorted(starts) == ["_run_backlog", "_run_screen", "_run_synergy"]
+    starts.clear()
+    for d, k in ((SRV.BACKLOG, "at"), (SRV.SYNERGY, "at"), (SRV.SCREEN, "built")):
+        d["running"] = False
+        d[k] = time.time()                                # 다 셌는데 0줄
+    SRV.backlog_view()
+    SRV.synergy_view()
+    SRV.screen()
+    assert starts == []
+
+
+def test_readonly_druck_and_story_news_do_not_kick(monkeypatch):
+    called = []
+    monkeypatch.setattr(SRV, "druck", lambda *a, **k: called.append(a))
+    monkeypatch.setattr(SRV, "_story_news_ok", lambda: True)
+    monkeypatch.setattr(SRV, "READONLY", True)
+    monkeypatch.setattr(SRV, "DRUCK_STALE_KICKED", set())
+    assert SRV._druck_kick_stale("066570") is False and called == []
+    assert SRV._story_news_kick("066570", refresh=True) is False
+    assert SRV._story_news_note("066570", False, True) == SRV.RO_NEWS_NOTE
+    assert "조회 전용" in SRV.RO_NEWS_NOTE
+    monkeypatch.setattr(SRV, "READONLY", False)
+    assert SRV._druck_kick_stale("066570") is True and len(called) == 1
+
+
+def test_readonly_sector_map_and_story_mkt_no_rebuild(monkeypatch, starts):
+    if SRV.SECT is not None:
+        monkeypatch.setitem(SRV.SECT_STATE, "map", {"stale": True, "stocks": {}})
+        monkeypatch.setitem(SRV.SECT_STATE, "building", False)
+        monkeypatch.setattr(SRV, "READONLY", True)
+        assert SRV.sector_map() == {"stale": True, "stocks": {}} and starts == []
+        monkeypatch.setattr(SRV, "READONLY", False)
+        SRV.sector_map()
+        assert starts == ["_run"]
+        starts.clear()
+        monkeypatch.setitem(SRV.SECT_STATE, "building", False)
+    monkeypatch.setitem(SRV.STORY_MKT, "built", "2020-01-01 05:00")
+    monkeypatch.setitem(SRV.STORY_MKT, "building", False)
+    monkeypatch.setattr(SRV, "_story_mtime", lambda p: 0)
+    monkeypatch.setattr(SRV, "READONLY", True)
+    SRV._story_mkt()
+    assert starts == []
+    monkeypatch.setattr(SRV, "READONLY", False)
+    SRV._story_mkt()
+    assert starts == ["_story_mkt_run"]
+
+
+def test_readonly_ord_list_uses_saved_list_only(monkeypatch, tmp_path):
+    monkeypatch.setattr(SRV, "ORD_DIR", str(tmp_path))
+    (tmp_path / "066570.json").write_text(json.dumps({"fetched": "20200101", "ts": 1.0, "items": [{"rcept": "1"}]}), encoding="utf-8")
+    import requests
+    hits = []
+    monkeypatch.setattr(requests, "get", lambda *a, **k: hits.append(a) or (_ for _ in ()).throw(OSError("막힘")))
+    monkeypatch.setattr(SRV, "corp_code_of", lambda code: "00401731")
+    monkeypatch.setattr(SRV, "READONLY", True)
+    assert SRV._ord_list({"code": "066570"}) == [{"rcept": "1"}] and hits == []
+    monkeypatch.setattr(SRV, "READONLY", False)
+    assert SRV._ord_list({"code": "066570"}) == [{"rcept": "1"}] and len(hits) == 1     # 메인은 12시간 지났으니 묻는다
+
+
+def test_readonly_fin_no_fetch_without_cache(monkeypatch, tmp_path):
+    FIN = SRV.FIN
+    if FIN is None:
+        pytest.skip("재무 모듈 없음")
+    monkeypatch.setattr(FIN, "FIN_DIR", str(tmp_path))
+    monkeypatch.setattr(FIN, "CONSENSUS_DIR", str(tmp_path))
+    hits = []
+    monkeypatch.setattr(FIN.requests, "get", lambda *a, **k: hits.append(a) or (_ for _ in ()).throw(OSError("막힘")))
+    monkeypatch.setenv("GIUP_READONLY", "1")
+    assert FIN.fetch_shares("00401731", 2026, "11012") == {"shares": None}
+    assert FIN.fetch_consensus("066570", "annual") == {"cols": [], "rows": {}}
+    assert hits == [] and os.listdir(tmp_path) == []      # 묻지도 않고 빈 값을 캐시하지도 않는다
+    monkeypatch.delenv("GIUP_READONLY")
+    FIN.fetch_shares("00401731", 2026, "11012")
+    FIN.fetch_consensus("066570", "annual")
+    assert len(hits) == 2
+
+
+def test_readonly_vocal_listing_and_fin_use_old_cache(monkeypatch, tmp_path):
+    sp = ilu.spec_from_file_location("보컬_조회전용_시험", os.path.join(BASE, "보컬.py"))
+    VOC = ilu.module_from_spec(sp)
+    sp.loader.exec_module(VOC)
+    lst = tmp_path / "listing.json"
+    lst.write_text(json.dumps({"at": 1.0, "stocks": {"005930": {}}}), encoding="utf-8")
+    monkeypatch.setattr(VOC, "LISTING", str(lst))
+    monkeypatch.setattr(VOC, "FIN_DIR", str(tmp_path / "fin"))
+    (tmp_path / "fin").mkdir()
+    (tmp_path / "fin" / "005930.json").write_text(json.dumps({"q": "2026.06"}), encoding="utf-8")
+    old = time.time() - 30 * 86400
+    os.utime(tmp_path / "fin" / "005930.json", (old, old))
+    fetched = []
+    monkeypatch.setattr(VOC, "fetch_listing", lambda: fetched.append("listing") or {"at": time.time(), "stocks": {}})
+    import requests
+    monkeypatch.setattr(requests, "get", lambda *a, **k: fetched.append("fin") or (_ for _ in ()).throw(OSError("막힘")))
+    monkeypatch.setenv("GIUP_READONLY", "1")
+    assert VOC.load_listing()["stocks"] == {"005930": {}}
+    assert VOC.fetch_fin("005930") == {"q": "2026.06"} and VOC.fetch_fin("000660") is None
+    lst.unlink()
+    assert VOC.load_listing() is None and fetched == []
+    monkeypatch.delenv("GIUP_READONLY")
+    VOC.load_listing()
+    VOC.fetch_fin("000660")
+    assert fetched == ["listing", "fin"]
+
+
+# ------------------------------------------------------------------ 웹 화면 — 조회 전용이면 일을 시키는 단추를 만들지 않는다(검토 C2 · C3 · C6)
+def test_index_html_readonly_buttons():
+    with open(os.path.join(BASE, "웹", "index.html"), "r", encoding="utf-8") as fh:
+        s = fh.read()
+    assert "if(!RO.on){ const rf=el('button','ghost','다시 계산'); rf.onclick=()=>load(true)" in s      # 시너지 다시 계산
+    assert "S.synErr=d.error" in s and "S.synData=null" in s                                            # 오류를 표 캐시에 넣지 않는다
+    assert "if(!RO.on){     // 조회 전용 — 리포트 수집" in s and "e=r.ok?null:" in s                         # 리포트 지금 받기
+    assert "if(N.ok!==false&&!RO.on){ const b=el('button','ghost','뉴스 새로 받기')" in s                  # 뉴스 새로 받기

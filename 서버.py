@@ -1083,8 +1083,9 @@ def _run_backlog():
 
 def backlog_view(force=False, steady_only=True):
     with BACKLOG_LOCK:
-        stale = force or (not BACKLOG["rows"] and not BACKLOG["running"]) or \
-            (BACKLOG["at"] and time.time() - BACKLOG["at"] > 6 * 3600)
+        # 조회 전용 — 결과는 메모리에만 있어 새 프로세스에서 한 번은 센다(받아 둔 보고서 · 캐시로). 그 뒤로는 묵어도, 0줄이어도 다시 안 센다
+        stale = force or (not BACKLOG["rows"] and not BACKLOG["running"] and not (READONLY and BACKLOG["at"])) or \
+            bool(BACKLOG["at"] and _age_stale(BACKLOG["at"], 6 * 3600))
         if stale and not BACKLOG["running"] and BACK is not None:
             BACKLOG["running"] = True
             threading.Thread(target=_run_backlog, daemon=True).start()
@@ -1129,6 +1130,8 @@ def sector_map():
     if SECT_STATE["map"] is None:
         SECT_STATE["map"] = SECT.load()
     m = SECT_STATE["map"]
+    if READONLY:                # 조회 전용 — 분류표는 네이버에서 받는다(바깥 호출). 드라이브에 있는 것을 묵어도 그대로
+        return m
     if (m is None or m.get("stale")) and not SECT_STATE["building"]:
         SECT_STATE["building"] = True
 
@@ -1729,7 +1732,10 @@ def _druck_now(code, d):
 def _druck_kick_stale(code):
     """지금 PER 의 k 가 0.55~1.8 밖이다(캐시 뒤 주가 자료가 다시 보정됨) — 뒤에서 force 로 한 번 다시 쌓는다.
     split_after(마지막 분기 뒤 분할 공시)만으로는 다시 쌓지 않는다 — 분할 뒤 보고서 전에 다시 쌓으면 보정된 주가 ÷ 분할 전 EPS 로 역사 PER 이 틀어진다
-    (그동안 PER 은 hold_per 가 비운다). 회사마다 이 서버 프로세스에서 한 번만(DRUCK_STALE_KICKED). 스레드를 못 띄우면 표시를 거두고 예외를 올린다."""
+    (그동안 PER 은 hold_per 가 비운다). 회사마다 이 서버 프로세스에서 한 번만(DRUCK_STALE_KICKED). 스레드를 못 띄우면 표시를 거두고 예외를 올린다.
+    조회 전용이면 다시 쌓지 않는다 — force 는 DART 를 다시 부르는 일이다(메인 PC 가 한다, 검토 RO-1)."""
+    if READONLY:
+        return False
     with DRUCK_LOCKS_G:
         if code in DRUCK_STALE_KICKED:
             return False
@@ -2616,7 +2622,7 @@ def _run_screen():
 
 def screen(force=False):
     with SCREEN_LOCK:
-        stale = force or (not SCREEN["rows"] and not SCREEN["running"])
+        stale = force or (not SCREEN["rows"] and not SCREEN["running"] and not (READONLY and SCREEN["built"]))     # 조회 전용 — 한 번만
         if stale and not SCREEN["running"]:
             SCREEN["running"] = True
             threading.Thread(target=_run_screen, daemon=True).start()
@@ -3027,7 +3033,8 @@ def _run_synergy():
 
 def synergy_view(force=False):
     with SYNERGY_LOCK:
-        stale = force or (not SYNERGY["rows"]) or time.time() - SYNERGY["at"] > 3 * 3600
+        # 조회 전용 — 메모리에만 있는 결과라 새 프로세스에서 한 번은 맞춘다(받아 둔 잔고 · 공시 · 풍경 캐시로, 바깥 호출 없이). 3시간 묵어도 다시 안 맞춘다
+        stale = force or (not SYNERGY["rows"] and not READONLY) or _age_stale(SYNERGY["at"], 3 * 3600)
         if stale and not SYNERGY["running"] and SYN is not None:
             SYNERGY["running"] = True
             threading.Thread(target=_run_synergy, daemon=True).start()
@@ -4880,7 +4887,7 @@ def _ord_list(c, ttl=12 * 3600, net=True):
             d = json.load(fh)
     except Exception:
         pass
-    if not net or (d.get("fetched") and time.time() - d.get("ts", 0) < ttl):
+    if not net or READONLY or (d.get("fetched") and time.time() - d.get("ts", 0) < ttl):     # 조회 전용 — 받아 둔 목록만(DART 안 부름)
         return d.get("items", [])
     corp = corp_code_of(c["code"]) if FIN is not None else None
     if not corp:
@@ -9369,7 +9376,8 @@ def dip_view(force=False):
                     DIP.update({k: old.get(k) for k in ("at", "rows", "drop", "funnel")})
             except Exception:
                 pass
-        stale = force or (not DIP["rows"] and not DIP["at"]) or time.time() - DIP["at"] > 6 * 3600
+        # 조회 전용 — 드라이브의 메인 PC 판(_result.json)이 있으면 묵어도 그대로(다시 세면 낡은 재료 + 방금 시각, 검토 RO-1)
+        stale = force or _age_stale(DIP["at"], 6 * 3600)
         if stale and not DIP["running"] and SYN is not None and BACK is not None:
             DIP["running"] = True
             threading.Thread(target=_run_dip, daemon=True).start()
@@ -9997,7 +10005,7 @@ def vocal_view(force=False):
             except Exception:
                 pass
         # 매일 07:00 _vocal_auto_loop 가 미리 센다. 실패한 뒤엔 '다시 계산'을 눌러야 다시 돈다(5초마다 다시 시작하지 않게)
-        stale = force or (not VOCAL["results"] and not VOCAL["error"]) or (VOCAL["results"] and time.time() - VOCAL["at"] > 26 * 3600)
+        stale = force or (not VOCAL["results"] and not VOCAL["error"]) or bool(VOCAL["results"] and _age_stale(VOCAL["at"], 26 * 3600))
         if stale and not VOCAL["running"]:
             VOCAL.update(running=True, error=None)
             threading.Thread(target=_run_vocal, daemon=True).start()
@@ -11271,8 +11279,9 @@ def score_view(force=False):
             except (OSError, ValueError):
                 pass
         res = SCORE["result"]
-        stale = force or res is None or time.time() - (SCORE["at"] or 0) > SCORE_MAX_AGE \
-            or _score_inputs_mtime() > (res or {}).get("inputs_mtime", 0) or (res or {}).get("schema") != schema
+        # 조회 전용 — 형식이 맞는 결과가 있으면 묵어도 · 재료가 새로 와도 그대로(다시 재면 이 PC 의 낡은 주가로 재고 '방금' 시각만 붙는다)
+        stale = force or res is None or (res or {}).get("schema") != schema or _age_stale(SCORE["at"], SCORE_MAX_AGE) \
+            or (not READONLY and _score_inputs_mtime() > (res or {}).get("inputs_mtime", 0))
         if stale and not SCORE["running"]:
             SCORE["running"] = True
             threading.Thread(target=_run_score, daemon=True).start()
@@ -11516,7 +11525,9 @@ def _story_mkt():
         except (OSError, ValueError):
             pass
     with STORY_LOCK:
-        if _story_mkt_stale(STORY_MKT["built"]) and not STORY_MKT["building"]:
+        # 조회 전용 — 드라이브의 판이 있으면 날이 바뀌어도 그대로(전 종목 주가 파일을 다시 훑지 않는다)
+        stale = not STORY_MKT["built"] if READONLY else _story_mkt_stale(STORY_MKT["built"])
+        if stale and not STORY_MKT["building"]:
             STORY_MKT["building"] = True
             threading.Thread(target=_story_mkt_run, daemon=True).start()
     return STORY_MKT["med"]
@@ -11542,8 +11553,9 @@ def _story_news_age(code):
 def _story_news_kick(code, refresh=False):
     """뉴스 파일이 없거나 30분보다 묵었으면(또는 refresh) 뒤에서 받는다. 반환: 이 회사 뉴스를 받는 중(또는 차례 대기)인가.
     실패해도 30분(refresh 면 1분)은 다시 띄우지 않는다 — 폴링이 실패를 되풀이하지 않게.
-    차례는 가장 최근에 물은 회사부터 · STORY_WANT_TTL 동안 다시 안 물은 회사는 뺀다(화면을 떠났다 — 화면이 3초마다 묻는다)."""
-    if NAR is None or not _story_news_ok():
+    차례는 가장 최근에 물은 회사부터 · STORY_WANT_TTL 동안 다시 안 물은 회사는 뺀다(화면을 떠났다 — 화면이 3초마다 묻는다).
+    조회 전용이면 띄우지 않는다 — Tech 하위 프로세스 · 한국투자증권 호출이다(받아 둔 제목으로 본다, 검토 C6)."""
+    if READONLY or NAR is None or not _story_news_ok():
         return False
     with STORY_LOCK:
         N = STORY_NEWS
@@ -11739,7 +11751,12 @@ def _story_read(code):
     return d
 
 
+RO_NEWS_NOTE = "조회 전용 — 뉴스는 메인 PC 가 받는다(받아 둔 제목으로 본다)"
+
+
 def _story_news_note(code, running, has_news):
+    if READONLY:
+        return RO_NEWS_NOTE
     if running:
         return "받는 중"
     if not os.path.exists(TECH_PY):

@@ -46,6 +46,11 @@ THEME_MIN = 3           # 풀 안 멤버 3곳↑
 THEME_TOP = 10          # 강한 테마 = 상위 10
 
 
+def _readonly():
+    """조회 전용(다른 PC — 조회전용.py 가 GIUP_READONLY=1): 받아 둔 목록 · 재무 요약은 묵어도 그대로, 없으면 네이버에 묻지 않는다."""
+    return os.environ.get("GIUP_READONLY") == "1"
+
+
 def _fin():
     sp = ilu.spec_from_file_location("재무", os.path.join(BASE, "재무.py"))
     m = ilu.module_from_spec(sp)
@@ -93,10 +98,12 @@ def load_listing(max_age=20 * 3600):
     try:
         with open(LISTING, "r", encoding="utf-8") as fh:
             d = json.load(fh)
-        if time.time() - d.get("at", 0) < max_age:
+        if _readonly() or time.time() - d.get("at", 0) < max_age:
             return d
     except Exception:
         pass
+    if _readonly():
+        return None
     try:
         return fetch_listing()
     except Exception:
@@ -629,13 +636,15 @@ def fetch_fin(code, max_age=7 * 86400):
     os.makedirs(FIN_DIR, exist_ok=True)
     p = os.path.join(FIN_DIR, code + ".json")
     try:
-        if time.time() - os.path.getmtime(p) < max_age:
+        if _readonly() or time.time() - os.path.getmtime(p) < max_age:
             with open(p, "r", encoding="utf-8") as fh:
                 return json.load(fh)
     except OSError:
         pass
     except Exception:
         pass
+    if _readonly():
+        return None
     try:
         import requests
         r = requests.get(NAVER_FIN % code, headers=HEAD, timeout=30)
