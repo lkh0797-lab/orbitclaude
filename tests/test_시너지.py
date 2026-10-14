@@ -100,3 +100,16 @@ def test_per_pct_at_uses_only_filed_rows():
     assert SYN.per_pct_at(e + [("20250101", 5.0)], "20240901") == 60.0       # 미래 줄은 안 본다
     assert SYN.per_pct_at([], "20240901") is None
     assert SYN.per_pct_at([("20240814", 60.0), ("20240515", 20.0)], "20240601") == 20.0  # 순서 무관
+
+
+def test_gap_clips_both_sides():
+    """반영 갭 = min(잔고 1년, 300) − min(주가 1년, 300) — 주가 쪽도 자른다(백테스트 row_at · 서버 _syn_row 공통)."""
+    assert SYN.gap_of(544.0, 137.0) == 300.0 - 137.0
+    assert SYN.gap_of(20.0, 337.0) == 20.0 - 300.0        # 1년 주가 +337% 는 300 으로
+    assert SYN.gap_of(50.0, -20.0) == 70.0
+    assert SYN.gap_of(None, 10.0) is None and SYN.gap_of(10.0, None) is None
+
+
+def test_lead_is_backlog_minus_rev4():
+    assert SYN.lead_of(40.0, 10.0) == 30.0
+    assert SYN.lead_of(40.0, None) is None and SYN.lead_of(None, 10.0) is None

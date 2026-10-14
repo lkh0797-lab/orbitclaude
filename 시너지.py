@@ -231,6 +231,19 @@ def per_pct_at(entries, t):
     return best[1] if best else None
 
 
+def lead_of(backlog_yoy, rev4_yoy):
+    """잔고 − 매출 선행(%p) = 잔고 1년 증가율 − 4분기 합 매출 1년 변화. 둘 다 있을 때만(추천필터 leadMin 이 읽는다)."""
+    return (backlog_yoy - rev4_yoy) if (backlog_yoy is not None and rev4_yoy is not None) else None
+
+
+def gap_of(backlog_yoy, price_1y, cap=300.0):
+    """반영 갭(%p) = min(잔고 1년 증가율, 300) − min(주가 1년, 300). 양쪽을 자른다 — 예전엔 잔고만 잘라
+    1년 주가 2배↑ 회사가 가격 부분 꼭대기에 올랐다(2026-10-14 감사 ⑦). 서버 _syn_row 와 백테스트 row_at 이 같이 쓴다."""
+    if backlog_yoy is None or price_1y is None:
+        return None
+    return min(backlog_yoy, cap) - min(price_1y, cap)
+
+
 # 가중치. 수주가 먼저 움직이고(선행) 매출이 따라오며(전환) 주가가 마지막에 반영된다.
 # 확인(최근 계약 공시)은 검증된 적이 없어 가중 0 — parts 에 계산해 보여 주기만 한다(2026-10-14 v2).
 # 점수 = Σ(부분 × 가중) ÷ Σ가중 — 선행 .35 · 전환 .25 · 가격 .25 (백테스트 PARTS 와 같다).

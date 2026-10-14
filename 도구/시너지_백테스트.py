@@ -3,11 +3,15 @@
 '시너지 발굴' 점수와 단계(잠복·점화·반영·둔화·관찰)가 실제로 맞았나.
 
 매달 말(2013.06~2025.09) 그때 이미 공시된 보고서만으로 시너지 발굴 행을 다시 만든다.
-  선행   잔고 1년 증가율 · 북투빌
-  전환   매출 가속(분기 YoY 변화) · 영업이익률 변화(직전 분기 대비 %p)
-  가격   잔고 증가 − 주가 1년(반영 갭) · PER(낮을수록)
-  확인   보고서 뒤 수주 공시 — 과거 공시 목록이 캐시에 없어 뺐다(가중치를 나머지로 다시 나눈다)
+  선행   북투빌 · 잔고/연매출 배수 1년 변화
+  전환   4분기 합 영업이익률(흑자만 백분위, 적자는 해당 없음 → 50 대입)
+  가격   min(잔고 1년, 300) − min(주가 1년, 300)(반영 갭, 양쪽 자름)
+  확인   보고서 뒤 수주 공시 — 과거 공시 목록이 캐시에 없어 전부 없음(2026-10-14 v2 부터 가중 0 이라 점수에 영향 없음)
 점수는 시너지.py score() 를 그대로 부르고(그 날 신뢰할 수 있는 회사끼리 백분위 → 가중평균), 단계는 stage() 를 그대로 부른다.
+2026-10-14 v2 — 행에 per_pct(분기 패널 .cache/quarter/bt_panel.json 의 같은 code · 같은 분기 lab 줄, 접수일 ≤ t 인 것만 —
+미래 분기 금지) · lead(잔고 1년 증가율 − 4분기 합 매출 1년 변화, %p)를 더해 추천필터 '싼 수주'(SYN_REC cheap)를 같은 정의로 잰다.
+보고에 overall(전체 중앙 · 90%) · no_slow(둔화 뺀 중앙 · 90% + 점수 상⅓−하⅓) · 요인 per_pct · lead(둔화 뺀 IC 도) 가 더 들어간다.
+문턱 · 식은 결과를 보고 바꾸지 않는다(설계 문서 1절).
 2026-09-29 이전 식(선행 = 잔고 증가 .6·북투빌 .4, 전환 = 매출 가속 .6·이익률 변화 .4, 가격 = 반영 갭 .6·PER .4)은 score_old 로 함께 잰다.
 그 뒤 6·12개월 수익률을 같은 기간 전 종목 중앙값과 비교한다. 들어가는 날 = 그달 말 다음 거래일 종가(2026-10-07).
 
@@ -32,7 +36,45 @@ S = W.S
 SYN = S.SYN
 OUT = os.path.join(S.CACHE_DIR, "시너지")
 UNIV, SNAP = S._universe_info()
-PARTS = {"선행": 0.35, "전환": 0.25, "가격": 0.25}      # 확인(0.15)은 뺐다
+PARTS = {"선행": 0.35, "전환": 0.25, "가격": 0.25}      # 예전 식(score_old)용. 확인은 뺐다 — SYN.WEIGHTS 도 v2 부터 확인 0
+QTR_PANEL = os.path.join(S.CACHE_DIR, "quarter", "bt_panel.json")
+
+
+def _load_qpanel(path=QTR_PANEL):
+    """분기 패널(도구/분기변화_백테스트.py) → {(code, 'YYYYQn'): [(접수일, per_pct), …]}.
+    per_pct = 공시일 종가 PER 의 자기 역사 백분위(앞 40분기 · 8개↑, 낮을수록 싸다). 접수일은 'date'(실제 rcept 날짜 —
+    't' 는 그 달 15일로 뭉친 값). per_pct 없는 줄은 담지 않는다(담아도 None 이라 결과가 같다). 파일이 없으면 빈 dict → 전부 None."""
+    qp = {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = json.load(fh)
+    except Exception as e:
+        print("  분기 패널을 못 읽어 per_pct 는 전부 None:", path, e, flush=True)
+        return qp
+    for r in rows:
+        if r.get("per_pct") is None or not r.get("code") or not r.get("lab"):
+            continue
+        qp.setdefault((r["code"], r["lab"]), []).append((r.get("date") or r.get("t"), r["per_pct"]))
+    return qp
+
+
+QP = _load_qpanel()
+
+
+def qpanel_per_pct(code, year, q, t, qp=None):
+    """시점 t 의 PER 자기 역사 백분위 — 분기 패널의 같은 code · 같은 분기(year, q) 줄, 접수일 ≤ t 일 때만(시너지.per_pct_at).
+    아직 접수 안 된 줄 · 미래 분기는 안 본다. 없으면 None(적자 · 이력 8분기 미만 · 패널 밖) — '싼 수주'는 통과 못 한다(감점 아님)."""
+    return SYN.per_pct_at((QP if qp is None else qp).get((code, "%dQ%d" % (year, q))), t)
+
+
+def derive(r):
+    """행의 파생 셋(2026-10-14 v2) — 반영 갭(양쪽 300 자름) · lead(잔고 − 4분기 매출 %p) · per_pct(분기 패널 join).
+    row_at 끝과 --report 에서 같이 부른다 — 세 값은 행의 다른 칸(backlog_yoy · price_1y · rev4_yoy · lab · t)에서 다시 나온다."""
+    r["gap"] = SYN.gap_of(r.get("backlog_yoy"), r.get("price_1y"))
+    r["lead"] = SYN.lead_of(r.get("backlog_yoy"), r.get("rev4_yoy"))
+    lab = r.get("lab")
+    r["per_pct"] = SYN.per_pct_at(QP.get((r["code"], lab)), r["t"]) if lab else None
+    return r
 
 
 def cap_at(code, t):
@@ -122,7 +164,6 @@ def row_at(P, t):
     cap = cap_at(P["code"], t)
     per = cap / cur["ni4"] if (cap and cur.get("ni4") and cur["ni4"] > 0) else None
     mgn = None if cur.get("이익률_비정상") else cur.get("이익률변화")
-    yoy_c = min(yoy, 300.0) if yoy is not None else None
     # 4분기 합 — 한 분기 반짝 흑자·기저효과에 흔들리지 않는 이익 (가온칩스 2026Q2: 분기 +1.5%, 4분기 합 영업손실 −91억)
     q4 = k[-5] if len(k) >= 5 else None
     op4, ni4 = cur.get("op4"), cur.get("ni4")
@@ -138,8 +179,9 @@ def row_at(P, t):
          "op4": op4, "ni4": ni4, "m4": m4 if (m4 is None or abs(m4) <= 100) else None, "m4d": m4d, "rev4_yoy": rev4_yoy,
          "margin4": m4,          # 시너지.score() 가 읽는 이름
          **bt_extra,
-         "loss4": (op4 is not None and op4 <= 0) or (ni4 is not None and ni4 <= 0),
-         "gap": (yoy_c - p1y) if (yoy_c is not None and p1y is not None) else None}
+         "lab": "%dQ%d" % (cur["year"], cur["q"]),       # 마지막 분기 — 분기 패널 per_pct join 키
+         "loss4": (op4 is not None and op4 <= 0) or (ni4 is not None and ni4 <= 0)}
+    derive(r)                                           # gap(양쪽 자름) · lead · per_pct(접수일 ≤ t)
     r["stage"], _ = SYN.stage(r)
     t0 = W.next_day(P["code"], t)          # 들어가는 날 = 그달 말 다음 거래일 종가(억울_백테스트.next_day)
     for h, days in W.H.items():
@@ -195,6 +237,9 @@ FACTORS = [
     ("m4", "4분기 합 영업이익률", lambda r: max(min(r["m4"], 60), -30) if r.get("m4") is not None else None),
     ("m4d", "4분기 합 이익률 1년 변화", lambda r: max(min(r["m4d"], 30), -30) if r.get("m4d") is not None else None),
     ("rev4_yoy", "4분기 합 매출 1년", lambda r: max(min(r["rev4_yoy"], 200), -80) if r.get("rev4_yoy") is not None else None),
+    # 2026-10-14 v2 — 가치 대비 가격(자기 역사 PER 위치)과 잔고 − 매출 선행. 둔화 뺀 표본의 IC · 상⅓−하⅓ 도 같이 적는다
+    ("per_pct", "PER 자기 역사 %(낮을수록 싸다)", lambda r: r.get("per_pct")),
+    ("lead", "잔고 − 4분기 매출(%p)", lambda r: max(min(r["lead"], 300), -300) if r.get("lead") is not None else None),
 ]
 
 
@@ -264,21 +309,44 @@ def report(panel):
     Y = "ex12m"
     rows = [r for r in panel if r.get(Y) is not None]
     allv = [r[Y] for r in rows]
+    nd = [r for r in rows if r["stage"] != "둔화"]          # 둔화 뺀 나머지 — per_pct · lead 의 근거 표본
+
+    def band(sub):
+        """묶음 요약 — 중앙 · 회사 단위 부트스트랩 90% · 앞/뒤 기간 중앙."""
+        s = W.summ(sub, Y)
+        if not s:
+            return None
+        lo, hi = W.boot(sub, lambda x: st.median([r[Y] for r in x]) if x else None)
+        e = [r[Y] for r in sub if r["t"] < W.SPLIT]
+        l = [r[Y] for r in sub if r["t"] >= W.SPLIT]
+        return dict(s, ci=[lo, hi], early=st.median(e) if e else None, late=st.median(l) if l else None, n_early=len(e), n_late=len(l))
+
+    def band_line(lab, x):
+        print("  %-4s 표본 %5d (%3d곳) 중앙 %+6.1f 90%%CI %+6.1f~%+6.1f 평균 %+6.1f 이긴 %3.0f%% | ~2019 %s(n%d) 2020~ %s(n%d)" % (
+            lab, x["n"], x["firms"], x["median"], x["ci"][0], x["ci"][1], x["mean"], x["hit"],
+            "%+.1f" % x["early"] if x["early"] is not None else "—", x["n_early"],
+            "%+.1f" % x["late"] if x["late"] is not None else "—", x["n_late"]))
     print("\n== 단계별 12개월 초과수익 (같은 기간 전 종목 중앙값 대비, %%)  전체 표본 %d건 · %d곳 · 중앙 %+.1f" % (
         len(rows), len({r['code'] for r in rows}), st.median(allv)))
+    # 전체 · 둔화 뺀 나머지 — 요약줄의 기준점(단계 중앙만 적으면 표본 기저 +2 가 안 보인다, 2026-10-14 감사 ①)
+    out["overall"] = band(rows)
+    ns = band(nd)
+    band_line("전체", out["overall"])
+    if ns:
+        band_line("둔화뺀", ns)
     for sg in ("잠복", "점화", "반영", "둔화", "관찰"):
         sub = [r for r in rows if r["stage"] == sg]
         if not sub:
             continue
-        s = W.summ(sub, Y)
-        lo, hi = W.boot(sub, lambda x: st.median([r[Y] for r in x]) if x else None)
-        e = [r[Y] for r in sub if r["t"] < W.SPLIT]
-        l = [r[Y] for r in sub if r["t"] >= W.SPLIT]
-        out["stages"][sg] = dict(s, ci=[lo, hi], early=st.median(e) if e else None, late=st.median(l) if l else None,
-                                 n_early=len(e), n_late=len(l))
-        print("  %-4s 표본 %5d (%3d곳) 중앙 %+6.1f 90%%CI %+6.1f~%+6.1f 평균 %+6.1f 이긴 %3.0f%% | ~2019 %s(n%d) 2020~ %s(n%d)" % (
-            sg, s["n"], s["firms"], s["median"], lo, hi, s["mean"], s["hit"],
-            "%+.1f" % st.median(e) if e else "—", len(e), "%+.1f" % st.median(l) if l else "—", len(l)))
+        out["stages"][sg] = band(sub)
+        band_line(sg, out["stages"][sg])
+    out["coverage"] = {"n": len(rows), "no_slow": len(nd),
+                       "per_pct": sum(1 for r in rows if r.get("per_pct") is not None),
+                       "per_pct_no_slow": sum(1 for r in nd if r.get("per_pct") is not None),
+                       "lead": sum(1 for r in rows if r.get("lead") is not None)}
+    cv = out["coverage"]
+    print("  per_pct 있는 행 %d/%d (둔화 뺀 %d/%d) · lead 있는 행 %d/%d — PER 없는 행(적자 · 이력 8분기 미만)은 '싼 수주' 해당 없음" % (
+        cv["per_pct"], cv["n"], cv["per_pct_no_slow"], cv["no_slow"], cv["lead"], cv["n"]))
     print("\n== 항목별 — 날짜별 순위상관(IC) 평균과 세 묶음(상위⅓−하위⅓) 차이, 12개월 초과수익")
     print("  %-20s %7s %6s %5s %7s %7s | %7s %7s %7s  %-15s %s" % ("항목", "IC", "t", "양수", "~2019", "2020~", "하위⅓", "상위⅓", "차이", "90%구간", "~2019/2020~"))
     for k, nm, fx in FACTORS:
@@ -286,14 +354,26 @@ def report(panel):
         tt = W.tercile_test(rows, fx, Y)
         if not ic or not tt:
             continue
-        out["factors"][k] = dict(ic, name=nm)
-        out["terciles"][k] = dict(tt, name=nm)
+        # 둔화 뺀 나머지 안에서도 — per_pct · lead 는 이 표본에서 앞/뒤 부호가 같은지가 근거다(2026-10-14 v2)
+        out["factors"][k] = dict(ic, name=nm, no_slow=W.ic_stats(nd, fx, Y, overlap=12))
+        out["terciles"][k] = dict(tt, name=nm, no_slow=W.tercile_test(nd, fx, Y))
+        print("  %-20s %+7.3f %+6.2f %4.0f%% %+7.3f %+7.3f | %+7.1f %+7.1f %+7.1f  %+6.1f~%+6.1f  %s/%s" % (
+            nm, ic["ic"], ic["t"], ic["pos"] * 100, ic["early"] or 0, ic["late"] or 0, tt["bot"], tt["top"], tt["spread"],
+            tt["ci"][0], tt["ci"][1], "%+.0f" % tt["early"] if tt["early"] is not None else "—",
+            "%+.0f" % tt["late"] if tt["late"] is not None else "—"))
+    print("\n== 둔화를 뺀 나머지 안에서 — 항목별 IC · 상위⅓−하위⅓ (per_pct · lead 의 근거 표본, %d건)" % len(nd))
+    print("  %-20s %7s %6s %5s %7s %7s | %7s %7s %7s  %-15s %s" % ("항목", "IC", "t", "양수", "~2019", "2020~", "하위⅓", "상위⅓", "차이", "90%구간", "~2019/2020~"))
+    for k, nm, fx in FACTORS:
+        ic = (out["factors"].get(k) or {}).get("no_slow")
+        tt = (out["terciles"].get(k) or {}).get("no_slow")
+        if not ic or not tt:
+            continue
         print("  %-20s %+7.3f %+6.2f %4.0f%% %+7.3f %+7.3f | %+7.1f %+7.1f %+7.1f  %+6.1f~%+6.1f  %s/%s" % (
             nm, ic["ic"], ic["t"], ic["pos"] * 100, ic["early"] or 0, ic["late"] or 0, tt["bot"], tt["top"], tt["spread"],
             tt["ci"][0], tt["ci"][1], "%+.0f" % tt["early"] if tt["early"] is not None else "—",
             "%+.0f" % tt["late"] if tt["late"] is not None else "—"))
     print("\n== 잔고 기간·형태별 — 전체 / 둔화 뺀 나머지 (상위⅓−하위⅓, 12개월 초과수익)")
-    nd0 = [r for r in rows if r["stage"] != "둔화"]
+    nd0 = nd
     out["backlog"] = {}
     for k, nm, fx in BACKLOG_FACTORS:
         ic = W.ic_stats(rows, fx, Y, overlap=12)
@@ -340,8 +420,9 @@ def report(panel):
             print("  %-10s %s 표본 %5d (%3d곳) 중앙 %+6.1f 90%%CI %+6.1f~%+6.1f 이긴 %3.0f%% | ~2019 %s 2020~ %s" % (
                 lab, nm, s["n"], s["firms"], s["median"], lo, hi, s["hit"],
                 "%+.1f" % st.median(e) if e else "—", "%+.1f" % st.median(l) if l else "—"))
-    nd = [r for r in rows if r["stage"] != "둔화"]
-    out["no_slow"] = {k: W.tercile_test(nd, (lambda r, k=k: r[k]), Y) for k in ("score", "score_old")}
+    # no_slow — 둔화 뺀 나머지의 중앙 · 90% 구간(화면 요약줄 "둔화 −y vs 나머지 +z") 위에 점수 상⅓−하⅓(score · score_old,
+    # 예전 키 그대로 — 화면 NS.score 가 읽는다)을 얹는다
+    out["no_slow"] = dict(ns or {}, **{k: W.tercile_test(nd, (lambda r, k=k: r[k]), Y) for k in ("score", "score_old")})
     print("\n== 둔화를 뺀 나머지 안에서 점수 상위⅓−하위⅓")
     for k in ("score_old", "score"):
         x = out["no_slow"][k]
@@ -359,6 +440,7 @@ if __name__ == "__main__":
         panel = json.load(open(os.path.join(OUT, "bt_panel.json"), encoding="utf-8"))
         by = {}
         for r in panel:
+            derive(r)            # gap(양쪽 자름) · lead · per_pct 를 행에서 다시 채운다 — lab 이 없는 옛 패널은 per_pct None
             by.setdefault(r["t"], []).append(r)
         for rows in by.values():
             score_date(rows)
