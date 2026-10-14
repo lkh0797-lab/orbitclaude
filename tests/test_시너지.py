@@ -29,6 +29,24 @@ def test_loss_company_gets_neutral_transition_not_top():
     assert by["L"]["score"] == by["B"]["score"]                  # 흑자 중앙(B 50)과 같은 자리
 
 
+def test_net_loss_with_tiny_operating_profit_is_not_transition():
+    """순손실 · 영업 미세 흑자(코스모화학 op +14억 · ni −249억 — 2026-10-15 리뷰)는 전환 '해당 없음'(None → 50).
+    전환 기준 = loss4(영업 또는 순이익 4분기 합 ≤ 0)와 같다(스펙 1절 2026-10-15 (a)) — 흑자(둘 다 > 0)만 백분위."""
+    rows = [_row("A", m4=12.0), _row("B", m4=4.0), _row("C", m4=1.0),
+            dict(_row("N", m4=0.5), loss4=True)]            # 영업이익률 +0.5% · 순손실 → loss4 True
+    SYN.score(rows)
+    by = {r["code"]: r for r in rows}
+    assert by["N"]["parts"]["전환"] is None                      # '4분기 적자' 표시와 같은 기준
+    assert by["N"]["score"] == by["B"]["score"]                  # 50 대입 = 흑자 셋의 가운데(B) 자리, 최상위 아님
+    # N 은 흑자 백분위 풀에도 안 든다 — 셋 풀의 가운데 순위 백분위 17 · 50 · 83(넷이면 12 · 38 · 62 · 88 이 된다)
+    assert by["C"]["parts"]["전환"] == 83 and by["A"]["parts"]["전환"] == 17
+    # loss4 키가 없는 행(옛 패널 · 시험 행)은 지금처럼 영업이익률 ≤ 0 으로만 판단
+    rows = [{k: v for k, v in _row(c, m4=m).items() if k != "loss4"} for c, m in (("A", 12.0), ("B", 4.0), ("P", 0.5), ("L", -1.0))]
+    SYN.score(rows)
+    by = {r["code"]: r for r in rows}
+    assert by["P"]["parts"]["전환"] == 83 and by["L"]["parts"]["전환"] is None
+
+
 def test_missing_parts_substitute_50_not_renormalize():
     a, b = _row("A", gap=None), _row("B", gap=None, m4=None)
     rows = [a, b, _row("C"), _row("D", gap=-30.0, m4=20.0)]
