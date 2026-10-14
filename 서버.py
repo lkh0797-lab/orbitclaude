@@ -2755,11 +2755,12 @@ def _syn_cheap(r):
 def _syn_forward(rows, day=None):
     """매일 목록을 남긴다 — .cache/시너지/forward/YYYYMMDD.json(같은 날은 덮어씀). 채점은 아직 없다: 6~12개월 뒤 저평가 forward 와 같은
     식(전 종목 중앙 대비 초과수익)으로 재는 표본 밖 검증의 재료(스펙 4절). 행은 code · name · reliable · stage · score · btb ·
-    backlog_yoy · lead · per · per_pct · cheap · loss4 · n_flags 만."""
+    backlog_yoy · lead · per · per_pct · per_date(per · per_pct 의 주가 날짜 = 풍경 계산일, 채점 때 기준으로 삼는다) · cheap · loss4 · n_flags 만."""
     day = day or dt.date.today().strftime("%Y%m%d")
     out = [{"code": r.get("code"), "name": r.get("name"), "reliable": bool(r.get("reliable")), "stage": r.get("stage"),
             "score": r.get("score"), "btb": r.get("btb"), "backlog_yoy": r.get("backlog_yoy"), "lead": r.get("lead"),
-            "per": r.get("per"), "per_pct": r.get("per_pct"), "cheap": bool(r.get("cheap")), "loss4": bool(r.get("loss4")),
+            "per": r.get("per"), "per_pct": r.get("per_pct"), "per_date": r.get("per_date"),
+            "cheap": bool(r.get("cheap")), "loss4": bool(r.get("loss4")),
             "n_flags": len(r.get("flags") or [])} for r in rows]
     path = os.path.join(CACHE_DIR, "시너지", "forward", "%s.json" % day)
     _atomic_json(path, {"at": time.time(), "date": day, "spec": SYN_SPEC, "n": len(out), "rows": out})
@@ -2855,6 +2856,8 @@ def _syn_row(b, good_by, bad_by, twins):
         # PER 은 오늘 주가 기준(풍경 decide.per — 표 'PER' 열 · 단계 PER≥40 규칙), 접수일 주가 PER 은 per_filed(reasons 문장이 쓴다, 감사 #14).
         # per_pct = PER 자기 역사 백분위(낮을수록 싸다, '싼 수주' perPctMax 가 읽는다), per_med = 자기 역사 띠 중앙
         "per": dec.get("per"), "per_filed": sr.get("PER_TTM"), "per_pct": dec.get("pct"), "per_med": band.get("mid"),
+        # per · per_pct 의 주가 날짜 = 풍경 계산일(decide.date, 주가 시계열 마지막 날 — 오늘이 아니라 며칠 전일 수 있다). forward 가 같이 남긴다(2026-10-15 리뷰)
+        "per_date": dec.get("date"),
         "quarter": sr.get("quarter"),
         "price": pnow, "price_1y": p1y, "price_3m": p3m, "price_1m": ps.get("p1m"),
         "dd52": ps.get("dd52"), "cap": cap, "market": u.get("market"), "cap_rank": u.get("rank"),
@@ -2987,7 +2990,8 @@ def synergy_view(force=False):
     bt = _syn_bt()
     if bt:          # 화면의 '과거 검증' 상자 — 도구/시너지_백테스트.py 결과
         # overall(전체 중앙 · 90%) · no_slow(둔화 뺀 중앙 · 90% + 예전 score/score_old) · coverage 는 2026-10-14 v2 보고부터 — 옛 형식이면 None
-        out["bt"] = {k: bt.get(k) for k in ("dates", "stages", "overall", "no_slow", "coverage", "n", "firms", "median", "at", "rec")}
+        # loss4(4분기 합 적자 vs 흑자 표)는 2026-10-15 부터 넘긴다 — 화면 코드는 있었는데 키가 빠져 표가 안 떴다(리뷰 A-F4)
+        out["bt"] = {k: bt.get(k) for k in ("dates", "stages", "overall", "no_slow", "coverage", "n", "firms", "median", "at", "rec", "loss4")}
         out["bt"]["factors"] = {k: v for k, v in (bt.get("terciles") or {}).items()}
     return out
 

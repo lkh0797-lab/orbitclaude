@@ -121,6 +121,7 @@ def env(monkeypatch, tmp_path):
 def test_syn_row_fills_per_from_landscape_lead_and_clipped_gap(env):
     r = SRV._syn_row(_b(), {}, {}, {})
     assert r["per"] == 20.0 and r["per_pct"] == 35.0 and r["per_med"] == 25.0      # 오늘 주가 PER(풍경)
+    assert r["per_date"] == "20261014"                                              # 그 PER 의 주가 날짜 = 풍경 계산일(2026-10-15 리뷰)
     assert r["per_filed"] == 12.0                                                   # 접수일 PER 은 따로
     assert r["lead"] == pytest.approx(400.0 - 25.0)                                 # 잔고 1년 − 4분기 합 매출 1년(+25%)
     assert r["gap"] == pytest.approx(300.0 - 300.0)                                 # 양쪽 300 으로 자름(주가 +450% 도)
@@ -139,7 +140,7 @@ def test_syn_row_window_12_and_stale_report(env, monkeypatch):
 def test_syn_row_without_landscape_has_no_per(env, monkeypatch):
     monkeypatch.setattr(SRV, "_land_read", lambda code: None)
     r = SRV._syn_row(_b(), {}, {}, {})
-    assert r["per"] is None and r["per_pct"] is None and r["per_med"] is None
+    assert r["per"] is None and r["per_pct"] is None and r["per_med"] is None and r["per_date"] is None
     assert r["per_filed"] == 12.0 and r["reliable"]
     monkeypatch.setattr(SRV, "_land_read", lambda code: {"v": 1, "error": "짧은 이력", "nsig": "x"})     # 부정 캐시
     r = SRV._syn_row(_b(), {}, {}, {})
@@ -150,17 +151,18 @@ def test_syn_row_without_landscape_has_no_per(env, monkeypatch):
 def test_forward_writes_daily_file_with_spec_fields(monkeypatch, tmp_path):
     monkeypatch.setattr(SRV, "CACHE_DIR", str(tmp_path))
     rows = [{"code": "A", "name": "에이", "reliable": True, "stage": "잠복", "score": 61.5, "btb": 1.3, "backlog_yoy": 40.0,
-             "lead": 20.0, "per": 9.0, "per_pct": 30.0, "cheap": True, "loss4": False, "flags": ["희석 (2026-10-01)"]},
+             "lead": 20.0, "per": 9.0, "per_pct": 30.0, "per_date": "20261013", "cheap": True, "loss4": False, "flags": ["희석 (2026-10-01)"]},
             {"code": "B", "name": "비", "reliable": False, "stage": "둔화", "score": None, "btb": None, "backlog_yoy": -5.0,
-             "lead": None, "per": None, "per_pct": None, "cheap": False, "loss4": True, "flags": []}]
+             "lead": None, "per": None, "per_pct": None, "per_date": None, "cheap": False, "loss4": True, "flags": []}]
     p = SRV._syn_forward(rows, day="20261015")
     assert p == os.path.join(str(tmp_path), "시너지", "forward", "20261015.json") and os.path.exists(p)
     with open(p, encoding="utf-8") as fh:
         d = json.load(fh)
     assert d["spec"].startswith("2026-10-14 v2") and d["at"] > 0 and d["n"] == 2
     a, b = d["rows"]
-    assert set(a) == {"code", "name", "reliable", "stage", "score", "btb", "backlog_yoy", "lead", "per", "per_pct", "cheap", "loss4", "n_flags"}
+    assert set(a) == {"code", "name", "reliable", "stage", "score", "btb", "backlog_yoy", "lead", "per", "per_pct", "per_date", "cheap", "loss4", "n_flags"}
     assert a["cheap"] is True and a["n_flags"] == 1 and a["per_pct"] == 30.0
+    assert a["per_date"] == "20261013" and b["per_date"] is None                 # per · per_pct 의 주가 날짜(풍경 계산일) — 채점 기준(2026-10-15)
     assert b["cheap"] is False and b["loss4"] is True and b["score"] is None
     # 같은 날 다시 쓰면 덮어쓴다
     SRV._syn_forward(rows[:1], day="20261015")
@@ -189,11 +191,12 @@ def _view_with_bt(monkeypatch, bt):
 def test_synergy_view_passes_overall_and_no_slow(monkeypatch):
     bt = {"dates": 150, "stages": {"둔화": {"median": -1.4}}, "n": 9153, "firms": 171, "median": 2.3, "at": "20261015",
           "rec": {"cheap": {"n": 419}}, "overall": {"median": 2.3, "ci": [0.5, 4.2]}, "no_slow": {"median": 5.2, "ci": [2.6, 8.0]},
-          "coverage": {"per_pct": 0.49}, "terciles": {"btb": {"spread": 12.2}}}
+          "coverage": {"per_pct": 0.49}, "terciles": {"btb": {"spread": 12.2}}, "loss4": {"전체·적자": {"n": 2630, "median": 3.8}}}
     out = _view_with_bt(monkeypatch, bt)
     assert out["bt"]["overall"] == {"median": 2.3, "ci": [0.5, 4.2]}
     assert out["bt"]["no_slow"]["median"] == 5.2 and out["bt"]["coverage"] == {"per_pct": 0.49}
     assert out["bt"]["factors"] == {"btb": {"spread": 12.2}}
+    assert out["bt"]["loss4"] == {"전체·적자": {"n": 2630, "median": 3.8}}          # 적자/흑자 표 재료(2026-10-15 리뷰 A-F4)
     assert out["rec"][0]["id"] == "cheap"
 
 
@@ -201,5 +204,6 @@ def test_synergy_view_old_report_without_overall_does_not_crash(monkeypatch):
     bt = {"dates": 150, "stages": {}, "n": 8911, "firms": 156, "median": 2.5, "at": "20261007", "rec": {}}
     out = _view_with_bt(monkeypatch, bt)
     assert out["bt"]["overall"] is None and out["bt"]["no_slow"] is None and out["bt"]["factors"] == {}
+    assert out["bt"]["loss4"] is None                                              # 옛 보고엔 없다 — 화면은 빈 객체로 받아 표를 안 그린다
     out = _view_with_bt(monkeypatch, None)
     assert "bt" not in out

@@ -19,6 +19,8 @@
     예전 식(−max(m4, 0))은 적자를 전환 최상위 동률로 올려 상위 20 중 적자가 10곳이었다(2026-10-14 감사). 지금 상장된
     회사만 있어 망해서 사라진 적자 회사가 빠졌고, 1년 뒤 −30%↓ 비율도 흑자보다 높다. 화면에 '4분기 적자 — 턴어라운드
     베팅'으로 따로 표시하고 흑자만 보는 거름을 둔다.
+    전환 '해당 없음'은 영업이익률(4분기 합 영업이익 ≤ 0) 기준이고, '4분기 적자' 표시(loss4 — 영업 또는 순손실)와 기준이
+    달라 순손실 · 영업 미세 흑자 회사는 '4분기 적자' 표시를 달고도 전환 점수를 받는다(2026-10-15 리뷰 — 스펙 1절 개정 미결, 식은 안 바꿈).
   - 북투빌이 잔고 증가율보다 강했다.
   - 기간은 1년이 가장 좋았다. 짧으면 분기 잡음, 길면 이미 반영된 옛 이야기다.
   - 형태로는 '잔고/연매출 배수의 1년 변화'가 가장 고르다. 다른 잔고 지표는 2019년 전엔 약했다.
@@ -231,6 +233,25 @@ def per_pct_at(entries, t):
     return best[1] if best else None
 
 
+def date_pct(rows, key="_s", tkey="t", min_n=6):
+    """같은 날짜(tkey) 안 순위 백분위(0~100, 동률은 가운데 — _pct_rank)로 key 칸을 바꿔 돌려준다. 상⅓−하⅓ 같은 묶음 비교의
+    컷을 날짜 안에서 매길 때 쓴다(도구/억울_백테스트.tercile_test by_date). 전체 표본을 한 번에 자르면(pooled) 컷이 미래 날짜 행에
+    기대고 기간 효과(2020년 뒤 수준 차)가 묶음 차이에 섞인다(2026-10-15 리뷰). key 가 None 인 행과 표본이 min_n 미만인 날짜는 뺀다."""
+    by = {}
+    for r in rows:
+        if r.get(key) is not None:
+            by.setdefault(r.get(tkey), []).append(r)
+    out = []
+    for g in by.values():
+        if len(g) < min_n:
+            continue
+        f = _pct_rank([r[key] for r in g])
+        for r in g:
+            r[key] = f(r[key])
+        out.extend(g)
+    return out
+
+
 def lead_of(backlog_yoy, rev4_yoy):
     """잔고 − 매출 선행(%p) = 잔고 1년 증가율 − 4분기 합 매출 1년 변화. 둘 다 있을 때만(추천필터 leadMin 이 읽는다)."""
     return (backlog_yoy - rev4_yoy) if (backlog_yoy is not None and rev4_yoy is not None) else None
@@ -406,7 +427,9 @@ def questions(r, peers):
     if dd is not None and dd <= -30 and y is not None and y >= 20:
         q.append("주가는 52주 고점 대비 %.0f%%인데 잔고는 %+.0f%%. 빠진 이유가 업황인가 "
                  "이 회사만의 문제인가 — 최근 악재 공시와 같은 업종 주가를 같이 볼 것" % (dd, y))
-    if (not r["per"] or r["per"] <= 0) and y is not None and y >= 20:
+    # 적자 판정은 행의 4분기 합 적자 플래그(loss4 — 영업 또는 순손실)로. 예전엔 r["per"] 로 봤는데 2026-10-14 v2 부터 per 가
+    # 풍경(오늘) PER(없으면 None)이라 풍경 없는 흑자 회사까지 '적자' 질문이 붙었다(2026-10-15 리뷰 고침)
+    if r.get("loss4") and y is not None and y >= 20:
         q.append("적자인데 잔고는 쌓인다. 잔고 × 목표 이익률로 흑자 전환 시점을 역산해 보자")
     for c in r.get("parties_listed", [])[:2]:
         q.append("거래상대 %s 은(는) 왜 발주를 늘리나? 그 회사의 설비투자·수주 사이클을 따라가면 "
@@ -455,9 +478,11 @@ def reasons(r):
                    % (len(r["new_contracts"]), won(tot),
                       (" — 연매출의 %.0f%%" % r["new_pct"]) if r["new_pct"] else ""))
     if r["price_1y"] is not None and r["backlog_yoy"] is not None:
+        # 양쪽 다 300 에서 자른다(gap_of) — 잘린 쪽을 다 적어야 독자가 셈한 값과 맞는다(2026-10-15 리뷰: 주가 +337% 쪽 각주가 빠져 있었다)
+        cut = [nm for nm, v in (("잔고 증가율", r["backlog_yoy"]), ("주가 1년", r["price_1y"])) if v > 300]
         out.append("주가 1년 %+.0f%% vs 수주잔고 %+.0f%% → 반영 갭 %+.0f%%p%s"
                    % (r["price_1y"], r["backlog_yoy"], r["gap"],
-                      " (잔고 증가율은 300%로 잘라 계산)" if r["backlog_yoy"] > 300 else ""))
+                      (" (%s은 300%%로 잘라 계산)" % " · ".join(cut)) if cut else ""))
     # 접수일 주가 ÷ 최근 4분기 주당이익. 서버가 per_filed(접수일) · per(오늘, 풍경)를 따로 주면 접수일 쪽을 적는다 —
     # 표의 'PER' 열은 오늘 주가 기준(풍경)이라 문장에 기준을 명시한다(2026-10-14 감사 #14)
     pf = r.get("per_filed") if "per_filed" in r else r.get("per")

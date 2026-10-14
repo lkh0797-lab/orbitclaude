@@ -113,3 +113,60 @@ def test_gap_clips_both_sides():
 def test_lead_is_backlog_minus_rev4():
     assert SYN.lead_of(40.0, 10.0) == 30.0
     assert SYN.lead_of(40.0, None) is None and SYN.lead_of(None, 10.0) is None
+
+
+def test_date_pct_ranks_within_each_date_and_drops_small_dates():
+    """상⅓−하⅓ 컷은 날짜 안에서(2026-10-15 리뷰 재현): 날짜 A 요인 1..30 수익 0 · 날짜 B 요인 101..130 수익 +10 —
+    pooled 컷이면 상⅓(전부 B) − 하⅓(전부 A) = +10 이지만, 날짜 안 분위면 두 날짜가 상·하에 반반 들어 0 이다."""
+    import statistics as st
+    rows = [{"t": "20150131", "_s": float(i), "y": 0.0} for i in range(1, 31)] + \
+           [{"t": "20230131", "_s": float(100 + i), "y": 10.0} for i in range(1, 31)] + \
+           [{"t": "20240131", "_s": 1.0 + i, "y": 99.0} for i in range(5)] + [{"t": "20240229", "_s": None, "y": 1.0}]
+    out = SYN.date_pct(rows, "_s", "t")
+    assert len(out) == 60                                       # 5행뿐인 날짜 · 값 None 행은 뺀다
+    for t in ("20150131", "20230131"):
+        g = [r for r in out if r["t"] == t]
+        assert len(g) == 30 and 0 < min(r["_s"] for r in g) and max(r["_s"] for r in g) < 100
+    top = [r["y"] for r in out if r["_s"] >= 200 / 3]
+    bot = [r["y"] for r in out if r["_s"] < 100 / 3]
+    assert len(top) == len(bot) == 20
+    assert st.median(top) - st.median(bot) == 0                 # pooled 였다면 +10
+    # 동률은 가운데 백분위(_pct_rank 와 같다)
+    g = SYN.date_pct([{"t": "x", "_s": 1.0} for _ in range(3)] + [{"t": "x", "_s": 2.0} for _ in range(3)], "_s", "t")
+    assert sorted({r["_s"] for r in g}) == [25.0, 75.0]
+
+
+def _qrow(**kw):
+    r = {"backlog_yoy": 40.0, "btb": 1.2, "cover": 0.5, "price_1y": 10.0, "dd52": -5.0, "margin_delta": 1.0, "rev_accel": 1.0,
+         "per": None, "per_filed": 13.4, "loss4": False, "parties_listed": [], "customer_of": [], "same_as": [], "stage": "잠복"}
+    r.update(kw)
+    return r
+
+
+def test_questions_loss_uses_loss4_not_per():
+    """풍경 PER 이 없는(per None) 흑자 회사에 '적자' 질문이 붙지 않는다(2026-10-15 리뷰 — 한화오션 등 18곳 회귀)."""
+    assert not any("적자인데" in x for x in SYN.questions(_qrow(), []))
+    assert any("적자인데" in x for x in SYN.questions(_qrow(loss4=True), []))
+    assert not any("적자인데" in x for x in SYN.questions(_qrow(loss4=True, backlog_yoy=10.0), []))   # 잔고 +20% 미만
+    assert not any("적자인데" in x for x in SYN.questions(_qrow(per=0.0, loss4=False), []))          # per 로 읽지 않는다
+    assert not any("적자인데" in x for x in SYN.questions(_qrow(per=50.0, loss4=False), []))
+
+
+def _rrow(**kw):
+    r = {"backlog_yoy": 20.0, "backlog": 5.0e10, "cover": 0.5, "btb": 1.2, "rev_accel": None, "rev_yoy": None, "margin_delta": None,
+         "new_contracts": [], "new_pct": None, "price_1y": 337.0, "per_filed": 10.0, "per": 12.0, "flags": [], "same_as": []}
+    r.update(kw)
+    r["gap"] = SYN.gap_of(r["backlog_yoy"], r["price_1y"])
+    return r
+
+
+def test_reasons_gap_note_names_each_clipped_side():
+    """반영 갭 문장의 '300%로 잘라 계산' 각주는 잘린 쪽을 다 적는다 — 주가 쪽만 잘려도(2026-10-15 리뷰)."""
+    s = next(x for x in SYN.reasons(_rrow()) if "반영 갭" in x)
+    assert "-280%p" in s and "(주가 1년은 300%로 잘라 계산)" in s
+    s = next(x for x in SYN.reasons(_rrow(backlog_yoy=544.0, price_1y=137.0)) if "반영 갭" in x)
+    assert "(잔고 증가율은 300%로 잘라 계산)" in s
+    s = next(x for x in SYN.reasons(_rrow(backlog_yoy=400.0, price_1y=350.0)) if "반영 갭" in x)
+    assert "(잔고 증가율 · 주가 1년은 300%로 잘라 계산)" in s and "+0%p" in s
+    s = next(x for x in SYN.reasons(_rrow(backlog_yoy=50.0, price_1y=20.0)) if "반영 갭" in x)
+    assert "300%" not in s and "+30%p" in s
