@@ -5,6 +5,7 @@
     python 서버.py              # http://127.0.0.1:8765 열림
     python 서버.py --port 9000
     python 서버.py --no-browser
+    python viewer_readonly.py   # 조회 전용(다른 PC — 기업추적_조회.bat): 서버.py --readonly --no-auto --port 8770
 
 수집 폴더(기업추적_수집)를 그대로 읽는다. 별도 DB 없음.
 색인은 .cache/색인.json 에 저장하고, 수집 폴더가 바뀌면 자동으로 다시 만든다.
@@ -38,6 +39,48 @@ WEB_DIR = os.path.join(BASE, "웹")
 
 INDEX = {"companies": [], "built": 0}
 INDEX_LOCK = threading.Lock()
+
+# ---------------------------------------------------------------- 조회 전용(2026-10-15)
+# 같은 구글 드라이브를 받는 다른 PC 에서 '보기만' 할 때 — viewer_readonly.py 가 조회전용.enable() 을 켠 뒤 --readonly 로 부른다.
+# (a) 자동 루프 8개를 켜지 않는다 (b) 색인은 .cache/색인.json 이 있으면 지문이 달라도 그대로 (c) POST 와 일을 시키는 GET 은 403
+# (d) GET /api/mode. 쓰기 · 바깥 연결 · 프로그램 실행 막기는 조회전용.py 몫이고, 여기는 일을 시키지 않는 쪽이다.
+READONLY = False
+RO_MSG = "조회 전용 — 계산 · 수집 · 쓰기는 메인 PC 에서"
+RO_WORK_PATHS = {"/api/reindex": "색인 다시 만들기", "/api/reports/collect": "리포트 수집"}
+RO_WORK_KEYS = ("force", "run", "refresh", "stop", "check")     # 값이 있고 0 이 아니면 일을 시킨다(force=1 · run=1 · check=1 …)
+
+
+def _ro_block(path, query):
+    """조회 전용에서 이 GET 을 막을 이유(문자열) | None. 순수 함수 — 화면 파일(/ · /tech/…)은 규칙 밖, /api/ 만 본다."""
+    if not path.startswith("/api/"):
+        return None
+    if path in RO_WORK_PATHS:
+        return RO_WORK_PATHS[path]
+    for k in RO_WORK_KEYS:
+        v = query.get(k)
+        if v not in (None, "", "0"):
+            return "%s=%s" % (k, v)
+    if "on" in query:                       # /api/export/auto?on= — 자동 받기 켜고 끄기(설정 파일 쓰기)
+        return "on=%s" % query["on"]
+    return None
+
+
+def _age_stale(at, max_age):
+    """저장된 결과(at = 계산 시각)를 다시 계산할 때가 됐나 — 없으면 True. 조회 전용이면 있기만 하면 False:
+    이 PC 는 바깥(DART · 네이버 · KIS)을 못 부르니 다시 계산해도 메인 PC 판보다 낡은 재료로 '방금 계산' 시각만 새로 붙는다."""
+    if not at:
+        return True
+    return not READONLY and time.time() - at > max_age
+
+
+def mode_view():
+    """GET /api/mode — 화면이 시작할 때 읽는다. index_at = 색인 파일 시각(다른 PC 에서는 드라이브가 받아 온 메인 PC 색인)."""
+    try:
+        at = dt.datetime.fromtimestamp(os.path.getmtime(INDEX_PATH)).strftime("%Y-%m-%d %H:%M")
+    except (OSError, ValueError, OverflowError):
+        at = None
+    return {"readonly": bool(READONLY), "index_at": at,
+            "shadow": (os.environ.get("GIUP_RO_SHADOW") or None) if READONLY else None}
 
 sys.path.insert(0, BASE)
 try:
@@ -311,6 +354,17 @@ def build_index(force=False):
     global INDEX
     with INDEX_LOCK:
         INDEX_STATE["building"] = True
+        if READONLY and not force and os.path.exists(INDEX_PATH):
+            # 조회 전용 — 메인 PC 가 만든 색인을 지문이 달라도 그대로(다른 PC 에서 수집 폴더를 다시 훑지 않게: 지문만 해도 회사 폴더 1,000개 listdir)
+            try:
+                with open(INDEX_PATH, "r", encoding="utf-8") as fh:
+                    cached = json.load(fh)
+                if isinstance(cached, dict) and isinstance(cached.get("companies"), list):
+                    INDEX = cached
+                    INDEX_STATE.update(ready=True, building=False, at=time.time())
+                    return INDEX
+            except Exception as e:
+                print("조회 전용 — 색인 파일을 못 읽어 새로 만든다: %s" % e, flush=True)
         sig = out_dir_signature()
         cached = None
         if os.path.exists(INDEX_PATH):
@@ -8608,7 +8662,7 @@ def _dip_get(url, params, key, ttl=12 * 3600):
     import requests
     os.makedirs(DIP_DIR, exist_ok=True)
     p = os.path.join(DIP_DIR, key + ".json")
-    if os.path.exists(p) and time.time() - os.path.getmtime(p) < ttl:
+    if os.path.exists(p) and (READONLY or time.time() - os.path.getmtime(p) < ttl):     # 조회 전용 — 묵었어도 그대로(DART 가 막혀 있다)
         try:
             with open(p, "r", encoding="utf-8") as fh:
                 return json.load(fh)
@@ -9754,7 +9808,7 @@ def _val_load_saved():
 def value_view(force=False):
     with VAL_LOCK:
         _val_load_saved()
-        stale = force or not VAL["at"] or time.time() - VAL["at"] > 26 * 3600     # 매일 06:30 _val_auto_loop 가 미리 센다
+        stale = force or _age_stale(VAL["at"], 26 * 3600)     # 매일 06:30 _val_auto_loop 가 미리 센다
         if stale and not VAL["running"] and FIN is not None:
             VAL["running"] = True
             threading.Thread(target=_run_value, daemon=True).start()
@@ -10199,7 +10253,7 @@ def industry_view(force=False):
                     IND.update(data=old, at=old.get("at") or 0)
             except Exception:
                 pass
-        stale = force or not IND["at"] or time.time() - IND["at"] > 26 * 3600     # 매일 07:40 _ind_auto_loop 가 미리 센다
+        stale = force or _age_stale(IND["at"], 26 * 3600)     # 매일 07:40 _ind_auto_loop 가 미리 센다
         if stale and not IND["running"]:
             IND["running"] = True
             threading.Thread(target=_run_industry, daemon=True).start()
@@ -12638,6 +12692,8 @@ class Handler(BaseHTTPRequestHandler):
         """쓰기 요청 — 지금은 매매 일지만. 같은 출처(이 PC 의 이 화면)에서 온 JSON 만 받는다:
         Host · Origin 확인, Content-Type application/json(다른 사이트에서는 사전 확인에 막힌다), 64KB 한도."""
         u = urllib.parse.urlparse(self.path)
+        if READONLY:                         # 조회 전용 — 쓰기 요청은 몸통을 읽기 전에 거절
+            return self._send(403, {"error": RO_MSG, "readonly": True, "why": "쓰기 요청(POST %s)" % u.path})
         try:
             port = self.server.server_address[1]
             origin = (self.headers.get("Origin") or "").strip().lower()
@@ -12661,10 +12717,16 @@ class Handler(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
         path = u.path
+        if READONLY:
+            why = _ro_block(path, q)
+            if why:
+                return self._send(403, {"error": RO_MSG, "readonly": True, "why": why})
 
         try:
             if path in ("/", "/index.html"):
                 return self._file("index.html", "text/html; charset=utf-8")
+            if path == "/api/mode":
+                return self._send(200, mode_view())
             if path == "/api/status":
                 return self._send(200, {
                     "ready": INDEX_STATE["ready"],
@@ -13036,12 +13098,21 @@ def _open_server(port):
         raise SystemExit("포트 %d 이미 사용 중 — netstat -ano | findstr :%d 로 확인하고 그 프로세스를 끝낸 뒤 다시 (%s)" % (port, port, e))
 
 
+def _serve_wait():
+    while True:
+        time.sleep(3600)
+
+
 def main():
+    global READONLY
     args = sys.argv[1:]
     port = 8765
     if "--port" in args:
         port = int(args[args.index("--port") + 1])
     open_browser = "--no-browser" not in args
+    READONLY = "--readonly" in args
+    if READONLY:
+        print("조회 전용 — 자동 루프 끔 · 색인은 있는 그대로 · 계산 · 수집 · 쓰기 요청은 403", flush=True)
 
     # 포트를 먼저 연다.
     # 색인은 수집 폴더(구글 드라이브, 보고서 25,000건 이상)를 훑는 작업이라
@@ -13070,7 +13141,7 @@ def main():
             print("수집된 자료가 없습니다. 먼저 기업추적_실행.bat 을 돌리세요.")
 
     threading.Thread(target=_index, daemon=True).start()
-    if "--no-auto" not in args:         # 시험용 포트(8766)는 --no-auto — 갱신을 두 번 띄우지 않게
+    if "--no-auto" not in args and not READONLY:     # 시험용 포트(8766)는 --no-auto — 갱신을 두 번 띄우지 않게. 조회 전용도 끈다
         threading.Thread(target=_exp_auto_loop, daemon=True).start()
         threading.Thread(target=_val_auto_loop, daemon=True).start()
         threading.Thread(target=_vc_auto_loop, daemon=True).start()
@@ -13086,8 +13157,7 @@ def main():
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
-        while True:
-            time.sleep(3600)
+        _serve_wait()
     except KeyboardInterrupt:
         print("\n종료")
     return 0

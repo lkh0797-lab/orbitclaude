@@ -135,10 +135,12 @@ def fetch_recent(api_key, days=3, markets=("Y", "K"), max_pages=120):
 
 
 def scan(api_key, days=3, include_amend=False, ttl=300):
-    """최근 공시를 훑어 호재/확인필요/악재로 나눈다. ttl 초 동안 캐시."""
+    """최근 공시를 훑어 호재/확인필요/악재로 나눈다. ttl 초 동안 캐시.
+    조회 전용(다른 PC — GIUP_READONLY=1)이면 캐시가 있기만 하면 묵었어도 그대로 — DART 가 막혀 있어 다시 훑으면 빈 목록만 남는다."""
     os.makedirs(CACHE_DIR, exist_ok=True)
     cache = os.path.join(CACHE_DIR, "scan_%dd.json" % days)
-    if os.path.exists(cache) and time.time() - os.path.getmtime(cache) < ttl:
+    ro = os.environ.get("GIUP_READONLY") == "1"
+    if os.path.exists(cache) and (ro or time.time() - os.path.getmtime(cache) < ttl):
         try:
             with open(cache, "r", encoding="utf-8") as fh:
                 return json.load(fh)

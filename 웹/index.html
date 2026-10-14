@@ -59,6 +59,8 @@ a{color:var(--accent)}
 
 /* ---------- 레이아웃 ---------- */
 .app{display:flex;flex-direction:column;height:100vh}
+/* 조회 전용(다른 PC — 기업추적_조회.bat) 띠: .app 의 첫 칸이라 아래가 스크롤돼도 맨 위에 남는다 */
+.roBanner{flex:none;padding:7px 16px;font-size:13px;line-height:1.5;font-weight:600;background:var(--warn-bg);color:var(--warn);border-bottom:1px solid var(--line);word-break:keep-all}
 header{display:flex;align-items:center;gap:14px;padding:10px 16px;
   border-bottom:1px solid var(--line);background:var(--panel);flex:none;flex-wrap:wrap}
 .brand{font-weight:700;letter-spacing:-.02em;white-space:nowrap}
@@ -3218,6 +3220,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
 </head>
 <body>
 <div class="app">
+  <div class="roBanner" id="roBanner" role="status" hidden></div>
   <header>
     <div class="brand">기업추적<small>DART 정기보고서 시계열 뷰어</small></div>
     <div class="searchwrap">
@@ -3383,6 +3386,23 @@ $('#reindex').onclick = async ()=>{
   $('#reindex').textContent='색인 갱신';
   if(S.co) pick(S.co.code);
 };
+
+// ---------------------------------------------------------- 조회 전용(다른 PC — 기업추적_조회.bat · viewer_readonly.py) — 서버 /api/mode
+// readonly 면 맨 위 띠 + 일을 시키는 머리 단추(전 종목 미리 계산 · 색인 갱신)를 숨긴다. 그 밖의 '다시 계산' 류는 서버가 403 조회 전용 문구로 거절하고
+// 각 탭의 기존 오류 표시가 그 문구를 보여 준다.
+const RO={on:false, at:null};
+async function roInit(){
+  let m=null;
+  try{ const r=await fetch('/api/mode'); if(r.ok) m=await r.json(); }catch(e){}
+  if(!m||!m.readonly) return;
+  RO.on=true; RO.at=m.index_at||null;
+  const b=$('#roBanner');
+  b.textContent='조회 전용 — 이 PC 는 보기만 합니다. 계산 · 수집 · 매매 일지 쓰기는 메인 PC 에서. 자료는 구글 드라이브가 동기화한 시점 기준(색인 '+(m.index_at||'시각 모름')+')';
+  b.hidden=false;
+  ['#prebuild','#reindex'].forEach(q=>{ const x=$(q); if(x) x.style.display='none'; });
+  document.title='기업추적 · 조회 전용';
+}
+roInit();
 
 // ---------------------------------------------------------- 전 종목 미리 계산 — 풍경 · 궤도를 뷰어 밖 자식 프로세스가 미리 (서버 /api/prebuild)
 // 페이지 열 때 한 번 묻고, 돌고 있으면 5초마다. 이름에 단계 · 진행, 배경 그라데이션에 비율, title 에 단계별 수 · DART · 마지막 로그.
@@ -4017,14 +4037,15 @@ function expAutoBar(p){
   const w=el('div','expAuto');
   const draw=a=>{
     w.innerHTML='';
-    if(!a||a.error){ w.appendChild(el('span','expAutoTxt','자동 갱신 상태를 읽지 못했다')); return; }
+    if(!a||a.error){ w.appendChild(el('span','expAutoTxt',a&&a.readonly?a.error:'자동 갱신 상태를 읽지 못했다')); return; }
     const sw=el('button','expAutoSw'+(a.on?' on':''),(a.on?'● ':'○ ')+'매월 자동 갱신 '+(a.on?'켜짐':'꺼짐'));
     sw.title='켜 두면 뷰어가 매일 00:10(밤 공시 수집과 같은 때)과 뷰어가 켜질 때, 관세청이 지난달 치를 냈는지(매달 15일께) 묻는다. '+
       '나왔으면 전 종목을 다시 계산해 결과를 바꿔 끼운다(30분~1시간, 관세청 1~2천 건 — 하루 한도 1만 건). 뷰어가 켜져 있어야 돈다. 누르면 켜고 끈다.';
     sw.onclick=async()=>{ sw.disabled=true; draw(await (await fetch('/api/export/auto?on='+(a.on?0:1))).json()); };
+    if(RO.on){ sw.disabled=true; sw.title='조회 전용 — 자동 갱신 켜고 끄기는 메인 PC 에서'; }     // 상태만 보인다
     w.appendChild(sw);
     w.appendChild(el('span','expAutoTxt',expAutoTxt(a)));
-    if(!a.running&&!(a.have&&a.want&&a.have>=a.want)){
+    if(!RO.on&&!a.running&&!(a.have&&a.want&&a.have>=a.want)){      // 조회 전용이면 '지금 확인'(관세청에 묻기) 없음
       const ck=el('button','expAutoCk','지금 확인');
       ck.title='밤까지 기다리지 않고 지금 관세청에 묻는다 — 나왔으면 바로 갱신을 시작한다';
       ck.onclick=async()=>{ ck.disabled=true; ck.textContent='관세청에 묻는 중…'; draw(await (await fetch('/api/export/auto?check=1')).json()); };
