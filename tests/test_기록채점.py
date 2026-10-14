@@ -409,6 +409,29 @@ def test_current_rule_exit_rates_not_mixed_with_no_stop_rows():
     assert v["stop_first"] == 100.0 and v["n_nostop"] == 0 and "exit_note" not in v
 
 
+def test_exit_note_names_the_patterns_actually_in_the_group():
+    """손절가 없는 까닭은 묶음에 든 패턴으로 — 60일선 · 적삼병 묶음에 '컵 앤 핸들'을, 섞인 묶음에 '보컬'만 적지 않는다."""
+    t = flat_univ()
+    for c in ("M", "R", "F", "T", "B"):
+        t[c] = flat()
+    p = M.Prices(loader(t))
+    rows = [_jrow(D[4], "M", "ma60_supply", "breakout", rule="ma60s_v1"),
+            _jrow(D[4], "R", "red_three_monthly", "breakout", rule="red3m_v1"),
+            _jrow(D[4], "F", "fib_pullback", "breakout", 90.0, rule="fibpb_v1"),
+            _jrow(D[4], "T", "trendline_break", "near_pivot", rule="tlbrk_v1"),          # 돌파 임박 — 손절 아직 없음
+            _jrow(D[4], "B", "trendline_break", "breakout", 95.0, rule="tlbrk_v1")]
+    g = {x["key"]: x for x in M.score([], rows, p, UNIV)["tech"]["groups"]}
+    ma = g["pattern:ma60_supply"]["exit_note"]
+    assert ma.startswith("손절 규칙 없음") and "60일선 수급 돌파" in ma and "컵 앤 핸들" not in ma
+    allg = g["all"]["exit_note"]
+    assert "섞여" in allg and "보컬" not in allg and "피보나치 눌림 반등" in allg and "빗각 추세선 돌파" in allg
+    assert "손절가 없는 단계(돌파 · 신호 전 · 실패 표시)" in allg and "60일선 수급 돌파 · 월봉 적삼병: 식 · 기법에 손절 규칙 없음" in allg
+    tl = g["pattern:trendline_break"]
+    assert tl["stop_first"] is None and "손절가 없는 단계" in tl["exit_note"] and "참고" not in tl["exit_note"]
+    assert M.TL_STOP_CAVEAT in tl["exit_note"]                    # 고정 손절 · 관찰 기록이 섞인 한계를 적는다
+    assert "exit_note" not in g["pattern:fib_pullback"]
+
+
 def test_server_hides_cached_result_from_old_scorer(tmp_path, monkeypatch):
     """서버가 옛 기록채점이 쓴 _result.json(형식 판 schema 없음)을 지금 화면 이름표로 보이지 않고 다시 잰다."""
     sp = ilu.spec_from_file_location("서버_채점시험", os.path.join(BASE, "서버.py"))

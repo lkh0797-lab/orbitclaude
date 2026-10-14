@@ -15,8 +15,12 @@
   지금   마지막 종가 / 진입 − 1, 진입 뒤 1거래일 이상 지난 것만.
   초과   같은 기간(진입일 종가 → 같은 끝날 종가) 벤치마크 종목들 수익률 중앙값을 뺀 값.
   손절   Tech 기록 중 손절가가 있는 것 — 진입 뒤 60거래일 안에서 종가가 손절가 이하로 먼저 닫혔나,
-         진입 × 1.20 이상으로 먼저 닫혔나(종가 기준). 지금 식 기록은 손절가 없는 기록(컵 앤 핸들 사용자 식 — 손절 규칙 없음)이
-         하나라도 섞인 묶음의 비율을 내지 않는다(exit_note) — 섞어 내면 보컬 몇 건의 비율이 묶음 전체 비율로 보인다.
+         진입 × 1.20 이상으로 먼저 닫혔나(종가 기준). 지금 식 기록은 손절가 없는 기록이 하나라도 섞인 묶음의 비율을
+         내지 않는다(exit_note) — 섞어 내면 손절가 있는 몇 건의 비율이 묶음 전체 비율로 보인다. 손절가가 없는 까닭은
+         그 묶음에 실제로 든 패턴으로 적는다(NO_STOP_RULE: 식 · 기법에 손절 규칙 없음 / STOP_AFTER_ENTRY: 돌파 · 신호 전
+         기록이라 손절이 아직 없음). 빗각 추세선 돌파 기록의 손절은 기록 날 다음 봉 선 값으로 고정해 잰다 — 기법 규칙
+         (그날 선 아래 종가, 선은 날마다 내려감)보다 이르게 걸리고, '형성 중'(거래량 미달 관찰) · 안착 확인 대기 기록도
+         섞여 매매로 잰 값이 아니다(TL_STOP_CAVEAT).
          옛 기록은 예전처럼 손절가 있는 것만 세고 뺀 건수를 적는다.
 
 주가는 밖에서 넣어 준다(Prices(load)) — 이 모듈은 주가 파일을 직접 읽지 않는다.
@@ -49,8 +53,9 @@ RESET_DAY = "2026-10-14"
 SCHEMA = 2
 TECH_REF = {"label": "지금 식 백테스트",
             "text": "컵 앤 핸들(사용자 식): 백테스트 아직 없음 · 보컬(관찰용): 기업추적 보컬 백테스트(2013~2026 눌림목) "
-                    "346거래 거래당 −2.4% · 승률 31% · 20일 초과 중앙 −4.8%p(손실) — 옛 패턴 수치는 아래 옛 기록에만 "
-                    "(" + RESET_DAY + " 패턴 초기화)"}
+                    "346거래 거래당 −2.4% · 승률 31% · 20일 초과 중앙 −4.8%p(손실) · 《차트의 기술》 기법 6개"
+                    "(빗각 · 피보 · 빗각+피보 · 60일선 · 월봉 적삼병 · 10% 주도주): 검증 전 — 영상 사례 수익률 · 불코우스키 "
+                    "미국 통계는 우리 성적이 아니다 — 옛 패턴 수치는 아래 옛 기록에만 (" + RESET_DAY + " 패턴 초기화)"}
 TECH_LEGACY_REF = {"label": "옛 패턴 백테스트(제거된 식)",
                    "text": "Tech 백테스트(2024-09~2026-10, 같은 날 무작위 대비 20/60일): "
                            "300억 눌림목 첫 진입 +4.0/+9.3 · VCP 돌파 +2.9/+5.7 · 컵 돌파 +3.3/+6.7 — 손절 · 비용 전. "
@@ -70,7 +75,18 @@ NOTES = [
     "주가가 30일 넘게 끊긴 종목(거래 정지 · 상장폐지)은 끊긴 날 종가로 끝난 것으로 센다 — 묶음마다 '끊김' 수를 적는다.",
 ]
 
-PATTERN_KO = {"cup_with_handle": "컵 앤 핸들 (사용자 식)", "vocal": "보컬 (관찰용)", "": "패턴 없음"}
+PATTERN_KO = {"cup_with_handle": "컵 앤 핸들 (사용자 식)", "vocal": "보컬 (관찰용)", "": "패턴 없음",
+              # 2026-10-14 《차트의 기술》 영상 기법 (Tech 일지 rule 칸: tlbrk_v1 · fibpb_v1 · tlfib_v1 · ma60s_v1 · red3m_v1 · dlead_v1)
+              "trendline_break": "빗각 추세선 돌파", "fib_pullback": "피보나치 눌림 반등",
+              "trendline_fib": "빗각 돌파 + 피보 눌림", "ma60_supply": "60일선 수급 돌파 (신호 · 손절 없음)",
+              "red_three_monthly": "월봉 적삼병 (신호 · 손절 없음)", "day_leader": "10% 주도주 (단타 관찰)"}
+# 식 · 기법에 손절 규칙이 없는 패턴 — 기록에 손절가가 없는 게 정상 (Tech scoring.NO_STOP_REASON · backtest.STOP_RULE None)
+NO_STOP_RULE = ("cup_with_handle", "ma60_supply", "red_three_monthly", "day_leader")
+# 손절 규칙은 있지만 손절가가 없는 단계가 있는 패턴 (빗각: 돌파 임박 · 실패 표시 / 피보: 고점 확정 뒤 대기)
+STOP_AFTER_ENTRY = ("trendline_break", "fib_pullback", "trendline_fib")
+# 빗각 추세선 돌파 기록 채점의 한계 — 손절 칸에 따라 붙는다
+TL_STOP_CAVEAT = ("빗각 추세선 돌파 기록의 손절 = 기록 날 다음 봉 선 값 고정 — 기법 규칙(그날 선 아래 종가, 선은 날마다 내려감)보다 "
+                  "이르게 걸림 · '형성 중'(거래량 미달 관찰) · 안착 확인 대기(매수 전) 기록도 섞여 매매로 잰 값 아님")
 # 옛 탐지기 기록의 패턴 이름 — 지금 식과 헷갈리지 않게 '(제거된 옛 식)'을 붙인다
 LEGACY_PATTERN_KO = {"big_value_pullback": "300억 눌림목", "vcp": "VCP", "cup_handle": "컵 손잡이",
                      "leader": "주도주", "canslim": "CAN SLIM", "long_base_breakout": "긴 바닥 돌파",
@@ -349,9 +365,45 @@ def _has_stop(row):
     return isinstance(s, (int, float)) and s > 0
 
 
+def _short_name(p):
+    """패턴 이름 (괄호 설명 뺌) — 손절 메모에 늘어놓는 용."""
+    return PATTERN_KO.get(p, p or "패턴 없음").split(" (")[0]
+
+
+def _names(ps):
+    return " · ".join(_short_name(p) for p in ps)
+
+
+def _nostop_note(obs, n_all):
+    """손절가 없는 기록이 섞인 지금 식 묶음의 메모 — 까닭을 묶음에 실제로 든 패턴으로 (하드코딩한 식 이름 아님)."""
+    rows = [o.get("row") or {} for o in obs]
+    nos = Counter((r.get("pattern") or "") for r in rows if not _has_stop(r))
+    # 가리킬 줄: 이 묶음에서 손절가 있는 기록만 가진 패턴 (손절가 없는 기록도 섞인 패턴 줄은 그 자신도 비율이 없다)
+    ns = Counter((r.get("pattern") or "") for r in rows if _has_stop(r))
+    has = sorted((p for p in ns if p not in nos), key=lambda p: (-ns[p], p))
+    order = sorted(nos, key=lambda p: (-nos[p], p))
+    rule = [p for p in order if p in NO_STOP_RULE]
+    pre = [p for p in order if p in STOP_AFTER_ENTRY]
+    other = [p for p in order if p not in NO_STOP_RULE and p not in STOP_AFTER_ENTRY]
+    why = []
+    if rule:
+        why.append(_names(rule) + ": 식 · 기법에 손절 규칙 없음")
+    if pre:
+        why.append(_names(pre) + ": 손절가 없는 단계(돌파 · 신호 전 · 실패 표시) 기록")
+    if other:
+        why.append(_names(other) + ": 손절가 없는 기록")
+    nostop = sum(nos.values())
+    if nostop == n_all:
+        head = "손절 규칙 없음" if not pre and not other else ("손절가 없는 단계" if not rule and not other else "손절가 없음")
+        return head + " — " + " / ".join(why)
+    return ("손절가 없는 기록 %d건(%s)이 섞여 이 묶음 비율은 내지 않음" % (nostop, " / ".join(why))
+            + (" — 손절가 있는 패턴 줄 참고 (%s)" % _names(has) if has else ""))
+
+
 def _group(key, label, obs, with_exit=False, strict_exit=False):
     """strict_exit: 손절가 없는 기록이 하나라도 섞인 묶음은 손절 먼저 · +20% 먼저를 내지 않는다(지금 식 기록 —
-    컵 앤 핸들 사용자 식은 손절 규칙이 없어, 섞어 내면 보컬 몇 건의 비율이 묶음 전체 비율로 보인다)."""
+    손절 규칙 없는 식 · 기법(컵 앤 핸들 사용자 식 · 60일선 · 월봉 적삼병 · 10% 주도주)이나 돌파 · 신호 전 기록이 섞이면
+    손절가 있는 몇 건의 비율이 묶음 전체 비율로 보인다). 메모의 까닭은 _nostop_note 가 묶음의 패턴으로 적는다."""
     obs = _dedupe(obs)
     n_all = len(obs)
     evs = [o["ev"] for o in obs if o["ev"]]
@@ -369,11 +421,12 @@ def _group(key, label, obs, with_exit=False, strict_exit=False):
         g["target_first"] = round(100.0 * done.count("target") / m, 2) if m else None
         if nostop and strict_exit:
             g["stop_first"] = g["target_first"] = None
-            g["exit_note"] = ("손절 규칙 없음 — 이 묶음 기록에는 손절가가 없다(컵 앤 핸들 사용자 식)" if nostop == n_all
-                              else "손절가 없는 기록 %d건(손절 규칙 없는 식)이 섞여 이 묶음 비율은 내지 않음 — "
-                                   "손절가 있는 패턴(보컬) 줄 참고" % nostop)
+            g["exit_note"] = _nostop_note(obs, n_all)
         elif nostop:
             g["exit_note"] = "손절가 있는 기록만 셈 — 손절가 없는 %d건은 뺐다" % nostop
+        if strict_exit and any((o.get("row") or {}).get("pattern") == "trendline_break" and _has_stop(o.get("row"))
+                               for o in obs):
+            g["exit_note"] = (g["exit_note"] + " · " if g.get("exit_note") else "") + TL_STOP_CAVEAT
     return g
 
 
