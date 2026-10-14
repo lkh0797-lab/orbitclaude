@@ -2475,6 +2475,7 @@ def screen_row(c):
         "PER_TTM": cur.get("PER_TTM"), "순이익_TTM": ni_ttm,
         "매출_TTM_1년전": (by.get(cur["n"] - 4) or {}).get("매출_TTM"),
         "매출_TTM": cur.get("매출_TTM"), "영업이익_TTM": cur.get("영업이익_TTM"),
+        "접수일": cur.get("기준일") or cur.get("주가일"),       # 최신 분기 보고서 접수일(YYYYMMDD) — 시너지 신선도(fresh_days)가 읽는다
         "전환": turned,
     }
 
@@ -2652,6 +2653,119 @@ def _won_txt(v):
     return ("%.1f조" % (v / 1e12)) if abs(v) >= 1e12 else ("%.0f억" % (v / 1e8))
 
 
+# 2026-10-14 v2 — 백테스트(도구/시너지_백테스트.py row_at)와 같은 reliable 조건 둘을 서버에도: 마지막 잔고 보고서 · 마지막 분기 재무
+# 접수일이 SYN_FRESH_DAYS 안, 검산 창은 최근 SYN_SURE_WIN 개(예전 서버는 신선도 조건 없이 창 8 — 2025-12 보고서가 reliable 이었다, 감사 ⑨).
+SYN_FRESH_DAYS = 200
+SYN_SURE_WIN = 12
+SYN_SPEC = "2026-10-14 v2(전환 적자 None · 결측 50 · 확인 0 · 싼 수주)"      # forward 기록에 적는 점수 식 판
+
+
+def _syn_fresh_days(*dates, today=None):
+    """접수일(YYYYMMDD) 몇 개 중 가장 오래된 날부터 오늘까지 일수. 모르는 날짜(None · 빈 칸 · 깨진 값)는 건너뛰고, 하나도 없으면 None."""
+    ds = []
+    for s in dates:
+        s = str(s or "")[:8]
+        if len(s) != 8 or not s.isdigit():
+            continue
+        try:
+            ds.append(dt.datetime.strptime(s, "%Y%m%d").date())
+        except ValueError:
+            continue
+    if not ds:
+        return None
+    return ((today or dt.date.today()) - min(ds)).days
+
+
+def _syn_reliable_why(n, jumps, last_switch, sure, n_win, cover, fresh_days):
+    """순위에서 빼는 이유 한 줄(없으면 None). 잔고 값을 못 믿거나(보고서 수 · 튐 · 읽은 방식 바뀜 · 검산), 믿어도 회사 전체를
+    대표하지 않거나(cover), 묵은(신선도) 경우. last_switch 는 없으면 거짓, 있으면 (읽은 방식, 한 분기 배수)."""
+    if n < 4:
+        return "잔고 보고서가 %d개뿐" % n
+    if jumps:
+        return "한 번에 5배 넘게 튄 값이 있다 (추출 오류 의심)"
+    if last_switch:
+        how, ratio = last_switch if isinstance(last_switch, (tuple, list)) and len(last_switch) == 2 else ("?", 0)
+        return "최신 잔고를 읽은 방식이 바뀌며(%s) 한 분기에 %.1f배가 됐다 (추출 오류 의심)" % (how or "?", ratio or 0)
+    if sure < (n_win + 1) // 2:
+        return "검산·명시된 값이 %d/%d 로 절반이 안 된다" % (sure, n_win)
+    if cover is not None and cover < 0.15:
+        # 세아제강지주: 잔고가 연매출의 10% — 일부 사업부 표라 작은 기저에서 +1387% 가 나온다
+        return "잔고가 연매출의 %.0f%% 뿐이라 사업 전체를 대표하지 않는다" % (cover * 100)
+    if fresh_days is not None and fresh_days > SYN_FRESH_DAYS:
+        return "마지막 잔고 · 재무가 %d일 전 — 묵었다" % fresh_days
+    return None
+
+
+def _syn_twin_keep(rows):
+    """같은 잔고(same_as — 원 단위까지 같은 값) 쌍은 cover(잔고/연매출)가 큰 쪽 하나만 reliable 로 남긴다. 지주사 · 자회사가 같은 잔고를
+    적으면 둘 다 순위 · 업종 백분위에 들어 중복됐다(2026-10-14 감사 ⑩). 빠지는 쪽은 why_not 에 남은 회사 이름을 적는다. 이미 reliable 이
+    아닌 상대는 중복이 아니다. cover 가 같으면 종목코드가 앞선 쪽, cover 없음은 가장 작게 본다. SYN.score 앞에 부른다."""
+    by_name = {}
+    for r in rows:
+        by_name.setdefault(r.get("name"), []).append(r)
+
+    def keeps(a, b):
+        """a 가 b 보다 남을 자격이 있나."""
+        ca = a.get("cover") if a.get("cover") is not None else -1.0
+        cb = b.get("cover") if b.get("cover") is not None else -1.0
+        return ca > cb or (ca == cb and (a.get("code") or "") < (b.get("code") or ""))
+
+    rel = [r for r in rows if r.get("reliable")]
+    drop = {}
+    for r in rel:
+        best = r
+        for nm in r.get("same_as") or []:
+            for o in by_name.get(nm, []):
+                if o is not r and o.get("reliable") and keeps(o, best):
+                    best = o
+        if best is not r:
+            drop[id(r)] = best
+    for r in rel:
+        o = drop.get(id(r))
+        if o is not None:
+            r["reliable"] = False
+            r["why_not"] = "같은 잔고(%s) — 지주 · 자회사 중복" % o.get("name")
+
+
+def _syn_capbl_pct(rows):
+    """보조 열 '시총/잔고 업종 %' — 시총 ÷ 잔고의 같은 업종 안 백분위(낮을수록 잔고에 비해 시총이 작다). reliable · 업종 있음 · 시총 · 잔고가
+    양수인 행만, 같은 업종 3곳↑일 때만 채우고 나머지는 None. 점수 · 필터 · 주목 종목엔 안 쓴다 — 적자 · 저마진 · 사이클 초입을 같이 잡는
+    사이클 지표라 등급 근거가 아니다(2026-10-14 감사 안 2). 쌍둥이 정리 · SYN.score 뒤에 부른다."""
+    grp = {}
+    for r in rows:
+        r["capbl_pct"] = None
+        cap, bl = r.get("cap"), r.get("backlog")
+        if r.get("reliable") and r.get("industry") and r["industry"] != "분류없음" and cap and bl and cap > 0 and bl > 0:
+            grp.setdefault(r["industry"], []).append(r)
+    for g in grp.values():
+        if len(g) < 3:
+            continue
+        f = SYN._pct_rank([r["cap"] / r["backlog"] for r in g])
+        for r in g:
+            v = f(r["cap"] / r["backlog"])
+            r["capbl_pct"] = round(v, 1) if v is not None else None
+
+
+def _syn_cheap(r):
+    """추천필터 '싼 수주'(SYN_REC 의 id cheap) 통과 여부 — 화면 synPass 와 같은 rec_pass. 정의가 없으면 False."""
+    rc = next((x for x in (getattr(SYN, "SYN_REC", None) or []) if x.get("id") == "cheap"), None) if SYN is not None else None
+    return bool(rc and SYN.rec_pass(r, rc["f"]))
+
+
+def _syn_forward(rows, day=None):
+    """매일 목록을 남긴다 — .cache/시너지/forward/YYYYMMDD.json(같은 날은 덮어씀). 채점은 아직 없다: 6~12개월 뒤 저평가 forward 와 같은
+    식(전 종목 중앙 대비 초과수익)으로 재는 표본 밖 검증의 재료(스펙 4절). 행은 code · name · reliable · stage · score · btb ·
+    backlog_yoy · lead · per · per_pct · cheap · loss4 · n_flags 만."""
+    day = day or dt.date.today().strftime("%Y%m%d")
+    out = [{"code": r.get("code"), "name": r.get("name"), "reliable": bool(r.get("reliable")), "stage": r.get("stage"),
+            "score": r.get("score"), "btb": r.get("btb"), "backlog_yoy": r.get("backlog_yoy"), "lead": r.get("lead"),
+            "per": r.get("per"), "per_pct": r.get("per_pct"), "cheap": bool(r.get("cheap")), "loss4": bool(r.get("loss4")),
+            "n_flags": len(r.get("flags") or [])} for r in rows]
+    path = os.path.join(CACHE_DIR, "시너지", "forward", "%s.json" % day)
+    _atomic_json(path, {"at": time.time(), "date": day, "spec": SYN_SPEC, "n": len(out), "rows": out})
+    return path
+
+
 def _syn_row(b, good_by, bad_by, twins):
     c = company_by_code(b["code"])
     if not c:
@@ -2700,24 +2814,29 @@ def _syn_row(b, good_by, bad_by, twins):
         if f and f not in [g.split(" (")[0] for g in flags]:
             flags.append("%s (%s-%s-%s)" % (f, x["date"][:4], x["date"][4:6], x["date"][6:]))
 
-    sure = b["verified"] + b.get("explicit", 0)
+    # 검산 창 — 최근 SYN_SURE_WIN(12)개 점(백테스트 row_at 와 같다). 검산 일치 또는 회사가 문장으로 직접 밝힌 값을 한 점당 한 번만 센다
+    win = b["points"][-SYN_SURE_WIN:]
+    is_ver = lambda p: bool(p.get("verified")) or "검산 일치" in (p.get("source") or "")      # noqa: E731
+    verified = sum(1 for p in win if is_ver(p))
+    explicit = sum(1 for p in win if p.get("method") == "문장" and not is_ver(p))
+    sure = verified + explicit
     cover = (last / rev) if rev else None
-    # 순위에서 빼는 이유. 잔고 값을 못 믿거나, 믿어도 회사 전체를 대표하지 않는 경우.
-    why_not = None
-    if tr["n"] < 4:
-        why_not = "잔고 보고서가 %d개뿐" % tr["n"]
-    elif tr.get("jumps", 0):
-        why_not = "한 번에 5배 넘게 튄 값이 있다 (추출 오류 의심)"
-    elif tr.get("last_switch"):
-        why_not = "최신 잔고를 읽은 방식이 바뀌며(%s) 한 분기에 %.1f배가 됐다 (추출 오류 의심)" % (
-            tr.get("last_method") or "?", last / tr["prev_value"] if tr.get("prev_value") else 0)
-    elif sure < (b["n_pts"] + 1) // 2:
-        why_not = "검산·명시된 값이 %d/%d 로 절반이 안 된다" % (sure, b["n_pts"])
-    elif cover is not None and cover < 0.15:
-        # 세아제강지주: 잔고가 연매출의 10% — 일부 사업부 표라 작은 기저에서 +1387% 가 나온다
-        why_not = "잔고가 연매출의 %.0f%% 뿐이라 사업 전체를 대표하지 않는다" % (cover * 100)
+    # 신선도 — 마지막 잔고 보고서 접수일 · 마지막 분기 재무 접수일 중 오래된 쪽부터 오늘까지(SYN_FRESH_DAYS 넘으면 뺀다)
+    fresh_days = _syn_fresh_days(last_rep, sr.get("접수일"))
+    # 순위에서 빼는 이유. 잔고 값을 못 믿거나, 믿어도 회사 전체를 대표하지 않거나, 묵은 경우(_syn_reliable_why 한 곳).
+    why_not = _syn_reliable_why(
+        tr["n"], tr.get("jumps", 0),
+        (tr.get("last_method") or "?", (last / tr["prev_value"]) if tr.get("prev_value") else 0) if tr.get("last_switch") else None,
+        sure, len(win), cover, fresh_days)
     reliable = why_not is None
-    yoy_c = min(yoy, 300.0) if yoy is not None else None     # 반영 갭 계산용 (작은 기저 폭주 방지)
+    # 오늘 주가 PER · 자기 역사 백분위 · 띠 중앙 — 풍경 캐시(.cache/landscape, 새 호출 없음). 풍경이 없거나 짧은 이력(부정 캐시)이면
+    # None(해당 없음 — 감점 아님). 풍경 pct 는 띠 전체 창, 백테스트 per_pct 는 최근 40분기 창(스펙 '재료' — 화면 각주).
+    land = _land_read(b["code"]) or {}
+    dec = land.get("decide") or {}
+    band = land.get("band") or {}
+    # 4분기 합 매출 1년 변화(%) — '잔고 − 매출 선행'(lead)의 매출 쪽. 백테스트 rev4_yoy 와 같은 뜻
+    rev4_prev = sr.get("매출_TTM_1년전")
+    rev4_yoy = ((rev / rev4_prev - 1) * 100) if (rev and rev4_prev and rev4_prev > 0) else None
     r = {
         "code": b["code"], "name": b["name"], "sector": b["sector"], "industry": b["industry"],
         "backlog": last, "backlog_yoy": yoy,
@@ -2733,16 +2852,22 @@ def _syn_row(b, good_by, bad_by, twins):
         "loss4": bool((sr.get("영업이익_TTM") is not None and sr["영업이익_TTM"] <= 0)
                       or (sr.get("순이익_TTM") is not None and sr["순이익_TTM"] <= 0)),
         "margin_delta": None if sr.get("이익률_비정상") else sr.get("마진변화"),
-        "per": sr.get("PER_TTM"), "quarter": sr.get("quarter"),
+        # PER 은 오늘 주가 기준(풍경 decide.per — 표 'PER' 열 · 단계 PER≥40 규칙), 접수일 주가 PER 은 per_filed(reasons 문장이 쓴다, 감사 #14).
+        # per_pct = PER 자기 역사 백분위(낮을수록 싸다, '싼 수주' perPctMax 가 읽는다), per_med = 자기 역사 띠 중앙
+        "per": dec.get("per"), "per_filed": sr.get("PER_TTM"), "per_pct": dec.get("pct"), "per_med": band.get("mid"),
+        "quarter": sr.get("quarter"),
         "price": pnow, "price_1y": p1y, "price_3m": p3m, "price_1m": ps.get("p1m"),
         "dd52": ps.get("dd52"), "cap": cap, "market": u.get("market"), "cap_rank": u.get("rank"),
         "themes": ((sector_map() or {}).get("stocks", {}).get(b["code"].upper(), {})
                    .get("themes") or [])[:6],
         "parties_listed": [], "customer_of": [], "peers": [], "questions": [],
-        "gap": (yoy_c - p1y) if (yoy_c is not None and p1y is not None) else None,
+        # 반영 갭 — 잔고 · 주가 1년 변화를 둘 다 300 으로 자른다(시너지.gap_of, 백테스트와 같은 식 — 감사 ⑦)
+        "gap": SYN.gap_of(yoy, p1y),
+        # 잔고 − 매출 선행(%p) — 잔고 1년 증가율 − 4분기 합 매출 1년 변화(시너지.lead_of, '싼 수주' leadMin 이 읽는다)
+        "lead": SYN.lead_of(yoy, rev4_yoy), "rev4_yoy": rev4_yoy, "fresh_days": fresh_days,
         "new_contracts": news[:8], "new_pct": new_pct,
         "flags": flags, "reliable": reliable,
-        "verified": b["verified"], "explicit": b.get("explicit", 0), "n_pts": b["n_pts"],
+        "verified": verified, "explicit": explicit, "n_pts": len(win),
         "same_as": twins.get(b["code"], []),
         "spark": [p["value"] for p in b["points"][-12:]],
         "last_report": b["points"][-1].get("stamp"),
@@ -2793,9 +2918,12 @@ def _run_synergy():
                 print("시너지 %s 실패: %s" % (b.get("code"), e), flush=True)
             with SYNERGY_LOCK:
                 SYNERGY["done"] = i
+        _syn_twin_keep(rows)            # 같은 잔고 쌍은 cover 큰 쪽만 reliable — 점수 백분위 · 업종 동료 모집단에서 중복을 뺀다
         SYN.score(rows)
         for r in rows:
             r["stage"], r["stage_why"] = SYN.stage(r)
+            r["cheap"] = _syn_cheap(r)      # 추천필터 '싼 수주' 통과 — 주목 종목 · forward 기록이 읽는다
+        _syn_capbl_pct(rows)            # 보조 열 — 시총/잔고 업종 안 백분위(점수 · 필터엔 안 쓴다)
         # 연결 — 계약상대(발주처)가 상장사면 양쪽에 이어 준다
         by_code = {r["code"]: r for r in rows}
         name_of = {c["code"]: c["name"] for c in INDEX["companies"]}
@@ -2831,6 +2959,10 @@ def _run_synergy():
         with SYNERGY_LOCK:
             SYNERGY.update(rows=rows, at=time.time(), phase="", window=SYN_WINDOW,
                            scanned=raw.get("scanned"))
+        try:                            # 매일 목록(forward) — 표본 밖 검증 재료. 실패해도 화면은 그대로
+            _syn_forward(rows)
+        except Exception as e:
+            print("시너지 forward 기록 실패: %s" % e, flush=True)
     finally:
         with SYNERGY_LOCK:
             SYNERGY["running"] = False
@@ -2854,7 +2986,8 @@ def synergy_view(force=False):
                rec=getattr(SYN, "SYN_REC", []))       # 추천필터 — 정의는 시너지.py 한 곳
     bt = _syn_bt()
     if bt:          # 화면의 '과거 검증' 상자 — 도구/시너지_백테스트.py 결과
-        out["bt"] = {k: bt.get(k) for k in ("dates", "stages", "no_slow", "n", "firms", "median", "at", "rec")}
+        # overall(전체 중앙 · 90%) · no_slow(둔화 뺀 중앙 · 90% + 예전 score/score_old) · coverage 는 2026-10-14 v2 보고부터 — 옛 형식이면 None
+        out["bt"] = {k: bt.get(k) for k in ("dates", "stages", "overall", "no_slow", "coverage", "n", "firms", "median", "at", "rec")}
         out["bt"]["factors"] = {k: v for k, v in (bt.get("terciles") or {}).items()}
     return out
 
