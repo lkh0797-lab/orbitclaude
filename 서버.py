@@ -26,6 +26,7 @@ import webbrowser
 import urllib.parse
 import zlib
 import hashlib
+import socket
 from collections import Counter, defaultdict
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
@@ -3143,8 +3144,11 @@ def orbit_worker(code):
 # 통관은 올랐는데 주가 · 값은 아직 — 설계 docs/superpowers/specs/2026-10-14-export-lead-value-design.md.
 # 판정은 수출선행.py(순수 함수 — 도구/수출선행_백테스트.py 와 같은 judge), 재료는 수출 추적 결과(export_view) · 주가 캐시(_px_file) ·
 # 풍경 캐시(_land_read 의 decide.pct · per · zone, rows[-1].de) · 저평가 줄의 red · 공시위험 · 증권사 상태 · 과거 검증 bt.json.
-# 새 DART · 관세청 · 네이버 호출 없음, 새 루프 없음. 전 종목 3개월 수익률 중앙값은 하루 한 번(_last_close 날짜 키) 메모리에.
-# 메모리 캐시 키 = 수출 결과 파일 mtime · 주가 기준일 · bt.json mtime · 저평가 계산 시각.
+# 새 DART · 관세청 · 네이버 호출 없음, 새 루프 없음. 주가 조건은 공통 기준일(_last_close 날짜 — 가장 최근에 값이 굳은 평일)에서 줄과
+# 전 종목 중앙값을 같은 날짜쌍으로 잰다(도구/수출선행_백테스트 의 (shift(d,-91), d) 와 같은 정의, 2026-10-14 리뷰 T3 · R3).
+# 메모리 캐시 키 = 수출 결과 파일 mtime · 주가 기준일 · .cache/price 서명(파일 수 · 최신 mtime) · bt.json mtime · 저평가 계산 시각 —
+# 전 종목 중앙값도 같은 키로 묶어(R1) 06:30 주가 갱신 뒤 줄과 중앙값이 같이 다시 계산된다. 계산 전체가 EXL_LOCK 안(R2 — 차가운 첫 호출이
+# 겹쳐도 988곳 읽기는 한 번).
 try:
     _xl = _ilu.spec_from_file_location("수출선행", os.path.join(BASE, "수출선행.py"))
     EXL = _ilu.module_from_spec(_xl)
@@ -3173,43 +3177,54 @@ def _exl_bt():
     return _EXL["bt"]
 
 
-def _exl_px(code):
-    """{"last": (날짜, 종가), "ret3m", "px_yoy", "dd52", "px_m": {YYYYMM: 월말 종가}} — 주가 캐시만(_px_file). 이력이 짧으면 값은 None."""
+def _exl_shift(d, days):
+    return (dt.datetime.strptime(d, "%Y%m%d") + dt.timedelta(days=days)).strftime("%Y%m%d")
+
+
+def _exl_px(code, day):
+    """기준일 day(YYYYMMDD) 에서 {"last": (봉 날짜, 종가), "ret3m", "px_yoy", "dd52", "px_m": {YYYYMM: 월말 종가}} — 주가 캐시만(_px_file).
+    봉은 '그 날짜 이하 열흘 안의 마지막 봉'(도구/억울_백테스트.px_at 과 같은 규칙) — 줄마다 제 파일의 마지막 봉이 아니라 공통 기준일이라
+    전 종목 중앙값과 같은 날짜쌍이 된다. day 열흘 안에 봉이 없거나(상장폐지 · 묵은 캐시) 이력이 짧으면 None."""
     import bisect
     px = _px_file(code) or {}
     ks = sorted(px)
     if not ks:
         return None
-    last = ks[-1]
-    p = px[last]
-    last_d = dt.datetime.strptime(last, "%Y%m%d")
+
+    def at(t):
+        i = bisect.bisect_right(ks, t) - 1
+        return ks[i] if (i >= 0 and ks[i] >= _exl_shift(t, -10)) else None
+    k0 = at(day)
+    if k0 is None or not px[k0]:
+        return None
+    p = px[k0]
 
     def back(days):
-        t = (last_d - dt.timedelta(days=days)).strftime("%Y%m%d")
-        i = bisect.bisect_right(ks, t) - 1
-        if i < 0 or ks[i] < (last_d - dt.timedelta(days=days + 10)).strftime("%Y%m%d"):
-            return None                                   # 그 날짜 열흘 안에 봉이 없다 — 이력 부족
-        return (p / px[ks[i]] - 1) * 100 if px[ks[i]] else None
-    t365 = (last_d - dt.timedelta(days=365)).strftime("%Y%m%d")
-    hi = max((px[k] for k in ks if k >= t365), default=None)
+        k = at(_exl_shift(day, -days))
+        return (p / px[k] - 1) * 100 if (k and px[k]) else None   # 그 날짜 열흘 안에 봉이 없다 — 이력 부족 → None
+    t365 = _exl_shift(day, -365)
+    hi = max((px[k] for k in ks if t365 <= k <= k0), default=None)
     pm = {}
-    for k in ks:                                          # 같은 달의 마지막 봉이 남는다 = 월말 종가
-        pm[k[:6]] = px[k]
-    return {"last": (last, p), "ret3m": back(91), "px_yoy": back(365), "dd52": (p / hi - 1) * 100 if hi else None, "px_m": pm}
+    for k in ks:                                          # 같은 달의 마지막 봉이 남는다 = 월말 종가(기준일 뒤 봉은 없다)
+        if k <= k0:
+            pm[k[:6]] = px[k]
+    return {"last": (k0, p), "ret3m": back(91), "px_yoy": back(365), "dd52": (p / hi - 1) * 100 if hi else None, "px_m": pm}
 
 
-def _exl_univ3m(day):
-    """같은 날짜 기준 전 종목 3개월 수익률 중앙값 — 하루 한 번(.cache/price 988곳 읽기)."""
-    if _EXL["univ"].get("day") == day:
+def _exl_univ3m(day, key):
+    """기준일 day 의 전 종목 3개월 수익률 중앙값(같은 날짜쌍 day−91 → day, .cache/price 988곳 읽기).
+    줄 캐시와 같은 key 로 묶는다 — 주가 캐시가 새로 오면 줄과 함께 다시 센다(day 만 키로 두면 06:30 갱신 뒤에도 묵은 중앙값과 새 줄을
+    비교하게 된다 — 2026-10-14 리뷰 R1). EXL_LOCK 안에서 부른다."""
+    if _EXL["univ"].get("key") == key:
         return _EXL["univ"]["v"]
     rs = []
     for c in _score_universe():
-        x = _exl_px(c)
+        x = _exl_px(c, day)
         if x and x.get("ret3m") is not None:
             rs.append(x["ret3m"])
     rs.sort()
     v = rs[len(rs) // 2] if len(rs) >= 5 else None       # 실제 유니버스는 988곳 — 5곳 미만이면 모름
-    _EXL["univ"] = {"day": day, "v": v}
+    _EXL["univ"] = {"key": key, "v": v}
     return v
 
 
@@ -3240,17 +3255,23 @@ def exlead_view():
     if ex.get("error"):
         return {"error": ex["error"]}
     _, lc, _ = _last_close()
-    day = lc.strftime("%Y%m%d")
+    day = lc.strftime("%Y%m%d")                            # 공통 주가 기준일 — 가장 최근에 값이 굳은 평일(FINAL_AT 20:10)
     bt = _exl_bt()
     with VAL_LOCK:
         _val_load_saved()                                  # 저평가 줄(빨간불)을 아직 안 읽었으면 저장분을 — 호출 순서에 따라 등급이 달라지지 않게
         vrows = {r["code"]: r for r in (VAL.get("rows") or [])}
         val_at = VAL.get("at") or 0
-    key = (_EXP.get("mt"), day, _EXL["bt_mt"], val_at)
-    with EXL_LOCK:
+    key = (_EXP.get("mt"), day, _px_dir_sig(), _EXL["bt_mt"], val_at)
+    with EXL_LOCK:                                         # 계산 전체를 잠근다 — 차가운 첫 호출이 겹치면 둘째는 기다렸다 캐시를 받는다
         if _EXL["key"] == key and _EXL["d"] is not None:
             return _EXL["d"]
-    univ = _exl_univ3m(day)
+        d = _exlead_build(ex, day, key, bt, vrows)
+        _EXL.update(key=key, d=d)
+        return d
+
+
+def _exlead_build(ex, day, key, bt, vrows):
+    univ = _exl_univ3m(day, key)
     dr, ks = _disc_risk() or {}, ((_kis_snapshot() or {}).get("status")) or {}
     smap = (sector_map() or {}).get("stocks", {})
     today = dt.date.today()
@@ -3260,9 +3281,10 @@ def exlead_view():
         if x.get("status") != "ok" or not al or x.get("grade") not in ("A", "B"):
             continue
         code = x["code"]
-        pxi = _exl_px(code) or {}
+        pxi = _exl_px(code, day) or {}
         land = _land_read(code) or {}
         dec = land.get("decide") or {}
+        per_n = (land.get("band") or {}).get("n")          # decide.pct 가 기댄 PER 표본 수(분기) — 8 미만이면 값 모름(수출선행.VALUE_MIN_N)
         vr = vrows.get(code)
         ind = x.get("industry") or (smap.get(code.upper(), {}) or {}).get("industry") or ""
         fin = bool(VAL_FIN.search(ind))
@@ -3272,13 +3294,14 @@ def exlead_view():
             red.append("부채비율 %.0f%% — 200%% 넘는 빚" % de)
         inp = {"grade": x.get("grade"), "lumpy": al.get("lumpy"), "reported": al.get("reported"), "cur": al.get("cur"),
                "months": al.get("months") or [], "ret3m": pxi.get("ret3m"), "univ3m": univ, "dd52": pxi.get("dd52"),
-               "per_pct": dec.get("pct"), "red": red, "risk": _exl_risk(code, dr, ks), "fin": fin}
+               "per_pct": dec.get("pct"), "per_n": per_n, "red": red, "risk": _exl_risk(code, dr, ks), "fin": fin}
         j = EXL.judge(inp)
         if j["tier"] is None:
             continue
         hit = EXL.hit_rate((x.get("validation") or {}).get("pairs") or [])
         y12 = (x.get("signals") or {}).get("y12")
         nat = (x.get("national") or [{}])[0] or {}
+        pct = dec.get("pct") if (per_n is None or per_n >= EXL.VALUE_MIN_N) else None     # 표본 적은 백분위는 화면에도 안 적는다(모름)
         rows.append({"code": code, "name": x["name"], "industry": ind,
                      "tier": j["tier"], "why": j["why"], "checks": j["checks"], "grade": x.get("grade"),
                      "cur": al.get("cur"), "months": al.get("months"), "months_label": _exl_months_label(al.get("months")),
@@ -3286,7 +3309,8 @@ def exlead_view():
                      "due": EXL.due_label(al["cur_q"], today) if al.get("cur_q") else None, "hit": list(hit),
                      "unit_yoy": nat.get("unit_yoy"), "ret3m": pxi.get("ret3m"), "univ3m": univ, "dd52": pxi.get("dd52"),
                      "px_yoy": pxi.get("px_yoy"), "y12": y12, "gap": EXL.gap(y12, pxi.get("px_yoy")),
-                     "per": dec.get("per"), "per_pct": dec.get("pct"), "zone": dec.get("zone"),
+                     "per": dec.get("per"), "per_pct": pct, "per_n": per_n, "zone": dec.get("zone") if pct is not None else None,
+                     "land_d": dec.get("date"),            # 풍경 PER · 백분위 기준일(화면 '기준' 줄)
                      "price": (pxi.get("last") or (None, None))[1], "price_d": (pxi.get("last") or (None, None))[0],
                      "idx": EXL.index_series(x.get("series_long") or x.get("series") or {}, pxi.get("px_m") or {}, 24)})
     rows.sort(key=lambda r: (r["tier"] != "발굴", -(r["gap"] if r["gap"] is not None else -1e9)))
@@ -3300,13 +3324,12 @@ def exlead_view():
         title, label = "수출은 먼저 올랐다 — 주가 · 값은 아직 %d곳 (검증 전)" % n_found, "발굴(검증 전)"
     for r in rows:
         r["tier_label"] = label if r["tier"] == "발굴" else "관찰"
-    d = {"at": time.time(), "basis": ex.get("month"), "verdict": verdict, "title": title, "rows": rows, "bt": bt,
-         "rules": {"clue": EXL.CLUE_MIN, "dd": EXL.PRICE_DD, "per_pct": EXL.VALUE_PCT_MAX, "debt": EXL.DEBT_RED},
-         "caveats": ["통로는 지금 보고서 기준(옛 공장 변경 모름)", "지금 상장사만(생존 편향)", "매출 ≠ 이익 — 단가는 보조",
-                     "대형주는 잠정실적 공시가 보고서 기한보다 먼저일 수 있다", "주가 = 네이버 일봉(KRX+넥스트레이드 통합 시세)"]}
-    with EXL_LOCK:
-        _EXL.update(key=key, d=d)
-    return d
+    px_days = sorted({r["price_d"] for r in rows if r.get("price_d")})
+    return {"at": time.time(), "basis": ex.get("month"), "verdict": verdict, "title": title, "rows": rows, "bt": bt,
+            "px_day": day, "px_days": px_days,            # 주가 기준일 · 줄들이 실제로 쓴 봉 날짜(기준일 열흘 안 마지막 봉 — 섞이면 화면에 적는다)
+            "rules": {"clue": EXL.CLUE_MIN, "dd": EXL.PRICE_DD, "per_pct": EXL.VALUE_PCT_MAX, "per_n": EXL.VALUE_MIN_N, "debt": EXL.DEBT_RED},
+            "caveats": ["통로는 지금 보고서 기준(옛 공장 변경 모름)", "지금 상장사만(생존 편향)", "매출 ≠ 이익 — 단가는 보조",
+                        "대형주는 잠정실적 공시가 보고서 기한보다 먼저일 수 있다", "주가 = 네이버 일봉(KRX+넥스트레이드 통합 시세, 20:10 뒤 값만)"]}
 
 
 # ---------------------------------------------------------------- 궤도 요약 캐시(2026-10-11)
@@ -10917,18 +10940,38 @@ def _last_close():
     return now, lc, live
 
 
+def _px_unconfirmed(day, mtime):
+    """날짜 day(YYYYMMDD) 의 봉이 확정 전인가 — 평일이고 파일을 그날 FINAL_AT(재무.FINAL_AT 20:10) 전에 썼으면 True
+    (재무._cache_ok 가 다시 받는 조건과 같은 규칙). 19시에 받은 그날 봉은 20시 뒤 값과 다르다(재무.py 주석) — 벽시계 '장중' 검사만으론
+    저녁 · 다음 날 아침에 그 봉이 그대로 나갔다(2026-10-14 리뷰 EXL-LA-1). 주말 날짜 · 못 읽는 날짜는 False."""
+    try:
+        D = dt.datetime.strptime(str(day), "%Y%m%d")
+    except (TypeError, ValueError):
+        return False
+    if D.weekday() >= 5 or mtime is None:
+        return False
+    fa = getattr(FIN, "FINAL_AT", (20, 10)) if FIN is not None else (20, 10)
+    return dt.datetime.fromtimestamp(mtime) < D.replace(hour=fa[0], minute=fa[1])
+
+
 def _px_file(code):
     """채점 · 벤치마크용 종가 {YYYYMMDD: 종가} — .cache/price(저평가가 매일 새로 받는 988곳),
-    없으면 .cache/ohlcv 의 종가. 네트워크는 쓰지 않는다. 장중에 받은 오늘 봉(미완성)은 뺀다."""
+    없으면 .cache/ohlcv 의 종가. 네트워크는 쓰지 않는다. 장중에 받은 오늘 봉(미완성)과, 파일을 그 봉의 날 20:10(FINAL_AT) 전에
+    써서 아직 굳지 않은 마지막 봉(_px_unconfirmed)은 뺀다 — 06:30 저평가 갱신이 다시 받으면 돌아온다."""
     for sub, k in (("price", None), ("ohlcv", 3)):
+        p = os.path.join(CACHE_DIR, sub, code + ".json")
         try:
-            with open(os.path.join(CACHE_DIR, sub, code + ".json"), "r", encoding="utf-8") as fh:
+            with open(p, "r", encoding="utf-8") as fh:
                 d = json.load(fh)
+            mt = os.path.getmtime(p)
         except (OSError, ValueError):
             continue
         if isinstance(d, dict) and d:
             if k is not None:
                 d = {dd: v[k] for dd, v in d.items() if isinstance(v, list) and len(v) > k}
+            last = max(d) if d else None
+            if last and _px_unconfirmed(last, mt):
+                d.pop(last, None)
             _, _, live = _last_close()
             if live:
                 d.pop(dt.date.today().strftime("%Y%m%d"), None)
@@ -10942,6 +10985,26 @@ def _score_universe():
         return sorted(f[:-5] for f in os.listdir(os.path.join(CACHE_DIR, "price")) if f.endswith(".json"))
     except OSError:
         return []
+
+
+def _px_dir_sig():
+    """.cache/price 의 상태 서명 (파일 수, 가장 최신 mtime) — 주가 캐시가 새로 받아졌는지(06:30 저평가 · 20:15 차트 스캔) 메모리 캐시 키에
+    넣는 값. scandir 는 988곳에 0.03초(디렉터리 목록이 mtime 을 같이 준다). 디렉터리가 없으면 (0, 0)."""
+    n, mx = 0, 0.0
+    try:
+        with os.scandir(os.path.join(CACHE_DIR, "price")) as it:
+            for e in it:
+                if e.name.endswith(".json"):
+                    n += 1
+                    try:
+                        m = e.stat().st_mtime
+                    except OSError:
+                        continue
+                    if m > mx:
+                        mx = m
+    except OSError:
+        pass
+    return n, mx
 
 
 def _score_inputs_mtime():
@@ -12816,6 +12879,26 @@ def _labels(q):
     return [x for x in v.split(",") if x] if v else None
 
 
+class _Server(ThreadingHTTPServer):
+    """같은 포트에 서버 둘이 조용히 뜨지 않게(2026-10-14 리뷰 R4). 파이썬 HTTPServer 기본 allow_reuse_address=1 은 Windows(SO_REUSEADDR)에서
+    이미 LISTENING 인 포트에도 두 번째 bind 가 성공해 요청이 둘로 갈린다(8766 시험 때 응답이 어느 서버 것인지 몰랐다).
+    SO_EXCLUSIVEADDRUSE 가 있으면(Windows) 뒤에 오는 옛 코드의 SO_REUSEADDR bind 도 막는다."""
+    allow_reuse_address = False
+
+    def server_bind(self):
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
+def _open_server(port):
+    """포트를 연다 — 이미 쓰는 포트면 서버 둘이 겹치지 않게 바로 끝낸다(SystemExit, 메시지에 확인 명령)."""
+    try:
+        return _Server(("127.0.0.1", port), Handler)
+    except OSError as e:
+        raise SystemExit("포트 %d 이미 사용 중 — netstat -ano | findstr :%d 로 확인하고 그 프로세스를 끝낸 뒤 다시 (%s)" % (port, port, e))
+
+
 def main():
     args = sys.argv[1:]
     port = 8765
@@ -12828,7 +12911,7 @@ def main():
     # 수집기가 같은 드라이브를 쓰는 동안에는 몇 분씩 걸린다. 그동안 포트를
     # 안 열면 브라우저에는 ERR_CONNECTION_REFUSED 만 보인다.
     url = "http://127.0.0.1:%d/" % port
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    srv = _open_server(port)
     print("열림: " + url, flush=True)
     print("끄려면 이 창에서 Ctrl+C", flush=True)
     threading.Thread(target=srv.serve_forever, daemon=True).start()

@@ -11,6 +11,7 @@ import math
 CLUE_MIN = 20.0        # 아직 공시 안 된 분기 통관 YoY — 이 위면 '수출 단서'
 PRICE_DD = -25.0       # 52주 고점 대비 — 이 아래면 '주가는 아직'
 VALUE_PCT_MAX = 50.0   # PER 자기 역사 백분위 — 이 아래면 '값은 싸다'
+VALUE_MIN_N = 8        # PER 자기 역사 표본(분기) 하한 — 이보다 적으면 백분위를 믿지 않는다(값 모름). 저평가 백테스트 bt_panel per_pct 와 같은 문턱
 DEBT_RED = 200.0       # 차입금/자본 — 저평가 탭과 같은 빨간불(금융업 제외)
 MIN_COVER, MAX_COVER = 5.0, 150.0      # 수출추적._grade 와 같은 문턱(통관/매출 비중)
 DUE_DAYS = {1: 45, 2: 45, 3: 45, 4: 90}
@@ -125,7 +126,7 @@ def _pct(v):
 
 def judge(inp):
     """세 조건 + 빨간불 → {"tier": "발굴"|"관찰"|None, "why": [...], "checks": {...}}.
-    inp: grade, lumpy, reported, cur, months, ret3m, univ3m, dd52, per_pct, red[list], risk[list], fin."""
+    inp: grade, lumpy, reported, cur, months, ret3m, univ3m, dd52, per_pct, per_n(PER 표본 수 — 없으면 안 본다), red[list], risk[list], fin."""
     clue = (inp.get("grade") in ("A", "B") and not inp.get("lumpy") and inp.get("reported") is False
             and inp.get("cur") is not None and inp["cur"] >= CLUE_MIN)
     checks = {"clue": bool(clue), "price": None, "value": None, "red": False}
@@ -133,17 +134,21 @@ def judge(inp):
         return {"tier": None, "why": [], "checks": checks}
     why = []
     ret3m, univ, dd = inp.get("ret3m"), inp.get("univ3m"), inp.get("dd52")
-    if dd is not None and dd <= PRICE_DD:
+    if ret3m is None:                                     # 이력 91일 미만(신규 상장) — 짧은 창의 고점은 52주 고점이 아니라 dd 로도 못 판다(설계 1절: 모름)
+        why.append("주가 모름 — 이력 91일 미만")
+    elif dd is not None and dd <= PRICE_DD:
         checks["price"] = True
-    elif ret3m is not None and univ is not None:
+    elif univ is not None:
         checks["price"] = ret3m <= univ
         if not checks["price"]:
             why.append("주가 3개월 %s — 전 종목 중앙 %s 보다 이미 올랐다(고점 대비 %s)" % (_pct(ret3m), _pct(univ), _pct(dd)))
     else:
-        why.append("주가 모름 — 이력 91일 미만")
-    pp = inp.get("per_pct")
+        why.append("주가 모름 — 전 종목 3개월 중앙값 모름")
+    pp, pn = inp.get("per_pct"), inp.get("per_n")
     if pp is None:
         why.append("값 모름 — PER 없음(적자 · 표본 부족 · 풍경 없음)")
+    elif pn is not None and pn < VALUE_MIN_N:             # 표본이 적은 백분위는 단정하지 않는다 — 과거 검증(bt_panel, 8분기↑)과 같은 조건
+        why.append("값 모름 — PER 표본 %d분기(%d 미만)" % (pn, VALUE_MIN_N))
     else:
         checks["value"] = pp <= VALUE_PCT_MAX
         if not checks["value"]:
@@ -156,6 +161,13 @@ def judge(inp):
         why.extend(risk)
     tier = "발굴" if (checks["price"] is True and checks["value"] is True and not checks["red"]) else "관찰"
     return {"tier": tier, "why": why, "checks": checks}
+
+
+def last_final_day(last_dates):
+    """전 종목 마지막(확정) 봉 날짜들의 중앙값(YYYYMMDD) — 과거 검증의 지평 끝은 이 날을 넘으면 '모름'.
+    최대값이 아니라 중앙값: 주가 캐시가 반쯤 새로 받아진 상태(일부만 오늘 봉)에서 벤치마크가 묵은 봉과 섞이지 않게. 없으면 None."""
+    ks = sorted(k for k in (last_dates or []) if k)
+    return ks[len(ks) // 2] if ks else None
 
 
 # ---------------------------------------------------------------- 그림 재료

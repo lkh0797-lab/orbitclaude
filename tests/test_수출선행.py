@@ -106,6 +106,31 @@ def test_judge_watch_reasons():
     assert j["tier"] == "관찰" and j["why"] == ["공시 위험: 빨강", "증권사 상태: 관리종목"]
 
 
+def test_judge_price_unknown_when_history_short_even_if_dd_deep():
+    # 이력 91일 미만(ret3m 모름)이면 짧은 창의 고점 대비 −30% 라도 '주가는 아직'을 단정하지 않는다(설계 1절: 모름 → 관찰) — 2026-10-14 리뷰 T2
+    j = X.judge(_inp(ret3m=None, dd52=-30.0))
+    assert j["tier"] == "관찰" and j["checks"]["price"] is None and j["why"] == ["주가 모름 — 이력 91일 미만"]
+    j = X.judge(_inp(ret3m=1.0, univ3m=None, dd52=-5.0))          # 전 종목 중앙값을 모르면 3개월 비교를 못 한다
+    assert j["tier"] == "관찰" and j["checks"]["price"] is None and any("중앙값 모름" in w for w in j["why"])
+    assert X.judge(_inp(ret3m=1.0, univ3m=None, dd52=-30.0))["tier"] == "발굴"     # 중앙값 몰라도 고점 −30% 면 통과
+
+
+def test_judge_value_unknown_when_per_sample_small():
+    # PER 자기 역사 표본 8분기 미만이면 백분위를 단정하지 않는다(펨트론 band.n 2 → '상위 0%' 아니라 모름) — 리뷰 T1, bt_panel 의 8분기 하한과 같은 조건
+    j = X.judge(_inp(per_pct=100.0, per_n=2))
+    assert j["tier"] == "관찰" and j["checks"]["value"] is None and j["why"] == ["값 모름 — PER 표본 2분기(8 미만)"]
+    assert X.judge(_inp(per_pct=30.0, per_n=8))["tier"] == "발굴"
+    assert X.judge(_inp(per_pct=30.0, per_n=None))["tier"] == "발굴"       # 표본 수를 모르면(백테스트 bt_panel 은 이미 8분기↑만) 그대로
+    assert X.VALUE_MIN_N == 8
+
+
+def test_last_final_day_is_median_of_last_bars():
+    # 주가 캐시가 반쯤 새로 받아진 상태(718곳 10-13 · 270곳 10-14)면 과거 검증의 지평 끝 한계는 10-13 — 최대값이 아니라 중앙값
+    assert X.last_final_day(["20261013"] * 718 + ["20261014"] * 270) == "20261013"
+    assert X.last_final_day(["20261014"] * 3) == "20261014"
+    assert X.last_final_day([]) is None and X.last_final_day([None, "20261010"]) == "20261010"
+
+
 def test_index_series_rebased_and_missing_months():
     mon = {"2024%02d" % m: 10 for m in range(1, 13)}
     mon.update({"2025%02d" % m: 20 for m in range(1, 13)})

@@ -4,7 +4,9 @@
 
 시점: 2021-02 ~ 마지막 통관 달, 매달 16일(관세청이 지난달 치를 내는 15일께 다음 날). 진입 = 그 날 다음 거래일 종가.
 시점 자르기: 통관 ≤ m, 공시는 접수일 ≤ d, 등급은 그때까지 쌓인 쌍으로(수출선행.pit_grade), PER 백분위 · 부채는
-.cache/value/bt_panel.json 의 접수일(date) ≤ d 마지막 줄(200일 넘게 오래됐으면 모름). 주가 · 전 종목 중앙값은 억울_백테스트 와 같은 틀.
+.cache/value/bt_panel.json 의 접수일(date) ≤ d 마지막 줄(200일 넘게 오래됐으면 모름). 주가 · 전 종목 중앙값은 억울_백테스트 와 같은 틀 —
+단, 파일을 그 봉의 날 20:10 전에 써서 굳지 않은 마지막 봉은 뺀다(drop_unconfirmed, 서버._px_unconfirmed 와 같은 규칙)고,
+지평 끝(e+91/182/365)이 전 종목 마지막 확정 봉 날짜의 중앙값을 넘는 줄은 모름(excess — px_at 열흘 허용으로 짧은 창을 재지 않게).
 잰다: 3 · 6 · 12개월 초과수익(같은 기간 전 종목 중앙값 대비), 묶음별 중앙값 · 회사 단위 부트스트랩 90% · 앞(~2023)/뒤(2024~).
 한계(bt.json caveats 에도 적는다): 통로는 지금 보고서 기준 · 지금 상장사만 · 공시위험/증권사 상태는 과거를 모름 · 겹침.
 
@@ -49,6 +51,32 @@ if S.DRK is not None:
 OUT = os.path.join(S.CACHE_DIR, "수출선행")
 Q_MON = {"03": 1, "06": 2, "09": 3, "12": 4}
 HORIZON = {"ex3": 91, "ex6": 182, "ex12": 365}
+
+
+def drop_unconfirmed(px, price_dir):
+    """억울_백테스트 가 날것으로 읽은 주가(code → (ks, vs))에서, 파일을 그 봉의 날 20:10(재무.FINAL_AT) 전에 써서 아직 굳지 않은 마지막 봉을
+    뺀다 — 서버._px_file 과 같은 규칙(_px_unconfirmed). 억울_백테스트 자체는 다른 백테스트가 쓰니 손대지 않고 여기서만. 돌려줌: 뺀 수."""
+    n = 0
+    for code, (ks, vs) in list(px.items()):
+        if not ks:
+            continue
+        try:
+            mt = os.path.getmtime(os.path.join(price_dir, code + ".json"))
+        except OSError:
+            continue
+        if S._px_unconfirmed(ks[-1], mt):
+            px[code] = (ks[:-1], vs[:-1])
+            n += 1
+    return n
+
+
+def excess(code, e, days, last_final):
+    """진입 e 뒤 days 일 초과수익(같은 기간 전 종목 중앙값 대비). 지평 끝이 '전 종목 마지막 확정 봉 날짜의 중앙값' last_final 을 넘으면 모름 —
+    px_at 의 열흘 허용 때문에 마지막 봉보다 뒤인 날에도 값이 나와 2~6일 짧은 창을 잰 것(2026-10-14 리뷰 EXL-LA-2)."""
+    if last_final and W.shift(e, days) > last_final:
+        return None
+    r_, b_ = W.ret(code, e, W.shift(e, days)), W.grp_ret("__all__", e, W.shift(e, days))
+    return (r_ - b_) if (r_ is not None and b_ is not None) else None
 SPLIT = "20240101"          # 앞(2021~2023) · 뒤(2024~)
 FIRST_M = "202101"          # 첫 통관 달 → 첫 시점 2021-02-16
 STALE = 200                 # 마지막 공시 · 패널 줄이 시점보다 이보다 오래됐으면 모름(억울_백테스트 와 같은 신선도)
@@ -134,7 +162,7 @@ def _y12(cut, m):
     return (cur / prev - 1) * 100 if prev > 0 and all(k in cut for k in ly) else None
 
 
-def company_rows(x, prows, today):
+def company_rows(x, prows, today, last_final=None):
     code = x["code"]
     c = S.company_by_code(code)
     corp = S.corp_code_of(code)
@@ -178,8 +206,7 @@ def company_rows(x, prows, today):
         px_yoy = W.ret(code, W.shift(d, -365), d)
         row["y12"], row["gap"] = y12, X.gap(y12, px_yoy)
         for k, days in HORIZON.items():
-            r_, b_ = W.ret(code, e, W.shift(e, days)), W.grp_ret("__all__", e, W.shift(e, days))
-            row[k] = (r_ - b_) if (r_ is not None and b_ is not None) else None
+            row[k] = excess(code, e, days, last_final)
         rows.append(row)
     return rows
 
@@ -194,6 +221,8 @@ def build_rows():
     for v in panel.values():
         v.sort(key=lambda r: (r.get("date") or "", r["t"]))
     today = W.ds(dt.date.today())
+    n_drop = drop_unconfirmed(W.PX, os.path.join(S.CACHE_DIR, "price"))
+    last_final = X.last_final_day([ks[-1] for ks, _ in W.PX.values() if ks])
     last_m = max(max(x.get("series_long") or x["series"]) for x in items)
     # 전 종목 중앙값은 날짜별로 한 번만 — 갈래가 같은 키를 두 번 세지 않게 미리 데운다
     for m in month_list(FIRST_M, last_m):
@@ -204,11 +233,13 @@ def build_rows():
         e = W.next_day("005930", d)
         if e:
             for days in HORIZON.values():
-                W.grp_ret("__all__", e, W.shift(e, days))
-    print("회사 %d곳 · 시점 %s~ · 오늘 %s" % (len(items), d_of(FIRST_M), today), flush=True)
+                if not last_final or W.shift(e, days) <= last_final:
+                    W.grp_ret("__all__", e, W.shift(e, days))
+    print("회사 %d곳 · 시점 %s~ · 오늘 %s · 확정 전 마지막 봉 뺀 곳 %d · 지평 끝 한계(마지막 확정 봉 중앙값) %s"
+          % (len(items), d_of(FIRST_M), today, n_drop, last_final), flush=True)
     rows, t0 = [], time.time()
     with ThreadPoolExecutor(max_workers=8) as ex:
-        futs = {ex.submit(company_rows, x, panel.get(x["code"], []), today): x for x in items}
+        futs = {ex.submit(company_rows, x, panel.get(x["code"], []), today, last_final): x for x in items}
         for n, f in enumerate(as_completed(futs), 1):
             x = futs[f]
             try:
@@ -265,12 +296,14 @@ def summarize(rows):
     return {"v": 1, "at": dt.datetime.now().isoformat(timespec="seconds"),
             "dates": [min(r["d"] for r in rows), max(r["d"] for r in rows)] if rows else None, "n": len(rows),
             "groups": groups, "gap_split": gap_split, "overlap": round(overlap, 3), "verdict": verdict,
-            "rules": {"clue": X.CLUE_MIN, "dd": X.PRICE_DD, "per_pct": X.VALUE_PCT_MAX, "debt": X.DEBT_RED, "split": SPLIT, "stale_days": STALE},
+            "rules": {"clue": X.CLUE_MIN, "dd": X.PRICE_DD, "per_pct": X.VALUE_PCT_MAX, "per_n": X.VALUE_MIN_N, "debt": X.DEBT_RED,
+                      "split": SPLIT, "stale_days": STALE},
             "caveats": ["통로(시군구 × 품목)는 지금 보고서 기준 — 과거 시점 공장이 달랐을 수 있다",
-                        "지금 상장된 회사만(생존 편향)", "공시위험 · 증권사 상태는 과거 시점을 몰라 빨간불에 넣지 않았다",
+                        "지금 상장된 회사만(생존 편향)", "공시위험 · 증권사 상태는 과거 시점을 몰라 빨간불에 넣지 않았다(빨간불 = 부채비율만)",
                         "같은 회사가 연속 달에 또 걸리면 모두 셌다(겹침 비율 overlap)", "초과수익 = 같은 기간 전 종목 중앙값 대비 · 수수료 없음",
                         "PER 백분위 · 부채는 저평가 백테스트 표본(bt_panel, 접수일 ≤ 시점, 200일 안)에서 — 표본이 끝난 뒤 시점은 값 모름",
-                        "분기 매출은 지금 캐시의 값(나중 정정 반영) · 환율은 연평균 근사"]}
+                        "분기 매출은 지금 캐시의 값(나중 정정 반영) · 환율은 연평균 근사",
+                        "지평 끝이 전 종목 마지막 확정 봉(20:10 뒤 값) 날짜의 중앙값을 넘는 줄은 모름 — 확정 전 봉 · 짧은 창으로 재지 않는다"]}
 
 
 def _f(v):

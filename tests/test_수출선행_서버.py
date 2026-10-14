@@ -30,7 +30,7 @@ def _item(code="000001", name="가짜", grade="A", cur=50.0, reported=False, lum
 
 
 def _px(days=400, start=10000.0, end=9000.0):
-    d0 = dt.date(2026, 10, 13) - dt.timedelta(days=days)
+    d0 = dt.date.today() - dt.timedelta(days=days)        # 오늘까지 — 주가 조건은 공통 기준일(_last_close 날짜) 열흘 안 봉에서 잰다
     out = {}
     for i in range(days + 1):
         d = d0 + dt.timedelta(days=i)
@@ -58,7 +58,7 @@ def world(monkeypatch, tmp_path):
     monkeypatch.setattr(SRV, "sector_map", lambda: {"stocks": {}})
     monkeypatch.setattr(SRV, "VAL", {"rows": [], "at": 0, "running": False})
     monkeypatch.setattr(SRV, "VAL_DIR", str(tmp_path))  # 저장된 실제 저평가 결과(_result.json)를 읽지 않게
-    SRV._EXL.update(key=None, d=None)
+    SRV._EXL.update(key=None, d=None, univ={})          # 전 종목 중앙값 캐시(줄 캐시와 같은 키)도 비운다 — 시험마다 다시 센다
     return tmp_path
 
 
@@ -110,3 +110,129 @@ def test_value_rows_get_export_badge(world, monkeypatch):
     SRV._EXL.update(key=None, d=None)
     rows = SRV.value_view()["rows"]
     assert rows[0]["exl"]["tier"] == "발굴" and rows[0]["exl"]["cur"] == 50.0 and rows[0]["exl"]["months_label"] == "7~8월"
+
+
+# ---- 2026-10-14 리뷰 뒤 회귀 검사(T1 · R1 · R2 · R3 · R4 · EXL-LA-1)
+def _count_universe(monkeypatch):
+    calls, base = [], SRV._score_universe
+    monkeypatch.setattr(SRV, "_score_universe", lambda: (calls.append(1), base())[1])
+    return calls
+
+
+def test_exlead_small_per_sample_is_unknown_value(world, monkeypatch):
+    # 풍경 PER 표본(band.n) 2분기 → 백분위 100 이어도 '싸지 않다' 가 아니라 값 모름(관찰) — 과거 검증(bt_panel 8분기↑)과 같은 조건 (T1)
+    land = {"decide": {"pct": 100.0, "per": 2348.9, "zone": "비싸다", "date": "20261013"}, "band": {"n": 2, "mid": 18.8}, "rows": [{"de": 28.0}]}
+    monkeypatch.setattr(SRV, "_land_read", lambda code: copy.deepcopy(land))
+    SRV._EXL.update(key=None, d=None)
+    d = SRV.exlead_view()
+    r = {x["code"]: x for x in d["rows"]}["000001"]
+    assert r["tier"] == "관찰" and r["why"] == ["값 모름 — PER 표본 2분기(8 미만)"] and r["checks"]["value"] is None
+    assert r["per_pct"] is None and r["per_n"] == 2 and r["zone"] is None and r["per"] == 2348.9 and r["land_d"] == "20261013"
+    assert d["rules"]["per_n"] == 8
+
+
+def test_univ3m_recomputed_with_rows_when_price_cache_refreshes(world, monkeypatch):
+    # 06:30 주가 갱신 흉내(모든 봉 +5%, 저평가 계산 시각 바뀜) → 줄의 ret3m 과 전 종목 중앙값이 같이 다시 계산된다 — day 만 키였을 때는 중앙값만 묵었다(R1)
+    calls = _count_universe(monkeypatch)
+    d1 = SRV.exlead_view()
+    u1 = d1["rows"][0]["univ3m"]
+    assert len(calls) == 1 and u1 is not None
+    base = SRV._px_file
+    cut = (dt.date.today() - dt.timedelta(days=12)).strftime("%Y%m%d")
+    monkeypatch.setattr(SRV, "_px_file", lambda code: {k: (v * 1.05 if k >= cut else v) for k, v in (base(code) or {}).items()})
+    SRV.VAL["at"] = 2
+    d2 = SRV.exlead_view()
+    u2 = d2["rows"][0]["univ3m"]
+    assert len(calls) == 2 and u2 > u1 and all(r["univ3m"] == u2 for r in d2["rows"])
+    assert SRV.exlead_view() is d2 and len(calls) == 2            # 키 그대로면 캐시
+
+
+def test_key_tracks_price_dir_signature(world, monkeypatch):
+    # .cache/price 에 파일이 새로 쓰이면(수 · 최신 mtime) 다음 호출이 다시 센다 — 06:30 갱신이 저평가 계산 시각을 안 바꿔도
+    calls = _count_universe(monkeypatch)
+    SRV.exlead_view()
+    pdir = os.path.join(str(world), "price")
+    os.makedirs(pdir, exist_ok=True)
+    with open(os.path.join(pdir, "000009.json"), "w", encoding="utf-8") as fh:
+        json.dump({"20260102": 1.0}, fh)
+    SRV.exlead_view()
+    assert len(calls) == 2 and SRV._px_dir_sig()[0] == 1
+    SRV.exlead_view()
+    assert len(calls) == 2
+
+
+def test_concurrent_cold_calls_compute_once(world, monkeypatch):
+    # 차가운 첫 호출 둘이 겹쳐도 988곳 읽기(_score_universe)는 한 번 — 둘째는 잠금에서 기다렸다 같은 결과를 받는다(R2)
+    import threading, time as _t
+    calls, base = [], SRV._score_universe
+
+    def slow():
+        calls.append(1)
+        _t.sleep(0.3)
+        return base()
+    monkeypatch.setattr(SRV, "_score_universe", slow)
+    SRV._EXL.update(key=None, d=None, univ={})
+    outs = []
+    ts = [threading.Thread(target=lambda: outs.append(SRV.exlead_view())) for _ in range(2)]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
+    assert len(calls) == 1 and len(outs) == 2 and outs[0] is outs[1]
+
+
+def test_rows_use_common_basis_day(world, monkeypatch):
+    # 줄과 전 종목 중앙값은 같은 기준일(_last_close 날짜) 열흘 안 마지막 봉에서 — 파일별 마지막 봉이 아니다(T3 · R3)
+    d = SRV.exlead_view()
+    _, lc, _ = SRV._last_close()
+    assert d["px_day"] == lc.strftime("%Y%m%d")
+    assert all(r["price_d"] and r["price_d"] <= d["px_day"] for r in d["rows"]) and d["px_days"] == sorted({r["price_d"] for r in d["rows"]})
+    base = SRV._px_file
+    old = (dt.date.today() - dt.timedelta(days=30)).strftime("%Y%m%d")
+    monkeypatch.setattr(SRV, "_px_file", lambda code: ({k: v for k, v in base(code).items() if k < old} if code == "000001" else base(code)))
+    SRV._EXL.update(key=None, d=None, univ={})
+    r = {x["code"]: x for x in SRV.exlead_view()["rows"]}["000001"]           # 기준일 열흘 안 봉이 없는 묵은 파일 → 주가 모름(관찰)
+    assert r["ret3m"] is None and r["dd52"] is None and r["price_d"] is None and r["tier"] == "관찰" and "주가 모름 — 이력 91일 미만" in r["why"]
+
+
+def test_px_file_drops_unconfirmed_last_bar(monkeypatch, tmp_path):
+    # 마지막 봉(평일 D)을 그날 20:10(FINAL_AT) 전에 쓴 파일은 그 봉이 확정 전 값 — 뺀다. 20:10 뒤 · 다음 날 받은 파일은 그대로(EXL-LA-1)
+    monkeypatch.setattr(SRV, "CACHE_DIR", str(tmp_path))
+    monkeypatch.setattr(SRV, "FIN", None)
+    pdir = os.path.join(str(tmp_path), "price")
+    os.makedirs(pdir)
+
+    def put(code, when):
+        p = os.path.join(pdir, code + ".json")
+        with open(p, "w", encoding="utf-8") as fh:
+            json.dump({"20261008": 100.0, "20261013": 236000.0}, fh)
+        os.utime(p, (when.timestamp(), when.timestamp()))
+    put("900001", dt.datetime(2026, 10, 13, 19, 3))        # 화요일 봉을 그날 19:03 에 — 확정 전
+    put("900002", dt.datetime(2026, 10, 13, 20, 30))       # 20:10 뒤 — 굳은 값
+    put("900003", dt.datetime(2026, 10, 14, 6, 31))        # 다음 날 아침 다시 받음 — 굳은 값
+    assert SRV._px_file("900001") == {"20261008": 100.0}
+    assert SRV._px_file("900002") == {"20261008": 100.0, "20261013": 236000.0}
+    assert SRV._px_file("900003") == {"20261008": 100.0, "20261013": 236000.0}
+    assert SRV._px_unconfirmed("20261011", dt.datetime(2026, 10, 11, 9, 0).timestamp()) is False    # 일요일 날짜
+    assert SRV._px_unconfirmed("20261013", dt.datetime(2026, 10, 13, 20, 10).timestamp()) is False  # 꼭 20:10 은 굳은 값
+    assert SRV._px_unconfirmed("bad", 0) is False and SRV._px_unconfirmed("20261013", None) is False
+
+
+def test_open_server_refuses_port_in_use():
+    # 같은 포트에 서버 둘이 조용히 뜨지 않는다 — 이미 LISTENING 이면 SystemExit(확인 명령 포함), 빈 포트는 열린다(R4)
+    import socket
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    s.listen(1)
+    port = s.getsockname()[1]
+    try:
+        with pytest.raises(SystemExit) as ei:
+            SRV._open_server(port)
+        assert "이미 사용 중" in str(ei.value) and str(port) in str(ei.value)
+    finally:
+        s.close()
+    srv = SRV._open_server(0)
+    try:
+        assert srv.server_address[1] > 0 and srv.allow_reuse_address is False
+    finally:
+        srv.server_close()

@@ -3880,9 +3880,12 @@ function expLeadBox(d){
   const bt=d.bt||null, g=bt&&bt.groups&&bt.groups['발굴'], e=g&&g.ex12;
   if(e&&e.med!=null){
     const yrs=bt.dates?' · '+bt.dates[0].slice(0,4)+'~'+bt.dates[1].slice(0,4):'';
-    b.appendChild(el('div','expLeadBt','과거엔 이랬다 — 같은 조건 '+g.n+'건('+g.firms+'곳 · '+g.days+'날'+yrs+'): 12개월 초과수익 중앙 '+expP(e.med,1)+'p ['+expP(e.ci[0],1)+', '+expP(e.ci[1],1)+'] · 앞 '+expP(e.early,1)+' · 뒤 '+expP(e.late,1)+
-      (bt.overlap!=null?' · 같은 회사 연속 신호 '+Math.round(bt.overlap*100)+'%':'')+' — 전 종목 중앙값 대비 · 수수료 없음 · 지금 상장사 · 지금 통로 기준(판정: '+(bt.verdict||'모름')+')'));
+    // 신호 수(g.n)와 12개월 성적이 있는 수(e.n)는 다르다(최근 신호는 12개월이 안 지났다). 과거 빨간불은 부채비율뿐 — 지금 발굴(잔고 · 선수금 · 재고 순환 · 공시위험 · 증권사 상태까지)이 더 좁다
+    b.appendChild(el('div','expLeadBt','과거엔 이랬다 — 신호 '+g.n+'건('+g.firms+'곳 · '+g.days+'날'+yrs+'), 그중 12개월 성적 있는 '+(e.n!=null?e.n:'—')+'건: 12개월 초과수익 중앙 '+expP(e.med,1)+'p ['+expP(e.ci[0],1)+', '+expP(e.ci[1],1)+'] · 앞 '+expP(e.early,1)+' · 뒤 '+expP(e.late,1)+
+      (bt.overlap!=null?' · 같은 회사 연속 신호 '+Math.round(bt.overlap*100)+'%':'')+' — 전 종목 중앙값 대비 · 수수료 없음 · 조건 1~3 + 부채 빨간불만(잔고 · 선수금 · 재고 순환 · 공시위험 · 증권사 상태는 과거를 못 봐 지금 발굴이 더 좁은 조건이다) · 지금 상장사 · 지금 통로 기준(판정: '+(bt.verdict||'모름')+')'));
   } else b.appendChild(el('div','expNote','과거 검증 없음(검증 전) — python 도구/수출선행_백테스트.py 를 돌리면 제목과 등급 이름이 정해진다'));
+  const md=s=>s?String(s).slice(4,6)+'-'+String(s).slice(6,8):'—';   // YYYYMMDD → MM-DD
+  if(d.px_days&&d.px_days.length>1) b.appendChild(el('div','expNote','주가 기준일 '+md(d.px_day)+' — 일부 줄은 그날 봉이 아직 없어 '+d.px_days.map(md).join(' · ')+' 봉이 섞여 있다(06:30 갱신 뒤 같아진다)'));
   const rows=rowsAll.filter(r=>S.expF.lead==='전체'||r.tier==='발굴');
   if(!rows.length) b.appendChild(el('div','empty',S.expF.lead==='발굴'?'지금은 세 조건을 다 넘은 회사가 없다 — \'관찰까지 보기\'를 누르면 수출 단서만 맞은 회사가 보인다':'해당 없음'));
   const grid=el('div','expCards'); b.appendChild(grid);
@@ -3902,8 +3905,9 @@ function expLeadBox(d){
     const l2=el('div','expLeadRow');
     l2.appendChild(el('span',null,'주가 3개월 '+expP(r.ret3m)+' (전 종목 '+expP(r.univ3m)+')'));
     l2.appendChild(el('span',null,'고점 대비 '+expP(r.dd52)));
-    const pp=r.per_pct, ppTxt=pp==null?'자기 역사 모름':pp<=50?'자기 역사 하위 '+Math.round(pp)+'%':'자기 역사 상위 '+Math.round(100-pp)+'%';   // 서버 why 와 같은 말(상위 = 비싼 쪽)
+    const pp=r.per_pct, ppTxt=pp==null?('자기 역사 모름'+(r.per_n!=null&&r.per_n<(R.per_n||8)?'(표본 '+r.per_n+'분기)':'')):pp<=50?'자기 역사 하위 '+Math.round(pp)+'%':'자기 역사 상위 '+Math.round(100-pp)+'%';   // 서버 why 와 같은 말(상위 = 비싼 쪽), 표본 8분기 미만은 모름
     l2.appendChild(el('span',null,'PER '+(r.per!=null?r.per.toFixed(1)+'배':'—')+' · '+ppTxt+(pp!=null&&r.zone?' ('+r.zone+')':'')));
+    const bd=el('span',null,'기준 주가 '+md(r.price_d)+' · PER '+md(r.land_d)); bd.title='주가 = 기준일('+md(d.px_day)+') 열흘 안 마지막 확정 봉(20:10 뒤 값) — 전 종목 중앙값도 같은 날짜쌍 · PER 백분위 = 풍경이 그 날 계산한 값'; l2.appendChild(bd);
     c.appendChild(l2);
     const l3=el('div','expLeadRow');
     l3.appendChild(el('span',null,'벌어짐 '+(r.gap!=null?expP(r.gap)+'p':'—')+' = 통관 12개월 '+expP(r.y12)+' − 주가 1년 '+expP(r.px_yoy)));
@@ -3912,7 +3916,7 @@ function expLeadBox(d){
     grid.appendChild(c); });
   put(rows.slice(0,6));
   if(rows.length>6){ const mo=el('button','expMore','나머지 '+(rows.length-6)+'곳 더 보기'); mo.onclick=()=>{ mo.remove(); put(rows.slice(6)); }; b.appendChild(mo); }
-  b.appendChild(el('div','finnote',(d.caveats||[]).join(' · ')+'. 적중 = 같은 자료로 등급을 매긴 분기 쌍(표본 안). 기한 = 분기 말 +45일(사업보고서 +90일), 주말만 밈. '+
+  b.appendChild(el('div','finnote',(d.caveats||[]).concat((d.bt&&d.bt.caveats)||[]).join(' · ')+'. 적중 = 같은 자료로 등급을 매긴 분기 쌍(표본 안). 기한 = 분기 말 +45일(사업보고서 +90일), 주말만 밈. '+
     '벌어짐 = 지난 12개월 통관 증가율 − 주가 1년 수익률(정렬에만 쓴다 — 과거 검증에서 벌어짐 크기는 성적을 가르지 못했다). 저평가 탭 줄에도 같은 단서가 배지로 붙는다.'));
   return b;
 }
@@ -7310,7 +7314,7 @@ function valTable(rows0, title, sub) {
       const x = r.exl, lastM = String(x.months_label || '').replace(/^\d+~/, '');
       const pl = el('span', 'expLeadPill' + (x.tier === '발굴' ? '' : ' watch'), '수출 단서 ' + expP(x.cur) + (lastM ? ' (' + lastM + '까지)' : ''));
       pl.title = (x.cur_q || '') + ' 아직 미공시 — 통관이 분기보고서보다 먼저' + (x.due ? ' · 기한 ' + x.due.due.slice(5) : '') +
-        (x.hit ? ' · 통관 적중 ' + x.hit[0] + '/' + x.hit[1] : '') + ' · ' + (x.tier_label || x.tier) + (x.why && x.why.length ? '\n' + x.why.join('\n') : '') + '\n누르면 수출 추적 탭';
+        (x.hit ? ' · 통관 적중 ' + x.hit[0] + '/' + x.hit[1] + '(표본 안 — 같은 자료로 등급 매긴 쌍)' : '') + ' · ' + (x.tier_label || x.tier) + (x.why && x.why.length ? '\n' + x.why.join('\n') : '') + '\n누르면 수출 추적 탭';
       pl.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); S.tab = 'exp'; jump('exp'); }; td.appendChild(pl); }
     td.appendChild(el('div', 'dipFwd', '고점 ' + won(r.hi) + '(' + r.hi_d.slice(2, 4) + '.' + r.hi_d.slice(4, 6) + ') → 지금 ' + won(r.price) + ' · 최근 3개월 ' + valPct(r.ret3m) +
       (r.mp_yoy != null ? ' · 업종 가격 ' + valPct(r.mp_yoy) : '') + (r.cyc != null ? ' · 재고 순환 ' + (r.cyc >= 0 ? '+' : '') + Math.round(r.cyc) + '%p' : '')));
