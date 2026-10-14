@@ -2657,7 +2657,7 @@ def _won_txt(v):
 # 접수일이 SYN_FRESH_DAYS 안, 검산 창은 최근 SYN_SURE_WIN 개(예전 서버는 신선도 조건 없이 창 8 — 2025-12 보고서가 reliable 이었다, 감사 ⑨).
 SYN_FRESH_DAYS = 200
 SYN_SURE_WIN = 12
-SYN_SPEC = "2026-10-14 v2(전환 적자 None · 결측 50 · 확인 0 · 싼 수주)"      # forward 기록에 적는 점수 식 판
+SYN_SPEC = "2026-10-15 v2a(전환 해당 없음 = loss4(영업 또는 순손실) · 결측 50 · 확인 0 · 싼 수주)"      # forward 기록에 적는 점수 식 판
 
 
 def _syn_fresh_days(*dates, today=None):
