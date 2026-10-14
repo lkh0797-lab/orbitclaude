@@ -47,7 +47,7 @@ def kicks(monkeypatch):
 
 
 def test_land_fresh_cache_returned_as_is(co, kicks):
-    _put(SRV._land_path("000001"), _payload(co, TODAY))
+    _put(SRV._land_path("000001"), _payload(co, SRV._land_day()))     # 판의 날 = 가장 최근 장 마감 날
     d = SRV.landscape_view("000001")
     assert d["rows"] == [1] and "stale" not in d and kicks == []
 
@@ -65,7 +65,7 @@ def test_land_old_day_served_stale_and_rebuilt_once(co, kicks):
 
 
 def test_land_new_report_also_served_stale(co, kicks):
-    _put(SRV._land_path("000001"), _payload(co, TODAY))
+    _put(SRV._land_path("000001"), _payload(co, SRV._land_day()))
     co["reports"].append({"stamp": "2025-09", "label": "분기보고서", "tag": "", "rcept": "20251114000004", "sections": []})
     assert SRV.landscape_view("000001")["stale"] is True
 

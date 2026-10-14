@@ -26,7 +26,7 @@ def test_month_keeps_mid_month_intraday_peak():
 
 
 def test_mismatched_close_falls_back_to_close():
-    # 장중에 받은 미완성 종가(179,200) ≠ 일봉 종가(178,300) — 그날 고가 · 저가를 지어 붙이지 않고 종가로
+    # 확정 전(10-13 19:02, 넥스트레이드 시간외 중)에 받은 179,200 ≠ 다음 날 받은 일봉 종가 178,300 — 고가 · 저가를 지어 붙이지 않고 종가로
     pr = {"20261013": 179200.0}
     ov = {"20261013": [179300, 182000, 170800, 178300, 1]}
     assert SRV._land_hl(pr, ov, "20261013") == (179200.0, 179200.0, False)
@@ -48,3 +48,8 @@ def test_start_filter_and_empty():
     M, ex = SRV._land_monthly(PRICES, OHLC, "20260601")
     assert [m["d"][:6] for m in M] == ["202606", "202607"] and ex["hi"]["v"] == 438000
     assert SRV._land_monthly({}, {}) == ([], None)
+
+
+def test_land_day_is_last_market_close():
+    # 판의 날 = 그날 값이 굳은 가장 최근 날(평일 20:10) — 확정 전에 그린 판은 그 뒤 다시 그린다
+    assert SRV._land_day() == SRV.FIN.last_final().date().isoformat()

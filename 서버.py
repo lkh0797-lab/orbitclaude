@@ -6412,6 +6412,8 @@ def lineage(c, rx, secs=None, labels=None, raw=True, strict=False):
 # 주당 값은 액면분할·무상증자를 연말 주식 수로 역산해 오늘 주식 수 기준으로 맞춘다(네이버 수정주가와 같은 기준).
 LAND_V = 10         # 8 · 9: 마지막 사업보고서 뒤 분기 · 반기가 있으면 최근 4분기 칸(2026-10-03, 9 = 배당은 마지막 결산 값)
 #                     10: 월별 고가 · 저가(장중) · 그림 기간 최고 · 최저 · 연중 최고/최저 장중 기준(2026-10-14)
+#                     (같은 날 덧붙임 — 판의 날 = 그날 값이 굳은 가장 최근 날(_land_day, 평일 20:10), px_partial · px_at. 판 형식은 그대로라 10 유지:
+#                      예전 판은 날이 달라 지난 판으로 보이며 뒤에서 다시 그린다)
 LAND_Q_END = {1: "0331", 2: "0630", 3: "0930", 4: "1231"}
 LAND_TYPES = {   # 린치의 여섯 유형 + 적자기
     "고성장": ("FAST GROWER", "매출이 해마다 15% 넘게 늘었다", "성장률이 유지되는 동안 들고 간다. PER이 성장률을 넘으면(PEG>1) 조심, 성장이 꺾이는 첫 분기에 판다."),
@@ -6694,7 +6696,7 @@ def _price_fresh(code):
 
 def _land_hl(prices, ohlc, k):
     """그날 (고가, 저가, 장중 값인가). 일봉 OHLCV 의 종가가 종가 캐시와 ±0.5% 안에서 맞을 때만 장중 고가 · 저가
-    (수정주가 기준이 다르게 받힌 날 · 장중에 받은 미완성 종가는 빼고), 아니면 (종가, 종가, False). 2026-10-14."""
+    (수정주가 기준이 다르게 받힌 날 · 확정 전(장중 · 넥스트레이드 시간외)에 받은 값은 빼고), 아니면 (종가, 종가, False). 2026-10-14."""
     c = prices[k]
     r = ohlc.get(k) if ohlc else None
     if r and len(r) >= 4 and r[1] and r[2] and r[3] and abs(r[3] / c - 1) <= .005:
@@ -6775,6 +6777,15 @@ def _landscape_build(c, prog=None):
     sbad = []
     S_adj, splits, S_raw = _land_shares(F, corp, latest, sbad)
     prices = FIN.fetch_prices(code) or {}
+    # 마지막 값이 확정 전 값(받은 때가 그날 FINAL_AT 전 — 장중 · 넥스트레이드 시간외)인가 — '지금' 이름표를 '확정 전'으로 (2026-10-14)
+    try:
+        _pm = dt.datetime.fromtimestamp(os.path.getmtime(os.path.join(FIN.PRICE_DIR, code + ".json")))
+    except (OSError, AttributeError):
+        _pm = None
+    _last = max(prices) if prices else None
+    px_partial = bool(_pm and _last == _pm.strftime("%Y%m%d") and _pm.weekday() < 5
+                      and (_pm.hour, _pm.minute) < getattr(FIN, "FINAL_AT", (20, 10)))
+    px_at = _pm.strftime("%H:%M") if (_pm and px_partial) else None
     transient = ("연간 원장 일시 오류" if fw.bad else "주식 수 일시 오류" if sbad
                  else "주가 없음" if not prices and not _price_fresh(code) else None)
     ds = sorted(prices)
@@ -7254,7 +7265,7 @@ def _landscape_build(c, prog=None):
     if prog is not None:
         prog["step"] = "마무리"
     out = {"v": LAND_V, "code": code, "name": c["name"], "rows": rows, "quarters": qs, "line": line, "band": band,
-           "monthly": monthly, "extremes": extremes, "splits": splits, "corr": corr, "gaps": gaps, "moments": moments,
+           "monthly": monthly, "extremes": extremes, "px_partial": px_partial, "px_at": px_at, "splits": splits, "corr": corr, "gaps": gaps, "moments": moments,
            "stats": {"버핏": summ("버핏"), "린치": summ("린치"), "base": base}, "chapters": merged,
            "lessons": lessons, "decide": decide, "types": {k: list(v) for k, v in LAND_TYPES.items()},
            "price_date": now_d}
@@ -7271,9 +7282,16 @@ def _land_path(code):
     return os.path.join(CACHE_DIR, "landscape", code + ".json")
 
 
+def _land_day():
+    """풍경 판의 날 = 그날 값이 가장 최근에 굳은 때(평일 20:10, 재무.last_final)의 날. 그때가 지나야 새 판 — 달력 날짜로 가르면
+    확정 전에 그린 판(마지막 값 = 장중 · 시간외 값)이 다음 날까지 '지금'으로 남았고, 아침마다 바뀐 것 없이 다시 그렸다(2026-10-14)."""
+    lc = FIN.last_final() if FIN is not None and hasattr(FIN, "last_final") else dt.datetime.now()
+    return lc.date().isoformat()
+
+
 def _land_sig(c):
     return "%s:%d:%s:%d" % (c["reports"][-1]["rcept"] if c["reports"] else "", len(c["reports"]),
-                            dt.date.today().isoformat(), LAND_V)
+                            _land_day(), LAND_V)
 
 
 def _land_nsig(c):
@@ -9496,14 +9514,9 @@ def _run_vocal(refresh=True):
                 VOCAL["error"] = "전 시장 목록을 받지 못했다(네이버 시총 API)"
             return
         codes = sorted(k for k, v in L["stocks"].items() if not v.get("stop"))     # 거래정지는 뺀다
-        # 마지막 장 마감(평일 15:40) 뒤 받은 일봉만 믿는다 — 장중이면 오늘 반쪽 봉은 빼고 어제까지로 잰다(저평가V2 와 같다).
-        # now 는 한 번만 잰다 — 받는 동안 15:40 을 넘겨도 받은 봉은 반쪽이다.
-        now = dt.datetime.now()
-        lc = now.replace(hour=15, minute=40, second=0, microsecond=0)
-        while lc > now or lc.weekday() >= 5:
-            lc -= dt.timedelta(days=1)
-            lc = lc.replace(hour=15, minute=40)
-        live = now.weekday() < 5 and (now.hour, now.minute) < (15, 40)
+        # 그날 값이 굳은 뒤(평일 20:10 — _last_close, 넥스트레이드 시간외 끝) 받은 일봉만 믿는다 — 그 전이면 오늘 봉은 빼고
+        # 어제까지로 잰다(저평가V2 와 같다). now 는 한 번만 잰다 — 받는 동안 굳는 시각을 넘겨도 받은 봉은 확정 전이다. (예전 15:40)
+        now, lc, live = _last_close()
         if refresh:
             with VOCAL_LOCK:
                 VOCAL.update(phase="전 종목 일봉", total=len(codes))
@@ -10706,12 +10719,15 @@ def _score_journal_path():
 
 
 def _last_close():
-    """(지금, 가장 최근 장 마감 15:40 시각, 지금 장중인가). 휴장일 달력은 모른다(주말만) — 넉넉한 쪽."""
+    """(지금, 그날 값이 가장 최근에 굳은 시각, 지금 그날 봉이 확정 전인가). 굳는 시각 = 재무.FINAL_AT(평일 20:10) — 정규장
+    마감(15:30)이 아니라 넥스트레이드 애프터마켓(~20:00) 뒤: 네이버 일봉은 그 사이 값이 바뀐다(2026-10-13 19시에 받은 7종목이
+    모두 다음 날 값과 달랐다). 예전엔 15:40 이었다. 휴장일 달력은 모른다(주말만) — 넉넉한 쪽."""
+    fa = getattr(FIN, "FINAL_AT", (20, 10)) if FIN is not None else (20, 10)
     now = dt.datetime.now()
-    lc = now.replace(hour=15, minute=40, second=0, microsecond=0)
+    lc = now.replace(hour=fa[0], minute=fa[1], second=0, microsecond=0)
     while lc > now or lc.weekday() >= 5:
-        lc = (lc - dt.timedelta(days=1)).replace(hour=15, minute=40)
-    live = now.weekday() < 5 and (9, 0) <= (now.hour, now.minute) < (15, 40)
+        lc = (lc - dt.timedelta(days=1)).replace(hour=fa[0], minute=fa[1])
+    live = now.weekday() < 5 and (9, 0) <= (now.hour, now.minute) < tuple(fa)
     return now, lc, live
 
 
@@ -10763,7 +10779,7 @@ def _run_score():
             except Exception:
                 codes = []
             now, lc, _ = _last_close()
-            age = max(60, (now - lc).total_seconds())     # 마지막 장 마감 전에 받은 캐시면 다시(장중 봉을 하루 들고 있지 않게)
+            age = max(60, (now - lc).total_seconds())     # 그날 값이 굳기 전에 받은 캐시면 다시(확정 전 봉을 하루 들고 있지 않게)
             for c in codes:
                 if not os.path.exists(os.path.join(CACHE_DIR, "price", c + ".json")):
                     try:

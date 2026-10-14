@@ -300,12 +300,49 @@ def fetch_shares(corp_code, year, reprt_code):
 
 
 # ---------------------------------------------------------------- 주가
+FINAL_AT = (20, 10)       # 그날 일봉 값이 굳는 시각(평일) — 정규장 마감(15:30)이 아니라 넥스트레이드 애프터마켓(~20:00) 뒤.
+#   네이버 일봉은 KRX 공식 종가가 아니라 KRX + 넥스트레이드 통합 시세에 가깝다(2026-10-14 KIS 일봉으로 대조, 10-13 값):
+#     삼성전자 KRX 232,000 · KIS 통합 234,000 · 네이버 19:02 에 받음 236,000 · 20시 뒤 234,000
+#     LG전자   KRX 178,000 · 통합 178,300 · 19:02 179,200 · 20시 뒤 178,300 (리노공업 79,600 · 80,300 · 80,500 · 80,400)
+#   그래서 20시(애프터마켓 끝) 전에 받은 그날 값은 뒤에 바뀐다 — 19시에 받은 7종목 모두. 20시 뒤 값은 다음 날 받아도 같았다.
+#   장중 봉에는 호가 단위 밖 값(삼성전자 237,750 — 넥스트레이드 중간가 체결로 보임)도 찍힌다. 휴장일 달력은 모른다(주말만).
+
+
+def last_final(now=None):
+    """가장 최근에 그날 값이 굳은 시각(평일 FINAL_AT, 지역 시각 = KST). 휴장 평일도 친다 — 그날은 한 번 더 받을 뿐."""
+    now = now or dt.datetime.now()
+    lc = now.replace(hour=FINAL_AT[0], minute=FINAL_AT[1], second=0, microsecond=0)
+    while lc > now or lc.weekday() >= 5:
+        lc = (lc - dt.timedelta(days=1)).replace(hour=FINAL_AT[0], minute=FINAL_AT[1])
+    return lc
+
+
+def _cache_ok(path, max_age, now=None):
+    """일봉 캐시를 그대로 쓸 수 있나 — 받은 지 max_age 초 안이고, 받은 뒤 그날 값이 굳는 때(평일 FINAL_AT)가 지나지 않았을 때.
+    그 전(장중 · 시간외)에 받은 캐시는 그날 봉이 없거나 확정 전 값이라 FINAL_AT 뒤에 다시 받는다 — 다시 받는 횟수는 하루 한 번 꼴."""
+    try:
+        m = os.path.getmtime(path)
+    except OSError:
+        return False
+    now = now or dt.datetime.now()
+    if now.timestamp() - m >= max_age:
+        return False
+    return dt.datetime.fromtimestamp(m) >= last_final(now)
+
+
+def _write_json(path, obj):
+    """다 쓴 뒤 바꿔 넣는다 — 다른 스레드 · 프로세스가 반쯤 쓴 파일을 읽지 않게."""
+    tmp = "%s.%d.tmp" % (path, os.getpid())
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(obj, fh, ensure_ascii=False)
+    os.replace(tmp, path)
+
+
 def fetch_prices(stock_code, start="20100101"):
-    """네이버 일별 시세. 하루 단위로 캐시."""
+    """네이버 일별 시세(종가). 캐시는 하루 · 그날 값이 굳는 FINAL_AT 기준(_cache_ok) — 그 전에 받은 마지막 날 값은 확정 전 값."""
     os.makedirs(PRICE_DIR, exist_ok=True)
     cache = os.path.join(PRICE_DIR, stock_code + ".json")
-    if os.path.exists(cache) and \
-            time.time() - os.path.getmtime(cache) < 86400:
+    if os.path.exists(cache) and _cache_ok(cache, 86400):
         try:
             with open(cache, "r", encoding="utf-8") as fh:
                 return json.load(fh)
@@ -336,8 +373,7 @@ def fetch_prices(stock_code, start="20100101"):
         c = num(row[4])
         if re.fullmatch(r"\d{8}", d) and c:
             out[d] = c
-    with open(cache, "w", encoding="utf-8") as fh:
-        json.dump(out, fh, ensure_ascii=False)
+    _write_json(cache, out)
     return out
 
 
@@ -349,7 +385,7 @@ def fetch_ohlcv(stock_code, start="20100101", max_age=86400):
     fetch_prices(종가만)와 따로 캐시한다 — 그쪽을 쓰는 곳이 많아 형식을 바꾸지 않는다."""
     os.makedirs(OHLCV_DIR, exist_ok=True)
     cache = os.path.join(OHLCV_DIR, stock_code + ".json")
-    if os.path.exists(cache) and time.time() - os.path.getmtime(cache) < max_age:
+    if os.path.exists(cache) and _cache_ok(cache, max_age):     # FINAL_AT 전에 받은 캐시는 그 뒤 다시(확정 전 봉)
         try:
             with open(cache, "r", encoding="utf-8") as fh:
                 return json.load(fh)
@@ -373,8 +409,7 @@ def fetch_ohlcv(stock_code, start="20100101", max_age=86400):
         if re.fullmatch(r"\d{8}", d) and c:
             out[d] = [o or c, h or c, lo or c, c, v or 0]
     if out:
-        with open(cache, "w", encoding="utf-8") as fh:
-            json.dump(out, fh, ensure_ascii=False)
+        _write_json(cache, out)
     return out
 
 

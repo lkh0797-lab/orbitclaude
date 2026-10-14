@@ -14488,7 +14488,9 @@ function lsPlate(plate, d, c, animate){
   lsChart(fig,d,plate);
   const key=el('div','lsKey');
   const z=k=>'<span><i style="border-color:'+LS_ZONE[k][1]+';border-top-width:3px"></i>'+LS_ZONE[k][0]+'</span>';
-  key.innerHTML='<span class="g">주가 선 = 월말 종가 · 색 = 그때 이익 대비 값</span>'+
+  // 주가 = 네이버 일봉 — KRX + 넥스트레이드 통합 시세에 가깝다(KRX 공식 종가와 1% 안팎 다를 수 있음, 재무.FINAL_AT 주석)
+  key.innerHTML='<span class="g">주가 선 = 월말 종가(네이버 일봉 · KRX+넥스트레이드 통합 시세 — KRX 공식 종가와 조금 다를 수 있음) · 색 = 그때 이익 대비 값</span>'+
+    (d.px_partial?'<span class="g">확정 전 값 — 마지막 주가는 '+lsD(((d.monthly||[]).slice(-1)[0]||{}).d)+' '+d.px_at+'에 받은 값(장중 · 넥스트레이드 시간외 값이 섞임 — 20:10 뒤 다시 받아 확정 값으로)</span>':'')+
     '<span><i style="border-color:rgba(236,234,228,.45);border-left-width:2px;border-top-width:0;height:10px;width:0"></i>세로 막대 = 그달 고가~저가(장중) · 점 = 기간 최고 · 최저'+
       ((d._extTxt||[]).length?' — '+d._extTxt.join(' / '):'')+'</span>'+      // 숫자 · 날짜만(서버 값) — HTML 특수문자 없음
     z('hi').replace('</span>',' (값 띠 위)</span>')+z('mid').replace('</span>',' (띠 안)</span>')+
@@ -14636,7 +14638,10 @@ function lsChart(fig, d, plate){
   const mNow=M.length?M[M.length-1]:null;
   if(mNow){
     const q=lnAt(mNow), gap=q&&q.mid?(mNow.p/q.mid-1)*100:null;
-    labs.push({y:Y(mNow.p), yd:Y(mNow.p), xd:X(lsT(mNow.d)), now:true, txt:'지금 '+won(mNow.p),
+    // 그날 값이 굳기 전(평일 20:10 전 — 장중 · 넥스트레이드 시간외)에 받은 값 — '지금'이 아니라 '확정 전'으로, 받은 시각은 툴팁 · 범례에
+    const live=d.px_partial&&M.length&&mNow===M[M.length-1];
+    labs.push({y:Y(mNow.p), yd:Y(mNow.p), xd:X(lsT(mNow.d)), now:true, txt:(live?'확정 전 ':'지금 ')+won(mNow.p),
+      title:live?lsD(mNow.d)+' '+d.px_at+'에 받은 값(확정 전) — 20:10(넥스트레이드 애프터마켓 끝) 뒤 다시 받아 그날 확정 값으로 바뀝니다':'마지막 종가 ('+lsD(mNow.d)+')',
       sub:gap!==null?'이익선 '+(gap>=0?'+':'')+gap.toFixed(0)+'% · '+LS_ZONE[zoneOf(mNow)][0]:'이익선 없음(적자)'});
   }
   if(lastL){
@@ -14655,6 +14660,7 @@ function lsChart(fig, d, plate){
     const g=svgEl('g',{class:l.band?'lsBandG':''});
     g.appendChild(svgEl('line',{x1:l.xd,x2:xl-4,y1:l.yd,y2:l.y,stroke:l.now?'rgba(241,217,160,.55)':'rgba(214,180,106,.35)','stroke-width':1}));
     if(l.now){
+      if(l.title) g.appendChild(svgEl('title',{})).textContent=l.title;
       const w=Math.max(l.txt.length*7+14, 64);
       g.appendChild(svgEl('rect',{x:xl-2,y:l.y-15,width:w,height:17,rx:5,class:'lsNowR'}));
       const t=svgEl('text',{x:xl+5,y:l.y-3,class:'lsNowT'}); t.textContent=l.txt; g.appendChild(t);
