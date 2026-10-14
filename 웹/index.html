@@ -6689,6 +6689,7 @@ function valEvidence(bt){
   if(rec) ul.appendChild(el('li',null,'저평가 묶음 12개월 초과수익 중앙 '+f(rec.median)+', 이긴 비율 '+Math.round(rec.hit)+'%, −30% 넘게 진 비율 '+Math.round(rec.crash)+'% (~2019 '+f(rec.early)+' · 2020~ '+f(rec.late)+').'));
   ul.appendChild(el('li',null,'PER 자기 역사는 처음 고를 때(2026-10-03 표본) "자기 역사로 너무 싼 후보가 덜 돌아왔다(−3.8%p)"는 근거로 넣었다. 계산을 고친 표본(2026-10-06)에서는 그 차이가 보이지 않는다(하위 30% −0.9%p, 구간이 0을 포함) — 부채비율 · 매출 · 최근 1개월도 약해졌다. 업종 제품 가격과 주가 1년(더 빠진 쪽)만 뚜렷하다. 점수 구성은 다시 볼 대상이다.'));
   ul.appendChild(el('li',null,'요인을 고른 표본과 잰 표본이 같다 — 실제보다 좋아 보인다. 생존 편향(지금 상장된 회사만)도 있다.'));
+  ul.appendChild(el('li',null,'PER 자기 역사의 부호가 시너지 발굴 탭(호재기업)과 반대다 — 여기 표본(고점 −25%↓로 빠진 회사)에선 자기 역사로 싼 쪽이 덜 돌아왔고, 거기(잔고가 느는 회사, 둔화 뺀 표본)선 싼 쪽이 앞섰다. 표본이 다르다 — 어느 쪽도 전 종목 규칙이 아니다.'));
   det.appendChild(ul);
   det.appendChild(el('div','finnote','다시 재기: python 도구/저평가_백테스트.py (표본) → --score. 결과 .cache/value/score.json 을 이 화면과 점수가 바로 읽는다.'));
   return det;
@@ -7621,7 +7622,7 @@ function dipDetail(r){
 const STAGE = {
   '잠복': {cls:'t0', col:'var(--accent)', desc:'수주는 쌓이는데 매출·주가는 아직 — 가장 이른 자리'},
   '점화': {cls:'t2', col:'var(--warn)',   desc:'쌓인 수주가 매출 가속·이익률 개선으로 넘어오는 중'},
-  '반영': {cls:'t1', col:'var(--del)',    desc:'주가가 수주보다 앞서 갔다 — 늦게 따라붙는 자리'},
+  '반영': {cls:'t1', col:'var(--del)',    desc:'주가가 수주보다 앞서 간 곳 — 과거 수익은 잠복과 구분되지 않았다'},
   '둔화': {cls:'',   col:'var(--faint)',  desc:'잔고가 줄거나 들어오는 수주가 매출보다 적다'},
   '관찰': {cls:'',   col:'var(--line)',   desc:'신호가 한쪽으로 모이지 않는다'},
 };
@@ -7636,33 +7637,36 @@ const SYN_DEF = {market:'전체', sector:'전체', industry:'전체', theme:'', 
   yoyMin:'', btbMin:'', coverMin:'', revYoyMin:'', accMin:'', mgnMin:'',
   ncMin:'', ncPctMin:'', p1yMin:'', p1yMax:'', ddMax:'', gapMin:'', perMax:'', noFlags:false, noLoss:false,
   coverChgMin:'', m4Min:'', m4Max:'', onlyLoss:false,
+  leadMin:'', perPctMax:'',        // 2026-10-14 v2 — 잔고 − 매출(%p) ≥ · PER 자기 역사 % ≤ (시너지.py rec_pass 와 같은 키, '싼 수주'가 채운다)
   watchOnly:false};
 // 필터 새로 만들기 — SYN_DEF.stages 배열을 같이 쓰면 단계 버튼이 기본값까지 바꾼다. 늘 새 배열로
 const synFresh=extra=>Object.assign({}, SYN_DEF, {stages:[]}, extra?JSON.parse(JSON.stringify(extra)):{});
 // 점수 네 부분 — 표의 작은 막대와 제목 칸이 같이 쓴다
 const SYN_PART_KEYS=[['선행','선'],['전환','전'],['확인','확'],['가격','가']];
-const SYN_PART_HELP='점수 네 부분, 각 0~100(그 날 믿을 수 있는 회사끼리의 백분위, 높을수록 좋다)\n'+
-  '선행 = 북투빌 · 잔고/연매출 배수 1년 변화\n전환 = 4분기 합 영업이익률이 낮을수록(늘어날 여지)\n'+
-  '확인 = 보고서 뒤 새 수주 공시 금액\n가격 = 반영 갭(잔고 증가 − 주가 1년)\n점수 = 선행 35 · 전환 25 · 확인 15 · 가격 25';
+const SYN_PART_HELP='점수 네 부분, 각 0~100(그 날 믿을 수 있는 회사끼리의 백분위, 높을수록 좋다) — 결측은 50(중앙) 대입, 선행이 없으면 점수 없음\n'+
+  '선행 = 북투빌 · 잔고/연매출 배수 1년 변화\n전환 = 4분기 합 영업이익률이 낮을수록(늘어날 여지) — 흑자만 백분위, 적자는 해당 없음(50) · 과거 검증에서 약하다\n'+
+  '확인 = 보고서 뒤 새 수주 공시 금액 — 점수 밖(가중 0, 표시만 · 검증 전)\n가격 = 반영 갭(잔고 증가 − 주가 1년, 둘 다 300%에서 자름)\n점수 = 선행 35 · 전환 25 · 가격 25 (확인 0)';
 const lsGet=(k,d)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } };
 const lsSet=(k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
 const num=v=> (v===''||v===null||v===undefined||isNaN(+v)) ? null : +v;
 
-// 전략 카드 — 저마다 하나의 가설이다
+// 전략 카드 — 저마다 하나의 가설이다. 꼬리표(2026-10-14 감사): 카드가 쓰는 입력(PER 수준 · 매출 가속 · 주가 1년 · 52주 낙폭 · 연매출 배수)은
+// 과거 검증에서 신호가 없었고, 단계(잠복 · 점화 · 반영 · 관찰)는 12개월 수익을 가르지 못했다. 검증된 거름은 오른쪽 '추천필터'다.
+const SYN_NOSIG=' — 과거 검증 무신호';
 const SYN_PRESETS = [
-  {id:'latent', name:'잠복 수주주', desc:'수주는 쌓였는데 매출·주가는 아직', f:{stages:['잠복']}},
-  {id:'ignite', name:'점화', desc:'쌓인 수주가 매출·이익으로 넘어오는 중', f:{stages:['점화']}},
-  {id:'contra', name:'역행 수주', desc:'잔고 +30% 이상인데 주가는 1년 마이너스', f:{yoyMin:30, p1yMax:0}},
+  {id:'latent', name:'잠복 수주주', desc:'수주는 쌓였는데 매출·주가는 아직 — 단계는 수익을 못 갈랐다', f:{stages:['잠복']}},
+  {id:'ignite', name:'점화', desc:'쌓인 수주가 매출·이익으로 넘어오는 중 — 단계는 수익을 못 갈랐다', f:{stages:['점화']}},
+  {id:'contra', name:'역행 수주', desc:'잔고 +30% 이상인데 주가는 1년 마이너스'+SYN_NOSIG, f:{yoyMin:30, p1yMax:0}},
   {id:'btb2', name:'쌓이는 속도 2배', desc:'북투빌 2 이상 — 수주가 매출의 2배 속도', f:{btbMin:2}},
-  {id:'cover3', name:'3년치 확보', desc:'잔고가 연매출의 3배 이상', f:{coverMin:3}},
-  {id:'cheap', name:'저PER 수주', desc:'잔고 +20% 이상 · PER 12배 이하', f:{yoyMin:20, perMax:12}},
-  {id:'lever', name:'마진 레버리지', desc:'매출 가속 + 이익률 +3%p · 잔고 +10%', f:{yoyMin:10, accMin:0.01, mgnMin:3}},
-  {id:'rush', name:'새 계약 러시', desc:'보고서 뒤 수주 공시 2건 이상 또는 매출의 10% 이상',
+  {id:'cover3', name:'3년치 확보', desc:'잔고가 연매출의 3배 이상'+SYN_NOSIG, f:{coverMin:3}},
+  {id:'cheap', name:'저PER 수주', desc:'잔고 +20% 이상 · PER(오늘 주가) 12배 이하'+SYN_NOSIG, f:{yoyMin:20, perMax:12}},
+  {id:'lever', name:'마진 레버리지', desc:'매출 가속 + 이익률 +3%p · 잔고 +10%'+SYN_NOSIG, f:{yoyMin:10, accMin:0.01, mgnMin:3}},
+  {id:'rush', name:'새 계약 러시', desc:'보고서 뒤 수주 공시 2건 이상 또는 매출의 10% 이상(검증 전)',
    pred:r=>(r.new_contracts||[]).length>=2 || (r.new_pct||0)>=10},
-  {id:'dip', name:'고점 대비 눌림', desc:'잔고 +20% 이상인데 52주 고점 대비 -30% 이하', f:{yoyMin:20, ddMax:-30}},
-  {id:'wave', name:'업종 동반 수주', desc:'같은 업종 3곳 이상이 함께 잔고 +15%',
+  {id:'dip', name:'고점 대비 눌림', desc:'잔고 +20% 이상인데 52주 고점 대비 -30% 이하'+SYN_NOSIG, f:{yoyMin:20, ddMax:-30}},
+  {id:'wave', name:'업종 동반 수주', desc:'같은 업종 3곳 이상이 함께 잔고 +15%(검증 전)',
    pred:(r,ctx)=>(r.backlog_yoy||0)>=15 && (ctx.wave[r.industry]||0)>=3},
-  {id:'hot', name:'과열 점검', desc:'주가·PER이 수주보다 앞서 간 곳', f:{stages:['반영']}},
+  {id:'hot', name:'과열 점검', desc:'주가·PER이 수주보다 앞서 간 곳 — 단계는 수익을 못 갈랐다'+SYN_NOSIG, f:{stages:['반영']}},
 ];
 
 function synPass(r, f, ctx){
@@ -7688,53 +7692,94 @@ function synPass(r, f, ctx){
   if(!ge(r.gap,f.gapMin)) return false;
   if(!ge(r.cover_chg,f.coverChgMin) || !ge(r.margin4,f.m4Min) || !le(r.margin4,f.m4Max)) return false;
   if(num(f.perMax)!==null && !(r.per>0 && r.per<=num(f.perMax))) return false;
+  // 2026-10-14 v2 — 시너지.py rec_pass 와 같은 규칙: lead 없으면 통과 못 함, per_pct 없는 회사(적자 · 이력 부족 · 풍경 없음)는 perPctMax 가 있으면 통과 못 함(감점 아님)
+  if(!ge(r.lead,f.leadMin)) return false;
+  if(num(f.perPctMax)!==null && !(r.per_pct!==null&&r.per_pct!==undefined&&r.per_pct<=num(f.perPctMax))) return false;
   return true;
 }
 
-// 시너지 발굴 과거 검증 상자 — 도구/시너지_백테스트.py 결과를 그대로
-function synEvidence(bt){
+// 시너지 발굴 과거 검증 상자 — 도구/시너지_백테스트.py 결과를 그대로(숫자는 전부 bt_report.json 에서 — 여기에 적어 두는 숫자는 없다).
+// recDefs = 서버가 넘긴 시너지.py SYN_REC(추천필터 이름 · 순서). 2026-10-14 v2 보고의 overall · no_slow · coverage 가 없으면(옛 형식) 예전 요약줄로 돌아간다.
+function synEvidence(bt, recDefs){
   const det=el('details','dipEvd'); det.open=!!S.synEvdOpen; det.addEventListener('toggle',()=>{ S.synEvdOpen=det.open; });
   const f=v=>{ if(v==null) return '—'; const n=Math.round(v); return (n>0?'+':'')+n+'%'; };   // −0% 대신 0%
+  const ci=x=>(x&&x.ci&&x.ci[0]!=null)?f(x.ci[0])+' ~ '+f(x.ci[1]):'—';
+  const on0=x=>!!(x&&x.ci&&x.ci[0]!=null&&x.ci[0]<=0&&x.ci[1]>=0);          // 90% 구간이 0을 걸치나
   const SG=bt.stages||{}, ord=['잠복','점화','반영','관찰','둔화'];
-  det.appendChild(el('summary',null,'과거 12년 검증 — 단계별 12개월 초과수익 중앙값 '+ord.filter(k=>SG[k]).map(k=>k+' '+f(SG[k].median)).join(' · ')));
+  const OV=bt.overall||null, NS=bt.no_slow||{}, F=bt.factors||{}, SL=SG['둔화']||null;
+  // 네 단계(잠복 · 점화 · 반영 · 관찰)의 90% 구간이 전부 서로 겹치나 — 겹치면 '구분되지 않는다'고만 말한다
+  const four=['잠복','점화','반영','관찰'].map(k=>SG[k]).filter(x=>x&&x.ci&&x.ci[0]!=null);
+  let apart=false; four.forEach((a,i)=>four.slice(i+1).forEach(b=>{ if(a.ci[1]<b.ci[0]||b.ci[1]<a.ci[0]) apart=true; }));
+  const sepTxt= four.length<4 ? '' : (apart ? ' — 잠복 · 점화 · 반영 · 관찰 가운데 90% 구간이 갈리는 쌍이 있다' : ' — 잠복 · 점화 · 반영 · 관찰은 서로 구분되지 않는다(90% 구간 겹침)');
+  if(OV&&OV.median!=null&&NS.median!=null&&SL)
+    det.appendChild(el('summary',null,'과거 12년 검증 — 12개월 초과수익 중앙값 전체 '+f(OV.median)+' · 둔화 '+f(SL.median)+' vs 나머지 '+f(NS.median)+sepTxt));
+  else
+    det.appendChild(el('summary',null,'과거 12년 검증 — 단계별 12개월 초과수익 중앙값 '+ord.filter(k=>SG[k]).map(k=>k+' '+f(SG[k].median)).join(' · ')+' (옛 형식 — 전체 · 둔화 뺀 중앙이 없는 보고)'));
   const d0=(bt.dates||['',''])[0], d1=(bt.dates||['',''])[1];
   det.appendChild(el('p',null,d0.slice(0,4)+'.'+d0.slice(4,6)+'~'+d1.slice(0,4)+'.'+d1.slice(4,6)+' 매달 말, 그때 이미 공시된 보고서만으로 이 화면의 행·점수·단계를 다시 만들고 그 뒤 12개월 수익률을 같은 기간 전 종목 중앙값과 비교했다('+
-    (bt.n||0).toLocaleString()+'건 · '+(bt.firms||0)+'곳, 전체 중앙 '+f(bt.median)+'). 확인(수주 공시)·악재 감점은 과거 자료가 없어 빠졌고, 지금 상장된 회사만 있다.'));
+    (bt.n||0).toLocaleString()+'건 · '+(bt.firms||0)+'곳, 전체 중앙 '+f(bt.median)+'). 확인(수주 공시)·악재 감점은 과거 자료가 없어 빠졌고, 지금 상장된 회사만 있다(생존 편향 — 수준은 부풀어 있다, 묶음끼리 비교만 믿는다). '+
+    '앞/뒤(2020년) 분리는 항목을 고를 때도 본 기준이라 표본 밖 검증이 아니다. 이 상자의 구간 통계는 수십 개라 보정 없이 보면 몇 개는 우연히 0을 벗어난다.'));
+  const CV=bt.coverage||null;
+  if(CV&&CV.per_pct!=null) det.appendChild(el('p',null,'PER 자기 역사 %는 '+CV.per_pct.toLocaleString()+'/'+(CV.n||0).toLocaleString()+'행(둔화 뺀 '+(CV.per_pct_no_slow||0).toLocaleString()+'/'+(CV.no_slow||0).toLocaleString()+')에만 있다 — 적자 · 이력 8분기 미만은 해당 없음. 잔고 − 매출(lead)은 '+(CV.lead||0).toLocaleString()+'행.'));
   const t1=el('table','tbl dipTbl');
-  t1.innerHTML='<tr><th>단계</th><th class="r">표본</th><th class="r">회사</th><th class="r">중앙</th><th class="r">90% 구간</th><th class="r">이긴 비율</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
-  ord.forEach(k=>{ const x=SG[k]; if(!x) return; const tr=el('tr'); tr.appendChild(el('td',null,k));
-    [String(x.n),String(x.firms),f(x.median),(x.ci&&x.ci[0]!=null)?f(x.ci[0])+' ~ '+f(x.ci[1]):'—',Math.round(x.hit)+'%',f(x.early),f(x.late)]
-      .forEach((v,i)=>tr.appendChild(el('td','num'+(i==2?' strong':''),v))); t1.appendChild(tr); });
+  t1.innerHTML='<tr><th>묶음</th><th class="r">표본</th><th class="r">회사</th><th class="r">중앙</th><th class="r">90% 구간</th><th class="r">이긴 비율</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
+  const row1=(lab,x)=>{ if(!x) return; const tr=el('tr'); tr.appendChild(el('td',null,lab));
+    [String(x.n),String(x.firms),f(x.median),ci(x)+(on0(x)?' · 0 걸침':''),Math.round(x.hit)+'%',f(x.early),f(x.late)]
+      .forEach((v,i)=>tr.appendChild(el('td','num'+(i==2?' strong':''),v))); t1.appendChild(tr); };
+  if(OV) row1('전체',OV); if(NS.median!=null) row1('둔화 뺀 나머지(잠복 · 점화 · 반영 · 관찰)',NS);
+  ord.forEach(k=>row1('  '+k,SG[k]));
   det.appendChild(t1);
-  const F=bt.factors||{}, NS=bt.no_slow||{};
   const t2=el('table','tbl dipTbl');
   t2.innerHTML='<tr><th>상위⅓ − 하위⅓</th><th class="r">하위⅓</th><th class="r">상위⅓</th><th class="r">차이</th><th class="r">90% 구간</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
-  const line=(lab,x)=>{ if(!x) return; const tr=el('tr'); tr.appendChild(el('td',null,lab));
-    [f(x.bot),f(x.top),f(x.spread),(x.ci&&x.ci[0]!=null)?f(x.ci[0])+' ~ '+f(x.ci[1]):'—',f(x.early),f(x.late)].forEach((v,i)=>tr.appendChild(el('td','num'+(i==2?' strong':''),v))); t2.appendChild(tr); };
-  line('예전 점수',F.score_old); line('지금 점수',F.score); line('  지금 점수 — 둔화를 뺀 나머지 안에서',NS.score);
-  [['btb','북투빌'],['backlog_yoy','잔고 1년 증가율'],['cover_chg','잔고/연매출 배수 1년 변화'],['m4','4분기 합 영업이익률(수준)'],['margin','한 분기 영업이익률(수준)'],['margin_delta','이익률 직전 분기 대비 변화'],['gap','반영 갭'],['rev_accel','매출 가속'],['per','PER'],['price_1y','주가 1년']]
-    .forEach(([k,lab])=>line(lab,F[k]));
+  const line=(t,lab,x)=>{ if(!x) return; const tr=el('tr'); tr.appendChild(el('td',null,lab));
+    [f(x.bot),f(x.top),f(x.spread),ci(x)+(on0(x)?' · 0 걸침':''),f(x.early),f(x.late)].forEach((v,i)=>tr.appendChild(el('td','num'+(i==2?' strong':''),v))); t.appendChild(tr); };
+  line(t2,'예전 점수',F.score_old); line(t2,'지금 점수',F.score); line(t2,'  지금 점수 — 둔화를 뺀 나머지 안에서',NS.score);
+  const FK=[['btb','북투빌'],['backlog_yoy','잔고 1년 증가율'],['lead','잔고 − 4분기 매출(%p)'],['cover_chg','잔고/연매출 배수 1년 변화'],['m4','4분기 합 영업이익률(수준)'],['margin','한 분기 영업이익률(수준)'],['margin_delta','이익률 직전 분기 대비 변화'],['gap','반영 갭'],['per_pct','PER 자기 역사 %(낮을수록 싸다 — 차이가 음이면 싼 쪽이 앞선 것)'],['rev_accel','매출 가속'],['per','PER(접수일 주가)'],['price_1y','주가 1년']];
+  FK.forEach(([k,lab])=>line(t2,lab,F[k]));
   det.appendChild(t2);
+  // 둔화를 뺀 나머지 안에서 — 항목마다(2026-10-14 v2 보고부터 no_slow 하위 키)
+  const NK=FK.filter(([k])=>F[k]&&F[k].no_slow&&F[k].no_slow.spread!=null);
+  if(NK.length){
+    const t2b=el('table','tbl dipTbl');
+    t2b.innerHTML='<tr><th>둔화를 뺀 나머지 안에서 — 상위⅓ − 하위⅓</th><th class="r">하위⅓</th><th class="r">상위⅓</th><th class="r">차이</th><th class="r">90% 구간</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
+    NK.forEach(([k,lab])=>line(t2b,lab,F[k].no_slow));
+    det.appendChild(t2b);
+  }
+  // 추천필터 — 정의는 시너지.py SYN_REC(서버 rec), 성적은 bt.rec 같은 id. '싼 수주'(cheap)가 맨 앞
+  const RC=bt.rec||{};
+  if(Object.keys(RC).length){
+    const t4=el('table','tbl dipTbl');
+    t4.innerHTML='<tr><th>추천필터</th><th class="r">표본</th><th class="r">회사</th><th class="r">한 달</th><th class="r">중앙</th><th class="r">90% 구간</th><th class="r">이긴 비율</th><th class="r">−30%↓</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
+    const ids=(recDefs||[]).map(x=>x.id).filter(id=>RC[id]).concat(Object.keys(RC).filter(id=>!(recDefs||[]).some(x=>x.id===id)));
+    ids.forEach(id=>{ const x=RC[id], def=(recDefs||[]).find(z=>z.id===id); const tr=el('tr'); tr.appendChild(el('td',null,def?def.name:id));
+      [String(x.n),String(x.firms),x.per_date!=null?x.per_date.toFixed(1)+'곳':'—',f(x.median),ci(x)+(on0(x)?' · 0 걸침':''),Math.round(x.hit)+'%',x.worst!=null?Math.round(x.worst)+'%':'—',f(x.early),f(x.late)]
+        .forEach((v,i)=>tr.appendChild(el('td','num'+(i==3?' strong':''),v))); t4.appendChild(tr); });
+    det.appendChild(t4);
+  }
   const L=bt.loss4||{};
   if(Object.keys(L).length){
     const t3=el('table','tbl dipTbl');
     t3.innerHTML='<tr><th>4분기 합 적자 vs 흑자</th><th class="r">표본</th><th class="r">회사</th><th class="r">중앙</th><th class="r">90% 구간</th><th class="r">이긴 비율</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
     ['전체·적자','전체·흑자','둔화 뺀 나머지·적자','둔화 뺀 나머지·흑자'].forEach(k=>{ const x=L[k]; if(!x) return; const tr=el('tr'); tr.appendChild(el('td',null,k.replace('·',' — ')));
-      [String(x.n),String(x.firms),f(x.median),(x.ci&&x.ci[0]!=null)?f(x.ci[0])+' ~ '+f(x.ci[1]):'—',Math.round(x.hit)+'%',f(x.early),f(x.late)]
+      [String(x.n),String(x.firms),f(x.median),ci(x)+(on0(x)?' · 0 걸침':''),Math.round(x.hit)+'%',f(x.early),f(x.late)]
         .forEach((v,i)=>tr.appendChild(el('td','num'+(i==2?' strong':''),v))); t3.appendChild(tr); });
     det.appendChild(t3);
   }
   const ul=el('ul','dipEvdL');
-  ['확실한 신호는 "둔화"(잔고 감소·북투빌 0.9 미만)다. 무엇을 살지보다 무엇을 피할지를 알려 준다.',
-   '잔고는 1년 기간이 가장 좋았다(3·6개월은 분기 잡음, 2·3년은 이미 반영된 이야기). 형태로는 잔고/연매출 배수의 1년 변화가 앞뒤 기간 모두 고르게 맞아 선행 부분에 넣었다.',
-   '잠복·점화·반영은 서로 구분되지 않았다. "반영"(주가가 수주보다 앞서 감)은 2019년 전엔 뒤처졌지만 2020년 뒤엔 오히려 가장 좋았다.',
-   '점수의 힘은 대부분 둔화를 가르는 데서 나온다. 둔화를 뺀 나머지 안에서는 차이가 작고 불확실하다(위 표의 "둔화를 뺀 나머지 안에서" 줄).',
-   '매출 가속·PER·주가 1년은 관계가 없어 뺐다. 영업이익률은 낮을수록 좋았고, 한 분기보다 4분기 합이 더 강하고 고르다 — 전환 부분은 4분기 합 이익률만 쓴다.',
-   '직전 분기 대비 이익률 변화는 뺐다. 큰 적자 분기 뒤 본전만 돼도 "개선"으로 잡혀(가온칩스 2026Q1 −19% → Q2 +1.5%) 한 분기 착시를 키운다.',
-   '4분기 합 적자인 회사는 과거 수익률이 오히려 좋았다(턴어라운드). 그러나 망해서 사라진 적자 회사가 표본에 없고 −30%↓ 비율도 더 높아, 감점도 가산도 하지 않고 표시만 한다.',
-   '표본 대부분이 2020년 뒤 조선·전력·방산 사이클이다. 구간이 0에 걸치면 우연일 수 있다.'].forEach(x=>ul.appendChild(el('li',null,x)));
+  const PP=(F.per_pct||{}).no_slow||null, RF=SG['반영']||null, LT=SG['잠복']||null;
+  [ '피할 것은 "둔화"(잔고 1년 감소)다'+(SL&&NS.median!=null?' — 나머지 대비 뒤처졌고('+f(SL.median)+' vs '+f(NS.median)+'), 절대값은 '+(on0(SL)?'90% 구간이 0을 걸친다':'90% 구간도 0 아래다'):'')+'. 무엇을 살지보다 무엇을 피할지를 알려 준다.',
+    '잔고는 1년 기간이 가장 좋았다(3·6개월은 분기 잡음, 2·3년은 이미 반영된 이야기). 형태로는 잔고/연매출 배수의 1년 변화가 앞뒤 기간 모두 고르게 맞아 선행 부분에 넣었다.',
+    '잠복 · 점화 · 반영 · 관찰은 서로 구분되지 않는다(90% 구간 겹침)'+(RF&&LT?' — "반영"(주가가 수주보다 앞서 감)은 2019년 전 '+f(RF.early)+' · 2020년 뒤 '+f(RF.late)+', 잠복은 '+f(LT.early)+' · '+f(LT.late)+'. 단계는 설명용 이름표다.':'.'),
+    '점수의 힘은 대부분 둔화를 가르는 데서 나온다. 둔화를 뺀 나머지 안에서는 차이가 작고 불확실하다(위 표의 "둔화를 뺀 나머지 안에서" 줄'+(NS.score&&NS.score.spread!=null?' — '+f(NS.score.spread)+', 90% '+ci(NS.score):'')+').',
+    '매출 가속 · PER 수준 · 주가 1년은 관계가 없어 뺐다. 영업이익률은 낮을수록 좋았지만 전환 부분의 IC 는 작다(약하다). 한 분기보다 4분기 합이 더 고르다 — 전환은 4분기 합 이익률만 쓴다.',
+    '직전 분기 대비 이익률 변화는 뺐다. 큰 적자 분기 뒤 본전만 돼도 "개선"으로 잡혀(가온칩스 2026Q1 −19% → Q2 +1.5%) 한 분기 착시를 키운다.',
+    '적자(4분기 합 영업이익률 ≤ 0)는 전환 부분 "해당 없음"(50 대입) — 가산도 감점도 아니다. 예전 식은 적자를 전환 최상위 동률로 올렸다(2026-10-14 고침). 위 표처럼 과거 수익률 중앙은 적자가 흑자보다 높았지만, 망해서 사라진 적자 회사는 표본에 없고 −30%↓ 비율도 높다.',
+    'PER 자기 역사 %(낮을수록 싸다)'+(PP?'는 둔화 뺀 표본에서 싼 쪽 ⅓ '+f(PP.bot)+' vs 비싼 쪽 ⅓ '+f(PP.top)+'(앞 '+f(PP.early)+' · 뒤 '+f(PP.late)+')':'')+' — 추천필터 "싼 수주"와 열로만 넣었다. 표본 안 값이라 점수 식엔 아직 안 넣는다(매일 남기는 forward 기록으로 6~12개월 뒤 결정). 행의 절반만 값이 있다(적자 · 이력 8분기 미만은 해당 없음, 감점 아님).',
+    '저평가 탭과 부호가 반대다 — 저평가 표본(고점 −25%↓로 빠진 회사)에선 자기 역사로 싼 쪽이 덜 돌아왔고, 여기(잔고가 느는 회사)에선 싼 쪽이 앞섰다. 표본이 다르다.',
+    '확인(수주 공시)은 검증된 적 없어 점수 밖(가중 0, 표시만)이다. 악재 감점(공시 하나당 −10)은 검증 없이 그대로다.',
+    '표본 대부분이 2020년 뒤 조선·전력·방산 사이클이다. 구간이 0에 걸치면 우연일 수 있다.'].forEach(x=>ul.appendChild(el('li',null,x)));
   det.appendChild(ul);
-  det.appendChild(el('div','finnote','다시 재기: python 도구/시너지_백테스트.py (약 10분, 점수 식만 바꿨으면 --report 로 몇 초). 결과 .cache/시너지/bt_report.json'));
+  det.appendChild(el('div','finnote','다시 재기: python 도구/시너지_백테스트.py (약 10분, 점수 식만 바꿨으면 --report 로 몇 초). 결과 .cache/시너지/bt_report.json'+(bt.at?' · 마지막 실행 '+String(bt.at).slice(0,4)+'-'+String(bt.at).slice(4,6)+'-'+String(bt.at).slice(6,8):'')));
   return det;
 }
 
@@ -7746,9 +7791,10 @@ async function viewSynergy(p, force){
   if(S.synMap===undefined) S.synMap = true;
   p.appendChild(el('p','sub',
     '수주가 실적과 주가로 넘어가는 길목을 찾는 스크리너. 네 신호를 한 줄에 세운다 — '+
-    '① 선행: 북투빌·잔고/연매출 배수의 1년 변화(잔고가 매출보다 빨리 불어나나) ② 전환: 4분기 합 영업이익률이 아직 낮은가(늘어날 여지, 적자는 0%로 봄) ③ 확인: 보고서 뒤 새 수주 계약 공시 ④ 가격: 주가 반영 갭. '+
-    '점수는 흑자·적자를 따지지 않는다 — 4분기 합 적자인 곳은 "4분기 적자" 표시로 따로 알리고, 오른쪽 거름에서 뺄 수 있다. '+
-    '부분 안의 항목은 과거 12년 검증으로 골랐다(아래 "과거 검증" 상자). '+
+    '① 선행: 북투빌·잔고/연매출 배수의 1년 변화(잔고가 매출보다 빨리 불어나나) ② 전환: 4분기 합 영업이익률이 아직 낮은가(늘어날 여지 — 흑자만, 적자는 해당 없음) ③ 확인: 보고서 뒤 새 수주 계약 공시(표시만 · 점수 밖) ④ 가격: 주가 반영 갭. '+
+    '적자는 전환 부분 해당 없음(50) — 가산도 감점도 아니다. 4분기 합 적자인 곳은 "4분기 적자" 표시로 따로 알리고, 오른쪽 거름에서 뺄 수 있다. '+
+    '선행 · 전환 · 가격만 과거 12년 검증으로 골랐다(아래 "과거 검증" 상자). 확인은 검증된 적 없어 점수 밖(표시만)이고, 전환은 약하다. '+
+    '가치 대비 가격은 오른쪽 추천필터 "싼 수주"(PER 자기 역사 하위 50%)와 "가격·밸류" 열로 본다 — 점수에는 아직 안 들어간다. '+
     '카드는 가설 하나씩이다. 행을 펼치면 근거와 함께 "다음에 무엇을 확인할지" 질문, 발주처·동종 대안으로 가는 연결이 나온다.'));
   const box=el('div'); p.appendChild(box);
 
@@ -7771,7 +7817,7 @@ async function viewSynergy(p, force){
       setTimeout(()=>{ if(S.tab==='cat'&&S.catMode==='synergy') load(false); }, 4000);
       if(!(d.rows||[]).length) return;
     }
-    if(d.bt) box.appendChild(synEvidence(d.bt));
+    if(d.bt) box.appendChild(synEvidence(d.bt, d.rec||[]));
     const all=d.rows||[];
     // 업종 동반 수주 — 업종마다 잔고 +15% 이상인 믿을 만한 회사 수
     const wave={};
@@ -7828,8 +7874,9 @@ async function viewSynergy(p, force){
     main.appendChild(synTable(rows, all));
     main.appendChild(synCycle(all, ctx));
     main.appendChild(el('div','finnote',
-      '점수 = 선행 35 · 전환 25 · 확인 15 · 가격 25 의 가중 백분위(믿을 수 있는 회사끼리). 최근 악재 공시 하나당 10점 감점. '+
-      '북투빌 = 1 + 잔고 1년 증가분 ÷ 최근 4분기 매출. 시가총액은 네이버 시총 스냅샷에 그 뒤 주가 변화를 곱한 추정. '+
+      '점수 = 선행 35 · 전환 25 · 가격 25 의 가중 백분위(믿을 수 있는 회사끼리 · 확인은 가중 0, 표시만 · 결측은 50 대입, 선행이 없으면 점수 없음). 최근 악재 공시 하나당 10점 감점(검증 전). '+
+      '북투빌 = 1 + 잔고 1년 증가분 ÷ 최근 4분기 매출. 잔고 − 매출 = 잔고 1년 증가율 − 4분기 합 매출 1년 변화(%p). PER 은 오늘 주가 ÷ 최근 4분기 주당이익(풍경), PER 자기 역사 % 는 자기 분기 PER 이력(풍경 띠) 가운데 지금보다 낮은 비율 — 낮을수록 싸다. '+
+      '시가총액은 네이버 시총 스냅샷에 그 뒤 주가 변화를 곱한 추정. 믿을 수 있는 잔고 = 검산 · 명시 값이 최근 12개 중 절반 이상, 튀는 값 없음, 마지막 잔고 · 재무가 200일 안, 같은 잔고를 적은 지주 · 자회사는 연매출 배수 큰 쪽 하나만. '+
       'RS 는 이 목록 안에서의 1년 주가 수익률 백분위(0~99). 판단을 돕는 순위일 뿐 매수 신호가 아니다.'));
     grid.appendChild(main);
     grid.appendChild(synFilterPanel(all, render));
@@ -7841,7 +7888,7 @@ async function viewSynergy(p, force){
 // 추천필터 — 한 번 누르면 직접 설정 필터가 채워지고 표·지도가 바뀐다. 정의는 시너지.py SYN_REC 한 곳,
 // 과거 성과는 도구/시너지_백테스트.py 가 같은 정의로 잰 값(12개월 초과수익 중앙값 · 이긴 비율 · −30%↓ 비율).
 function synRecBlock(rerender){
-  const d=S.synData||{}, recs=d.rec||[], ev=((d.bt||{}).rec)||{}, base=(d.bt||{}).median;
+  const d=S.synData||{}, recs=d.rec||[], ev=((d.bt||{}).rec)||{}, base=(d.bt||{}).median, nsm=((d.bt||{}).no_slow||{}).median;
   const w=el('div','synrec');
   const hd=el('div','synrechd'); hd.appendChild(el('b',null,'추천필터'));
   hd.appendChild(el('span',null,'무엇을 넣을지 모르겠으면 하나를 누른다. 아래 칸이 채워진다.')); w.appendChild(hd);
@@ -7857,10 +7904,12 @@ function synRecBlock(rerender){
     const x=ev[rc.id];
     if(x){
       const e=el('div','synrece');
-      e.textContent='과거 1년 뒤 '+fx(x.median)+(base!=null?' (전체 '+fx(base)+')':'')+' · 이긴 '+Math.round(x.hit)+'% · −30%↓ '+Math.round(x.worst)+'%';
+      const zero=x.ci&&x.ci[0]!=null&&x.ci[0]<=0&&x.ci[1]>=0;     // 90% 구간이 0을 걸치면 그렇다고 적는다
+      e.textContent='과거 1년 뒤 '+fx(x.median)+(base!=null?' (전체 '+fx(base)+(nsm!=null?' · 둔화 뺀 '+fx(nsm):'')+')':'')+' · 이긴 '+Math.round(x.hit)+'% · −30%↓ '+Math.round(x.worst)+'%'+(zero?' · 0 걸침':'');
       e.title='2013~2025 매달, 그때 이 거름을 통과한 회사들의 12개월 초과수익(같은 기간 전 종목 중앙값 대비) 중앙값. '+
-        '표본 '+x.n+'건 · '+x.firms+'곳, 한 달 평균 '+x.per_date.toFixed(1)+'곳. 90% 구간 '+fx(x.ci[0])+' ~ '+fx(x.ci[1])+
-        ', 2019년 전 '+(x.early!=null?fx(x.early):'—')+' · 2020년 뒤 '+(x.late!=null?fx(x.late):'—')+'. 악재 공시 거름은 과거 자료가 없어 빠졌다.';
+        '표본 '+x.n+'건 · '+x.firms+'곳, 한 달 평균 '+x.per_date.toFixed(1)+'곳. 90% 구간 '+fx(x.ci[0])+' ~ '+fx(x.ci[1])+(zero?'(0 걸침 — 우연일 수 있다)':'')+
+        ', 2019년 전 '+(x.early!=null?fx(x.early):'—')+' · 2020년 뒤 '+(x.late!=null?fx(x.late):'—')+'. 문턱은 같은 표본에서 정한 값(표본 안). 악재 공시 거름은 과거 자료가 없어 빠졌다.'+
+        (rc.id==='cheap'?' 싼 수주의 문턱만 2026-10-14 설계 문서에 결과를 보기 전에 먼저 적었다. PER 자기 역사 %는 풍경 띠 전체 창, 백테스트는 최근 40분기 창 — 창이 다르다.':'');
       b.appendChild(e);
     }
     b.onclick=()=>{
@@ -7952,11 +8001,13 @@ function synFilterPanel(all, rerender){
   const g4=group('계약 · 확인', false, ['ncMin','ncPctMin']);
   range(g4,'새 수주 공시 ≥','ncMin',null,'건');
   range(g4,'새 수주 금액 ≥ 연매출의','ncPctMin',null,'%');
-  const g5=group('가격 · 밸류', false, ['p1yMin','p1yMax','ddMax','gapMin','perMax']);
+  const g5=group('가격 · 밸류', false, ['p1yMin','p1yMax','ddMax','gapMin','leadMin','perPctMax','perMax']);
   range(g5,'주가 1년 수익률','p1yMin','p1yMax','%');
   range(g5,'52주 고점 대비 ≤','ddMax',null,'%');
   range(g5,'반영 갭 ≥','gapMin',null,'%p');
-  range(g5,'PER ≤ (흑자만)','perMax',null,'배');
+  range(g5,'잔고 − 매출 ≥ (잔고 1년 증가율 − 4분기 매출 1년 변화)','leadMin',null,'%p');
+  range(g5,'PER 자기 역사 % ≤ (낮을수록 싸다 · 적자 · 이력 부족은 통과 못 함)','perPctMax',null,'%');
+  range(g5,'PER ≤ (오늘 주가 · 흑자만)','perMax',null,'배');
   const g6=group('위험', false, ['noFlags','noLoss','onlyLoss']);
   chk(g6,'최근 악재 공시(사채 발행·소송 등) 있는 곳 제외','noFlags');
   chk(g6,'4분기 합 적자인 곳 제외(턴어라운드 베팅 빼기)','noLoss');
@@ -8151,9 +8202,15 @@ function synScatter(rows, host){
   const c0=Math.min(...lc), c1=Math.max(...lc);
   const rad=r=> r.cap>0&&c1>c0 ? 4.5+(Math.log10(r.cap)-c0)/(c1-c0)*8.5 : 5.5;
 
-  // 주목 종목 — 점수 순 8곳 (기타 단계는 빼고)
-  const ideas=pts.filter(r=>synGroup(r.stage)!=='기타'&&r.score!==null)
-    .sort((x,y)=>(y.score||0)-(x.score||0)).slice(0,8);
+  // 주목 종목 — '싼 수주'(서버 r.cheap = 시너지.py SYN_REC cheap 통과, 없으면 화면 synPass 로 같은 정의) 점수 순 먼저,
+  // 8곳이 안 차면 나머지 점수 순(기타 단계는 빼고). 단계는 과거 수익을 못 갈랐으므로 단계로는 고르지 않는다 (2026-10-14 v2)
+  const cheapF=(()=>{ const rc=((S.synData||{}).rec||[]).find(x=>x.id==='cheap'); return rc?synFresh(rc.f):null; })();
+  const isCheap=r=> r.cheap!==undefined ? !!r.cheap : (cheapF ? synPass(r,cheapF,{wave:{}}) : false);
+  const byScore=(x,y)=>(y.score||0)-(x.score||0);
+  const pool=pts.filter(r=>synGroup(r.stage)!=='기타'&&r.score!==null);
+  const cheapTop=pool.filter(isCheap).sort(byScore);
+  const ideas=cheapTop.concat(pool.filter(r=>!isCheap(r)).sort(byScore)).slice(0,8);
+  const nCheap=Math.min(cheapTop.length,8);
   const rank=new Map(ideas.map((r,i)=>[r.code,i+1]));
 
   // 이름표 자리 — 주목 종목만, 겹치면 반대편, 그래도 겹치면 번호만
@@ -8271,14 +8328,17 @@ function synScatter(rows, host){
   });
 
   // ── 주목 종목 목록
-  const ih=el('div','spIdeasH'); ih.innerHTML='주목 종목 <em>TOP IDEAS · 점수 순</em>'; side.appendChild(ih);
+  const ih=el('div','spIdeasH'); ih.innerHTML='주목 종목 <em>TOP IDEAS · 싼 수주 먼저</em>';
+  ih.title='싼 수주(둔화 아님 · 북투빌 1.1↑ · 잔고 − 매출 15%p↑ · PER 자기 역사 50% 이하) 통과 종목을 점수 순으로 먼저, 8곳이 안 차면 나머지를 점수 순으로. 지금 싼 수주 '+nCheap+'곳';
+  side.appendChild(ih);
   const list=el('ol','spIdeaList');
   ideas.forEach((r,i)=>{
     const it=el('li','spIdea'); it.dataset.code=r.code;
     it.innerHTML='<span class="spRank">'+(i+1)+'</span><div class="spIdeaM"><div class="spIdeaT"><b></b><i style="background:'+plateColor(r.stage)+'"></i><small></small></div>'+
-      '<div class="spIdeaV"><span>수주 <b>'+fx(r.backlog_yoy,0,'%')+'</b></span><span>주가 <b>'+fx(r.price_1y,0,'%')+'</b></span><span class="g">갭 <b>'+fx(r.gap,0,'%p')+'</b></span></div></div>';
+      '<div class="spIdeaV"><span>수주 <b>'+fx(r.backlog_yoy,0,'%')+'</b></span><span>주가 <b>'+fx(r.price_1y,0,'%')+'</b></span><span class="g">갭 <b>'+fx(r.gap,0,'%p')+'</b></span>'+
+      (r.per_pct!=null?'<span>PER 역사 <b>'+Math.round(r.per_pct)+'%</b></span>':'')+'</div></div>';
     it.querySelector('.spIdeaT b').textContent=r.name;
-    it.querySelector('.spIdeaT small').textContent=r.stage+' · '+(r.industry!=='분류없음'?r.industry:'');
+    it.querySelector('.spIdeaT small').textContent=(isCheap(r)?'싼 수주 · ':'')+r.stage+' · '+(r.industry!=='분류없음'?r.industry:'');
     it.onpointerenter=()=>focus(r);
     it.onpointerleave=blur;
     it.onclick=()=>{ if(document.fullscreenElement) return; synGo(r.code,r.name); };
@@ -8299,9 +8359,11 @@ function synScatter(rows, host){
   // ── 출처
   const outN=pts.filter(r=>r.backlog_yoy>x1||r.backlog_yoy<x0||r.price_1y>y1||r.price_1y<y0).length;
   const ft=el('div','spFoot');
+  const unrel=!!(S.synF&&S.synF.unreliable);      // '잔고 값을 못 믿는 회사도 포함'이 켜져 있으면 각주도 그렇게 말한다
   ft.innerHTML='<span>출처 Source · DART 정기보고서 수주상황, 거래소 수주 공시, 네이버 시세 · 기준 '+stamp+
-    ' · 잔고를 믿을 수 있는 '+all.length+'곳 · 원 크기 = 시가총액 · 축은 대칭 로그 눈금'+
-    (outN?' · ▸ 표시 '+outN+'곳은 축 범위 밖':'')+'</span><b>기업궤도추적</b>';
+    (unrel?' · 거름을 통과한 '+all.length+'곳(잔고 불확실 포함)':' · 잔고를 믿을 수 있는 '+all.length+'곳')+' · 원 크기 = 시가총액 · 축은 대칭 로그 눈금'+
+    (outN?' · ▸ 표시 '+outN+'곳은 축 범위 밖':'')+
+    ' · 단계(색)는 과거 12개월 수익을 못 갈랐다 — 설명용 · 반영 갭은 가치 척도가 아니다(2020년 뒤 무신호)</span><b>기업궤도추적</b>';
   plate.appendChild(ft);
 
   return plate;
@@ -8318,6 +8380,9 @@ function synLink(code, name){
 }
 const fx=(v,d,suf)=> v===null||v===undefined ? '—' : (v>=0?'+':'')+v.toFixed(d)+(suf||'');
 const clsv=v=>'num'+(v>0?' pos':(v<0?' neg':''));
+// 2026-10-14 v2 — PER 은 오늘 주가(풍경 decide.per), 접수일 주가 PER 은 'PER(접수일)' 열(per_filed). 자기 역사 %는 풍경 decide.pct(띠 전체 창 — 백테스트의 40분기 창과 다르다)
+const SYN_PER_TIP='오늘 주가 ÷ 최근 4분기 주당이익(풍경 탭과 같은 값, 분할 보정). 풍경이 없는 회사는 —. 과거 검증에서 PER 수준은 무신호';
+const SYN_PERPCT_TIP='자기 역사 분기 PER(풍경 띠, 양수만) 가운데 지금보다 낮은 비율 — 낮을수록 싸다(35% 이하 초록 · 65% 이상 빨강). 적자 · 이력 8분기 미만 · 풍경 없음은 — (해당 없음, 감점 아님). 추천필터 "싼 수주"는 50% 이하. 과거 검증(둔화 뺀 표본)에서 싼 쪽 ⅓이 비싼 쪽보다 앞섰다 — 표본 안 값';
 
 const SYN_COLS = {
   '개요': [
@@ -8326,8 +8391,9 @@ const SYN_COLS = {
     {k:'cap', t:'시가총액', v:r=>r.cap, f:r=>r.cap?money(r.cap):'—'},
     {k:'backlog_yoy', t:'수주 1년', v:r=>r.backlog_yoy, f:r=>fx(r.backlog_yoy,0,'%'), c:r=>clsv(r.backlog_yoy)},
     {k:'price_1y', t:'주가 1년', v:r=>r.price_1y, f:r=>fx(r.price_1y,0,'%'), c:r=>clsv(r.price_1y)},
-    {k:'gap', t:'반영 갭', v:r=>r.gap, f:r=>fx(r.gap,0,'%p'), c:r=>clsv(r.gap)},
-    {k:'per', t:'PER', v:r=>r.per>0?r.per:null, f:r=>r.per===null||r.per===undefined?'—':(r.per>0?r.per.toFixed(1)+'배':'적자')},
+    {k:'gap', t:'반영 갭', v:r=>r.gap, f:r=>fx(r.gap,0,'%p'), c:r=>clsv(r.gap), tip:'잔고 1년 증가율 − 주가 1년 수익률(%p, 둘 다 300%에서 자름)'},
+    {k:'per', t:'PER', v:r=>r.per>0?r.per:null, f:r=>r.per===null||r.per===undefined?'—':(r.per>0?r.per.toFixed(1)+'배':'적자'), tip:SYN_PER_TIP},
+    {k:'per_pct', t:'PER 자기 역사 %', v:r=>r.per_pct, f:r=>r.per_pct==null?'—':Math.round(r.per_pct)+'%', c:r=>'num'+(r.per_pct==null?'':(r.per_pct<=35?' pos':(r.per_pct>=65?' neg':''))), tip:SYN_PERPCT_TIP},
   ],
   '수주': [
     {k:'backlog', t:'최신 잔고', v:r=>r.backlog, f:r=>money(r.backlog)},
@@ -8353,9 +8419,13 @@ const SYN_COLS = {
     {k:'price_3m', t:'3개월', v:r=>r.price_3m, f:r=>fx(r.price_3m,1,'%'), c:r=>clsv(r.price_3m)},
     {k:'price_1y', t:'1년', v:r=>r.price_1y, f:r=>fx(r.price_1y,0,'%'), c:r=>clsv(r.price_1y)},
     {k:'dd52', t:'52주 고점 대비', v:r=>r.dd52, f:r=>r.dd52===null||r.dd52===undefined?'—':r.dd52.toFixed(0)+'%', c:r=>clsv(r.dd52)},
-    {k:'rs', t:'RS', v:r=>r.rs, f:r=>r.rs===null?'—':String(r.rs)},
-    {k:'per', t:'PER', v:r=>r.per>0?r.per:null, f:r=>r.per===null||r.per===undefined?'—':(r.per>0?r.per.toFixed(1)+'배':'적자')},
-    {k:'gap', t:'반영 갭', v:r=>r.gap, f:r=>fx(r.gap,0,'%p'), c:r=>clsv(r.gap)},
+    {k:'rs', t:'RS', v:r=>r.rs, f:r=>r.rs===null?'—':String(r.rs), tip:'이 목록 안에서의 1년 주가 수익률 백분위(0~99)'},
+    {k:'gap', t:'반영 갭', v:r=>r.gap, f:r=>fx(r.gap,0,'%p'), c:r=>clsv(r.gap), tip:'잔고 1년 증가율 − 주가 1년 수익률(%p, 둘 다 300%에서 자름)'},
+    {k:'lead', t:'잔고 − 매출', v:r=>r.lead, f:r=>fx(r.lead,0,'%p'), c:r=>clsv(r.lead), tip:'잔고 1년 증가율 − 4분기 합 매출 1년 변화(%p) — 잔고가 매출보다 얼마나 빨리 느나. 추천필터 "싼 수주"는 15%p 이상'},
+    {k:'per', t:'PER', v:r=>r.per>0?r.per:null, f:r=>r.per===null||r.per===undefined?'—':(r.per>0?r.per.toFixed(1)+'배':'적자'), tip:SYN_PER_TIP},
+    {k:'per_pct', t:'PER 자기 역사 %', v:r=>r.per_pct, f:r=>r.per_pct==null?'—':Math.round(r.per_pct)+'%'+(r.per_med?' (중앙 '+r.per_med.toFixed(0)+'배)':''), c:r=>'num'+(r.per_pct==null?'':(r.per_pct<=35?' pos':(r.per_pct>=65?' neg':''))), tip:SYN_PERPCT_TIP},
+    {k:'capbl_pct', t:'시총/잔고 업종 %', v:r=>r.capbl_pct, f:r=>r.capbl_pct==null?'—':Math.round(r.capbl_pct)+'%', tip:'시가총액 ÷ 수주잔고의 같은 업종 안 백분위(믿을 수 있는 회사 3곳↑일 때만) — 낮을수록 잔고에 비해 시총이 작다. 사이클 지표(적자 · 저마진 산업을 같이 잡는다), 등급 근거 아님 · 점수 · 필터 · 주목 종목에 안 쓴다'},
+    {k:'per_filed', t:'PER(접수일)', v:r=>r.per_filed>0?r.per_filed:null, f:r=>r.per_filed===null||r.per_filed===undefined?'—':(r.per_filed>0?r.per_filed.toFixed(1)+'배':'적자'), tip:'마지막 보고서 접수일 주가 ÷ 그때 최근 4분기 주당이익 — 펼친 행의 "PER(접수일 주가)" 문장과 같은 값. 오늘 PER 과 다를 수 있다'},
   ],
   '계약·연결': [
     {k:'nc', t:'새 수주 공시', v:r=>(r.new_contracts||[]).length, f:r=>(r.new_contracts||[]).length?(r.new_contracts.length+'건'):'—'},
@@ -8409,9 +8479,11 @@ function synTable(rows){
       hr.appendChild(th); return;
     }
     const th=el('th', c.w?null:'r', c.t);
+    if(c.tip) th.title=c.tip;
     if(c.v){
       th.style.cursor='pointer';
       if(sort.key===c.k) th.textContent=c.t+(sort.dir<0?' ↓':' ↑');
+      th.title=(c.tip?c.tip+' · ':'')+'누르면 정렬';
       th.onclick=()=>{ S.synSort = sort.key===c.k ? {key:c.k, dir:-sort.dir} : {key:c.k, dir:-1};
         S.synRerender(); };
     }
