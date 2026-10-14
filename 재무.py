@@ -222,8 +222,14 @@ def fetch_statement(corp_code, year, reprt_code, fs_div="CFS", force=False):
 _PERIOD_END = {"11013": (3, 31), "11012": (6, 30), "11014": (9, 30), "11011": (12, 31)}
 
 
+def _readonly():
+    """조회 전용(다른 PC — 조회전용.py 가 GIUP_READONLY=1 을 켠다): 받아 둔 캐시는 만기와 상관없이 그대로 쓴다.
+    바깥 호출이 막혀 있어 다시 받으려 하면 빈 값만 남는다."""
+    return os.environ.get("GIUP_READONLY") == "1"
+
+
 def _stale_013(d, path, year, reprt_code):
-    if d.get("status") != "013" or d.get("list"):
+    if d.get("status") != "013" or d.get("list") or _readonly():
         return False
     try:
         mo, dy = _PERIOD_END[str(reprt_code)]
@@ -319,11 +325,14 @@ def last_final(now=None):
 
 def _cache_ok(path, max_age, now=None):
     """일봉 캐시를 그대로 쓸 수 있나 — 받은 지 max_age 초 안이고, 받은 뒤 그날 값이 굳는 때(평일 FINAL_AT)가 지나지 않았을 때.
-    그 전(장중 · 시간외)에 받은 캐시는 그날 봉이 없거나 확정 전 값이라 FINAL_AT 뒤에 다시 받는다 — 다시 받는 횟수는 하루 한 번 꼴."""
+    그 전(장중 · 시간외)에 받은 캐시는 그날 봉이 없거나 확정 전 값이라 FINAL_AT 뒤에 다시 받는다 — 다시 받는 횟수는 하루 한 번 꼴.
+    조회 전용(_readonly)이면 파일이 있으면 그대로(만기 · FINAL_AT 규칙 안 봄)."""
     try:
         m = os.path.getmtime(path)
     except OSError:
         return False
+    if _readonly():
+        return True
     now = now or dt.datetime.now()
     if now.timestamp() - m >= max_age:
         return False
@@ -587,7 +596,7 @@ def fetch_consensus(stock_code, period="quarter"):
     반환: {"cols":[{key,title,consensus}], "rows":{행이름:{key:값(원)}}}"""
     os.makedirs(CONSENSUS_DIR, exist_ok=True)
     cache = os.path.join(CONSENSUS_DIR, "%s_%s.json" % (stock_code, period))
-    if os.path.exists(cache) and time.time() - os.path.getmtime(cache) < 21600:
+    if os.path.exists(cache) and (_readonly() or time.time() - os.path.getmtime(cache) < 21600):
         try:
             with open(cache, "r", encoding="utf-8") as fh:
                 return json.load(fh)
