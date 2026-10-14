@@ -2770,6 +2770,10 @@ table.vclYr td.num.up{color:#d24c43}table.vclYr td.num.dn{color:#3a6fd8}
 .lsMid{fill:none;stroke:var(--p-gold2);stroke-width:1.5;stroke-dasharray:6 5;opacity:.9}
 .lsLoHi{fill:none;stroke:rgba(214,180,106,.35);stroke-width:1}
 .lsPx{fill:none;stroke:#f7f3e9;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.lsRng line{stroke:rgba(236,234,228,.30);stroke-width:2;stroke-linecap:round}
+.lsExt circle{fill:#0e1319;stroke:#f7f3e9;stroke-width:1.6}
+.lsExt text{font:600 10.5px var(--f-num);fill:rgba(247,243,233,.85);paint-order:stroke;stroke:#0e1319;stroke-width:3px;pointer-events:none}
+.lsplate.anim .lsRng,.lsplate.anim .lsExt{animation:spFade 1s .6s both}
 .lsplate.anim .lsPx{stroke-dasharray:6000;stroke-dashoffset:6000;animation:spDraw 2s .2s cubic-bezier(.3,.7,.2,1) forwards}
 .lsplate.anim .lsVal,.lsplate.anim .lsMid{animation:spFade 1s .1s both}
 .lsLoss{fill:var(--t-loss);opacity:.75}
@@ -14484,7 +14488,10 @@ function lsPlate(plate, d, c, animate){
   lsChart(fig,d,plate);
   const key=el('div','lsKey');
   const z=k=>'<span><i style="border-color:'+LS_ZONE[k][1]+';border-top-width:3px"></i>'+LS_ZONE[k][0]+'</span>';
-  key.innerHTML='<span class="g">주가 선 색 = 그때 이익 대비 값</span>'+z('hi').replace('</span>',' (값 띠 위)</span>')+z('mid').replace('</span>',' (띠 안)</span>')+
+  key.innerHTML='<span class="g">주가 선 = 월말 종가 · 색 = 그때 이익 대비 값</span>'+
+    '<span><i style="border-color:rgba(236,234,228,.45);border-left-width:2px;border-top-width:0;height:10px;width:0"></i>세로 막대 = 그달 고가~저가(장중) · 점 = 기간 최고 · 최저'+
+      ((d._extTxt||[]).length?' — '+d._extTxt.join(' / '):'')+'</span>'+      // 숫자 · 날짜만(서버 값) — HTML 특수문자 없음
+    z('hi').replace('</span>',' (값 띠 위)</span>')+z('mid').replace('</span>',' (띠 안)</span>')+
     z('lo').replace('</span>',' (값 띠 아래)</span>')+z('na').replace('</span>',' (적자 · 이익선 없음)</span>')+
     '<span><i style="border-color:#f1d9a0;border-top-style:dashed"></i>이익선 = 최근 4분기 주당이익 × 자기 역사 PER 중앙값 '+(d.band.mid?d.band.mid.toFixed(1)+'배':'')+'</span>'+
     '<span><i style="border-color:rgba(214,180,106,.5);border-top-width:8px"></i>값 띠 '+(d.band.lo?d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'')+' (자기 역사 PER 25–75%)</span>'+
@@ -14520,7 +14527,8 @@ function lsChart(fig, d, plate){
   const t0=Date.UTC(R[0].year,0,1), t1=Math.max(M.length?lsT(M[M.length-1].d):0, rl.ttm&&rl.end?lsT(rl.end):Date.UTC(rl.year,11,31));
   const X=t=>L+(t-t0)/(t1-t0)*(W-L-RR);
   // 세로축은 주가로만 잡는다 — 이익이 0 근처로 줄면 값 띠가 수백 원까지 꽂혀 주가 선이 위쪽에 눌리던 것(코오롱 200~20만)
-  const pv=M.map(m=>m.p).filter(v=>v>0);
+  // 월말 종가만이 아니라 그달 고가 · 저가(장중)까지 칸에 넣는다 — 달 중간 꼭대기가 칸 밖으로 잘리지 않게
+  const pv=M.flatMap(m=>[m.p,m.hi,m.lo]).filter(v=>v>0);
   const vals=pv.length?pv:LN.filter(x=>x.lo).flatMap(x=>[x.lo,x.hi]).filter(v=>v>0);
   let lo=Math.min(...vals), hi=Math.max(...vals);
   const pad=Math.max((Math.log(hi)-Math.log(lo))*.1, .12);
@@ -14605,6 +14613,11 @@ function lsChart(fig, d, plate){
   const lnAt=m=>{ let q=null; LN.forEach(z=>{ if(lsT(z.d)<=lsT(m.d)+86400000*20) q=z; }); return q; };
   const zoneOf=m=>{ const q=lnAt(m); if(!q||!q.mid||!q.lo) return 'na'; return m.p>q.hi?'hi':m.p<q.lo?'lo':'mid'; };
   if(M.length>1){
+    // 그달 고가~저가 막대(장중 — 일봉 OHLCV 없는 달은 종가 폭) — 선은 월말 종가라 달 중간 급등 · 급락은 막대로만 보인다
+    const gRng=svgEl('g',{class:'lsRng'});
+    M.forEach(m=>{ if(!(m.hi>0&&m.lo>0)||m.hi<=m.lo) return; const x=X(lsT(m.d)).toFixed(1);
+      gRng.appendChild(svgEl('line',{x1:x,x2:x,y1:Y(m.hi).toFixed(1),y2:Y(m.lo).toFixed(1)})); });
+    svg.appendChild(gRng);
     svg.appendChild(svgEl('path',{d:'M'+M.map(m=>X(lsT(m.d)).toFixed(1)+','+Y(m.p).toFixed(1)).join('L'),class:'lsPx'}));
     // 색 덧칠 — 같은 자리끼리 이어서(앞 점을 하나 겹쳐 끊김 없이)
     const gz=svgEl('g',{class:'lsPxZ'});
@@ -14652,6 +14665,29 @@ function lsChart(fig, d, plate){
     svg.appendChild(g);
   });
   if(mNow) svg.appendChild(svgEl('circle',{cx:X(lsT(mNow.d)),cy:Y(mNow.p),r:4.5,class:'lsNowDot'}));
+
+  // 그림 기간 최고 · 최저 — 실제 그날 값(장중이면 장중, 종가 최고도 함께). 월말 선에 묻히지 않게 점과 글로 박는다
+  const ex=d.extremes||{};
+  const ymd=s=>"'"+s.slice(2,4)+'.'+(+s.slice(4,6))+'.'+(+s.slice(6,8));
+  const man=v=>v>=1e4?(+(v/1e4).toFixed(v>=1e5?1:2))+'만':fmt(v);
+  d._extTxt=[];
+  [['hi','최고'],['lo','최저']].forEach(([k,nm])=>{
+    const e=ex[k]; if(!e||!(e.v>0)) return;
+    const x=X(lsT(e.d)), y=Y(e.v);
+    const cl=e.close&&Math.abs(e.close-e.v)>.5?' · 종가 '+nm+' '+won(e.close)+'원'+(e.close_d===e.d?'':' ('+ymd(e.close_d)+')'):'';
+    const full=nm+' '+won(e.v)+'원 ('+ymd(e.d)+(e.intraday?' 장중':' 종가')+')'+cl;
+    d._extTxt.push(full);
+    const g=svgEl('g',{class:'lsExt'});
+    g.appendChild(svgEl('title',{})).textContent=full;
+    g.appendChild(svgEl('circle',{cx:x,cy:y,r:3.2}));
+    // 차트 안에는 짧게(점 옆) — 날짜 · 종가 값은 아래 범례 줄과 점 툴팁에
+    const txt=nm+' '+man(e.v);
+    const end=x+7+txt.length*7>W-RR;        // 오른쪽 이름표 칸을 넘으면 점 왼쪽으로
+    const t=svgEl('text',{x:end?x-7:x+7,y:Math.max(pTop+10,Math.min(pBot-4,y+4)),'text-anchor':end?'end':'start'});
+    t.textContent=txt;
+    g.appendChild(t);
+    svg.appendChild(g);
+  });
 
   // 결단 표지 — B 버핏, L 린치. 위 숫자 = 그 뒤 1년 주가. 겹치면 위로 쌓는다
   const tip=el('div','spTip lsTip'); tip.hidden=true;
@@ -14723,7 +14759,10 @@ function lsChart(fig, d, plate){
     const gr=el('div','spTipG');
     const gap=ln&&ln.mid?(m.p/ln.mid-1)*100:null;
     const per=ln&&ln.mid&&d.band.mid?m.p/(ln.mid/d.band.mid):null;
-    [['주가',won(m.p)+'원'],['이익선',ln&&ln.mid?won(ln.mid)+'원':(ln&&ln.loss?'적자':'—')],['벌어짐',lsPct(gap)],
+    const hb=m.ic?'장중':'종가';
+    [['월말 종가',won(m.p)+'원'],['이익선',ln&&ln.mid?won(ln.mid)+'원':(ln&&ln.loss?'적자':'—')],
+     ['월중 고가',m.hi>0?won(m.hi)+'원 ('+(+m.hd.slice(6,8))+'일 '+hb+')':'—'],['월중 저가',m.lo>0?won(m.lo)+'원 ('+(+m.ld.slice(6,8))+'일 '+hb+')':'—'],
+     ['벌어짐',lsPct(gap)],
      ['그때 PER',per?per.toFixed(1)+'배':'—'],['값 띠',ln&&ln.lo?won(ln.lo)+'–'+won(ln.hi):'—'],['띠 기준',d.band.lo?d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'—']]
       .forEach(([k,v])=>{ const c2=el('div'); c2.appendChild(el('span',null,k)); c2.appendChild(el('b',null,v)); gr.appendChild(c2); });
     tip2.appendChild(gr); tip2.hidden=false;
@@ -14852,8 +14891,10 @@ function lsLedger(led, d){
   row('차입금/자본',r=>r.de===null||r.de===undefined?'—':Math.round(r.de)+'%',r=>r.de>100?'cold':'');
   sec('값');
   row('연말 주가',r=>r.px?won(r.px):'—');
-  row('연중 최고',r=>r.hi?won(r.hi):'—');
-  row('연중 최저',r=>r.lo?won(r.lo):'—');
+  // 장중 기준(일봉 OHLCV) — 그해 일부 · 전부가 OHLCV 없이 종가로만 잰 칸은 뒤에 표시
+  const hlb=r=>r.hl_basis==='종가'?' (종가)':r.hl_basis==='장중+종가'?' *':'';
+  row('연중 최고(장중)',r=>r.hi?won(r.hi)+hlb(r):'—');
+  row('연중 최저(장중)',r=>r.lo?won(r.lo)+hlb(r):'—');
   row('PER',r=>f1(r.per),r=>r.per&&d.band.lo&&r.per<=d.band.lo?'hot':'');
   row('PBR',r=>r.pbr===null||r.pbr===undefined?'—':r.pbr.toFixed(2));
   row('배당수익률',r=>r.dy===null||r.dy===undefined?'—':r.dy.toFixed(1)+'%');

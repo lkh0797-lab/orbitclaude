@@ -6410,7 +6410,8 @@ def lineage(c, rx, secs=None, labels=None, raw=True, strict=False):
 #   안목 — 이 회사의 15년이 가르치는 규칙(불황 성적, 자본 배분, 유보이익 1원 테스트, 사업 정의의 일관성)
 #   결단 — 그들의 조건이 과거 어느 때 맞았고 그 뒤 주가는 어땠나, 그리고 지금은(기다릴 가격)
 # 주당 값은 액면분할·무상증자를 연말 주식 수로 역산해 오늘 주식 수 기준으로 맞춘다(네이버 수정주가와 같은 기준).
-LAND_V = 9          # 8 · 9: 마지막 사업보고서 뒤 분기 · 반기가 있으면 최근 4분기 칸(2026-10-03, 9 = 배당은 마지막 결산 값)
+LAND_V = 10         # 8 · 9: 마지막 사업보고서 뒤 분기 · 반기가 있으면 최근 4분기 칸(2026-10-03, 9 = 배당은 마지막 결산 값)
+#                     10: 월별 고가 · 저가(장중) · 그림 기간 최고 · 최저 · 연중 최고/최저 장중 기준(2026-10-14)
 LAND_Q_END = {1: "0331", 2: "0630", 3: "0930", 4: "1231"}
 LAND_TYPES = {   # 린치의 여섯 유형 + 적자기
     "고성장": ("FAST GROWER", "매출이 해마다 15% 넘게 늘었다", "성장률이 유지되는 동안 들고 간다. PER이 성장률을 넘으면(PEG>1) 조심, 성장이 꺾이는 첫 분기에 판다."),
@@ -6691,6 +6692,59 @@ def _price_fresh(code):
         return False
 
 
+def _land_hl(prices, ohlc, k):
+    """그날 (고가, 저가, 장중 값인가). 일봉 OHLCV 의 종가가 종가 캐시와 ±0.5% 안에서 맞을 때만 장중 고가 · 저가
+    (수정주가 기준이 다르게 받힌 날 · 장중에 받은 미완성 종가는 빼고), 아니면 (종가, 종가, False). 2026-10-14."""
+    c = prices[k]
+    r = ohlc.get(k) if ohlc else None
+    if r and len(r) >= 4 and r[1] and r[2] and r[3] and abs(r[3] / c - 1) <= .005:
+        return max(r[1], c), min(r[2], c), True
+    return c, c, False
+
+
+def _land_hl_span(prices, ohlc, keys):
+    """기간 (고가, 저가, 기준) — 기준 '장중' 전부 OHLCV · '종가' 하나도 없음 · '장중+종가' 섞임. 날이 없으면 None 셋."""
+    if not keys:
+        return None, None, None
+    v = [_land_hl(prices, ohlc, k) for k in keys]
+    n = sum(1 for x in v if x[2])
+    return (max(x[0] for x in v), min(x[1] for x in v),
+            "장중" if n == len(v) else "종가" if not n else "장중+종가")
+
+
+def _land_monthly(prices, ohlc, start=None):
+    """풍경 차트의 달 점 — [{d: 그달 마지막 거래일, p: 월말 종가, hi/hd · lo/ld: 그달 고가 · 저가와 날, ic: 그달 전부 장중 값}]
+    과 그림 기간의 최고 · 최저 {hi|lo: {d, v, intraday, close_d, close}}. 월말 종가 선만 그리면 달 중간 꼭대기가 사라진다
+    (LG전자 2026-06-02 장중 438,000 · 종가 392,500 인데 월말 종가 선의 꼭대기는 5월 말 293,000)."""
+    ds = sorted(prices)
+    monthly = []
+    for k in ds:
+        h, l_, ok = _land_hl(prices, ohlc, k)
+        m = monthly[-1] if monthly and monthly[-1]["d"][:6] == k[:6] else None
+        if m is None:
+            monthly.append({"d": k, "p": prices[k], "hi": h, "hd": k, "lo": l_, "ld": k, "ic": ok})
+            continue
+        m["d"], m["p"] = k, prices[k]
+        if h > m["hi"]:
+            m["hi"], m["hd"] = h, k
+        if l_ < m["lo"]:
+            m["lo"], m["ld"] = l_, k
+        m["ic"] = m["ic"] and ok
+    if start:
+        monthly = [m for m in monthly if m["d"] >= start]
+    if not monthly:
+        return monthly, None
+    win = [k for k in ds if k >= monthly[0]["d"][:6] + "01"]
+    mh = max(monthly, key=lambda m: m["hi"])
+    ml = min(monthly, key=lambda m: m["lo"])
+    ch = max(win, key=lambda k: prices[k])
+    cl = min(win, key=lambda k: prices[k])
+    return monthly, {"hi": {"d": mh["hd"], "v": mh["hi"], "intraday": _land_hl(prices, ohlc, mh["hd"])[2],
+                            "close_d": ch, "close": prices[ch]},
+                     "lo": {"d": ml["ld"], "v": ml["lo"], "intraday": _land_hl(prices, ohlc, ml["ld"])[2],
+                            "close_d": cl, "close": prices[cl]}}
+
+
 def landscape_build(c, prog=None):
     """풍경 한 판. 일시 오류로 망가진 판이면 "_transient"(이유)를 단다 — 저장하지 않는다(land_build).
     짧은 이력 오류도 연간 원장 일시 오류 때문이면 "_transient" — 부정 캐시로 굳히지 않는다.
@@ -6728,20 +6782,33 @@ def _landscape_build(c, prog=None):
     def px_on(ymd):
         return FIN.price_on(prices, ymd)[0] if prices else None
 
+    # 장중 고가 · 저가 (2026-10-14) — 종가 캐시만 쓰면 달 중간 급등 · 급락과 장중 고점이 사라진다(LG전자 2026-06-02
+    # 장중 438,000 · 종가 392,500 인데 월말 종가 선은 29만이 꼭대기). 같은 네이버 일봉의 OHLCV 캐시에서 종가가 종가 캐시와
+    # 맞는 날(±0.5% — 수정주가 기준이 다르게 받힌 날은 빼고 종가로)만 고가 · 저가를 쓴다
+    try:
+        ohlc = (FIN.fetch_ohlcv(code) or {}) if prices else {}
+    except Exception:
+        ohlc = {}
+
+    def hl(k):
+        return _land_hl(prices, ohlc, k)
+
+    def hl_span(keys):
+        return _land_hl_span(prices, ohlc, keys)
+
     # ── 연간 원장(밸류라인 한 장)
     rows = []
     for i, d in enumerate(F):
         y = d["year"]
         sa = S_adj.get(y)
         pe = px_on("%d1230" % y)
-        yr_px = [prices[k] for k in ds if k[:4] == str(y)]
+        yhi, ylo, ybasis = hl_span([k for k in ds if k[:4] == str(y)])
         eps = d["ni"] / sa if (d.get("ni") is not None and sa) else None
         bps = d["eq"] / sa if (d.get("eq") and sa) else None
         dps = d["div"] / sa if (d.get("div") and sa) else None
         row = {k: d.get(k) for k in ("year", "rev", "op", "ni", "eq", "liab", "margin", "roe", "roic", "fcf", "cfo", "capex",
                                      "div", "buyback", "debt", "cash", "de", "capex_int", "rev_yoy", "inv_days", "re")}
-        row.update(eps=eps, bps=bps, dps=dps, shares=sa, px=pe,
-                   hi=max(yr_px) if yr_px else None, lo=min(yr_px) if yr_px else None,
+        row.update(eps=eps, bps=bps, dps=dps, shares=sa, px=pe, hi=yhi, lo=ylo, hl_basis=ybasis,
                    per=pe / eps if (pe and eps and eps > 0) else None,
                    pbr=pe / bps if (pe and bps and bps > 0) else None,
                    dy=dps / pe * 100 if (dps and pe) else None,
@@ -6758,13 +6825,12 @@ def _landscape_build(c, prog=None):
         sa = S_adj.get(y) or (S_adj[max(S_adj)] if S_adj else None)
         pe = px_on(end)
         st_ = (dt.datetime.strptime(end, "%Y%m%d") - dt.timedelta(days=365)).strftime("%Y%m%d")
-        win_px = [prices[k] for k in ds if st_ < k <= end]
+        whi, wlo, wbasis = hl_span([k for k in ds if st_ < k <= end])
         eps = tt["ni"] / sa if (tt.get("ni") is not None and sa) else None
         bps = tt["eq"] / sa if (tt.get("eq") and sa) else None
         dps = tt["div"] / sa if (tt.get("div") and sa) else None
         row = dict(tt)
-        row.update(eps=eps, bps=bps, dps=dps, shares=sa, px=pe,
-                   hi=max(win_px) if win_px else None, lo=min(win_px) if win_px else None,
+        row.update(eps=eps, bps=bps, dps=dps, shares=sa, px=pe, hi=whi, lo=wlo, hl_basis=wbasis,
                    per=pe / eps if (pe and eps and eps > 0) else None,
                    pbr=pe / bps if (pe and bps and bps > 0) else None,
                    dy=dps / pe * 100 if (dps and pe) else None,
@@ -6812,16 +6878,8 @@ def _landscape_build(c, prog=None):
             line.append({"d": q["end"], "lo": q["eps"] * band["lo"], "mid": q["eps"] * band["mid"], "hi": q["eps"] * band["hi"]})
         else:
             line.append({"d": q["end"], "loss": q["ni4"] is not None and q["ni4"] < 0})
-    # 월말 주가(수정주가)
-    monthly = []
-    for k in ds:
-        if monthly and monthly[-1]["d"][:6] == k[:6]:
-            monthly[-1] = {"d": k, "p": prices[k]}
-        else:
-            monthly.append({"d": k, "p": prices[k]})
-    if F:
-        start = "%d0101" % F[0]["year"]
-        monthly = [m for m in monthly if m["d"] >= start]
+    # 월말 주가(수정주가) + 그달 고가 · 저가(장중) · 그림 기간 최고 · 최저 — _land_monthly
+    monthly, extremes = _land_monthly(prices, ohlc, "%d0101" % F[0]["year"] if F else None)
 
     # 주가와 이익선 — 벌어졌다 되돌아온 기록
     gaps = []
@@ -7196,7 +7254,7 @@ def _landscape_build(c, prog=None):
     if prog is not None:
         prog["step"] = "마무리"
     out = {"v": LAND_V, "code": code, "name": c["name"], "rows": rows, "quarters": qs, "line": line, "band": band,
-           "monthly": monthly, "splits": splits, "corr": corr, "gaps": gaps, "moments": moments,
+           "monthly": monthly, "extremes": extremes, "splits": splits, "corr": corr, "gaps": gaps, "moments": moments,
            "stats": {"버핏": summ("버핏"), "린치": summ("린치"), "base": base}, "chapters": merged,
            "lessons": lessons, "decide": decide, "types": {k: list(v) for k, v in LAND_TYPES.items()},
            "price_date": now_d}
@@ -10544,7 +10602,8 @@ def reports_view(code):
             ks = [k for k in sorted(pr) if k >= since_px]      # 캐시는 2010년부터 — 그림은 최근 2년만
             if ks:
                 price = pr[ks[-1]]
-                series = [[k[:4] + "-" + k[4:6] + "-" + k[6:], pr[k]] for k in ks[::2]]
+                # 하루도 거르지 않는다 — 이틀에 하루만 찍으면 꼭대기 날이 빠질 수 있다(LG전자 2026-06-02 종가 392,500, 2026-10-14)
+                series = [[k[:4] + "-" + k[4:6] + "-" + k[6:], pr[k]] for k in ks]
         except Exception:
             pass
     ops = {}
