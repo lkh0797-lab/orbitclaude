@@ -3139,6 +3139,176 @@ def orbit_worker(code):
     BUILDING.setdefault(code, {})["finished"] = True
 
 
+# ---------------------------------------------------------------- 수출 선행 발굴 (2026-10-14)
+# 통관은 올랐는데 주가 · 값은 아직 — 설계 docs/superpowers/specs/2026-10-14-export-lead-value-design.md.
+# 판정은 수출선행.py(순수 함수 — 도구/수출선행_백테스트.py 와 같은 judge), 재료는 수출 추적 결과(export_view) · 주가 캐시(_px_file) ·
+# 풍경 캐시(_land_read 의 decide.pct · per · zone, rows[-1].de) · 저평가 줄의 red · 공시위험 · 증권사 상태 · 과거 검증 bt.json.
+# 새 DART · 관세청 · 네이버 호출 없음, 새 루프 없음. 전 종목 3개월 수익률 중앙값은 하루 한 번(_last_close 날짜 키) 메모리에.
+# 메모리 캐시 키 = 수출 결과 파일 mtime · 주가 기준일 · bt.json mtime · 저평가 계산 시각.
+try:
+    _xl = _ilu.spec_from_file_location("수출선행", os.path.join(BASE, "수출선행.py"))
+    EXL = _ilu.module_from_spec(_xl)
+    _xl.loader.exec_module(EXL)
+except Exception as _e:
+    EXL = None
+    print("수출선행 모듈 로드 실패:", _e)
+_EXL = {"key": None, "d": None, "univ": {}, "bt_mt": None, "bt": None}
+EXL_LOCK = threading.Lock()
+
+
+def _exl_bt():
+    """.cache/수출선행/bt.json(도구/수출선행_백테스트.py) — 없으면 None(화면 제목 '(검증 전)'). 경로는 부를 때 CACHE_DIR 로 만든다(시험이 바꾼다)."""
+    p = os.path.join(CACHE_DIR, "수출선행", "bt.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        _EXL.update(bt=None, bt_mt=None)
+        return None
+    if _EXL["bt_mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                _EXL.update(bt=json.load(fh), bt_mt=mt)
+        except Exception:
+            return _EXL["bt"]
+    return _EXL["bt"]
+
+
+def _exl_px(code):
+    """{"last": (날짜, 종가), "ret3m", "px_yoy", "dd52", "px_m": {YYYYMM: 월말 종가}} — 주가 캐시만(_px_file). 이력이 짧으면 값은 None."""
+    import bisect
+    px = _px_file(code) or {}
+    ks = sorted(px)
+    if not ks:
+        return None
+    last = ks[-1]
+    p = px[last]
+    last_d = dt.datetime.strptime(last, "%Y%m%d")
+
+    def back(days):
+        t = (last_d - dt.timedelta(days=days)).strftime("%Y%m%d")
+        i = bisect.bisect_right(ks, t) - 1
+        if i < 0 or ks[i] < (last_d - dt.timedelta(days=days + 10)).strftime("%Y%m%d"):
+            return None                                   # 그 날짜 열흘 안에 봉이 없다 — 이력 부족
+        return (p / px[ks[i]] - 1) * 100 if px[ks[i]] else None
+    t365 = (last_d - dt.timedelta(days=365)).strftime("%Y%m%d")
+    hi = max((px[k] for k in ks if k >= t365), default=None)
+    pm = {}
+    for k in ks:                                          # 같은 달의 마지막 봉이 남는다 = 월말 종가
+        pm[k[:6]] = px[k]
+    return {"last": (last, p), "ret3m": back(91), "px_yoy": back(365), "dd52": (p / hi - 1) * 100 if hi else None, "px_m": pm}
+
+
+def _exl_univ3m(day):
+    """같은 날짜 기준 전 종목 3개월 수익률 중앙값 — 하루 한 번(.cache/price 988곳 읽기)."""
+    if _EXL["univ"].get("day") == day:
+        return _EXL["univ"]["v"]
+    rs = []
+    for c in _score_universe():
+        x = _exl_px(c)
+        if x and x.get("ret3m") is not None:
+            rs.append(x["ret3m"])
+    rs.sort()
+    v = rs[len(rs) // 2] if len(rs) >= 5 else None       # 실제 유니버스는 988곳 — 5곳 미만이면 모름
+    _EXL["univ"] = {"day": day, "v": v}
+    return v
+
+
+def _exl_months_label(months):
+    if not months:
+        return ""
+    a, b = int(months[0][4:]), int(months[-1][4:])
+    return ("%d월" % a) if a == b else ("%d~%d월" % (a, b))
+
+
+def _exl_risk(code, dr, ks):
+    """공시 위험(빨강) · 증권사 상태(관리 · 정지 · 정리매매 · 투자위험) — _val_apply_risk 와 같은 규칙, 문구는 judge 의 why 에 그대로."""
+    out = []
+    rk = (dr.get("codes") or {}).get(code) if dr else None
+    if rk and rk.get("level") in DRISK_RED:
+        out.append("공시 위험: " + rk["level"])
+    bad, _ = _kis_tags((ks or {}).get(code))
+    if bad:
+        out.append("증권사 상태: " + " · ".join(bad))
+    return out
+
+
+def exlead_view():
+    """수출 선행 발굴 — {at, basis, verdict, title, rows[], bt, rules, caveats}. 줄은 수출선행.judge 의 발굴 · 관찰만(단서 없는 회사는 뺀다)."""
+    if EXL is None:
+        return {"error": "수출선행 모듈이 없다"}
+    ex = export_view()
+    if ex.get("error"):
+        return {"error": ex["error"]}
+    _, lc, _ = _last_close()
+    day = lc.strftime("%Y%m%d")
+    bt = _exl_bt()
+    with VAL_LOCK:
+        _val_load_saved()                                  # 저평가 줄(빨간불)을 아직 안 읽었으면 저장분을 — 호출 순서에 따라 등급이 달라지지 않게
+        vrows = {r["code"]: r for r in (VAL.get("rows") or [])}
+        val_at = VAL.get("at") or 0
+    key = (_EXP.get("mt"), day, _EXL["bt_mt"], val_at)
+    with EXL_LOCK:
+        if _EXL["key"] == key and _EXL["d"] is not None:
+            return _EXL["d"]
+    univ = _exl_univ3m(day)
+    dr, ks = _disc_risk() or {}, ((_kis_snapshot() or {}).get("status")) or {}
+    smap = (sector_map() or {}).get("stocks", {})
+    today = dt.date.today()
+    rows = []
+    for x in ex.get("items") or []:
+        al = x.get("aligned")
+        if x.get("status") != "ok" or not al or x.get("grade") not in ("A", "B"):
+            continue
+        code = x["code"]
+        pxi = _exl_px(code) or {}
+        land = _land_read(code) or {}
+        dec = land.get("decide") or {}
+        vr = vrows.get(code)
+        ind = x.get("industry") or (smap.get(code.upper(), {}) or {}).get("industry") or ""
+        fin = bool(VAL_FIN.search(ind))
+        red = list(vr.get("red") or []) if vr else []      # 저평가 줄이 있으면 그 줄의 빨간불 그대로
+        de = ((land.get("rows") or [{}])[-1] or {}).get("de")
+        if not vr and de is not None and de >= EXL.DEBT_RED and not fin:
+            red.append("부채비율 %.0f%% — 200%% 넘는 빚" % de)
+        inp = {"grade": x.get("grade"), "lumpy": al.get("lumpy"), "reported": al.get("reported"), "cur": al.get("cur"),
+               "months": al.get("months") or [], "ret3m": pxi.get("ret3m"), "univ3m": univ, "dd52": pxi.get("dd52"),
+               "per_pct": dec.get("pct"), "red": red, "risk": _exl_risk(code, dr, ks), "fin": fin}
+        j = EXL.judge(inp)
+        if j["tier"] is None:
+            continue
+        hit = EXL.hit_rate((x.get("validation") or {}).get("pairs") or [])
+        y12 = (x.get("signals") or {}).get("y12")
+        nat = (x.get("national") or [{}])[0] or {}
+        rows.append({"code": code, "name": x["name"], "industry": ind,
+                     "tier": j["tier"], "why": j["why"], "checks": j["checks"], "grade": x.get("grade"),
+                     "cur": al.get("cur"), "months": al.get("months"), "months_label": _exl_months_label(al.get("months")),
+                     "cur_q": al.get("cur_q"), "prev": al.get("prev"), "acc": al.get("acc"), "est": al.get("est"), "err": al.get("err"),
+                     "due": EXL.due_label(al["cur_q"], today) if al.get("cur_q") else None, "hit": list(hit),
+                     "unit_yoy": nat.get("unit_yoy"), "ret3m": pxi.get("ret3m"), "univ3m": univ, "dd52": pxi.get("dd52"),
+                     "px_yoy": pxi.get("px_yoy"), "y12": y12, "gap": EXL.gap(y12, pxi.get("px_yoy")),
+                     "per": dec.get("per"), "per_pct": dec.get("pct"), "zone": dec.get("zone"),
+                     "price": (pxi.get("last") or (None, None))[1], "price_d": (pxi.get("last") or (None, None))[0],
+                     "idx": EXL.index_series(x.get("series_long") or x.get("series") or {}, pxi.get("px_m") or {}, 24)})
+    rows.sort(key=lambda r: (r["tier"] != "발굴", -(r["gap"] if r["gap"] is not None else -1e9)))
+    verdict = (bt or {}).get("verdict")
+    n_found = sum(1 for r in rows if r["tier"] == "발굴")
+    if verdict == "발굴":                                  # 설계 3절 결정 규칙 — bt.json 이 제목 · 등급 이름을 정한다
+        title, label = "수출은 먼저 올랐다 — 주가 · 값은 아직 %d곳" % n_found, "발굴"
+    elif verdict == "관찰":
+        title, label = "수출은 먼저 올랐다 — 관찰 (과거 우위 근거 없음) %d곳" % n_found, "관찰 후보"
+    else:
+        title, label = "수출은 먼저 올랐다 — 주가 · 값은 아직 %d곳 (검증 전)" % n_found, "발굴(검증 전)"
+    for r in rows:
+        r["tier_label"] = label if r["tier"] == "발굴" else "관찰"
+    d = {"at": time.time(), "basis": ex.get("month"), "verdict": verdict, "title": title, "rows": rows, "bt": bt,
+         "rules": {"clue": EXL.CLUE_MIN, "dd": EXL.PRICE_DD, "per_pct": EXL.VALUE_PCT_MAX, "debt": EXL.DEBT_RED},
+         "caveats": ["통로는 지금 보고서 기준(옛 공장 변경 모름)", "지금 상장사만(생존 편향)", "매출 ≠ 이익 — 단가는 보조",
+                     "대형주는 잠정실적 공시가 보고서 기한보다 먼저일 수 있다", "주가 = 네이버 일봉(KRX+넥스트레이드 통합 시세)"]}
+    with EXL_LOCK:
+        _EXL.update(key=key, d=d)
+    return d
+
+
 # ---------------------------------------------------------------- 궤도 요약 캐시(2026-10-11)
 # brief 캐시가 다 있어도 /api/orbit 이 매번 brief JSON 을 전부 읽어 5초 안팎(KB금융 103건 · 구글 드라이브 읽기).
 # 회사별로 행(orbit_scale 전 값)을 한 파일 .cache/orbit/{code}.json 에 모은다. sig = ORBIT_SUM_V | GIST_V | 보고서 rcept 목록 해시 —
@@ -9407,16 +9577,23 @@ def _val_export_tech(rows=None):
     return len(out)
 
 
+def _val_load_saved():
+    """저장된 저평가 결과(.cache/value/_result.json)를 메모리에 — 아직 안 읽었을 때만. VAL_LOCK 안에서 부른다, 계산은 띄우지 않는다.
+    value_view 와 exlead_view(수출 선행 발굴 — 저평가 줄의 빨간불을 쓴다)가 같이 써서 호출 순서에 따라 등급이 달라지지 않게."""
+    if VAL["rows"] or VAL["at"]:
+        return
+    try:
+        with open(os.path.join(VAL_DIR, "_result.json"), "r", encoding="utf-8") as fh:
+            old = json.load(fh)
+        if old.get("v") == VAL_V:
+            VAL.update(rows=old["rows"], at=old["at"], n_fell=old.get("n_fell", 0), n_univ=old.get("n_univ", 0))
+    except Exception:
+        pass
+
+
 def value_view(force=False):
     with VAL_LOCK:
-        if not VAL["rows"] and not VAL["at"]:
-            try:
-                with open(os.path.join(VAL_DIR, "_result.json"), "r", encoding="utf-8") as fh:
-                    old = json.load(fh)
-                if old.get("v") == VAL_V:
-                    VAL.update(rows=old["rows"], at=old["at"], n_fell=old.get("n_fell", 0), n_univ=old.get("n_univ", 0))
-            except Exception:
-                pass
+        _val_load_saved()
         stale = force or not VAL["at"] or time.time() - VAL["at"] > 26 * 3600     # 매일 06:30 _val_auto_loop 가 미리 센다
         if stale and not VAL["running"] and FIN is not None:
             VAL["running"] = True
@@ -9438,6 +9615,15 @@ def value_view(force=False):
         except Exception:
             pass
     out["rules"] = {"dd": VAL_DD, "ni": VAL_NI, "min": VAL_MIN}
+    try:                                    # 수출 선행 발굴 배지(2026-10-14) — 계산은 한 군데(exlead_view), 저평가 등급 · 점수는 안 바꾼다
+        xl = {r["code"]: r for r in (exlead_view().get("rows") or [])}
+        for r in out["rows"]:
+            e = xl.get(r.get("code"))
+            if e:
+                r["exl"] = {"tier": e["tier"], "tier_label": e.get("tier_label"), "cur": e["cur"], "months_label": e["months_label"],
+                            "cur_q": e["cur_q"], "due": e["due"], "hit": e["hit"], "why": e["why"]}
+    except Exception:
+        pass
     return out
 
 
@@ -12422,6 +12608,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, quarter_view(q.get("code", "")))
             if path == "/api/btb":
                 return self._send(200, btb_view(q.get("code", "")))
+            if path == "/api/exlead":
+                return self._send(200, exlead_view())
             if path == "/api/export":
                 return self._send(200, export_view())
             if path == "/api/export/auto":
