@@ -7645,6 +7645,7 @@ const synFresh=extra=>Object.assign({}, SYN_DEF, {stages:[]}, extra?JSON.parse(J
 const SYN_PART_KEYS=[['선행','선'],['전환','전'],['확인','확'],['가격','가']];
 const SYN_PART_HELP='점수 네 부분, 각 0~100(그 날 믿을 수 있는 회사끼리의 백분위, 높을수록 좋다) — 결측은 50(중앙) 대입, 선행이 없으면 점수 없음\n'+
   '선행 = 북투빌 · 잔고/연매출 배수 1년 변화\n전환 = 4분기 합 영업이익률이 낮을수록(늘어날 여지) — 흑자만 백분위, 적자는 해당 없음(50) · 과거 검증에서 약하다\n'+
+  '  (전환 "해당 없음"은 영업이익률 ≤ 0 기준 — "4분기 적자" 표시(영업 또는 순손실)와 기준이 달라 순손실 · 영업 미세 흑자 회사는 전환 점수를 받는다)\n'+
   '확인 = 보고서 뒤 새 수주 공시 금액 — 점수 밖(가중 0, 표시만 · 검증 전)\n가격 = 반영 갭(잔고 증가 − 주가 1년, 둘 다 300%에서 자름)\n점수 = 선행 35 · 전환 25 · 가격 25 (확인 0)';
 const lsGet=(k,d)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } };
 const lsSet=(k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
@@ -7720,7 +7721,8 @@ function synEvidence(bt, recDefs){
     (bt.n||0).toLocaleString()+'건 · '+(bt.firms||0)+'곳, 전체 중앙 '+f(bt.median)+'). 확인(수주 공시)·악재 감점은 과거 자료가 없어 빠졌고, 지금 상장된 회사만 있다(생존 편향 — 수준은 부풀어 있다, 묶음끼리 비교만 믿는다). '+
     '앞/뒤(2020년) 분리는 항목을 고를 때도 본 기준이라 표본 밖 검증이 아니다. 이 상자의 구간 통계는 수십 개라 보정 없이 보면 몇 개는 우연히 0을 벗어난다.'));
   const CV=bt.coverage||null;
-  if(CV&&CV.per_pct!=null) det.appendChild(el('p',null,'PER 자기 역사 %는 '+CV.per_pct.toLocaleString()+'/'+(CV.n||0).toLocaleString()+'행(둔화 뺀 '+(CV.per_pct_no_slow||0).toLocaleString()+'/'+(CV.no_slow||0).toLocaleString()+')에만 있다 — 적자 · 이력 8분기 미만은 해당 없음. 잔고 − 매출(lead)은 '+(CV.lead||0).toLocaleString()+'행.'));
+  if(CV&&CV.per_pct!=null) det.appendChild(el('p',null,'PER 자기 역사 %는 '+CV.per_pct.toLocaleString()+'/'+(CV.n||0).toLocaleString()+'행(둔화 뺀 '+(CV.per_pct_no_slow||0).toLocaleString()+'/'+(CV.no_slow||0).toLocaleString()+')에만 있다 — 적자 · 이력 8분기 미만은 해당 없음. 잔고 − 매출(lead)은 '+(CV.lead||0).toLocaleString()+'행.'+
+    (CV.amended_after!=null?' 마지막 분기 재무가 시점 뒤 정정값인 '+CV.amended_after.toLocaleString()+'행은 뺐고, 정정 여부를 모르는(옛 원장) 행이 '+(CV.fin_base_unknown||0).toLocaleString()+'행 — 앞 세 분기 · 1년 전 분기의 정정은 안 봤다.':'')));
   const t1=el('table','tbl dipTbl');
   t1.innerHTML='<tr><th>묶음</th><th class="r">표본</th><th class="r">회사</th><th class="r">중앙</th><th class="r">90% 구간</th><th class="r">이긴 비율</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
   const row1=(lab,x)=>{ if(!x) return; const tr=el('tr'); tr.appendChild(el('td',null,lab));
@@ -7730,18 +7732,18 @@ function synEvidence(bt, recDefs){
   ord.forEach(k=>row1('  '+k,SG[k]));
   det.appendChild(t1);
   const t2=el('table','tbl dipTbl');
-  t2.innerHTML='<tr><th>상위⅓ − 하위⅓</th><th class="r">하위⅓</th><th class="r">상위⅓</th><th class="r">차이</th><th class="r">90% 구간</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
+  t2.innerHTML='<tr><th title="컷은 날짜 안에서 매긴다(각 달 안 순위 백분위 33.3 · 66.7) — 전체를 한 번에 자르면 기간 효과가 섞인다(2026-10-15)">상위⅓ − 하위⅓(날짜 안 분위)</th><th class="r">하위⅓</th><th class="r">상위⅓</th><th class="r">차이</th><th class="r">90% 구간</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
   const line=(t,lab,x)=>{ if(!x) return; const tr=el('tr'); tr.appendChild(el('td',null,lab));
     [f(x.bot),f(x.top),f(x.spread),ci(x)+(on0(x)?' · 0 걸침':''),f(x.early),f(x.late)].forEach((v,i)=>tr.appendChild(el('td','num'+(i==2?' strong':''),v))); t.appendChild(tr); };
   line(t2,'예전 점수',F.score_old); line(t2,'지금 점수',F.score); line(t2,'  지금 점수 — 둔화를 뺀 나머지 안에서',NS.score);
-  const FK=[['btb','북투빌'],['backlog_yoy','잔고 1년 증가율'],['lead','잔고 − 4분기 매출(%p)'],['cover_chg','잔고/연매출 배수 1년 변화'],['m4','4분기 합 영업이익률(수준)'],['margin','한 분기 영업이익률(수준)'],['margin_delta','이익률 직전 분기 대비 변화'],['gap','반영 갭'],['per_pct','PER 자기 역사 %(낮을수록 싸다 — 차이가 음이면 싼 쪽이 앞선 것)'],['rev_accel','매출 가속'],['per','PER(접수일 주가)'],['price_1y','주가 1년']];
+  const FK=[['btb','북투빌'],['backlog_yoy','잔고 1년 증가율'],['lead','잔고 − 4분기 매출(%p)'],['cover_chg','잔고/연매출 배수 1년 변화'],['m4','4분기 합 영업이익률(수준)'],['margin','한 분기 영업이익률(수준)'],['margin_delta','이익률 직전 분기 대비 변화'],['gap','반영 갭'],['per_pct','PER 자기 역사 %(낮을수록 싸다 — 차이가 음이면 싼 쪽이 앞선 것)'],['rev_accel','매출 가속'],['per','PER(근사 — 시점 주가 ÷ 마지막 분기 4분기 순이익)'],['price_1y','주가 1년']];
   FK.forEach(([k,lab])=>line(t2,lab,F[k]));
   det.appendChild(t2);
   // 둔화를 뺀 나머지 안에서 — 항목마다(2026-10-14 v2 보고부터 no_slow 하위 키)
   const NK=FK.filter(([k])=>F[k]&&F[k].no_slow&&F[k].no_slow.spread!=null);
   if(NK.length){
     const t2b=el('table','tbl dipTbl');
-    t2b.innerHTML='<tr><th>둔화를 뺀 나머지 안에서 — 상위⅓ − 하위⅓</th><th class="r">하위⅓</th><th class="r">상위⅓</th><th class="r">차이</th><th class="r">90% 구간</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
+    t2b.innerHTML='<tr><th>둔화를 뺀 나머지 안에서 — 상위⅓ − 하위⅓(날짜 안 분위)</th><th class="r">하위⅓</th><th class="r">상위⅓</th><th class="r">차이</th><th class="r">90% 구간</th><th class="r">~2019</th><th class="r">2020~</th></tr>';
     NK.forEach(([k,lab])=>line(t2b,lab,F[k].no_slow));
     det.appendChild(t2b);
   }
@@ -7793,6 +7795,7 @@ async function viewSynergy(p, force){
     '수주가 실적과 주가로 넘어가는 길목을 찾는 스크리너. 네 신호를 한 줄에 세운다 — '+
     '① 선행: 북투빌·잔고/연매출 배수의 1년 변화(잔고가 매출보다 빨리 불어나나) ② 전환: 4분기 합 영업이익률이 아직 낮은가(늘어날 여지 — 흑자만, 적자는 해당 없음) ③ 확인: 보고서 뒤 새 수주 계약 공시(표시만 · 점수 밖) ④ 가격: 주가 반영 갭. '+
     '적자는 전환 부분 해당 없음(50) — 가산도 감점도 아니다. 4분기 합 적자인 곳은 "4분기 적자" 표시로 따로 알리고, 오른쪽 거름에서 뺄 수 있다. '+
+    '다만 전환 "해당 없음"은 영업이익률 ≤ 0 기준이고 "4분기 적자" 표시는 영업 또는 순손실이라 기준이 다르다 — 순손실 · 영업 미세 흑자 회사는 표시를 달고도 전환 점수를 받는다(통일은 미결). '+
     '선행 · 전환 · 가격만 과거 12년 검증으로 골랐다(아래 "과거 검증" 상자). 확인은 검증된 적 없어 점수 밖(표시만)이고, 전환은 약하다. '+
     '가치 대비 가격은 오른쪽 추천필터 "싼 수주"(PER 자기 역사 하위 50%)와 "가격·밸류" 열로 본다 — 점수에는 아직 안 들어간다. '+
     '카드는 가설 하나씩이다. 행을 펼치면 근거와 함께 "다음에 무엇을 확인할지" 질문, 발주처·동종 대안으로 가는 연결이 나온다.'));
@@ -7909,7 +7912,7 @@ function synRecBlock(rerender){
       e.title='2013~2025 매달, 그때 이 거름을 통과한 회사들의 12개월 초과수익(같은 기간 전 종목 중앙값 대비) 중앙값. '+
         '표본 '+x.n+'건 · '+x.firms+'곳, 한 달 평균 '+x.per_date.toFixed(1)+'곳. 90% 구간 '+fx(x.ci[0])+' ~ '+fx(x.ci[1])+(zero?'(0 걸침 — 우연일 수 있다)':'')+
         ', 2019년 전 '+(x.early!=null?fx(x.early):'—')+' · 2020년 뒤 '+(x.late!=null?fx(x.late):'—')+'. 문턱은 같은 표본에서 정한 값(표본 안). 악재 공시 거름은 과거 자료가 없어 빠졌다.'+
-        (rc.id==='cheap'?' 싼 수주의 문턱만 2026-10-14 설계 문서에 결과를 보기 전에 먼저 적었다. PER 자기 역사 %는 풍경 띠 전체 창, 백테스트는 최근 40분기 창 — 창이 다르다.':'');
+        (rc.id==='cheap'?' 싼 수주의 문턱만 2026-10-14 설계 문서에 결과를 보기 전에 먼저 적었다. PER 자기 역사 %는 풍경 띠 전체 창, 백테스트는 최근 40분기 창 — 창이 다르고, 백테스트 per_pct 는 공시일 종가 기준 · 화면은 풍경 계산일 주가 기준이라 주가 날짜도 다르다.':'');
       b.appendChild(e);
     }
     b.onclick=()=>{
@@ -8381,8 +8384,8 @@ function synLink(code, name){
 const fx=(v,d,suf)=> v===null||v===undefined ? '—' : (v>=0?'+':'')+v.toFixed(d)+(suf||'');
 const clsv=v=>'num'+(v>0?' pos':(v<0?' neg':''));
 // 2026-10-14 v2 — PER 은 오늘 주가(풍경 decide.per), 접수일 주가 PER 은 'PER(접수일)' 열(per_filed). 자기 역사 %는 풍경 decide.pct(띠 전체 창 — 백테스트의 40분기 창과 다르다)
-const SYN_PER_TIP='오늘 주가 ÷ 최근 4분기 주당이익(풍경 탭과 같은 값, 분할 보정). 풍경이 없는 회사는 —. 과거 검증에서 PER 수준은 무신호';
-const SYN_PERPCT_TIP='자기 역사 분기 PER(풍경 띠, 양수만) 가운데 지금보다 낮은 비율 — 낮을수록 싸다(35% 이하 초록 · 65% 이상 빨강). 적자 · 이력 8분기 미만 · 풍경 없음은 — (해당 없음, 감점 아님). 추천필터 "싼 수주"는 50% 이하. 과거 검증(둔화 뺀 표본)에서 싼 쪽 ⅓이 비싼 쪽보다 앞섰다 — 표본 안 값';
+const SYN_PER_TIP='풍경 계산일 주가 ÷ 최근 4분기 주당이익(풍경 탭과 같은 값, 분할 보정). 주가는 풍경이 마지막으로 계산된 날(괄호 안 날짜, 보통 1~7일 전) 기준이라 오늘 값이 아닐 수 있다. 풍경이 없는 회사는 —. 과거 검증에서 PER 수준은 무신호';
+const SYN_PERPCT_TIP='자기 역사 분기 PER(풍경 띠, 양수만) 가운데 지금보다 낮은 비율 — 낮을수록 싸다(35% 이하 초록 · 65% 이상 빨강). 적자 · 이력 8분기 미만 · 풍경 없음은 — (해당 없음, 감점 아님). 추천필터 "싼 수주"는 50% 이하. 과거 검증(둔화 뺀 표본)에서 싼 쪽 ⅓이 비싼 쪽보다 앞섰다 — 표본 안 값. 백테스트 per_pct 는 공시일 종가 기준(최근 40분기 창), 화면은 풍경 계산일 주가 기준(띠 전체 창)';
 
 const SYN_COLS = {
   '개요': [
@@ -8422,7 +8425,7 @@ const SYN_COLS = {
     {k:'rs', t:'RS', v:r=>r.rs, f:r=>r.rs===null?'—':String(r.rs), tip:'이 목록 안에서의 1년 주가 수익률 백분위(0~99)'},
     {k:'gap', t:'반영 갭', v:r=>r.gap, f:r=>fx(r.gap,0,'%p'), c:r=>clsv(r.gap), tip:'잔고 1년 증가율 − 주가 1년 수익률(%p, 둘 다 300%에서 자름)'},
     {k:'lead', t:'잔고 − 매출', v:r=>r.lead, f:r=>fx(r.lead,0,'%p'), c:r=>clsv(r.lead), tip:'잔고 1년 증가율 − 4분기 합 매출 1년 변화(%p) — 잔고가 매출보다 얼마나 빨리 느나. 추천필터 "싼 수주"는 15%p 이상'},
-    {k:'per', t:'PER', v:r=>r.per>0?r.per:null, f:r=>r.per===null||r.per===undefined?'—':(r.per>0?r.per.toFixed(1)+'배':'적자'), tip:SYN_PER_TIP},
+    {k:'per', t:'PER', v:r=>r.per>0?r.per:null, f:r=>r.per===null||r.per===undefined?'—':(r.per>0?r.per.toFixed(1)+'배':'적자')+(r.per_date&&r.per_date.length>=8?' ('+r.per_date.slice(4,6)+'/'+r.per_date.slice(6,8)+')':''), tip:SYN_PER_TIP},
     {k:'per_pct', t:'PER 자기 역사 %', v:r=>r.per_pct, f:r=>r.per_pct==null?'—':Math.round(r.per_pct)+'%'+(r.per_med?' (중앙 '+r.per_med.toFixed(0)+'배)':''), c:r=>'num'+(r.per_pct==null?'':(r.per_pct<=35?' pos':(r.per_pct>=65?' neg':''))), tip:SYN_PERPCT_TIP},
     {k:'capbl_pct', t:'시총/잔고 업종 %', v:r=>r.capbl_pct, f:r=>r.capbl_pct==null?'—':Math.round(r.capbl_pct)+'%', tip:'시가총액 ÷ 수주잔고의 같은 업종 안 백분위(믿을 수 있는 회사 3곳↑일 때만) — 낮을수록 잔고에 비해 시총이 작다. 사이클 지표(적자 · 저마진 산업을 같이 잡는다), 등급 근거 아님 · 점수 · 필터 · 주목 종목에 안 쓴다'},
     {k:'per_filed', t:'PER(접수일)', v:r=>r.per_filed>0?r.per_filed:null, f:r=>r.per_filed===null||r.per_filed===undefined?'—':(r.per_filed>0?r.per_filed.toFixed(1)+'배':'적자'), tip:'마지막 보고서 접수일 주가 ÷ 그때 최근 4분기 주당이익 — 펼친 행의 "PER(접수일 주가)" 문장과 같은 값. 오늘 PER 과 다를 수 있다'},
