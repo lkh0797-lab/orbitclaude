@@ -17,6 +17,10 @@
 
 한계 — 억울_백테스트.py 와 같다(지금 상장된 회사만, 표본 대부분이 2020년 뒤).
   PER = 종목.txt 시가총액 스냅샷 × (그 날 수정주가 ÷ 스냅샷 날 수정주가) ÷ 4분기 순이익. 그 사이 증자·자사주 소각은 반영 못 한다.
+  재무는 나중 정정값일 수 있다 — 원장 캐시(DRK.series, meta 없음)는 정정판을 들고 fdate 는 원본 접수일이다(억울 prep 공통). cur 분기 '기준일'
+  (정정 반영 접수일)이 t 뒤인 행은 패널에 amended_after 로 표시하고 점수 · 보고에서 뺀다(2026-10-15 리뷰). 기준일 없는 옛 원장은 '모름'(fin_base None)
+  으로 세어 둔다. 4분기 합의 앞 세 분기 · 1년 전 분기의 정정은 안 본다.
+  상⅓−하⅓(tercile_test)는 2026-10-15 부터 날짜 안 분위(by_date — 억울_백테스트 기본값은 pooled 그대로).
 
 실행: python 도구/시너지_백테스트.py   (억울_백테스트.py 의 시점 재구성을 그대로 쓴다)
 결과: 표준출력 + .cache/시너지/bt_panel.json · bt_report.json
@@ -99,6 +103,11 @@ def row_at(P, t):
     if not k or W.shift(k[-1]["fdate"], 200) < t:
         return None
     cur = k[-1]
+    # 재무는 나중 정정값일 수 있다 — cur 분기 '기준일'(정정 반영 접수일, 드러켄밀러.series)이 t 뒤면 rev4 · op4 · ni4(→ rev4_yoy · lead · m4 ·
+    # per · PER≥40 단계)는 t 에 알 수 없던 값. 행은 패널에 남기되 amended_after 로 표시해 main · report 가 뺀다(2026-10-15 리뷰).
+    # 기준일 없는 옛 원장은 fin_base None('모름'). 4분기 합의 앞 세 분기 · 1년 전 분기(q4)의 정정은 안 본다(한계)
+    fin_base = (cur.get("기준일") or "")[:8] or None
+    amended_after = bool(fin_base and fin_base > t)
     rev = cur.get("rev4")
     last, yoy = tr["last"], tr.get("yoy")
     b1 = last / (1 + yoy / 100) if (yoy is not None and yoy > -100) else None
@@ -180,6 +189,7 @@ def row_at(P, t):
          "margin4": m4,          # 시너지.score() 가 읽는 이름
          **bt_extra,
          "lab": "%dQ%d" % (cur["year"], cur["q"]),       # 마지막 분기 — 분기 패널 per_pct join 키
+         "fin_base": fin_base, "amended_after": amended_after,
          "loss4": (op4 is not None and op4 <= 0) or (ni4 is not None and ni4 <= 0)}
     derive(r)                                           # gap(양쪽 자름) · lead · per_pct(접수일 ≤ t)
     r["stage"], _ = SYN.stage(r)
@@ -295,6 +305,8 @@ def main():
                 print("  %d/%d 회사 · 표본 %d" % (n, len(comps), len(panel)), flush=True)
     by = {}
     for r in panel:
+        if r.get("amended_after"):          # cur 재무가 t 뒤 정정값인 행 — 그 날 백분위에도 안 든다(패널 파일엔 남긴다)
+            continue
         by.setdefault(r["t"], []).append(r)
     for rows in by.values():
         score_date(rows)
@@ -307,7 +319,8 @@ def main():
 def report(panel):
     out = {"dates": [W.DATES[0], W.DATES[-1]], "stages": {}, "factors": {}, "terciles": {}}
     Y = "ex12m"
-    rows = [r for r in panel if r.get(Y) is not None]
+    # cur 재무가 t 뒤 정정값인 행(amended_after)은 뺀다 — 옛 패널(키 없음)은 전부 든다
+    rows = [r for r in panel if r.get(Y) is not None and not r.get("amended_after")]
     allv = [r[Y] for r in rows]
     nd = [r for r in rows if r["stage"] != "둔화"]          # 둔화 뺀 나머지 — per_pct · lead 의 근거 표본
 
@@ -343,20 +356,24 @@ def report(panel):
     out["coverage"] = {"n": len(rows), "no_slow": len(nd),
                        "per_pct": sum(1 for r in rows if r.get("per_pct") is not None),
                        "per_pct_no_slow": sum(1 for r in nd if r.get("per_pct") is not None),
-                       "lead": sum(1 for r in rows if r.get("lead") is not None)}
+                       "lead": sum(1 for r in rows if r.get("lead") is not None),
+                       # 재무 정정(2026-10-15 리뷰): cur 기준일 > t 라 뺀 행 · 기준일 없는(옛 원장, 모름) 행
+                       "amended_after": sum(1 for r in panel if r.get("amended_after")),
+                       "fin_base_unknown": sum(1 for r in rows if not r.get("fin_base"))}
     cv = out["coverage"]
     print("  per_pct 있는 행 %d/%d (둔화 뺀 %d/%d) · lead 있는 행 %d/%d — PER 없는 행(적자 · 이력 8분기 미만)은 '싼 수주' 해당 없음" % (
         cv["per_pct"], cv["n"], cv["per_pct_no_slow"], cv["no_slow"], cv["lead"], cv["n"]))
-    print("\n== 항목별 — 날짜별 순위상관(IC) 평균과 세 묶음(상위⅓−하위⅓) 차이, 12개월 초과수익")
+    print("  cur 분기 재무가 t 뒤 정정값이라 뺀 행 %d · 기준일 없음(옛 원장, 모름) %d/%d" % (cv["amended_after"], cv["fin_base_unknown"], cv["n"]))
+    print("\n== 항목별 — 날짜별 순위상관(IC) 평균과 세 묶음(상위⅓−하위⅓, 날짜 안 분위) 차이, 12개월 초과수익")
     print("  %-20s %7s %6s %5s %7s %7s | %7s %7s %7s  %-15s %s" % ("항목", "IC", "t", "양수", "~2019", "2020~", "하위⅓", "상위⅓", "차이", "90%구간", "~2019/2020~"))
     for k, nm, fx in FACTORS:
         ic = W.ic_stats(rows, fx, Y, overlap=12)
-        tt = W.tercile_test(rows, fx, Y)
+        tt = W.tercile_test(rows, fx, Y, by_date=True)      # 상⅓−하⅓ 컷은 날짜 안에서(2026-10-15 — pooled 컷은 기간 효과가 섞였다)
         if not ic or not tt:
             continue
         # 둔화 뺀 나머지 안에서도 — per_pct · lead 는 이 표본에서 앞/뒤 부호가 같은지가 근거다(2026-10-14 v2)
         out["factors"][k] = dict(ic, name=nm, no_slow=W.ic_stats(nd, fx, Y, overlap=12))
-        out["terciles"][k] = dict(tt, name=nm, no_slow=W.tercile_test(nd, fx, Y))
+        out["terciles"][k] = dict(tt, name=nm, no_slow=W.tercile_test(nd, fx, Y, by_date=True))
         print("  %-20s %+7.3f %+6.2f %4.0f%% %+7.3f %+7.3f | %+7.1f %+7.1f %+7.1f  %+6.1f~%+6.1f  %s/%s" % (
             nm, ic["ic"], ic["t"], ic["pos"] * 100, ic["early"] or 0, ic["late"] or 0, tt["bot"], tt["top"], tt["spread"],
             tt["ci"][0], tt["ci"][1], "%+.0f" % tt["early"] if tt["early"] is not None else "—",
@@ -377,8 +394,8 @@ def report(panel):
     out["backlog"] = {}
     for k, nm, fx in BACKLOG_FACTORS:
         ic = W.ic_stats(rows, fx, Y, overlap=12)
-        tt = W.tercile_test(rows, fx, Y)
-        tn = W.tercile_test(nd0, fx, Y)
+        tt = W.tercile_test(rows, fx, Y, by_date=True)
+        tn = W.tercile_test(nd0, fx, Y, by_date=True)
         if not ic or not tt:
             continue
         out["backlog"][k] = {"name": nm, "ic": ic, "all": tt, "no_slow": tn}
@@ -422,8 +439,8 @@ def report(panel):
                 "%+.1f" % st.median(e) if e else "—", "%+.1f" % st.median(l) if l else "—"))
     # no_slow — 둔화 뺀 나머지의 중앙 · 90% 구간(화면 요약줄 "둔화 −y vs 나머지 +z") 위에 점수 상⅓−하⅓(score · score_old,
     # 예전 키 그대로 — 화면 NS.score 가 읽는다)을 얹는다
-    out["no_slow"] = dict(ns or {}, **{k: W.tercile_test(nd, (lambda r, k=k: r[k]), Y) for k in ("score", "score_old")})
-    print("\n== 둔화를 뺀 나머지 안에서 점수 상위⅓−하위⅓")
+    out["no_slow"] = dict(ns or {}, **{k: W.tercile_test(nd, (lambda r, k=k: r[k]), Y, by_date=True) for k in ("score", "score_old")})
+    print("\n== 둔화를 뺀 나머지 안에서 점수 상위⅓−하위⅓ (날짜 안 분위)")
     for k in ("score_old", "score"):
         x = out["no_slow"][k]
         if x:
@@ -441,6 +458,8 @@ if __name__ == "__main__":
         by = {}
         for r in panel:
             derive(r)            # gap(양쪽 자름) · lead · per_pct 를 행에서 다시 채운다 — lab 이 없는 옛 패널은 per_pct None
+            if r.get("amended_after"):       # 정정값 행은 main 과 같이 점수 · 보고 밖(패널에 기준일이 없으면 다시 재지 못한다 — 패널 재생성)
+                continue
             by.setdefault(r["t"], []).append(r)
         for rows in by.values():
             score_date(rows)

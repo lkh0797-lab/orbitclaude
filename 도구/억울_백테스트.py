@@ -452,13 +452,21 @@ def boot(rows, fn, n=800, seed=7):
     return (vals[int(len(vals) * .05)], vals[int(len(vals) * .95)]) if vals else (None, None)
 
 
-def tercile_test(rows, fx, y="ex12m"):
+def tercile_test(rows, fx, y="ex12m", by_date=False):
+    """상⅓−하⅓ 묶음 차이. by_date=True 면 컷을 날짜 안에서 매긴다(시너지.date_pct — 날짜 안 순위 백분위 → 33.3 · 66.7, 6행 미만 날짜 제외):
+    전체 표본을 한 번에 자르는 컷(기본값, 예전 그대로)은 미래 날짜 행에 기대고 기간 효과가 묶음 차이에 섞인다(2026-10-15 리뷰).
+    기본값을 두는 건 억울 · 분기변화 표가 안 바뀌게 — 도구/시너지_백테스트.py report 만 by_date 로 부른다. 부트스트랩 · 앞/뒤 기간은 같다."""
     rs = [dict(r, _s=fx(r)) for r in rows if r.get(y) is not None]
     rs = [r for r in rs if r["_s"] is not None]
+    if by_date:
+        rs = S.SYN.date_pct(rs, "_s", "t")
     if len(rs) < 30:
         return None
-    v = sorted(r["_s"] for r in rs)
-    a, b = v[len(v) // 3], v[2 * len(v) // 3]
+    if by_date:
+        a, b = 100.0 / 3, 200.0 / 3
+    else:
+        v = sorted(r["_s"] for r in rs)
+        a, b = v[len(v) // 3], v[2 * len(v) // 3]
 
     def spread(sub):
         lo = [r[y] for r in sub if r["_s"] < a]
