@@ -105,6 +105,19 @@ def rev_quarters(mon_cut, rev_yoy_by_q):
     return out
 
 
+def last_reported_q(fd, d):
+    """접수일 fd[q] <= d 인 마지막 분기(없으면 None)."""
+    qs = [q for q, t in (fd or {}).items() if t and t <= d]
+    return max(qs) if qs else None
+
+
+def pit_pairs(mon, rev_yoy_by_q, fd, m, d):
+    """시점 d(= 통관 달 m 의 다음 달 16일)에서 알 수 있던 쌍 — 통관 ≤ m, 매출은 접수일 ≤ d 인 분기만."""
+    cut = cut_series(mon, m)
+    rev_d = {q: v for q, v in (rev_yoy_by_q or {}).items() if (fd or {}).get(q) and fd[q] <= d}
+    return [p for p in rev_quarters(cut, rev_d) if p["x"] is not None and p["r"] is not None]
+
+
 # ---------------------------------------------------------------- 판정
 def _pct(v):
     return ("%+.0f%%" % v) if v is not None else "모름"
