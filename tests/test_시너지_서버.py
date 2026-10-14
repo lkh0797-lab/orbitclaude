@@ -158,7 +158,7 @@ def test_forward_writes_daily_file_with_spec_fields(monkeypatch, tmp_path):
     assert p == os.path.join(str(tmp_path), "시너지", "forward", "20261015.json") and os.path.exists(p)
     with open(p, encoding="utf-8") as fh:
         d = json.load(fh)
-    assert d["spec"].startswith("2026-10-14 v2") and d["at"] > 0 and d["n"] == 2
+    assert d["spec"] == SRV.SYN_SPEC and "loss4" in d["spec"] and d["at"] > 0 and d["n"] == 2
     a, b = d["rows"]
     assert set(a) == {"code", "name", "reliable", "stage", "score", "btb", "backlog_yoy", "lead", "per", "per_pct", "per_date", "cheap", "loss4", "n_flags"}
     assert a["cheap"] is True and a["n_flags"] == 1 and a["per_pct"] == 30.0
