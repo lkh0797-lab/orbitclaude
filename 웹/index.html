@@ -5853,6 +5853,7 @@ function viewTech(p, run){
     '옛 패턴(CAN SLIM · VCP · 옛 컵 앤 핸들 · 300억 눌림목 등)은 2026-10-14 제거 — 그 전에 만든 리포트에는 옛 칩이 남아 있다(다시 계산하면 새 식) (Tech · chart_screener)'));
   const meta=el('span','tchMeta'); hd.appendChild(meta);
   const rf=el('button','ghost','다시 계산'); hd.appendChild(rf);
+  if(RO.on) rf.style.display='none';      // 조회 전용 — 스캔은 메인 PC 에서(누르면 403 뒤 리포트 자리가 비던 것)
   const nw=el('a','ghost','새 창으로'); nw.target='_blank'; nw.rel='noopener'; nw.href='/tech/report'; hd.appendChild(nw);
   box.appendChild(hd);
   const msg=el('div'); box.appendChild(msg);
@@ -14591,6 +14592,7 @@ const lsT=s=>Date.UTC(+s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8));
 const LS_RETRY=610000;   // ms — 서버 LAND_RETRY(600초): 새로 그리기 일시 오류 뒤 그동안은 다시 그리지 않는다. 그 뒤 한 번 더 묻는다
 
 async function viewLand(p){
+  if(!S.co){ p.innerHTML=''; p.appendChild(el('div','empty','왼쪽 위 검색창에서 회사를 고르면 15년 풍경이 열린다.')); return; }   // 회사 없이 탭을 열면 TypeError 가 나던 것
   const c=S.co, code=c.code;
   p.innerHTML='';
   const progBox=el('div'); p.appendChild(progBox);
