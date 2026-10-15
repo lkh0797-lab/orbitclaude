@@ -285,7 +285,7 @@ def test_tech_groups_new_pattern_stage():
             _jrow(D[4], "Z", "vcp", "breakout"),                          # 옛 탐지기 기록 — 빠진다
             _jrow(D[5], "Z", "canslim", "forming")]
     res = M.score([], rows, p, UNIV)
-    assert "tech_legacy" not in res and res["schema"] == M.SCHEMA == 3
+    assert "tech_legacy" not in res and res["schema"] == M.SCHEMA == 4
     tech = res["tech"]
     g = {x["key"]: x for x in tech["groups"]}
     assert tech["dates"] == [D[4], D[5]]
@@ -385,7 +385,7 @@ def test_legacy_rows_dropped_current_rule_kept():
     assert "컵 앤 핸들(사용자 식): 백테스트 아직 없음" in ref
     assert "346거래" in ref and "−2.4%" in ref and "승률 31%" in ref        # 보컬은 이미 백테스트됨(손실) — 숨기지 않는다
     assert "+4.0" not in ref                                          # 옛 식 수치를 새 식에 붙이지 않는다
-    assert res["schema"] == M.SCHEMA == 3
+    assert res["schema"] == M.SCHEMA == 4
     assert "pattern:vcp" not in g and "pattern:-" not in g                   # 옛 기록 묶음은 아예 없다
     assert not hasattr(M, "LEGACY_EMPTY") and not hasattr(M, "TECH_LEGACY_REF")
 
