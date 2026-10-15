@@ -2821,6 +2821,22 @@ table.vclYr td.num.up{color:#d24c43}table.vclYr td.num.dn{color:#3a6fd8}
 .lsGuide{stroke:rgba(241,217,160,.5);stroke-width:1;stroke-dasharray:3 4}
 .lsCap .k{font:600 12px var(--f-body);fill:var(--p-hi)}
 .lsCap .e{font:500 9.5px var(--f-num);letter-spacing:.14em;fill:var(--p-faint)}
+.lsGauge{margin:12px 0 4px;max-width:760px}
+.lsGaugeH{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:13px;color:var(--p-hi)}
+.lsGaugeH b{font-size:12px;letter-spacing:.04em;color:var(--p-dim)}
+.lsGaugeH .z{font-weight:700;padding:1px 8px;border-radius:999px;font-size:12px;color:#0e1319}
+.lsGaugeH .z.lo{background:#7cc4ff}.lsGaugeH .z.mid{background:#f7f3e9}.lsGaugeH .z.hi{background:#f5a35c}
+.lsGaugeBar{position:relative;height:16px;margin:10px 0 4px;border-radius:8px;overflow:visible;background:linear-gradient(90deg,rgba(124,196,255,.55),rgba(247,243,233,.22) 25%,rgba(247,243,233,.22) 75%,rgba(245,163,92,.6))}
+.lsGaugeBar .seg{position:absolute;top:0;bottom:0;border-right:1px dashed rgba(255,255,255,.28)}
+.lsGaugeBar .seg.hi{border-right:0}
+.lsGaugeBar .seg span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:10.5px;color:rgba(255,255,255,.75);white-space:nowrap;pointer-events:none}
+.lsGaugeBar .dot{position:absolute;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:3px solid #0e1319;box-shadow:0 0 0 2px #f1d9a0}
+.lsGaugeBar .dot.lo{background:#7cc4ff}.lsGaugeBar .dot.mid{background:#f7f3e9}.lsGaugeBar .dot.hi{background:#f5a35c}
+.lsGaugeSc{position:relative;height:16px;font-size:10.5px;color:var(--p-faint)}
+.lsGaugeSc span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.lsGaugeSc span.l{transform:none}.lsGaugeSc span.r{transform:translateX(-100%)}
+.lsGaugeNote{font-size:11px;color:var(--p-faint);margin-top:2px}.lsGaugeNote.warn{color:#f5a35c}
+.lsGaugeNa{font-size:12px;color:var(--p-dim);margin:10px 0}
 .lsKey{display:flex;gap:16px;flex-wrap:wrap;margin:6px 2px 0;font-size:11.5px;color:var(--p-dim)}
 .lsKey span{display:inline-flex;align-items:center;gap:6px}
 .lsKey i{display:inline-block;width:18px;height:0;border-top:2px solid}
@@ -14707,9 +14723,10 @@ function lsPlate(plate, d, c, animate){
   let p1=fol ? (fol.v>=0.6?'주가는 이익선을 따라 움직였다':'주가와 이익선은 자주 따로 놀았다')+'(상관 '+fol.v.toFixed(2)+'). ' : '';
   const gmax=Math.max(...(d.gaps||[]).map(g=>g.gap)), gmin=Math.min(...(d.gaps||[]).map(g=>g.gap));
   if(gapNow!==null && fol && (gapNow>=gmax || gapNow<=gmin) && Math.abs(gapNow)>=40) p1+='그런데 지금은 15년 들어 이익선에서 가장 멀리 '+(gapNow>0?'위로':'아래로')+' 떨어져 있다. ';
-  if(gapNow!==null) p1+='지금 '+won(dc.px)+'원은 최근 4분기 이익으로 그은 이익선 '+won(lineNow)+'원보다 '+Math.abs(gapNow).toFixed(0)+'% '+(gapNow>=0?'위':'아래')+
-    (dc.pct!==null&&dc.pct!==undefined?' — PER '+dc.per.toFixed(1)+'배, 자기 역사 하위 '+dc.pct.toFixed(0)+'% 자리.':'.');
+  if(gapNow!==null) p1+='지금 '+won(dc.px)+'원은 보통 값(최근 4분기 이익 × 이 회사 15년 PER 중앙값) '+won(lineNow)+'원보다 '+Math.abs(gapNow).toFixed(0)+'% '+(gapNow>=0?'비싸다':'싸다')+
+    (dc.pct!==null&&dc.pct!==undefined?' — PER '+dc.per.toFixed(1)+'배, 15년 중 '+dc.pct.toFixed(0)+'%의 시간보다 비싼 자리.':'.');
   hl.appendChild(el('p',null,p1));
+  hl.appendChild(lsGauge(d));
   hl.appendChild(el('p',null,'버핏이라면 「'+dc.buffett.v+'」, 린치라면 「'+dc.lynch.v+'」 — 지금 유형은 '+(dc.type||'—')+'.'));
   hl.appendChild(el('p','spEn','Fifteen years of filings in one frame: the kind of company it has been, whether price followed earnings, and when Buffett’s and Lynch’s conditions lined up.'));
   plate.appendChild(hl);
@@ -14734,10 +14751,11 @@ function lsPlate(plate, d, c, animate){
     (d.px_partial?'<span class="g">확정 전 값 — 마지막 주가는 '+lsD(((d.monthly||[]).slice(-1)[0]||{}).d)+' '+d.px_at+'에 받은 값(장중 · 넥스트레이드 시간외 값이 섞임 — 20:10 뒤 다시 받아 확정 값으로)</span>':'')+
     '<span><i style="border-color:rgba(236,234,228,.45);border-left-width:2px;border-top-width:0;height:10px;width:0"></i>세로 막대 = 그달 고가~저가(장중) · 점 = 기간 최고 · 최저'+
       ((d._extTxt||[]).length?' — '+d._extTxt.join(' / '):'')+'</span>'+      // 숫자 · 날짜만(서버 값) — HTML 특수문자 없음
-    z('hi').replace('</span>',' (값 띠 위)</span>')+z('mid').replace('</span>',' (띠 안)</span>')+
-    z('lo').replace('</span>',' (값 띠 아래)</span>')+z('na').replace('</span>',' (적자 · 이익선 없음)</span>')+
-    '<span><i style="border-color:#f1d9a0;border-top-style:dashed"></i>이익선 = 최근 4분기 주당이익 × 자기 역사 PER 중앙값 '+(d.band.mid?d.band.mid.toFixed(1)+'배':'')+'</span>'+
-    '<span><i style="border-color:rgba(214,180,106,.5);border-top-width:8px"></i>값 띠 '+(d.band.lo?d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'')+' (자기 역사 PER 25–75%)</span>'+
+    z('hi').replace('</span>',' (비싼 값 위)</span>')+z('mid').replace('</span>',' (싼 값~비싼 값)</span>')+
+    z('lo').replace('</span>',' (싼 값 아래)</span>')+z('na').replace('</span>',' (적자)</span>')+
+    '<span><i style="border-color:#f1d9a0;border-top-style:dashed"></i>보통 값(이익선) = 최근 4분기 주당이익 × 이 회사 15년 PER 중앙값 '+(d.band.mid?d.band.mid.toFixed(1)+'배':'')+'</span>'+
+    '<span><i style="border-color:rgba(214,180,106,.5);border-top-width:8px"></i>띠 = 싼 값~비싼 값 (이 회사 15년 PER 25–75% 자리'+(d.band.lo?', '+d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'')+')</span>'+
+    '<span><i style="border-color:#f5a35c;border-top-width:6px"></i>가운데 띠 = 달마다 보통 값 대비 위치(위 = 비쌌던 때 · 아래 = 쌌던 때)</span>'+
     '<span><b style="background:#d6b46a">B</b>버핏 · <b style="background:#4fc3a1">L</b>린치 조건이 맞은 때 — 위 숫자는 그 뒤 1년 주가</span>'+
     '<span><i class="hatch"></i>적자 분기</span>';
   plate.appendChild(key);
@@ -14757,12 +14775,46 @@ function lsPlate(plate, d, c, animate){
   plate.appendChild(ft);
 }
 
-// 주가가 그때 값 띠의 어디에 있었나 — 비쌈(띠 위) · 적정 · 쌈(띠 아래) · 없음(적자 · 이익선 없음)
-const LS_ZONE={hi:['비쌈','#f5a35c'], mid:['적정','#f7f3e9'], lo:['쌈','#7cc4ff'], na:['이익선 없음','#8b95a3']};
+// 가치 온도계(2026-10-16) — 지금 주가가 이 회사 15년 역사에서 얼마나 싼가 · 비싼가. 자리 = 자기 역사 PER 백분위(decide.pct):
+// 0 = 15년 중 가장 쌌던 때, 100 = 가장 비쌌던 때. 25 · 75 가 싼 값 · 비싼 값 선(값 띠)과 같은 자리라 구간 경계도 같다
+function lsGauge(d){
+  const dc=d.decide||{}, w=el('div','lsGauge');
+  const lastL=[...(d.line||[])].reverse().find(x=>x.mid);
+  if(dc.pct===null||dc.pct===undefined||!lastL||!dc.px){
+    w.appendChild(el('div','lsGaugeNa','가치 온도계 — 지금은 적자이거나 이익 기록이 모자라 이익 기준 값을 잴 수 없다'));
+    return w;
+  }
+  const pct=Math.max(0,Math.min(100,dc.pct)), gap=(dc.px/lastL.mid-1)*100;
+  const zone=pct>75?'hi':pct<25?'lo':'mid';
+  const h=el('div','lsGaugeH'); h.appendChild(el('b',null,'가치 온도계'));
+  h.appendChild(el('span','z '+zone,LS_ZONE[zone][0]));
+  h.appendChild(el('span',null,'지금 '+won(dc.px)+'원 — 보통 값 '+won(lastL.mid)+'원보다 '+(Math.abs(gap)<5?'거의 같음':Math.abs(gap).toFixed(0)+'% '+(gap>0?'비쌈':'쌈'))+
+    ' · 15년 중 '+Math.round(pct)+'%의 시간보다 비싼 자리'));
+  w.appendChild(h);
+  const bar=el('div','lsGaugeBar');
+  [['lo','싼 구간',0,25],['mid','보통 구간',25,75],['hi','비싼 구간',75,100]].forEach(([k,t,a,b])=>{
+    const s=el('div','seg '+k); s.style.left=a+'%'; s.style.width=(b-a)+'%'; s.appendChild(el('span',null,t)); bar.appendChild(s); });
+  const dot=el('i','dot '+zone); dot.style.left=pct+'%'; dot.title='지금 — 15년 중 '+Math.round(pct)+'%의 시간보다 비싼 자리'; bar.appendChild(dot);
+  w.appendChild(bar);
+  const sc=el('div','lsGaugeSc');
+  [['15년 중 가장 쌌던 때',0,'l'],['싼 값 '+won(lastL.lo)+'원',25,''],['보통 값 '+won(lastL.mid)+'원',50,''],['비싼 값 '+won(lastL.hi)+'원',75,''],['가장 비쌌던 때',100,'r']]
+    .forEach(([t,p,c])=>{ const s=el('span',c||null,t); s.style.left=p+'%'; sc.appendChild(s); });
+  w.appendChild(sc);
+  const nt=[];
+  nt.push('값 = 최근 4분기 주당이익 × 이 회사 15년 PER(25% · 중앙 · 75% 자리 '+d.band.lo.toFixed(1)+' · '+d.band.mid.toFixed(1)+' · '+d.band.hi.toFixed(1)+'배)');
+  if(dc.type==='경기순환') nt.push('경기순환 유형 — 이익이 꼭대기일 때는 PER 이 낮아 싸 보이고 바닥일 때는 비싸 보인다. 이 온도계를 덜 믿는다');
+  nt.push('검증 메모: 자기 역사 대비 값의 자리는 6–12개월 수익률과 약한 음(−)의 상관 — 싸다고 곧 오르지는 않았다');
+  nt.forEach((t,i)=>w.appendChild(el('div','lsGaugeNote'+(i===1&&dc.type==='경기순환'?' warn':''),t)));
+  return w;
+}
+
+// 주가가 그때 어디에 있었나 — 비싼 구간(비싼 값 위) · 보통 구간(싼 값~비싼 값) · 싼 구간(싼 값 아래) · 이익 없음(적자 · 이익선 없음)
+const LS_ZONE={hi:['비싼 구간','#f5a35c'], mid:['보통 구간','#f7f3e9'], lo:['싼 구간','#7cc4ff'], na:['이익 없음','#8b95a3']};
 let LS_CLIP=0;
 function lsChart(fig, d, plate){
-  const W=1000, L=58, RR=124, T=42, H1=300, GAP=40, H2=66, B=28;
-  const pTop=T, pBot=T+H1, rTop=pBot+GAP, rBot=rTop+H2, H=rBot+B;
+  const W=1000, L=58, RR=124, T=42, H1=300, GAP=40, H2=66, B=28, GS=40, HS=64;
+  // 가격 판 → 가치 대비 위치 띠(sTop~sBot, 2026-10-16) → ROE 판
+  const pTop=T, pBot=T+H1, sTop=pBot+GS, sBot=sTop+HS, rTop=sBot+GAP, rBot=rTop+H2, H=rBot+B;
   const R=d.rows, M=d.monthly||[], LN=d.line||[];
   // 최근 4분기 칸은 그 분기 말에서 반년 앞(4분기 창의 가운데)에 놓는다
   const rx=r=>r.ttm&&r.end?Date.UTC(+r.end.slice(0,4),+r.end.slice(4,6)-7,1):Date.UTC(r.year,6,1);
@@ -14873,7 +14925,36 @@ function lsChart(fig, d, plate){
     svg.appendChild(gz);
   }
 
-  // 오른쪽 이름표 — 지금 · 비쌈 · 이익선 · 쌈. 겹치면 위아래로 민다
+  // 가치 대비 위치 띠(2026-10-16) — 달마다 '주가가 보통 값(이익선)보다 몇 % 위 · 아래였나'. 가운데 = 보통 값, 위 = 비쌌던 때, 아래 = 쌌던 때.
+  // 로그 눈금(×2 = +100%, ÷2 = −50% 가 같은 높이), ×4 · ÷4 밖은 끝에 붙인다. 색 = 그달 구간(싼 · 보통 · 비싼), 적자 달은 비운다
+  {
+    const sMid=(sTop+sBot)/2, sR=Math.log(4);
+    const YS=r=>sMid-Math.max(-1,Math.min(1,Math.log(r)/sR))*(HS/2);
+    const cp=svgEl('text',{x:L,y:sTop-10,class:'lsCap'});
+    cp.innerHTML='<tspan class="k"></tspan><tspan class="e" dx="8">보통 값(이익선) 대비 — 위로 길수록 비쌌던 때 · 아래로 길수록 쌌던 때</tspan>';
+    cp.querySelector('.k').textContent='가치 대비 위치'; svg.appendChild(cp);
+    [[2,'+100%'],[0.5,'−50%']].forEach(([r,t])=>{ const y=YS(r);
+      svg.appendChild(svgEl('line',{x1:L,x2:W-RR,y1:y,y2:y,stroke:'rgba(255,255,255,.08)','stroke-dasharray':'3 4'}));
+      const tx=svgEl('text',{x:L-8,y:y+3,'text-anchor':'end',class:'lsTick'}); tx.textContent=t; svg.appendChild(tx); });
+    svg.appendChild(svgEl('line',{x1:L,x2:W-RR,y1:sMid,y2:sMid,stroke:'rgba(241,217,160,.55)','stroke-dasharray':'4 4'}));
+    const t0_=svgEl('text',{x:L-8,y:sMid+3,'text-anchor':'end',class:'lsTick'}); t0_.textContent='보통'; svg.appendChild(t0_);
+    const bwS=Math.max(1.2,(W-L-RR)/Math.max(1,M.length)*0.72);
+    const gS=svgEl('g',{class:'lsStrip'});
+    let last=null;
+    M.forEach(m=>{ const q=lnAt(m); if(!q||!q.mid||!q.lo||!(m.p>0)) return;
+      const r=m.p/q.mid, y=YS(r), x=X(lsT(m.d)), z=zoneOf(m);
+      const b=svgEl('rect',{x:(x-bwS/2).toFixed(1),y:Math.min(y,sMid).toFixed(1),width:bwS.toFixed(1),height:Math.max(0.8,Math.abs(sMid-y)).toFixed(1),fill:LS_ZONE[z][1]});
+      b.setAttribute('opacity',z==='mid'?'.42':'.9'); gS.appendChild(b); last={m,r,y,x}; });
+    svg.appendChild(gS);
+    // '지금' 은 마지막 달에 보통 값이 있을 때만 — 지금 적자(이익선 끊김)면 옛 달 값을 '지금'으로 적지 않는다
+    if(last&&last.m===M[M.length-1]){ const g_=(last.r-1)*100;
+      svg.appendChild(svgEl('circle',{cx:last.x,cy:last.y,r:3.5,class:'lsNowDot'}));
+      const tx=svgEl('text',{x:W-RR+10,y:Math.max(sTop+8,Math.min(sBot,last.y+4)),class:'lsLab gold'});
+      tx.textContent='지금 '+(Math.abs(g_)<5?'보통 근처':(g_>0?'+':'−')+Math.abs(g_).toFixed(0)+'%'); svg.appendChild(tx); }
+    else if(M.length){ const tx=svgEl('text',{x:W-RR+10,y:sMid+4,class:'lsLab'}); tx.textContent='지금 — 적자'; svg.appendChild(tx); }
+  }
+
+  // 오른쪽 이름표 — 지금 · 비싼 값 · 보통 값 · 싼 값(원). 겹치면 위아래로 민다
   const labs=[];
   const lastL=[...LN].reverse().find(x=>x.mid);
   const mNow=M.length?M[M.length-1]:null;
@@ -14883,12 +14964,14 @@ function lsChart(fig, d, plate){
     const live=d.px_partial&&M.length&&mNow===M[M.length-1];
     labs.push({y:Y(mNow.p), yd:Y(mNow.p), xd:X(lsT(mNow.d)), now:true, txt:(live?'확정 전 ':'지금 ')+won(mNow.p),
       title:live?lsD(mNow.d)+' '+d.px_at+'에 받은 값(확정 전) — 20:10(넥스트레이드 애프터마켓 끝) 뒤 다시 받아 그날 확정 값으로 바뀝니다':'마지막 종가 ('+lsD(mNow.d)+')',
-      sub:gap!==null?'이익선 '+(gap>=0?'+':'')+gap.toFixed(0)+'% · '+LS_ZONE[zoneOf(mNow)][0]:'이익선 없음(적자)'});
+      sub:gap===null?'적자 — 보통 값 없음':Math.abs(gap)<5?'보통 값 근처':'보통 값보다 '+Math.abs(gap).toFixed(0)+'% '+(gap>0?'비쌈':'쌈')});
   }
   if(lastL){
+    // 원 단위 — 배수(PER)는 마우스를 올렸을 때만. 값 = 최근 4분기 주당이익 × 이 회사 15년 PER 의 25% · 중앙 · 75% 자리
     const xe=X(lsT(lastL.d));
-    [['hi','비쌈 '+d.band.hi.toFixed(1)+'배',''],['mid','이익선 '+d.band.mid.toFixed(1)+'배','gold'],['lo','쌈 '+d.band.lo.toFixed(1)+'배','']].forEach(([k,txt,cls])=>{
-      const v=lastL[k]; labs.push({y:Yc(v), yd:Yc(v), xd:xe, txt:txt+(v<vMin?' ↓':v>vMax?' ↑':''), cls, band:true}); });
+    [['hi','비싼 값 ','','75% 자리 '+d.band.hi.toFixed(1)+'배'],['mid','보통 값 ','gold','중앙 '+d.band.mid.toFixed(1)+'배 — 이익선'],['lo','싼 값 ','','25% 자리 '+d.band.lo.toFixed(1)+'배']].forEach(([k,txt,cls,tp])=>{
+      const v=lastL[k]; labs.push({y:Yc(v), yd:Yc(v), xd:xe, txt:txt+won(v)+(v<vMin?' ↓':v>vMax?' ↑':''), cls, band:true,
+        title:txt.trim()+' '+won(v)+'원 = 최근 4분기 주당이익 × 이 회사 15년 PER '+tp}); });
   }
   labs.sort((a,b)=>a.y-b.y);
   const hOf=l=>l.now?30:14;
@@ -14907,6 +14990,7 @@ function lsChart(fig, d, plate){
       const t=svgEl('text',{x:xl+5,y:l.y-3,class:'lsNowT'}); t.textContent=l.txt; g.appendChild(t);
       const s=svgEl('text',{x:xl,y:l.y+12,class:'lsNowS'}); s.textContent=l.sub; g.appendChild(s);
     } else {
+      if(l.title) g.appendChild(svgEl('title',{})).textContent=l.title;
       const t=svgEl('text',{x:xl,y:l.y+4,class:'lsLab '+l.cls}); t.textContent=l.txt; g.appendChild(t);
     }
     svg.appendChild(g);
@@ -15007,10 +15091,10 @@ function lsChart(fig, d, plate){
     const gap=ln&&ln.mid?(m.p/ln.mid-1)*100:null;
     const per=ln&&ln.mid&&d.band.mid?m.p/(ln.mid/d.band.mid):null;
     const hb=m.ic?'장중':'종가';
-    [['월말 종가',won(m.p)+'원'],['이익선',ln&&ln.mid?won(ln.mid)+'원':(ln&&ln.loss?'적자':'—')],
+    [['월말 종가',won(m.p)+'원'],['보통 값(이익선)',ln&&ln.mid?won(ln.mid)+'원':(ln&&ln.loss?'적자':'—')],
      ['월중 고가',m.hi>0?won(m.hi)+'원 ('+(+m.hd.slice(6,8))+'일 '+hb+')':'—'],['월중 저가',m.lo>0?won(m.lo)+'원 ('+(+m.ld.slice(6,8))+'일 '+hb+')':'—'],
-     ['벌어짐',lsPct(gap)],
-     ['그때 PER',per?per.toFixed(1)+'배':'—'],['값 띠',ln&&ln.lo?won(ln.lo)+'–'+won(ln.hi):'—'],['띠 기준',d.band.lo?d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'—']]
+     ['보통 값 대비',gap===null?'—':Math.abs(gap)<5?'보통 근처':Math.abs(gap).toFixed(0)+'% '+(gap>0?'비쌈':'쌈')],
+     ['그때 PER',per?per.toFixed(1)+'배':'—'],['싼 값~비싼 값',ln&&ln.lo?won(ln.lo)+'–'+won(ln.hi)+'원':'—'],['PER 기준(15년 25–75%)',d.band.lo?d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'—']]
       .forEach(([k,v])=>{ const c2=el('div'); c2.appendChild(el('span',null,k)); c2.appendChild(el('b',null,v)); gr.appendChild(c2); });
     tip2.appendChild(gr); tip2.hidden=false;
     const tw=tip2.offsetWidth; let lx=x*sc+14; if(lx+tw>box.width-4) lx=x*sc-tw-14;
