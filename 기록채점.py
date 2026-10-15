@@ -136,6 +136,16 @@ def _shift(d, days):
     return (dt.date(int(d[:4]), int(d[4:6]), int(d[6:8])) + dt.timedelta(days=days)).strftime("%Y%m%d")
 
 
+def _add_weekdays(d, k):
+    """d 다음 k 번째 평일(YYYYMMDD) — 아직 안 온 거래일을 어림한다. 공휴일 달력은 모른다(주말만 건너뜀 — 공휴일이 끼면 하루씩 늦다)."""
+    x = dt.date(int(d[:4]), int(d[4:6]), int(d[6:8]))
+    while k > 0:
+        x += dt.timedelta(days=1)
+        if x.weekday() < 5:
+            k -= 1
+    return x.strftime("%Y%m%d")
+
+
 def _code(x):
     """종목코드 — 엑셀이 앞자리 0 을 먹었으면 되살린다."""
     if x is None:
@@ -275,9 +285,15 @@ def _evaluate(prices, univ, code, rdate, cutoff=None, not_before=None, stop=None
     i = bisect.bisect_right(ds, rdate)
     if not_before:
         i = max(i, bisect.bisect_left(ds, not_before))
-    out = {"entry_d": None, "h": {}, "now": None, "exit": None, "exit_done": False, "stalled": False}
-    if i >= n:
-        return out                       # 아직 진입 전
+    out = {"entry_d": None, "h": {}, "now": None, "exit": None, "exit_done": False, "stalled": False, "due": {}}
+    if i >= n:                           # 아직 진입 전 — 진입일(기록 다음 평일, 파일 쓴 날 이후)부터 어림한 '첫 숫자가 나오는 날'
+        base = rdate if n == 0 else max(rdate, ds[n - 1])
+        entry = _add_weekdays(base, 1)
+        if not_before and entry < not_before:
+            entry = not_before if dt.date(int(not_before[:4]), int(not_before[4:6]), int(not_before[6:8])).weekday() < 5 \
+                else _add_weekdays(not_before, 1)
+        out["due"] = {"now": _add_weekdays(entry, 1), **{str(h): _add_weekdays(entry, h) for h in HORIZONS}}
+        return out
     e, d0 = cs[i], ds[i]
     out["entry_d"] = d0
     stalled = bool(glast) and n > 0 and _ordinal(glast) - _ordinal(ds[n - 1]) > STALL_DAYS
@@ -297,6 +313,11 @@ def _evaluate(prices, univ, code, rdate, cutoff=None, not_before=None, stop=None
         r = cs[n - 1] / e - 1.0
         b = bench(prices, univ, d0, ds[n - 1])
         out["now"] = (r, None if b is None else r - b, days)
+    else:
+        out["due"]["now"] = _add_weekdays(ds[n - 1], 1 - days)
+    for h in HORIZONS:                   # 아직 안 지난 기간 — 이 종목 마지막 주가 날에서 모자란 거래일만큼 평일로 어림
+        if h not in out["h"]:
+            out["due"][str(h)] = _add_weekdays(ds[n - 1], h - days)
     if stop is not None and stop > 0:
         lvl = stop * prices.factor(code, rdate)   # 기록 날 기준 손절가를 보정 종가와 같은 기준으로
         tgt = e * (1.0 + TARGET)
@@ -400,6 +421,10 @@ def _group(key, label, obs, with_exit=False, strict_exit=False):
          "n_stalled": len({o["code"] for o in obs if o["ev"] and o["ev"].get("stalled")}),
          "now": _stats([e["now"] for e in evs if e["now"]], n_all, with_days=True),
          "h": {str(h): _stats([e["h"][h] for e in evs if h in e["h"]], n_all) for h in HORIZONS}}
+    # 아직 안 지난 기록 중 가장 빠른 '첫 숫자가 나오는 날'(평일 어림) — 화면이 '익는 중' 대신 'MM-DD부터' 로 보인다
+    for k, st in [("now", g["now"])] + [(str(h), g["h"][str(h)]) for h in HORIZONS]:
+        ds_ = [e["due"][k] for e in evs if k in (e.get("due") or {})]
+        st["due"] = min(ds_) if ds_ else None
     if with_exit:
         done = [e["exit"] for e in evs if e["exit"] and e["exit_done"]]
         m = len(done)

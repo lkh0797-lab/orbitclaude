@@ -5926,8 +5926,12 @@ const scPct=v=>v==null?'—':(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1)+'%';
 function scCell(st){
   const td=el('td','num');
   if(!st||!st.n){
-    td.appendChild(el('span','scWait',st&&st.n_all?'익는 중':'—'));
-    if(st&&st.n_all) td.title='기록 '+st.n_all+'건 — 아직 이 기간이 지나지 않았다';
+    // 아직 이 기간이 지난 기록이 없다 — 첫 숫자가 나오는 날(서버가 평일로 어림한 가장 빠른 날)을 보인다
+    const due=st&&st.due, y=String(new Date().getFullYear());
+    const dueTxt=due?(due.slice(0,4)===y?'':"'"+due.slice(2,4)+'-')+due.slice(4,6)+'-'+due.slice(6)+'부터':'익는 중';
+    td.appendChild(el('span','scWait',st&&st.n_all?dueTxt:'—'));
+    if(st&&st.n_all) td.title='기록 '+st.n_all+'건 — 아직 이 기간이 지나지 않았다'+
+      (due?'\n첫 숫자: '+scD(due)+' 장 마감 뒤(그날 종가가 굳는 20:10 이후 다음 채점 때). 주말만 뺀 어림 — 공휴일이 끼면 하루씩 늦어진다':'');
     return td;
   }
   const ex=st.ex_median;

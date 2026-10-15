@@ -464,3 +464,24 @@ def test_load_journal_reads_rule_column(tmp_path):
     a, b = M.load_journal(str(f))
     assert a["rule"] == "" and M.is_legacy(a) and b["rule"] == "cwh_reference_v1.0.0" and not M.is_legacy(b)
     assert b["stop"] is None and b["code"] == "005930"
+
+
+def test_pending_cells_get_first_due_date():
+    """'익는 중' 대신 첫 숫자가 나오는 날(평일 어림) — 진입한 기록은 마지막 주가 날에서, 진입 전 기록은 다음 평일 진입에서 센다."""
+    assert M._add_weekdays("20261016", 1) == "20261019" and M._add_weekdays("20261016", 5) == "20261023"   # 금 → 월
+    short = D[:200]
+    t = {u: flat(dates=short) for u in UNIV}
+    t["A"], t["B"] = flat(dates=short), flat(dates=short)
+    p = M.Prices(loader(t))
+    fb = dict(rule="fibpb_v1")
+    rows = [_jrow(D[198], "A", "fib_pullback", "breakout", 95.0, **fb),     # 진입 D[199] = 주가 마지막 날 — 지금까지 아직
+            _jrow(D[199], "B", "fib_pullback", "breakout", 95.0, **fb)]     # 진입 전 — 다음 평일 D[200] 진입 어림
+    g = {x["key"]: x for x in M.score([], rows, p, UNIV)["tech"]["groups"]}["all"]
+    long_d = bdays(500)
+    assert g["now"]["n"] == 0 and g["now"]["due"] == D[200]                  # A: 진입 다음 평일
+    assert g["h"]["5"]["n"] == 0 and g["h"]["5"]["due"] == D[204]            # A(D[199]+5) 가 B(D[200]+5) 보다 빠르다
+    assert g["h"]["250"]["due"] == long_d[449]
+    ev = M._evaluate(p, UNIV, "B", D[199])
+    assert ev["entry_d"] is None and ev["due"]["now"] == D[201] and ev["due"]["5"] == D[205]
+    done = M._evaluate(p, UNIV, "A", D[100])                                 # 다 지난 기간에는 날짜가 없다
+    assert "5" not in done["due"] and "now" not in done["due"] and done["due"]["250"] == long_d[100 + 1 + 250]
