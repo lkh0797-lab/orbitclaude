@@ -14752,9 +14752,9 @@ function lsPlate(plate, d, c, animate){
     '<span><i style="border-color:rgba(236,234,228,.45);border-left-width:2px;border-top-width:0;height:10px;width:0"></i>세로 막대 = 그달 고가~저가(장중) · 점 = 기간 최고 · 최저'+
       ((d._extTxt||[]).length?' — '+d._extTxt.join(' / '):'')+'</span>'+      // 숫자 · 날짜만(서버 값) — HTML 특수문자 없음
     z('hi').replace('</span>',' (비싼 값 위)</span>')+z('mid').replace('</span>',' (싼 값~비싼 값)</span>')+
-    z('lo').replace('</span>',' (싼 값 아래)</span>')+z('na').replace('</span>',' (적자)</span>')+
-    '<span><i style="border-color:#f1d9a0;border-top-style:dashed"></i>보통 값(이익선) = 최근 4분기 주당이익 × 이 회사 15년 PER 중앙값 '+(d.band.mid?d.band.mid.toFixed(1)+'배':'')+'</span>'+
-    '<span><i style="border-color:rgba(214,180,106,.5);border-top-width:8px"></i>띠 = 싼 값~비싼 값 (이 회사 15년 PER 25–75% 자리'+(d.band.lo?', '+d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'')+')</span>'+
+    z('lo').replace('</span>',' (싼 값 아래)</span>')+z('na').replace('</span>',' (적자)</span>')+z('few').replace('</span>',' (PER 기록 8분기 전)</span>')+
+    '<span><i style="border-color:#f1d9a0;border-top-style:dashed"></i>보통 값(이익선) = 최근 4분기 주당이익 × 그때까지 쌓인 이 회사 PER 기록의 중앙값'+(d.band.mid?'(지금 '+d.band.mid.toFixed(1)+'배)':'')+'</span>'+
+    '<span><i style="border-color:rgba(214,180,106,.5);border-top-width:8px"></i>띠 = 싼 값~비싼 값 (그때까지 PER 기록 25–75% 자리'+(d.band.lo?', 지금 '+d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'')+') — 옛 분기도 그때 알던 기록으로만 그었다</span>'+
     '<span><i style="border-color:#f5a35c;border-top-width:6px"></i>가운데 띠 = 달마다 보통 값 대비 위치(위 = 비쌌던 때 · 아래 = 쌌던 때)</span>'+
     '<span><b style="background:#d6b46a">B</b>버핏 · <b style="background:#4fc3a1">L</b>린치 조건이 맞은 때 — 위 숫자는 그 뒤 1년 주가</span>'+
     '<span><i class="hatch"></i>적자 분기</span>';
@@ -14771,7 +14771,7 @@ function lsPlate(plate, d, c, animate){
   const sp=(d.splits||[]).map(s=>s.year+'년 ×'+s.ratio).join(', ');
   ft.innerHTML='<span>주가는 수정주가, 주당 값은 오늘 주식 수 기준'+(sp?'(분할·무상증자 보정 '+sp+')':'')+'. 유형은 그해까지의 숫자로만 매겼다(린치의 여섯 유형 — 매출 3년 증가율과 6년 안의 이익 꺾임). '+
     'B·L 은 그 분기 보고서 접수일에 그때까지 알 수 있던 숫자로만 조건을 따졌다. 한 회사 15년의 기록이라 표본이 작다 — 규칙이 맞았는지보다 이 회사가 어떻게 움직이는 회사인지를 보라. '+
-    '반영 시계 검증에서 자기 역사 대비 값의 위치는 6–12개월 수익률과 약한 음(−)의 상관이었다.</span><b>LONG VIEW</b>';
+    '보통 값 검증(공시 11,949건 · 2017–2025 · 지금 상장사만): 1년 초과수익 중앙 싼 구간 +1.6 · 보통 +2.7 · 비싼 −3.4%p — 맞은 건 \'비싼 구간은 뒤처졌다\' 쪽이다. 싼 구간이 1년 안에 보통 값에 닿은 경우는 22.5%.</span><b>LONG VIEW</b>';
   plate.appendChild(ft);
 }
 
@@ -14786,36 +14786,81 @@ function lsGauge(d){
   }
   const pct=Math.max(0,Math.min(100,dc.pct)), gap=(dc.px/lastL.mid-1)*100;
   const zone=pct>75?'hi':pct<25?'lo':'mid';
+  // '15년' 이 아니라 실제로 쌓인 PER 기록 수 — 분기 PER 이 6개 모자라면 서버가 연말 PER 로 띠를 잡는다(그땐 '해')
+  const qn=(d.quarters||[]).filter(q=>q.per!==null&&q.per!==undefined).length, bn=(d.band||{}).n||0;
+  const span='PER 기록 '+bn+(qn===bn?'분기':'해');
+  const where=pct<0.5?span+' 중 가장 싼 자리':pct>99.5?span+' 중 가장 비싼 자리':span+' 중 '+Math.round(pct)+'%보다 비싼 자리';
   const h=el('div','lsGaugeH'); h.appendChild(el('b',null,'가치 온도계'));
   h.appendChild(el('span','z '+zone,LS_ZONE[zone][0]));
   h.appendChild(el('span',null,'지금 '+won(dc.px)+'원 — 보통 값 '+won(lastL.mid)+'원보다 '+(Math.abs(gap)<5?'거의 같음':Math.abs(gap).toFixed(0)+'% '+(gap>0?'비쌈':'쌈'))+
-    ' · 15년 중 '+Math.round(pct)+'%의 시간보다 비싼 자리'));
+    ' · '+where));
   w.appendChild(h);
   const bar=el('div','lsGaugeBar');
   [['lo','싼 구간',0,25],['mid','보통 구간',25,75],['hi','비싼 구간',75,100]].forEach(([k,t,a,b])=>{
     const s=el('div','seg '+k); s.style.left=a+'%'; s.style.width=(b-a)+'%'; s.appendChild(el('span',null,t)); bar.appendChild(s); });
-  const dot=el('i','dot '+zone); dot.style.left=pct+'%'; dot.title='지금 — 15년 중 '+Math.round(pct)+'%의 시간보다 비싼 자리'; bar.appendChild(dot);
+  const dot=el('i','dot '+zone); dot.style.left=pct+'%'; dot.title='지금 — '+where; bar.appendChild(dot);
   w.appendChild(bar);
   const sc=el('div','lsGaugeSc');
-  [['15년 중 가장 쌌던 때',0,'l'],['싼 값 '+won(lastL.lo)+'원',25,''],['보통 값 '+won(lastL.mid)+'원',50,''],['비싼 값 '+won(lastL.hi)+'원',75,''],['가장 비쌌던 때',100,'r']]
+  [['기록 중 가장 쌌던 때',0,'l'],['싼 값 '+won(lastL.lo)+'원',25,''],['보통 값 '+won(lastL.mid)+'원',50,''],['비싼 값 '+won(lastL.hi)+'원',75,''],['가장 비쌌던 때',100,'r']]
     .forEach(([t,p,c])=>{ const s=el('span',c||null,t); s.style.left=p+'%'; sc.appendChild(s); });
   w.appendChild(sc);
-  const nt=[];
-  nt.push('값 = 최근 4분기 주당이익 × 이 회사 15년 PER(25% · 중앙 · 75% 자리 '+d.band.lo.toFixed(1)+' · '+d.band.mid.toFixed(1)+' · '+d.band.hi.toFixed(1)+'배)');
-  if(dc.type==='경기순환') nt.push('경기순환 유형 — 이익이 꼭대기일 때는 PER 이 낮아 싸 보이고 바닥일 때는 비싸 보인다. 이 온도계를 덜 믿는다');
-  nt.push('검증 메모: 자기 역사 대비 값의 자리는 6–12개월 수익률과 약한 음(−)의 상관 — 싸다고 곧 오르지는 않았다');
-  nt.forEach((t,i)=>w.appendChild(el('div','lsGaugeNote'+(i===1&&dc.type==='경기순환'?' warn':''),t)));
+  // 쪽지 — 숫자는 도구/보통값_백테스트.py(공시 11,949건 · 2017–2025 · 지금 상장사만, 1년 초과수익 중앙). [글, 경고?]
+  const nt=[['값 = 최근 4분기 주당이익 × 이 회사 '+span+'의 25% · 중앙 · 75% 자리('+d.band.lo.toFixed(1)+' · '+d.band.mid.toFixed(1)+' · '+d.band.hi.toFixed(1)+'배)',0]];
+  if(zone==='lo') nt.push(['역사보다 PER 이 낮은 자리 — 대개 이익이 막 늘어난 때다. 과거 이 자리의 64%는 1년 뒤 순이익이 줄었고, 1년 성적은 보통 구간보다 낫지 않았다(+1.6 vs +2.7%p). 보통 값에 1년 안에 닿은 경우는 22.5%',0]);
+  if(zone==='hi') nt.push(['비싼 구간 — 이 잣대가 맞은 쪽이다. 과거 이 자리는 1년 성적이 가장 나빴다(−3.4%p, 1년에 30% 넘게 뒤처진 비율 15.0% — 보통 구간 10.3%)',0]);
+  // 경고 — 경기순환 유형은 어느 구간에서든. 싼 구간에서는 이익 꼭대기 · 이익 출렁 · 금융업도(이 셋에서는 '싸다'가 맞지 않았다)
+  if(dc.type==='경기순환') nt.push(['경기순환 유형 — 이익이 꼭대기일 때는 PER 이 낮아 싸 보이고 바닥일 때는 비싸 보인다. 이 온도계를 덜 믿는다',1]);
+  if(zone==='lo'){
+    if(dc.eps_peak) nt.push(['주당이익이 기록 최고 근처(95%↑) — 과거 싼 구간 중 이럴 때는 1년 성적이 +0.4%p 로 나머지(+2.9)보다 못했다. 이익이 꺾이면 싼 값이 아니게 된다(결과를 본 뒤 고른 문턱 — 참고만)',1]);
+    const cv=lsEarnCv(d);
+    if(cv!==null&&cv>=LS_CV_CUT) nt.push(['이익이 크게 출렁이는 회사(최근 12분기 순이익 변동계수 '+cv.toFixed(2)+' — 상장사 상위 ⅓) — 이런 회사에서는 싼 구간이 비싼 구간보다 낫다는 근거가 없었다(차이 +1.9%p, 범위 −1.7~+6.2)',1]);
+    if(d.sector==='금융') nt.push(['금융업 — 이익보다 자산(PBR)으로 값을 매기는 업종. 금융만 보면 싼 구간이 비싼 구간보다 1년 12.1%p 뒤처졌다',1]);
+  }
+  nt.push(['검증: 1년 초과수익 중앙 싼 구간 +1.6 · 보통 +2.7 · 비싼 −3.4%p — 맞은 건 \'비싼 구간은 뒤처졌다\' 쪽. 싸다는 것만으로 사지 마라(공시 11,949건 · 2017–2025 · 지금 상장사만)',0]);
+  nt.forEach(([t,wn])=>w.appendChild(el('div','lsGaugeNote'+(wn?' warn':''),t)));
   return w;
 }
 
+// 이익 출렁 — 최근 12분기 '최근 4분기 합 순이익'의 변동계수(표준편차 ÷ |평균|, 8개↑). 문턱 0.62 = 백테스트 패널 상위 ⅓(0.629) · 지금 상장사 상위 ⅓(0.615)
+const LS_CV_CUT=0.62;
+function lsEarnCv(d){
+  const Q=d.quarters||[];
+  let k=Q.length-1; while(k>=0&&(Q[k].ni4===null||Q[k].ni4===undefined)) k--;
+  if(k<0) return null;
+  const v=Q.slice(Math.max(0,k-11),k+1).map(q=>q.ni4).filter(x=>x!==null&&x!==undefined);
+  if(v.length<8) return null;
+  const mu=v.reduce((a,b)=>a+b,0)/v.length;
+  if(!mu) return null;
+  return Math.sqrt(v.reduce((a,b)=>a+(b-mu)*(b-mu),0)/v.length)/Math.abs(mu);
+}
+
+// 그때 알던 PER 로만 그은 이익선(2026-10-16) — 분기마다 그 분기까지 쌓인 PER 기록(8개↑)의 25 · 50 · 75% 자리(서버 _land_q 와 같은 보간).
+// 지금의 15년 띠를 옛 분기에 거꾸로 씌우면 옛날의 '싸다 · 비싸다'에 그때는 몰랐던 앞날 PER 이 섞인다(보통값_백테스트 — 뒤늦은 지혜).
+// 마지막 흑자 분기는 서버 띠 그대로(지금 값 · 온도계와 같은 수). 기록이 8개 모자란 분기는 few — 값을 긋지 않는다. 적자 표시(loss)는 서버 선 그대로
+function lsPitLine(d){
+  const Q=d.quarters||[], LN=d.line||[];
+  if(Q.length!==LN.length) return LN;
+  const qq=(s,p)=>{ const k=(s.length-1)*p, i=Math.floor(k); return s[i]+(s[Math.min(i+1,s.length-1)]-s[i])*(k-i); };
+  const seen=[], lastI=LN.map(x=>!!x.mid).lastIndexOf(true);
+  return Q.map((q,i)=>{
+    if(q.per!==null&&q.per!==undefined) seen.push(q.per);
+    const z=LN[i];
+    if(!z.mid) return z;
+    if(i===lastI) return Object.assign({},z,{eps:q.eps,b:d.band});
+    if(seen.length<8) return {d:z.d,few:true};
+    const s=seen.slice().sort((a,b)=>a-b), b={lo:qq(s,.25),mid:qq(s,.5),hi:qq(s,.75),n:s.length};
+    return {d:z.d,lo:q.eps*b.lo,mid:q.eps*b.mid,hi:q.eps*b.hi,eps:q.eps,b};
+  });
+}
+
 // 주가가 그때 어디에 있었나 — 비싼 구간(비싼 값 위) · 보통 구간(싼 값~비싼 값) · 싼 구간(싼 값 아래) · 이익 없음(적자 · 이익선 없음)
-const LS_ZONE={hi:['비싼 구간','#f5a35c'], mid:['보통 구간','#f7f3e9'], lo:['싼 구간','#7cc4ff'], na:['이익 없음','#8b95a3']};
+const LS_ZONE={hi:['비싼 구간','#f5a35c'], mid:['보통 구간','#f7f3e9'], lo:['싼 구간','#7cc4ff'], na:['이익 없음','#8b95a3'], few:['기록 모자람','#5d6673']};
 let LS_CLIP=0;
 function lsChart(fig, d, plate){
   const W=1000, L=58, RR=124, T=42, H1=300, GAP=40, H2=66, B=28, GS=40, HS=64;
   // 가격 판 → 가치 대비 위치 띠(sTop~sBot, 2026-10-16) → ROE 판
   const pTop=T, pBot=T+H1, sTop=pBot+GS, sBot=sTop+HS, rTop=sBot+GAP, rBot=rTop+H2, H=rBot+B;
-  const R=d.rows, M=d.monthly||[], LN=d.line||[];
+  const R=d.rows, M=d.monthly||[], LN=lsPitLine(d);     // 옛 분기 선 · 띠 = 그때까지 쌓인 PER 기록으로만(lsPitLine)
   // 최근 4분기 칸은 그 분기 말에서 반년 앞(4분기 창의 가운데)에 놓는다
   const rx=r=>r.ttm&&r.end?Date.UTC(+r.end.slice(0,4),+r.end.slice(4,6)-7,1):Date.UTC(r.year,6,1);
   const rl=R[R.length-1];
@@ -14906,7 +14951,7 @@ function lsChart(fig, d, plate){
 
   // 주가 — 그달의 이익선 · 값 띠 대비 자리
   const lnAt=m=>{ let q=null; LN.forEach(z=>{ if(lsT(z.d)<=lsT(m.d)+86400000*20) q=z; }); return q; };
-  const zoneOf=m=>{ const q=lnAt(m); if(!q||!q.mid||!q.lo) return 'na'; return m.p>q.hi?'hi':m.p<q.lo?'lo':'mid'; };
+  const zoneOf=m=>{ const q=lnAt(m); if(q&&q.few) return 'few'; if(!q||!q.mid||!q.lo) return 'na'; return m.p>q.hi?'hi':m.p<q.lo?'lo':'mid'; };
   if(M.length>1){
     // 그달 고가~저가 막대(장중 — 일봉 OHLCV 없는 달은 종가 폭) — 선은 월말 종가라 달 중간 급등 · 급락은 막대로만 보인다
     const gRng=svgEl('g',{class:'lsRng'});
@@ -15089,12 +15134,12 @@ function lsChart(fig, d, plate){
     const zt=el('small',null,LS_ZONE[z][0]); zt.style.color=LS_ZONE[z][1]; h.appendChild(zt); tip2.appendChild(h);
     const gr=el('div','spTipG');
     const gap=ln&&ln.mid?(m.p/ln.mid-1)*100:null;
-    const per=ln&&ln.mid&&d.band.mid?m.p/(ln.mid/d.band.mid):null;
+    const per=ln&&ln.eps>0?m.p/ln.eps:null, lb=ln&&ln.b;
     const hb=m.ic?'장중':'종가';
-    [['월말 종가',won(m.p)+'원'],['보통 값(이익선)',ln&&ln.mid?won(ln.mid)+'원':(ln&&ln.loss?'적자':'—')],
+    [['월말 종가',won(m.p)+'원'],['보통 값(이익선)',ln&&ln.mid?won(ln.mid)+'원':(ln&&ln.loss?'적자':ln&&ln.few?'PER 기록 8분기 전':'—')],
      ['월중 고가',m.hi>0?won(m.hi)+'원 ('+(+m.hd.slice(6,8))+'일 '+hb+')':'—'],['월중 저가',m.lo>0?won(m.lo)+'원 ('+(+m.ld.slice(6,8))+'일 '+hb+')':'—'],
      ['보통 값 대비',gap===null?'—':Math.abs(gap)<5?'보통 근처':Math.abs(gap).toFixed(0)+'% '+(gap>0?'비쌈':'쌈')],
-     ['그때 PER',per?per.toFixed(1)+'배':'—'],['싼 값~비싼 값',ln&&ln.lo?won(ln.lo)+'–'+won(ln.hi)+'원':'—'],['PER 기준(15년 25–75%)',d.band.lo?d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'—']]
+     ['그때 PER',per?per.toFixed(1)+'배':'—'],['싼 값~비싼 값',ln&&ln.lo?won(ln.lo)+'–'+won(ln.hi)+'원':'—'],['PER 기준(그때까지 '+(lb&&lb.n?lb.n+'개':'기록')+' 25–75%)',lb&&lb.lo?lb.lo.toFixed(1)+'–'+lb.hi.toFixed(1)+'배':'—']]
       .forEach(([k,v])=>{ const c2=el('div'); c2.appendChild(el('span',null,k)); c2.appendChild(el('b',null,v)); gr.appendChild(c2); });
     tip2.appendChild(gr); tip2.hidden=false;
     const tw=tip2.offsetWidth; let lx=x*sc+14; if(lx+tw>box.width-4) lx=x*sc-tw-14;

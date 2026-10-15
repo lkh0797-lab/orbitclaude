@@ -13044,6 +13044,8 @@ class Handler(BaseHTTPRequestHandler):
                 d = landscape_view(q.get("code", ""))
                 if d is None:
                     return self._send(404, {"error": "회사 없음"})
+                if not d.get("error"):      # 업종 — 판(캐시)에 넣지 않고 내줄 때 붙인다(가치 온도계 금융업 경고, 판 다시 짓지 않게)
+                    d = dict(d, sector=(((sector_map() or {}).get("stocks", {}).get(q.get("code", "").upper()) or {}).get("sector")))
                 return self._send(200, d)
             if path == "/api/story":
                 d = story_view(q.get("code", ""), q.get("refresh") == "1")
