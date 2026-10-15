@@ -224,7 +224,7 @@ def test_load_journal_bom_zfill_leader(tmp_path):
 
 
 def _jrow(asof, code, pattern, stage, stop=None, close=100.0, rule=""):
-    """rule 이 비면 옛 탐지기 기록(2026-10-14 Tech 패턴 초기화 전) — 'tech_legacy' 로 센다."""
+    """rule 이 비면 옛 탐지기 기록(2026-10-14 Tech 패턴 초기화 전, 제거된 식) — 채점에서 빠진다(2026-10-16)."""
     return {"asof": asof, "code": code, "pattern": pattern, "stage": stage, "stop": stop, "close": close, "rule": rule}
 
 
@@ -238,18 +238,19 @@ def test_stop_target_first_by_closes():
     t["T4"] = flat()
     t["L"] = flat()
     p = M.Prices(loader(t))
-    rows = [_jrow(D[4], "T1", "vcp", "breakout", 95.0),       # 손절 먼저(그 뒤 +25%)
-            _jrow(D[4], "T2", "vcp", "breakout", 95.0),       # 목표 먼저(그 뒤 손절가 아래)
-            _jrow(D[4], "T3", "vcp", "forming", 90.0),        # 60일 다 지나 열린 채
-            _jrow(D[280], "T4", "vcp", "breakout", 90.0),     # 아직 60일 안 됨 — 빼고 센다
-            _jrow(D[4], "L", "leader", "")]                   # 손절가 없음 — 빼고 센다
-    tech = M.score([], rows, p, UNIV)["tech_legacy"]
-    g = {x["key"]: x for x in tech["groups"]}
+    fib = dict(rule="fibpb_v1")
+    rows = [_jrow(D[4], "T1", "fib_pullback", "breakout", 95.0, **fib),       # 손절 먼저(그 뒤 +25%)
+            _jrow(D[4], "T2", "fib_pullback", "breakout", 95.0, **fib),       # 목표 먼저(그 뒤 손절가 아래)
+            _jrow(D[4], "T3", "fib_pullback", "forming", 90.0, **fib),        # 60일 다 지나 열린 채
+            _jrow(D[280], "T4", "fib_pullback", "breakout", 90.0, **fib),     # 아직 60일 안 됨 — 빼고 센다
+            _jrow(D[4], "L", "vcp", "breakout", 95.0)]                        # 옛 탐지기 기록 — 채점에서 빠진다
+    res = M.score([], rows, p, UNIV)
+    assert "tech_legacy" not in res
+    g = {x["key"]: x for x in res["tech"]["groups"]}
     a = g["all"]
     assert a["n_exit"] == 3 and a["stop_first"] == 33.33 and a["target_first"] == 33.33
-    assert a["n_nostop"] == 1 and "1건은 뺐다" in a["exit_note"]       # 옛 기록: 예전처럼 빼고 세되 뺀 건수를 적는다
+    assert a["n_obs"] == 4 and "pattern:vcp" not in g
     assert g["stage:breakout"]["n_exit"] == 2 and g["stage:breakout"]["stop_first"] == 50.0
-    assert g["pattern:leader"]["n_exit"] == 0 and g["pattern:leader"]["stop_first"] is None
     assert M._evaluate(p, UNIV, "T1", D[4], stop=95.0)["exit"] == "stop"
     assert M._evaluate(p, UNIV, "T2", D[4], stop=95.0)["exit"] == "target"
     ev = M._evaluate(p, UNIV, "T4", D[280], stop=90.0)
@@ -266,36 +267,36 @@ def test_stop_follows_split_after_record():
     assert M._evaluate(p2, UNIV, "S", D[4], stop=950.0)["exit"] == "open"
 
 
-def test_tech_groups_rec_avoid_new():
+def test_tech_groups_new_pattern_stage():
     t = flat_univ()
     for c in "ABCDEFGL":
         t[c] = flat()
     p = M.Prices(loader(t))
-    rows = [_jrow(D[4], "A", "big_value_pullback", "breakout"),
-            _jrow(D[4], "B", "vcp", "near_pivot"),
-            _jrow(D[4], "C", "cup_handle", "breakout"),
-            _jrow(D[4], "L", "leader", ""),
-            _jrow(D[4], "L", "canslim", "forming"),                # 같은 날 같은 종목 — 전체에선 한 번
-            _jrow(D[4], "E", "canslim", "extended"),
-            _jrow(D[4], "F", "flat_base", "failed"),
-            _jrow(D[5], "A", "big_value_pullback", "near_pivot"),
-            _jrow(D[5], "G", "vcp", "breakout")]
+    tl, fb, cw = dict(rule="tlbrk_v1"), dict(rule="fibpb_v1"), dict(rule="cwh_reference_v1.0.0")
+    rows = [_jrow(D[4], "A", "trendline_break", "breakout", **tl),
+            _jrow(D[4], "B", "fib_pullback", "near_pivot", **fb),
+            _jrow(D[4], "C", "cup_with_handle", "breakout", **cw),
+            _jrow(D[4], "L", "ma60_supply", "", rule="ma60s_v1"),
+            _jrow(D[4], "L", "fib_pullback", "forming", **fb),            # 같은 날 같은 종목 — 전체에선 한 번
+            _jrow(D[4], "E", "fib_pullback", "extended", **fb),
+            _jrow(D[4], "F", "trendline_break", "failed", **tl),
+            _jrow(D[5], "A", "trendline_break", "near_pivot", **tl),
+            _jrow(D[5], "G", "cup_with_handle", "breakout", **cw),
+            _jrow(D[4], "Z", "vcp", "breakout"),                          # 옛 탐지기 기록 — 빠진다
+            _jrow(D[5], "Z", "canslim", "forming")]
     res = M.score([], rows, p, UNIV)
-    assert res["tech"]["n_obs"] == 0                           # rule 없는 행은 전부 옛 기록
-    tech = res["tech_legacy"]
+    assert "tech_legacy" not in res and res["schema"] == M.SCHEMA == 3
+    tech = res["tech"]
     g = {x["key"]: x for x in tech["groups"]}
     assert tech["dates"] == [D[4], D[5]]
-    assert [x["key"] for x in tech["groups"]][:4] == ["all", "new", "rec", "avoid"]
-    assert g["all"]["n_obs"] == 8 and g["all"]["n_codes"] == 7
-    assert g["new"]["n_obs"] == 7                              # 첫날 여섯 + 둘째 날 G
-    assert g["rec"]["n_obs"] == 4                              # A · C · A(피벗 근처) · G
-    assert g["avoid"]["n_obs"] == 3                            # 주도주 L · 이격 E · 실패 F
-    assert g["pattern:canslim"]["n_obs"] == 2 and g["pattern:big_value_pullback"]["n_obs"] == 2
+    assert [x["key"] for x in tech["groups"]][:2] == ["all", "new"] and "rec" not in g and "avoid" not in g
+    assert g["all"]["n_obs"] == 8 and g["all"]["n_codes"] == 7           # 옛 기록 Z 는 세지 않는다
+    assert g["new"]["n_obs"] == 7                                         # 첫날 여섯 + 둘째 날 G
+    assert g["pattern:fib_pullback"]["n_obs"] == 3 and g["pattern:trendline_break"]["n_obs"] == 3
+    assert g["pattern:fib_pullback"]["label"] == "패턴 · 피보나치 눌림 반등"
+    assert not any("제거" in x["label"] or "옛" in x["label"] for x in tech["groups"])
     assert g["stage:-"]["n_obs"] == 1 and g["stage:-"]["label"] == "단계 · 단계 없음"
-    assert g["pattern:vcp"]["label"] == "패턴 · VCP (제거된 옛 식)"
-    assert g["rec"]["label"].startswith("옛 권장 셋업(제거된 식)") and g["avoid"]["label"].startswith("옛 피하기 범주")
-    assert tech["legacy"] is True and tech["ref"]["label"] == "옛 패턴 백테스트(제거된 식)"
-    assert "+3.3/+6.7" in tech["ref"]["text"] and "제거" in tech["ref"]["text"]
+    assert "옛" not in tech["ref"]["text"] and "+3.3/+6.7" not in tech["ref"]["text"]
     assert g["all"]["h"]["5"]["median"] == 0.0 and g["all"]["h"]["5"]["win"] == 0.0
 
 
@@ -327,11 +328,10 @@ def test_run_output_is_json_safe(tmp_path):
     res = M.run(str(p_fwd), str(jp), loader(t), UNIV, today=D[100])
     s = json.dumps(res, ensure_ascii=False, allow_nan=False)
     back = json.loads(s)
-    assert back["value"]["dates"] == [D[4]] and back["tech_legacy"]["dates"] == [D[4]]
-    assert back["tech"]["dates"] == [] and back["tech"]["n_obs"] == 0         # rule 칸 없는 일지 = 옛 기록
+    assert back["value"]["dates"] == [D[4]] and "tech_legacy" not in back
+    assert back["tech"]["dates"] == [] and back["tech"]["n_obs"] == 0         # rule 칸 없는 일지 = 옛 기록 — 빠진다
     assert back["price_last"] == D[100] and back["cutoff"] == D[100]
     assert set(back["value"]["groups"][0]["h"]) == {"5", "20", "60", "120", "250"}
-    assert back["tech_legacy"]["groups"][0]["n_obs"] == 1 and back["tech_legacy"]["groups"][0]["n_exit"] == 1
     assert back["value"]["groups"][0]["h"]["5"]["median"] == 2.5
     assert back["notes"] and back["basis"] and back["value"]["ref"]["text"].startswith("저평가 묶음")
     assert M.run(str(tmp_path / "없음"), str(tmp_path / "없음.csv"), loader({}), [])["value"]["groups"][0]["n_obs"] == 0
@@ -360,8 +360,8 @@ def test_invalid_dates_are_ignored(tmp_path):
     assert M._d8("20261340") is None and M._d8("2026-10-08") == "20261008"
 
 
-def test_tech_split_current_rule_vs_legacy():
-    """2026-10-14 Tech 패턴 초기화: rule 칸이 있는 행(지금 식)과 없는 행(옛 탐지기)을 섞지 않는다."""
+def test_legacy_rows_dropped_current_rule_kept():
+    """rule 칸이 있는 행(지금 식)만 센다 — 없는 행(2026-10-14 제거된 옛 탐지기)은 채점에서 뺀다(2026-10-16)."""
     t = flat_univ()
     for c in "ABCV":
         t[c] = flat()
@@ -372,22 +372,22 @@ def test_tech_split_current_rule_vs_legacy():
             _jrow(D[5], "C", "cup_with_handle", "near_pivot", rule="cwh_reference_v1.0.0"),
             _jrow(D[5], "V", "vocal", "forming", 90.0, rule="vocal")]
     res = M.score([], rows, p, UNIV)
-    cur, old = res["tech"], res["tech_legacy"]
-    assert cur["n_obs"] == 3 and old["n_obs"] == 2 and cur["dates"] == [D[4], D[5]] and old["dates"] == [D[4]]
+    cur = res["tech"]
+    assert "tech_legacy" not in res
+    assert cur["n_obs"] == 3 and cur["dates"] == [D[4], D[5]]
     g = {x["key"]: x for x in cur["groups"]}
     assert "rec" not in g and "avoid" not in g                       # 새 식은 백테스트 전 — 권장 · 피하기 묶음 없음
     assert g["pattern:cup_with_handle"]["label"] == "패턴 · 컵 앤 핸들 (사용자 식)"
     assert g["pattern:vocal"]["label"] == "패턴 · 보컬 (관찰용)"
     assert g["new"]["n_obs"] == 3                                    # 새 식 첫날 A + 둘째 날 C · V (옛 기록과 비교 안 함)
-    assert cur["legacy"] is False and cur["ref"]["label"] == "지금 식 백테스트"
+    assert "legacy" not in cur and cur["ref"]["label"] == "지금 식 백테스트"
     ref = cur["ref"]["text"]
     assert "컵 앤 핸들(사용자 식): 백테스트 아직 없음" in ref
     assert "346거래" in ref and "−2.4%" in ref and "승률 31%" in ref        # 보컬은 이미 백테스트됨(손실) — 숨기지 않는다
     assert "+4.0" not in ref                                          # 옛 식 수치를 새 식에 붙이지 않는다
-    assert res["schema"] == M.SCHEMA == 2
-    go = {x["key"]: x for x in old["groups"]}
-    assert go["pattern:-"]["label"] == "패턴 · " + M.LEGACY_EMPTY
-    assert go["rec"]["n_obs"] == 1 and go["pattern:vcp"]["label"].endswith("(제거된 옛 식)")
+    assert res["schema"] == M.SCHEMA == 3
+    assert "pattern:vcp" not in g and "pattern:-" not in g                   # 옛 기록 묶음은 아예 없다
+    assert not hasattr(M, "LEGACY_EMPTY") and not hasattr(M, "TECH_LEGACY_REF")
 
 
 def test_current_rule_exit_rates_not_mixed_with_no_stop_rows():
@@ -448,7 +448,7 @@ def test_server_hides_cached_result_from_old_scorer(tmp_path, monkeypatch):
     monkeypatch.setattr(srv, "SCORE", {"running": False, "at": None, "result": None, "error": None})
     v = srv.score_view()
     assert v["result"] is None and v["running"] is True              # 옛 결과는 보이지 않고 다시 잰다
-    f.write_text(json.dumps({"schema": srv.SCR.SCHEMA, "tech": {}, "tech_legacy": {}, "inputs_mtime": 1.0}),
+    f.write_text(json.dumps({"schema": srv.SCR.SCHEMA, "tech": {}, "inputs_mtime": 1.0}),
                  encoding="utf-8")
     monkeypatch.setattr(srv, "SCORE", {"running": False, "at": None, "result": None, "error": None})
     v = srv.score_view()

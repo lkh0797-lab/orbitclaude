@@ -5880,16 +5880,8 @@ const vclSt=()=>{ S.vc=S.vc||{mode:'pull',sort:{},leadOnly:true,junkOff:true,the
 
 // ---------------------------------------------------------- 차트 발굴 — Tech(chart_screener) 리포트(/api/tech · /tech/report, 2026-10-09)
 // '보컬' 탭 자리. Tech 가 만든 리포트 HTML 을 iframe 으로 그대로 보인다 — 보컬 규칙은 그 안의 '보컬' 칩.
-// 2026-10-14 Tech 패턴 초기화: 옛 패턴(CAN SLIM · VCP · 옛 컵앤핸들 · 300억 눌림목 · 포켓 피벗 등) 제거, 사용자 식 컵 앤 핸들만.
 // 서버가 평일 20:15(그날 값이 굳은 뒤 — 넥스트레이드 애프터마켓 ~20:00, 2026-10-14 에 16:00 에서 옮김)에 창 없이 다시 스캔하고, '다시 계산'은 지금 스캔한다(처음 2~3분, 그 뒤 2분 남짓 — 컵 앤 핸들 식 종목당 약 50ms,
 // 《차트의 기술》 기법 6개(2026-10-14 추가)까지: 860종목 패턴 판정 약 85~200초 — 2026-10-14 측정, 장중 · 부하 때 더 김).
-// 초기화 전에 만든 리포트(옛 칩 — 옛 컵 앤 핸들도 같은 '컵 앤 핸들' 이름)가 가장 최근이면 위에 띠를 단다. 리포트 시각 = 파일 이름
-// scan_YYYYMMDD_HHMM(없으면 파일 시각). 새 식 코드는 10-14 00:46 쯤 들어왔고 그 사이 리포트는 없다 — 10-14 00:00 을 경계로 본다.
-const TECH_RESET=new Date(2026,9,14,0,0);
-function techReportTime(rep){
-  const m=/scan_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/.exec(rep&&rep.name||'');
-  return m?new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]):new Date((rep&&rep.at||0)*1000);
-}
 function viewTech(p, run){
   p.innerHTML='';
   const box=el('div','tchBox'); p.appendChild(box);
@@ -5897,8 +5889,7 @@ function viewTech(p, run){
   hd.appendChild(el('b',null,'차트 발굴'));
   hd.appendChild(el('span',null,'전 종목 일봉으로 차트 패턴을 찾는다 — 지금은 컵 앤 핸들(사용자 식, 칩 이름 \'컵 앤 핸들 (사용자 식)\') · '+
     '《차트의 기술》 영상 기법(빗각 추세선 돌파 · 피보나치 눌림 반등 · 빗각 돌파 + 피보 눌림 · 60일선 수급 돌파 · 월봉 적삼병 · 10% 주도주 (단타 관찰) — 검증 전) · '+
-    '보컬(관찰). 체크리스트 10 은 검증 전 표시(점수 밖), 영상 사례 수익률 · 불코우스키 통계는 우리 확률이 아니다. '+
-    '옛 패턴(CAN SLIM · VCP · 옛 컵 앤 핸들 · 300억 눌림목 등)은 2026-10-14 제거 — 그 전에 만든 리포트에는 옛 칩이 남아 있다(다시 계산하면 새 식) (Tech · chart_screener)'));
+    '보컬(관찰). 체크리스트 10 은 검증 전 표시(점수 밖), 영상 사례 수익률 · 불코우스키 통계는 우리 확률이 아니다. (Tech · chart_screener)'));
   const meta=el('span','tchMeta'); hd.appendChild(meta);
   const rf=el('button','ghost','다시 계산'); hd.appendChild(rf);
   if(RO.on) rf.style.display='none';      // 조회 전용 — 스캔은 메인 PC 에서(누르면 403 뒤 리포트 자리가 비던 것)
@@ -5919,9 +5910,6 @@ function viewTech(p, run){
     if(st.running){ const pr=el('div','prog'); pr.appendChild(el('span',null,'Tech 스캔 중 — '+((st.log||[]).slice(-1)[0]||'시작'))); msg.appendChild(pr); }
     if(st.error&&!st.running&&(st.log||[]).length){ const pre=el('pre','tchLog'); pre.textContent=st.log.join('\n'); msg.appendChild(pre); }
     if(!st.report&&!st.running&&!st.error) msg.appendChild(el('div','empty','아직 리포트가 없다 — 다시 계산을 눌러라.'));
-    if(st.report&&techReportTime(st.report)<TECH_RESET) msg.appendChild(el('div','err',
-      '패턴 초기화(2026-10-14) 전에 만든 리포트다 — 아래 칩(옛 컵 앤 핸들 · CAN SLIM · VCP · 300억 눌림목 등)은 지금 식이 아니다. '+
-      '옛 \'컵 앤 핸들\' 칩은 사용자 식이 아니라 지운 옛 탐지기다. \'다시 계산\'을 누르면 지금 식(컵 앤 핸들 사용자 식 · 《차트의 기술》 기법 6개 · 보컬)으로 다시 만든다.'));
     if(st.report){ const key=st.report.name+'@'+st.report.at;
       if(shown!==key){ shown=key; fr.src='/tech/report?f='+encodeURIComponent(st.report.name)+'&t='+Math.round(st.report.at); nw.href=fr.src; } }
     fr.hidden=!st.report;
@@ -6010,9 +5998,6 @@ async function viewScore(p, force){
   if(!r){ if(!d.running&&!d.error) body.appendChild(el('div','empty','아직 채점 결과가 없다.')); return; }
   // 옛 기록채점(2026-10-14 패턴 초기화 전 코드 — 뷰어를 다시 켜기 전 서버)이 계산한 결과: 옛 탐지기 기록과 새 식 기록이 한 묶음에
   // 섞이고 옛 백테스트 수치가 붙는다. 형식 판(schema)이 없으면 그 결과다
-  if(!r.schema) body.appendChild(el('div','err','이 채점 결과는 패턴 초기화(2026-10-14) 전 코드로 계산됐다 — 아래 \'차트 발굴 일지\' 묶음에는 '+
-    '옛 탐지기 기록과 지금 식(컵 앤 핸들 사용자 식 · 《차트의 기술》 기법 6개 · 보컬) 기록이 섞였을 수 있고, 비교 줄의 옛 백테스트 수치(눌림목 · VCP · 컵 돌파)는 지금 식과 무관하다. '+
-    '뷰어를 다시 켠 뒤 \'다시 채점\'을 누르면 둘을 나눠 센다.'));
   const hz=r.horizons||[5,20,60,120,250];
   body.appendChild(el('div','finnote','기준: '+r.basis+' · 주가 마지막 날 '+scD(r.price_last)));
   const v=r.value||{}, tc=r.tech||{};
@@ -6027,11 +6012,7 @@ async function viewScore(p, force){
       tr.appendChild(scCell(c.now_v)); tr.appendChild(scCell(c.now_o)); t.appendChild(tr); });
     det.appendChild(t); body.appendChild(det);
   }
-  body.appendChild(scSection('차트 발굴 일지',tc,true,'Tech 스캔이 매일 남긴 후보 — 기록일 '+((tc.dates||[]).map(scD).join(' · ')||'없음')+
-    (r.tech_legacy?' · 2026-10-14 패턴 초기화 뒤 기록만':''),hz));
-  const tl=r.tech_legacy;   // 옛 탐지기 기록(rule 칸 없음) — 지우지 않고 따로. 옛 백테스트 수치는 여기에만 붙는다
-  if(tl&&tl.n_obs) body.appendChild(scSection('차트 발굴 일지 — 옛 패턴 기록 (2026-10-14 제거된 식)',tl,true,
-    '옛 탐지기(VCP · 옛 컵 · CAN SLIM · 300억 눌림목 · 주도주 등)가 남긴 후보 — 기록일 '+((tl.dates||[]).map(scD).join(' · ')||'없음')+' · 지금 칩과 다른 식',hz));
+  body.appendChild(scSection('차트 발굴 일지',tc,true,'Tech 스캔이 매일 남긴 후보 — 기록일 '+((tc.dates||[]).map(scD).join(' · ')||'없음'),hz));
   const ul=el('ul','scNotes'); (r.notes||[]).forEach(n=>ul.appendChild(el('li',null,n))); body.appendChild(ul);
 }
 
