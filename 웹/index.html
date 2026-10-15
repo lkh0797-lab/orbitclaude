@@ -3037,6 +3037,8 @@ details.linMore>summary::-webkit-details-marker{display:none}
 table.grSum th.r,table.grTrend th.r,table.grMem th.r,table.grExt th.r{text-align:right}
 .dipTbl th.vSort{cursor:pointer;user-select:none;white-space:nowrap}.dipTbl th.vSort:hover{color:var(--ink)}.dipTbl th.vSort.on{color:var(--accent)}
 .dipTbl th.vSort i{font-style:normal;font-size:10px;opacity:.55}.dipTbl th.vSort.on i{opacity:1}
+.expTbl th.vSort{cursor:pointer;user-select:none}.expTbl th.vSort:hover{color:var(--ink)}.expTbl th.vSort.on{color:var(--accent)}
+.expTbl th.vSort i{font-style:normal;font-size:10px;opacity:.55}.expTbl th.vSort.on i{opacity:1}
 table.grSum td{vertical-align:middle;white-space:nowrap}
 table.grSum td.nm b{font-size:13px}
 table.grSum td.nm small{display:block;color:var(--faint);font-size:10.5px;white-space:normal;max-width:220px}
@@ -4223,12 +4225,58 @@ function expQtr(x){
   }
   return w;
 }
-function expTable(rows){
+// 수출 추적 표 줄 세우기 — 머리 칸을 누르면 큰 값 먼저(▼), 다시 누르면 작은 값 먼저(▲), 세 번째는 원래 순서(상태순). 글자 칸은 가나다순부터. 값 없는 줄은 늘 맨 아래
+const EXP_SORT={
+  name:{v:x=>x.name, str:true},
+  trend:{v:x=>(x.signals||{}).y3},                                                   // 24개월 — 최근 3개월 합의 전년 대비
+  grade:{v:x=>({A:3,B:2,C:1}[x.grade]||0)*10+(((x.validation||{}).corr)||0)},        // 등급 먼저, 같은 등급은 상관
+  qtr:{v:x=>(x.aligned||{}).cur},                                                    // 이번 분기(공시 안 된 분기면 나온 달) 통관 전년 대비
+  est:{v:x=>(x.aligned||{}).est},
+  cov:{v:x=>(x.validation||{}).coverage},
+  imp:{v:x=>x.implied},
+  unit:{v:x=>((x.national||[])[0]||{}).unit_yoy},
+  cty:{v:x=>{ const n=(x.national||[])[0]; return n&&n.top&&n.top[0]?n.top[0][0]:null; }, str:true},
+  state:{v:x=>{ const i=EXP_ORDER.indexOf((x.signals||{}).state); return i<0?null:EXP_ORDER.length-i; }},   // ▼ = 원래 상태 순서
+};
+function expSorted(rows){
+  const so=(S.expF||{}).sort, d=so&&EXP_SORT[so.k];
+  if(!d) return rows;
+  const bad=v=>v===null||v===undefined||(typeof v==='number'&&!isFinite(v));
+  return rows.slice().sort((a,b)=>{
+    const x=d.v(a), y=d.v(b);
+    if(bad(x)&&bad(y)) return 0; if(bad(x)) return 1; if(bad(y)) return -1;
+    const c=d.str?String(x).localeCompare(String(y),'ko'):x-y;
+    return so.dir==='asc'?c:-c;
+  });
+}
+function expTable(rows0){
+  const rows=expSorted(rows0);
   const w=el('div','tblwrap'); const t=el('table','tbl expTbl');
   const B=S.expBasis||{};
   const A0=(rows.find(x=>x.aligned)||{}).aligned;
-  t.innerHTML='<tr><th>종목</th><th title="막대 = 월별 수출 금액(옅게, 마지막 3개월 진하게) · 선 = 3개월 합의 전년 같은 때 대비 증가율(점선 = 0%). 더블클릭하면 최근 5년">24개월 <small>막대 금액 · 선 증가율</small></th><th>신뢰도</th><th>주 통로</th><th title="막대 = 분기 통관 수출의 전년 대비(초록 늘어남 · 빨강 줄어듦, 맨 끝 테두리 막대 = 아직 공시 안 된 이번 분기의 나온 달), 점 = 같은 분기 공시 매출의 전년 대비. 막대와 점이 같이 가면 통관이 매출을 잘 읽는 회사. 마우스를 올리면 그 분기 숫자">분기 궤적 <small>막대 통관 · 점 공시 매출 (전년 대비)</small></th><th class="r" title="이 회사 과거 분기의 통관 증가율 ↔ 매출 증가율 직선으로 낸 이번 분기 매출 증가율 추정 ± 과거 오차(6분기↑, 덩어리 수출은 안 냄)">매출 추정</th>'+
-    '<th class="r">수출/매출</th><th class="r">매출 기여</th><th class="r">단가</th><th>주 수출국</th><th>상태</th><th></th></tr>';
+  const so=(S.expF||{}).sort||{};
+  const hr=el('tr');
+  [['종목','name'],
+   ['24개월 <small>막대 금액 · 선 증가율</small>','trend','','막대 = 월별 수출 금액(옅게, 마지막 3개월 진하게) · 선 = 3개월 합의 전년 같은 때 대비 증가율(점선 = 0%). 더블클릭하면 최근 5년\n줄 세우기 = 최근 3개월 합의 전년 대비'],
+   ['신뢰도','grade','','줄 세우기 = 등급(A · B · C) 다음 상관'],
+   ['주 통로',null],
+   ['분기 궤적 <small>막대 통관 · 점 공시 매출 (전년 대비)</small>','qtr','','막대 = 분기 통관 수출의 전년 대비(초록 늘어남 · 빨강 줄어듦, 맨 끝 테두리 막대 = 아직 공시 안 된 이번 분기의 나온 달), 점 = 같은 분기 공시 매출의 전년 대비. 막대와 점이 같이 가면 통관이 매출을 잘 읽는 회사. 마우스를 올리면 그 분기 숫자\n줄 세우기 = 이번 분기 통관 전년 대비'],
+   ['매출 추정','est','r','이 회사 과거 분기의 통관 증가율 ↔ 매출 증가율 직선으로 낸 이번 분기 매출 증가율 추정 ± 과거 오차(6분기↑, 덩어리 수출은 안 냄)'],
+   ['수출/매출','cov','r'],['매출 기여','imp','r'],['단가','unit','r'],['주 수출국','cty'],['상태','state'],['',null]]
+  .forEach(([label,k,cls,tip])=>{
+    const th=el('th',(cls||'')+(k?' vSort'+(so.k===k?' on':''):''));
+    th.innerHTML=label+(k?' <i>'+(so.k===k?(so.dir==='asc'?'▲':'▼'):'↕')+'</i>':'');
+    const str=k&&EXP_SORT[k].str, d1=str?'asc':'desc', d2=str?'desc':'asc';       // 글자 칸(종목 · 주 수출국)은 가나다순부터
+    if(tip||k) th.title=(tip?tip+'\n':'')+(k?(str?'누를 때마다 가나다순 ▲ → 거꾸로 ▼ → 원래 순서':'누를 때마다 큰 값 먼저 ▼ → 작은 값 먼저 ▲ → 원래 순서'):'');
+    if(k) th.onclick=()=>{
+      S.expF=S.expF||{};
+      const cur=S.expF.sort;
+      S.expF.sort=!cur||cur.k!==k?{k,dir:d1}:cur.dir===d1?{k,dir:d2}:null;
+      w.replaceWith(expTable(rows0));
+    };
+    hr.appendChild(th);
+  });
+  t.appendChild(hr);
   if(!rows.length){ const tr=el('tr'); const td=el('td','empty','해당 없음'); td.colSpan=12; tr.appendChild(td); t.appendChild(tr); }
   rows.forEach(x=>{
     const s=x.signals, v=x.validation||{}, c0=(x.channels||[])[0], n0=(x.national||[])[0];
