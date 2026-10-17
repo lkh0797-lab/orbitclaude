@@ -13,6 +13,13 @@ OpenDART 공시검색(list.json)을 분기마다 끝 쪽까지 받는다. 회사
   python 도구/공시목록_수집.py --from 2015 --types I
 결과: .cache/공시목록/<종류>_<YYYY>Q<n>.jsonl (한 줄 = 공시 하나: rcept_no · rcept_dt · corp_code · corp_name · stock_code · corp_cls · report_nm · flr_nm)
 API 키는 출력 · 로그에 찍지 않는다. 요청 사이 0.35초, 하루 한도(약 2만 건)를 넘지 않게 --max-calls 로 멈춘다.
+
+줄어든 목록으로 덮지 않는다(2026-10-17). DART 는 공시 당일 · 점검 중에 '조회된 데이터 없음'(013)이나 빈 쪽을 정상처럼 돌려준다.
+예전엔 그 결과로 열린 분기 파일을 통째로 다시 써서, 그날 공시 위험 등급이 빠졌다가 다음 날 돌아왔다(관심 장부 리뷰).
+  - 끝까지 못 받은 판(013 · 끝 쪽 전에 빈 쪽 · 받은 줄 < 첫 쪽 total_count)이거나 옛 파일보다 크게 줄었으면(5줄 또는 1% 넘게)
+    옛 줄을 접수번호로 합쳐 남긴다 — 한 분기 목록은 철회 몇 건 말고는 줄지 않는다. 다 받았고 조금만 줄었으면(철회) 새 목록으로 바꾼다
+  - 파일은 임시 파일에 쓴 뒤 바꿔 끼운다(쓰다 끊겨도 옛 파일이 남는다)
+  - 닫힌 분기는 끝까지 받았고 줄이 하나라도 있을 때만 .done — 비어 끝난 분기는 다음에 다시 묻는다
 """
 import datetime as dt
 import json
@@ -39,6 +46,44 @@ def quarters(y0, today):
         b = (dt.date(y + (q == 4), (q % 4) * 3 + 1, 1) - dt.timedelta(days=1))
         yield "%dQ%d" % (y, q), a, min(b, today)
         y, q = (y + 1, 1) if q == 4 else (y, q + 1)
+
+
+def settle(old, new, complete):
+    """→ (쓸 줄, 알림 한 줄 | None). old = 지금 파일의 줄, new = 이번에 받은 줄, complete = 끝까지 받았나."""
+    if not old:
+        return new, None
+    shrink = len(new) < len(old) - max(5, len(old) // 100)
+    if complete and not shrink:
+        return new, None
+    have = {r.get("rcept_no") for r in new}
+    kept = [r for r in old if r.get("rcept_no") not in have]
+    why = "끝까지 못 받음" if not complete else "옛 파일보다 %d줄 줄어듦" % (len(old) - len(new))
+    return new + kept, "%s — 옛 줄 %d개를 합쳐 남김(받은 %d · 옛 %d)" % (why, len(kept), len(new), len(old))
+
+
+def read_rows(path):
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return [json.loads(x) for x in fh if x.strip()]
+    except (OSError, ValueError):
+        return []
+
+
+def write_rows(path, rows):
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        for x in rows:
+            fh.write(json.dumps(x, ensure_ascii=False) + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())
+    for k in range(5):                      # 드라이브 동기화가 잠깐 잡고 있으면 몇 번 다시
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if k == 4:
+                raise
+            time.sleep(0.2 * (k + 1))
 
 
 def fetch(params, calls):
@@ -75,7 +120,7 @@ def main(argv):
             current = b >= today - dt.timedelta(days=1)
             if os.path.exists(done) and not current:
                 continue
-            rows, page, total = [], 1, None
+            rows, seen, page, total, count0, complete = [], set(), 1, None, None, True
             while True:
                 if calls[0] >= max_calls:
                     print("멈춤 — 호출 %d번(한도 %d). 다시 돌리면 이어서 받는다." % (calls[0], max_calls), flush=True)
@@ -84,17 +129,32 @@ def main(argv):
                          page_no=page, page_count=100, last_reprt_at="N")
                 d = fetch(p, calls)
                 total = int(d.get("total_page") or 0)
-                rows += [{k: x.get(k) for k in KEEP} for x in (d.get("list") or [])]
+                if count0 is None:
+                    count0 = int(d.get("total_count") or 0)
+                if d.get("status") == "013":                # '없음' — 첫 쪽이든 중간이든 못 믿는다(옛 파일이 있으면 지킨다)
+                    complete = False
+                    break
+                for x in d.get("list") or []:
+                    if x.get("rcept_no") not in seen:       # 받는 사이 새 공시가 들어와 쪽이 밀리면 같은 줄이 두 번 온다
+                        seen.add(x.get("rcept_no"))
+                        rows.append({k: x.get(k) for k in KEEP})
                 time.sleep(0.35)
-                if page >= total or not d.get("list"):
+                if not d.get("list"):
+                    complete = page > total                 # 끝 쪽 전에 빈 쪽 — 덜 받음
+                    break
+                if page >= total:
                     break
                 page += 1
-            with open(path, "w", encoding="utf-8") as fh:
-                for x in rows:
-                    fh.write(json.dumps(x, ensure_ascii=False) + "\n")
-            if not current:
+            if count0 and len(rows) < count0:
+                complete = False
+            old = read_rows(path) if os.path.exists(path) else []
+            out, note = settle(old, rows, complete)
+            if out or not os.path.exists(path):
+                write_rows(path, out)
+            if not current and complete and rows:
                 open(done, "w").close()
-            print("%s %s — %d건 · %d쪽 · 누적 호출 %d · %.0f초" % (ty, lab, len(rows), total, calls[0], time.time() - t0), flush=True)
+            print("%s %s — %d건 · %d쪽 · 누적 호출 %d · %.0f초%s" % (ty, lab, len(out), total, calls[0], time.time() - t0,
+                                                         (" · " + note) if note else ("" if complete else " · 끝까지 못 받음")), flush=True)
     print("끝 — 호출 %d번, %.0f초" % (calls[0], time.time() - t0), flush=True)
     return 0
 
