@@ -264,7 +264,41 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .vcChipsR{display:flex;flex-wrap:wrap;gap:4px}
 .vcOrd{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;padding:3px 0}
 .vcOrd .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vcOrd>span:last-child{color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums}
+/* 관심 장부 */
+.wtBar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--dim);margin:0 0 10px}
+.wtSide{margin-top:8px;width:100%;font-size:12px}
+.wtSub{font-size:11.5px;color:var(--dim);margin:10px 0 4px}
+.wtHyps{display:flex;flex-direction:column;gap:4px}
+.wtHyp{display:grid!important;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:start;flex-direction:row!important;padding:5px 6px;border-radius:6px;background:var(--bg)}
+.wtHyp .t{display:flex;flex-direction:column;gap:2px;color:var(--ink);font-size:12.5px}.wtHyp .t b{font-weight:600}.wtHyp .t small{color:var(--faint);font-size:11px;line-height:1.45}
+.wtHyp .thw{display:flex;align-items:center;gap:4px;white-space:nowrap}.wtHyp .th{width:70px}.wtHyp em{font-style:normal;color:var(--dim)}
+.wtG{font-style:normal;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;align-self:flex-start;background:var(--line2);color:var(--dim)}
+.wtG.g{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}.wtG.w{background:var(--warn-bg);color:var(--warn)}.wtG.b{background:color-mix(in srgb,#e5534b 15%,transparent);color:#e5534b}
+.wtMsg{border-left:3px solid var(--line);padding:6px 10px;margin:4px 0;background:var(--panel);border-radius:0 6px 6px 0;font-size:12.5px}
+.wtMsg.warn{border-left-color:#e5534b}.wtMsg.good{border-left-color:var(--accent)}.wtMsg.seen{opacity:.6}
+.wtMsg .top{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.wtMsg .d{color:var(--faint);font-size:11px;font-variant-numeric:tabular-nums}.wtMsg .ln{color:var(--dim);font-size:12px;margin-top:2px}
+.wtCard{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:8px 0;background:var(--panel)}.wtCard.closed{opacity:.7}
+.wtH{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}.wtName{font-weight:700;font-size:14px;color:var(--ink)}.wtMeta{color:var(--dim);font-size:12px;margin-left:6px}
+.wtWhy{font-size:12.5px;color:var(--ink);margin:4px 0 6px;white-space:pre-wrap}
+.wtFacts td.l{color:var(--dim);white-space:nowrap}.wtFacts td.dim{color:var(--faint)}.wtFacts th,.wtFacts td{font-size:12px;white-space:nowrap}
+.wtHl{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.wtHr{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto;gap:8px;align-items:center;font-size:12.5px}
+.wtHr .v{color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+.wtS{font-size:11px;font-weight:700;text-align:center;border-radius:999px;padding:1px 0}.wtS.ok{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
+.wtS.bad{background:color-mix(in srgb,#e5534b 18%,transparent);color:#e5534b}.wtS.unk{background:var(--line2);color:var(--dim)}
+.wtLog{margin-top:6px;font-size:12px}.wtLog summary{cursor:pointer;color:var(--dim)}.wtLr{display:flex;gap:8px;padding:1px 0}.wtLr .d{color:var(--faint);font-variant-numeric:tabular-nums}
+.wtLr.warn{color:#e5534b}.wtLr.good{color:var(--accent)}
+.wtAdd>summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);margin:6px 0}
+.wtAct{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}.wtEdit{margin-top:8px}.wtClosed summary{cursor:pointer;color:var(--dim);font-size:12px;margin-top:8px}
+@media (max-width:640px){.wtHr{grid-template-columns:44px minmax(0,1fr);}.wtHr .v,.wtHr .wtG{grid-column:2}}
 /* 매출처 15년 열지도 */
+.vcMix .vcHeat th.n,.vcMix .vcHeat td.n{position:sticky;left:0;background:var(--panel);z-index:1}
+.vcMixC{margin-top:10px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);padding:10px 14px}
+.vcMixC>b{display:block;font-size:12.5px;margin-bottom:6px}
+.vcMixG .r{display:grid;grid-template-columns:minmax(0,1fr) 72px 52px 64px 84px;gap:8px;font-size:12px;padding:2px 0;font-variant-numeric:tabular-nums}
+.vcMixG .r .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vcMixG .r span:not(.n){text-align:right;color:var(--dim)}
+.vcMixN{font-size:11px;color:var(--faint);margin-top:6px;line-height:1.5}
+@media (max-width:640px){.vcMixG .r{grid-template-columns:minmax(0,1fr) 64px 48px;}.vcMixG .r .k,.vcMixG .r .s{display:none}}
 .vcHeatW{margin-top:26px}
 .vcHeatS{overflow-x:auto;border:1px solid var(--line2);border-radius:12px;background:var(--panel);padding:6px}
 .vcHeat{border-collapse:separate;border-spacing:3px;width:100%;font-size:12px}
@@ -3258,6 +3292,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
         <button data-t="tech">차트 발굴</button>
         <button data-t="score">기록 채점</button>
         <button data-t="trd">매매 일지</button>
+        <button data-t="watch">관심 장부</button>
         <button data-t="orbit" class="on">궤도</button>
         <button data-t="land">풍경</button>
         <button data-t="story">내러티브</button>
@@ -3284,6 +3319,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='tech';jump('tech')">차트 발굴 — 전 종목 차트 패턴(컵 앤 핸들 사용자 식 · 《차트의 기술》 기법 6개 · 보컬 관찰)</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='score';jump('score')">기록 채점 — 매일 남긴 판정(저평가 · 차트 발굴)이 그 뒤 실제로 어땠나</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='trd';jump('trd')">매매 일지 — 산 이유 · 생각을 바꿀 조건 · 결과를 도구별로</button></div>
+          <div style="margin-top:8px"><button class="ghost" onclick="S.tab='watch';jump('watch')">관심 장부 — 넣은 종목의 새 숫자 · 가설 깨짐만 알림함으로</button></div>
         </div>
       </div>
     </main>
@@ -3569,6 +3605,13 @@ function renderSide(){
   st.appendChild(el('span','chip', '보고서 '+c.count+'건'));
   st.appendChild(el('span','chip', kb(c.bytes)));
   box.appendChild(st);
+  // 관심 장부에 넣기(2026-10-17) — 넣으면 관심 장부 탭으로 간다(가설은 거기서 고친다)
+  if(!RO.on){ const wb=el('button','ghost wtSide','＋ 관심 장부에 넣기'); wb.title='오늘 사실을 사진으로 남기고, 새 숫자가 들어올 때마다 가설(검증된 틀)을 다시 따진다';
+    wb.onclick=async()=>{ wb.disabled=true; try{ const d0=await (await fetch('/api/watch')).json();
+        const hy=(d0.templates||[]).filter(t=>t.grade==='검증됨').map(t=>({tpl:t.key}));
+        await wtPost({action:'add',code:c.code,hyps:hy,auto:true}); jump('watch'); }
+      catch(e){ wb.disabled=false; wb.textContent=/이미/.test(e.message)?'이미 장부에 있음 — 관심 장부 탭':'실패: '+e.message; if(/이미/.test(e.message)) wb.onclick=()=>jump('watch'); } };
+    box.appendChild(wb); }
   a.appendChild(box);
 
   const kbox=el('div','sect');
@@ -3614,7 +3657,7 @@ function show(t){
   ({orbit:viewOrbit, land:viewLand, story:viewStory, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, rep:viewReports, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    cat:viewCatalyst, exp:viewExport, val:viewValue, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades}[t])(p);
+    cat:viewCatalyst, exp:viewExport, val:viewValue, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades, watch:viewWatch}[t])(p);
 }
 
 // ---------------------------------------------------------- 분기 변화 — 보고서가 나올 때마다 직전 공시(3개월 전)와 맞댄다
@@ -7686,6 +7729,163 @@ function dipDetail(r){
   const b2=el('button',null,'가속도 보기'); b2.onclick=async()=>{ await pick(r.code); jump('druck'); }; act.appendChild(b2);
   box.appendChild(act);
   return box;
+}
+
+// ---------------------------------------------------------- 관심 장부 — 넣은 종목을 같은 잣대로 계속 본다(/api/watch, 관심장부.py, 2026-10-17)
+// 개인 자료: 서버가 기업추적/개인/관심장부.json 에 쓴다(.gitignore). 사실은 서버가 캐시만 읽어 만든다(새 호출 없음).
+// 알림 = 전날과 달라진 것만(새 분기 숫자 · 수주잔고 새 점 · 수출 흐름 · 공시 위험 · 가설 깨짐/다시 지켜짐). 식 버전 · 정정 · 공시 당일 빈 원장은 걸러 낸다.
+const WT_FACTS=[['rev_yoy','매출 1년'],['accel_b','가속 B'],['phase','국면'],['blog_yoy','잔고 1년'],['btb','북투빌'],['blog_gap','잔고 − 매출'],
+  ['per_pct','PER 자리'],['export','수출 통관'],['risk','공시 위험'],['price','주가']];
+const WT_GRADE={'검증됨':'g','약함':'w','관계 없음':'n','반박됨':'b','검증 안 됨':'n'};
+async function wtPost(body){
+  const r=await fetch('/api/watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  let d; try{ d=await r.json(); }catch(e){ d={error:'응답을 읽지 못했습니다 (HTTP '+r.status+')'}; }
+  if(!r.ok||d.error) throw new Error(d.error||('HTTP '+r.status));
+  return d;
+}
+// 가설 고르기 — 틀마다 근거 등급 · 문턱. cur = 이미 단 가설(고칠 때). 처음 넣을 때는 '검증됨' 틀만 켜 둔다
+function wtHypPicker(tpls, cur){
+  const w=el('div','wtHyps'), rows=[];
+  tpls.forEach(t=>{
+    const h=(cur||[]).find(x=>x.tpl===t.key);
+    const r=el('label','wtHyp');
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=cur?!!h:t.grade==='검증됨';
+    r.appendChild(cb);
+    const tx=el('span','t'); tx.appendChild(el('b',null,t.label)); tx.appendChild(el('i','wtG '+(WT_GRADE[t.grade]||'n'),t.grade));
+    tx.appendChild(el('small',null,t.ev)); r.appendChild(tx);
+    let th=null;
+    if(t.op==='ge'||t.op==='le'){
+      th=document.createElement('input'); th.type='number'; th.step='any'; th.value=h&&h.th!=null?h.th:t.th; th.className='th';
+      th.title='문턱 — 값이 '+(t.op==='ge'?'이보다 크거나 같으면':'이보다 작거나 같으면')+' 지킴'+(t.unit?' ('+t.unit+')':'');
+      const tw=el('span','thw'); tw.appendChild(el('em',null,t.op==='ge'?'≥':'≤')); tw.appendChild(th); if(t.unit) tw.appendChild(el('em',null,t.unit)); r.appendChild(tw);
+    }
+    rows.push({t,cb,th,id:h&&h.id}); w.appendChild(r);
+  });
+  return {node:w, get:()=>rows.filter(x=>x.cb.checked).map(x=>{ const o={tpl:x.t.key}; if(x.id) o.id=x.id; if(x.th&&x.th.value.trim()!=='') o.th=Number(x.th.value); return o; })};
+}
+function wtForm(p, d){
+  const f=el('div','trdForm wtForm');
+  f.appendChild(el('b',null,'장부에 넣기'));
+  const g=el('div','grid'); f.appendChild(g);
+  const lab=(t,node,cls)=>{ const l=el('label',cls||null); l.appendChild(el('span',null,t)); l.appendChild(node); g.appendChild(l); return node; };
+  const code=document.createElement('input'); code.type='text'; code.placeholder='예: 삼성전자 또는 005930';
+  if(S.co) code.value=S.co.name+' ('+S.co.code+')';
+  code.setAttribute('list','trdCoList');
+  let dl=$('#trdCoList');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='trdCoList'; document.body.appendChild(dl); }
+  if(!dl.childElementCount) (S.companies||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.name+' ('+c.code+')'; dl.appendChild(o); });
+  lab('종목 (이름 또는 코드)',code);
+  const why=document.createElement('textarea'); why.placeholder='왜 지켜보나 — 예: HBM 수주잔고가 매출보다 빨리 늘고 있다';
+  lab('지켜보는 이유',why,'wide');
+  f.appendChild(el('div','wtSub','가설 — 새 숫자가 들어올 때마다 다시 따진다. 회색 · 주황 표시는 기존 검증에서 주가와 관계가 약했던 틀이다(관찰용)'));
+  const hp=wtHypPicker(d.templates||[], null); f.appendChild(hp.node);
+  const act=el('div','act'); f.appendChild(act);
+  const ok=el('button',null,'넣기'); act.appendChild(ok);
+  const msg=el('span','trdMsg'); act.appendChild(msg);
+  const resolve=v=>{ v=v.trim(); const m=v.match(/\(([0-9A-Za-z]{6})\)\s*$/)||v.match(/^([0-9A-Za-z]{6})$/);
+    if(m) return m[1].toUpperCase(); const hit=(S.companies||[]).find(c=>c.name===v); return hit?hit.code:null; };
+  ok.onclick=async()=>{
+    msg.textContent='';
+    const cc=resolve(code.value);
+    if(!cc){ msg.textContent='종목: 목록에서 고르거나 이름 · 6자리 코드를 넣으세요'; return; }
+    ok.disabled=true;
+    try{ const nd=await wtPost({action:'add',code:cc,why:why.value,hyps:hp.get()}); if(!f.isConnected||S.tab!=='watch') return; viewWatch(p,nd); }
+    catch(e){ msg.textContent=e.message; ok.disabled=false; }
+  };
+  return f;
+}
+function wtStatus(s){ return s==='ok'?['지킴','ok']:s==='broken'?['깨짐','bad']:['모름','unk']; }
+function wtCard(p, d, e){
+  const c=el('div','wtCard'+(e.closed?' closed':''));
+  const h=el('div','wtH');
+  const nm=el('a','wtName',e.name||e.code); nm.href='#'; nm.title='이 회사 가속도 탭으로';
+  nm.onclick=ev=>{ ev.preventDefault(); pick(e.code).then(()=>{ $('#tabs').hidden=false; jump('druck'); }); };
+  h.appendChild(nm); h.appendChild(el('small',null,' '+e.code));
+  h.appendChild(el('span','wtMeta',e.added+' 편입'+(e.ret!=null?' · 그 뒤 주가 '+(e.ret>=0?'+':'−')+Math.abs(e.ret).toFixed(1)+'%':'')+
+    (e.closed?' · '+e.closed.date+' 닫음'+(e.closed.why?' ('+e.closed.why+')':''):'')+(e.at?' · '+e.at+' 판':'')));
+  c.appendChild(h);
+  if(e.why) c.appendChild(el('div','wtWhy',e.why));
+  if(e.err) c.appendChild(el('div','finnote warn','사실을 읽지 못함: '+e.err));
+  // 편입 때 → 지금
+  const t=el('table','tbl wtFacts'); const hr=el('tr'); hr.appendChild(el('th',null,'')); WT_FACTS.forEach(([k,l])=>hr.appendChild(el('th','r',l))); t.appendChild(hr);
+  const row=(lab,get)=>{ const tr=el('tr'); tr.appendChild(el('td','l',lab)); WT_FACTS.forEach(([k])=>{ const [txt,tip,dim]=get(k); const td=el('td','r'+(dim?' dim':''),txt); if(tip) td.title=tip; tr.appendChild(td); }); t.appendChild(tr); };
+  row('편입 때',k=>{ const s=(e.snap||{})[k]; return [s?s.txt:'—',null,!s]; });
+  row('지금',k=>{ const f=(e.facts||{})[k]; if(!f) return ['—',null,true];
+    const x=f.x||{}; const extra=k==='export'&&x.state?' · '+x.state+(x.grade?' · 신뢰도 '+x.grade:''):k==='accel_b'&&x.label?' · '+x.label:'';
+    return [f.txt+(f.ok?'':' ?'),(f.ok?'':(f.why||'못 믿음')+' — 판정에 쓰지 않음')+extra,!f.ok]; });
+  const tw=el('div','tblwrap'); tw.appendChild(t); c.appendChild(tw);
+  // 가설
+  const hl=el('div','wtHl');
+  if(!(e.hyps||[]).length) hl.appendChild(el('div','empty','가설 없음 — 숫자만 지켜본다'));
+  (e.hyps||[]).forEach(x=>{ const [st,cls]=wtStatus(x.status); const r=el('div','wtHr');
+    r.appendChild(el('span','wtS '+cls,st));
+    const b=el('span','t',x.label); r.appendChild(b);
+    r.appendChild(el('span','v',x.value_txt+' '+(x.th_txt?'(문턱 '+x.th_txt+')':'')));
+    const gi=el('i','wtG '+(WT_GRADE[x.grade]||'n'),x.grade); gi.title=x.ev; r.appendChild(gi);
+    if(!x.ok&&x.why) r.title='지금 값을 못 믿음: '+x.why+' — 앞 판정을 그대로 쥐고 있다';
+    hl.appendChild(r); });
+  c.appendChild(hl);
+  if((e.log||[]).length){ const lg=el('details','wtLog'); lg.appendChild(el('summary',null,'편입 이후 알림 '+e.log.length+'건'));
+    e.log.slice().reverse().forEach(m=>{ const r=el('div','wtLr '+m.level); r.appendChild(el('span','d',m.d)); r.appendChild(el('span',null,m.title)); lg.appendChild(r); });
+    c.appendChild(lg); }
+  if(!RO.on){
+    const act=el('div','wtAct');
+    const btn=(t,cls,fn)=>{ const b=el('button',cls,t); b.onclick=fn; act.appendChild(b); return b; };
+    const msg=el('span','trdMsg');
+    const go=async body=>{ msg.textContent=''; try{ const nd=await wtPost(body); if(S.tab==='watch') viewWatch(p,nd); }catch(x){ msg.textContent=x.message; } };
+    if(!e.closed){
+      btn('가설 고치기','ghost',()=>{ if(c.querySelector('.wtEdit')) return; const ed=el('div','wtEdit'); const hp=wtHypPicker(d.templates||[], e.hyps||[]);
+        ed.appendChild(hp.node); const a2=el('div','act'); const sv=el('button',null,'저장'); sv.onclick=()=>go({action:'update',id:e.id,hyps:hp.get()});
+        const cn=el('button','ghost','취소'); cn.onclick=()=>ed.remove(); a2.appendChild(sv); a2.appendChild(cn); ed.appendChild(a2); c.insertBefore(ed,act); });
+      btn('닫기','ghost',()=>{ const w=prompt('닫는 이유 (선택) — 장부에는 남고 다시 따지지 않는다',''); if(w===null) return; go({action:'close',id:e.id,why:w}); });
+    } else btn('다시 열기','ghost',()=>go({action:'reopen',id:e.id}));
+    btn('지우기','ghost',()=>{ if(confirm((e.name||e.code)+' 을(를) 장부에서 지울까? 판정 기록도 같이 지워진다')) go({action:'delete',id:e.id}); });
+    act.appendChild(msg); c.appendChild(act);
+  }
+  return c;
+}
+async function viewWatch(p, data){
+  p.innerHTML='';
+  const box=el('div','trdBox wtBox'); p.appendChild(box);
+  const hd=el('div','dipHead');
+  hd.appendChild(el('b',null,'관심 장부'));
+  hd.appendChild(el('span',null,'넣은 종목을 같은 잣대로 계속 본다 — 새 숫자가 들어오면 가설을 다시 따지고, 달라진 것만 알림함에 올린다. 개인 자료(이 PC 의 개인/ 폴더)'));
+  box.appendChild(hd);
+  let d=data;
+  if(!d){ try{ d=await (await fetch('/api/watch')).json(); }catch(x){ d={error:'불러오지 못했습니다'}; } }
+  if(!box.isConnected) return;
+  if(d.error){ box.appendChild(el('div','err',d.error)); if(!d.entries) return; }
+  const run=d.run||{};
+  const bar=el('div','wtBar');
+  bar.appendChild(el('span',null,'다시 따지는 때: 매일 '+(d.at||[]).join(' · ')+' · 밤 가속도 계산 뒤 · 공시목록 갱신 뒤'+(run.at?' — 마지막 '+run.at.replace('T',' ')+(run.why?' ('+run.why+')':''):'')+(run.error?' — 실패: '+run.error:'')));
+  if(!RO.on){ const rb=el('button','ghost','지금 다시 따지기'); rb.onclick=async()=>{ rb.disabled=true; rb.textContent='따지는 중…';
+      try{ const nd=await (await fetch('/api/watch?run=1')).json(); if(S.tab==='watch') viewWatch(p,nd); }catch(x){ rb.textContent='실패'; } }; bar.appendChild(rb); }
+  box.appendChild(bar);
+  // 알림함
+  const ib=el('div','dipBlock'); const ih=el('div','dipBH'); ih.appendChild(el('b',null,'알림함')); ih.appendChild(el('span',null,(d.unseen||0)+'건 안 읽음 — 가짜 변화(식 버전 · 정정 · 공시 당일 빈 원장)는 걸러 냈다'));
+  if(!RO.on&&d.unseen){ const ab=el('button','ghost','다 읽음'); ab.onclick=async()=>{ try{ const nd=await wtPost({action:'seen_all'}); if(S.tab==='watch') viewWatch(p,nd); }catch(x){} }; ih.appendChild(ab); }
+  ib.appendChild(ih);
+  const inbox=(d.inbox||[]).slice(0,60);
+  if(!inbox.length) ib.appendChild(el('div','empty','아직 알림이 없다 — 첫 판은 기준만 잡는다. 새 숫자가 들어오면 여기에 쌓인다.'));
+  inbox.forEach(m=>{ const r=el('div','wtMsg '+m.level+(m.seen?' seen':''));
+    const top=el('div','top'); top.appendChild(el('span','d',m.d)); const n=el('a',null,m.name||m.code); n.href='#';
+    n.onclick=ev=>{ ev.preventDefault(); pick(m.code).then(()=>{ $('#tabs').hidden=false; jump('druck'); }); }; top.appendChild(n);
+    top.appendChild(el('b',null,m.title)); r.appendChild(top);
+    (m.lines||[]).forEach(l=>r.appendChild(el('div','ln',l))); ib.appendChild(r); });
+  box.appendChild(ib);
+  const open=(d.entries||[]).filter(e=>!e.closed), closed=(d.entries||[]).filter(e=>e.closed);
+  // 넣기 칸 — 장부가 비었으면 펼쳐 두고, 있으면 접는다(지켜보는 종목이 먼저 보이게)
+  const addBox=()=>{ if(RO.on) return null; const dd=document.createElement('details'); dd.className='wtAdd'; dd.open=!open.length;
+    dd.appendChild(el('summary',null,'＋ 종목 넣기')); dd.appendChild(wtForm(p,d)); return dd; };
+  const eb=el('div','dipBlock'); const eh=el('div','dipBH'); eh.appendChild(el('b',null,'지켜보는 종목')); eh.appendChild(el('span',null,open.length+'곳'+(closed.length?' · 닫은 것 '+closed.length:'')+' — 물음표 = 지금 값을 못 믿음(자료 품질 · 늦은 국면 · 못 믿을 잔고), 판정에 쓰지 않는다'));
+  eb.appendChild(eh);
+  if(!open.length) eb.appendChild(el('div','empty','아직 넣은 종목이 없다. 위 「장부에 넣기」에서 고르거나, 회사 화면 왼쪽의 「관심 장부에 넣기」를 누른다.'));
+  open.forEach(e=>eb.appendChild(wtCard(p,d,e)));
+  if(closed.length){ const dt_=el('details','wtClosed'); dt_.appendChild(el('summary',null,'닫은 것 '+closed.length+'곳')); closed.forEach(e=>dt_.appendChild(wtCard(p,d,e))); eb.appendChild(dt_); }
+  box.appendChild(eb);
+  const ad=addBox(); if(ad) box.insertBefore(ad, open.length?eb.nextSibling:eb);
+  box.appendChild(el('div','finnote','틀의 근거 등급은 기존 백테스트 숫자다(검증됨 = 0 을 걸치지 않음). 알림량은 30곳 · 2019~2026 재현에서 회사 · 달 평균 0.65건(중앙 0, 상위 10% 2건) — 도구/관심장부_재현.py. '+
+    '가짜 변화의 실제 비율은 운영 4주로 잰다. 경로: '+(d.path||'')));
 }
 
 // ---------------------------------------------------------- 시너지 발굴
@@ -12046,6 +12246,7 @@ async function viewTimeline(p){
   p.appendChild(key);
   p.appendChild(vcRipple(d,V,c));
   p.appendChild(vcHeat(d,V));
+  if(d.mix) p.appendChild(vcMix(d.mix));
   vcMore(p,d,V);
   p.appendChild(el('div','finnote','출처 = 사업보고서 「사업의 내용」(주요 매출처 및 비중 · 법인별 주요 매출처 · 주요 원재료 현황 · 매출실적 수출/내수 · 종속회사 판매경로) + 단일판매·공급계약 공시. '+
     '비중 기준(회사 매출 중 / 부문 매출 중)은 회사마다 다르다. 이름이 상장사와 맞지 않으면(약칭 · 해외) 글자로만 남고, 그물망은 이름이 같은 것만 잇는다('+d.peer_n+'곳 대조).'));
@@ -12747,6 +12948,67 @@ async function vcBuyerPop(key,kind,name){
     t.appendChild(tr); });
   const sc=el('div','vcHeatS'); sc.appendChild(t); pop.appendChild(sc);
   requestAnimationFrame(()=>{ sc.scrollLeft=sc.scrollWidth; });      // 넘치면 최근 해(오른쪽 끝)부터 보이게
+}
+
+// 성장 엔진(2026-10-17) — 해마다 「주요 제품 등의 현황」 매출을 원장 연결 매출로 검산해 잇는다(제품믹스.py).
+// 검산 통과(표 합계 × 단위 = 원장 매출 ±10%) 해만 금액 · 기여도, 나머지 해는 표의 비중(%)만 흐리게. 단위는 원장 매출에 가장 가까운 10의 거듭제곱으로 골랐다.
+// 이해 도구 — 신호 · 점수 아님. 열쇠(부문 + 품목 이름)가 바뀌면 이어지지 않아 '새로 생김 · 사라짐'으로 보인다
+function vcMix(M){
+  const w=el('div','vcHeatW vcMix');
+  const au=M.audit, rate=au&&au.pass10_rate!=null?Math.round(au.pass10_rate*100):null;
+  w.appendChild(vcSec('성장 엔진 — 제품 · 부문 매출','어느 제품이 성장을 끌었나. 금액은 원장 매출과 맞는 해(검산 통과)만, 나머지 해는 표의 비중(%)만 흐리게'));
+  const ys=(M.years||[]).slice(-12);
+  if(!ys.length){ w.appendChild(el('div','vcEmpty','제품 매출 표가 없다')); return w; }
+  const eok=v=>v==null?'—':Math.abs(v)>=1e12?(v/1e12).toFixed(1)+'조':Math.round(v/1e8).toLocaleString('ko-KR')+'억';
+  // 줄 = 최근 통과 해(없으면 최근 해) 기준 상위 8개, 나머지 열쇠는 이름만 다르게 이어질 수 있어 행으로 두지 않는다
+  const base=[...ys].reverse().find(y=>y.pass)||ys[ys.length-1];
+  const top=base.items.filter(i=>!i.other).sort((a,b)=>((b.amt||0)-(a.amt||0))||((b.share||0)-(a.share||0))).slice(0,8);
+  const t=el('table','vcHeat'); const hr=el('tr'); hr.appendChild(el('th','n','제품 · 부문'));
+  const mixTip=y=>y.kind==='pct'?' — 비율만 적힌 해(원장과 대조하지 않음) — 비중만':
+    y.pass?' — 검산 통과(표 합계 ÷ 원장 매출 '+(y.ratio*100).toFixed(0)+'%, 단위 '+y.unit_name+')':
+    ' — 검산 안 됨'+(y.ratio!=null?'(표 합계 ÷ 원장 매출 '+(y.ratio*100).toFixed(0)+'%)':'')+(y.why?' · '+y.why:'')+' — 비중만';
+  ys.forEach(y=>{ const th=el('th',null,"'"+String(y.year).slice(2)); th.title=y.year+'년 사업보고서'+mixTip(y); hr.appendChild(th); });
+  t.appendChild(hr);
+  const mx=Math.max(1,...ys.flatMap(y=>y.items.map(i=>i.share||0)));
+  top.forEach(it=>{
+    const tr=el('tr'); const n=el('td','n',it.label); n.title=it.label; tr.appendChild(n);
+    ys.forEach(y=>{ const x=y.items.find(i=>i.key===it.key), c2=el('td','c');
+      if(x&&x.share!=null){ c2.classList.add('on'); c2.style.setProperty('--a',Math.min(.85,.12+x.share/mx*.73).toFixed(2));
+        c2.textContent=Math.round(x.share)+'%'; if(!y.pass) c2.style.opacity='.45';
+        c2.title=y.year+'년 '+it.label+' — 비중 '+x.share.toFixed(1)+'%'+(x.amt!=null?' · '+eok(x.amt)+'원':'')+(y.pass?'':' (검산 안 된 해 — 금액 숨김)'); }
+      tr.appendChild(c2); });
+    t.appendChild(tr); });
+  const tot=el('tr'); tot.appendChild(el('td','n','원장 매출(검산)'));
+  ys.forEach(y=>{ const c2=el('td','c'); c2.textContent=y.pass?eok(y.rev):y.kind==='pct'?'%':'×'; c2.title=y.year+'년'+mixTip(y); tot.appendChild(c2); });
+  t.appendChild(tot);
+  const sc=el('div','vcHeatS'); sc.appendChild(t); w.appendChild(sc);
+  requestAnimationFrame(()=>{ sc.scrollLeft=sc.scrollWidth; });
+  // 기여도 — 마지막 이어진 두 통과 해
+  const C=M.contrib;
+  if(C&&C.rows&&C.rows.length){
+    const box=el('div','vcMixC');
+    const up=C.d_total>=0;
+    box.appendChild(el('b',null,C.a+' → '+C.b+' · 이어진 품목 매출 '+(up?'+':'−')+eok(Math.abs(C.d_total))+'원 — 누가 '+(up?'끌었나':'끌어내렸나')));
+    const g=el('div','vcMixG');
+    C.rows.slice(0,6).forEach(r=>{ const row=el('div','r');
+      row.appendChild(el('span','n',r.label));
+      row.appendChild(el('span','d',(r.delta>=0?'+':'−')+eok(Math.abs(r.delta))));
+      row.appendChild(el('span','y',r.yoy==null?'—':(r.yoy>=0?'+':'')+r.yoy.toFixed(0)+'%'));
+      row.appendChild(el('span','k',r.contrib==null?'—':'기여 '+r.contrib.toFixed(0)+'%'));
+      row.appendChild(el('span','s',r.share_pp==null?'':(r.share_pp>=0?'비중 +':'비중 ')+r.share_pp.toFixed(1)+'%p'));
+      g.appendChild(row); });
+    box.appendChild(g);
+    const nt=[];
+    if(C.new.length) nt.push('새로 적힘: '+C.new.slice(0,4).join(', ')+(C.new.length>4?' 외 '+(C.new.length-4):''));
+    if(C.gone.length) nt.push('빠짐: '+C.gone.slice(0,4).join(', ')+(C.gone.length>4?' 외 '+(C.gone.length-4):''));
+    nt.push('이어진 품목 = '+C.b+'년 표 금액의 '+Math.round(C.matched*100)+'% — 이름이 바뀐 품목은 새로 적힘 · 빠짐으로 보인다');
+    box.appendChild(el('div','vcMixN',nt.join(' · ')));
+    w.appendChild(box);
+  } else w.appendChild(el('div','vcMixN',C?C.a+' → '+C.b+' 두 해 모두 검산은 통과했지만 품목 이름이 하나도 겹치지 않아(표 꼴 · 부문 이름이 바뀜) 기여도를 낼 수 없다 — 비중 흐름만 본다':
+    '이어진 두 해가 모두 검산을 통과한 적이 없어 기여도를 내지 않는다 — 비중 흐름만 본다'));
+  w.appendChild(el('div','vcMixN','검산 '+M.n_pass+'/'+M.n_years+'해 통과'+(rate!=null?' · 전 종목 통과율 '+rate+'%(관문 60% 미달 — 통과 해만 금액을 낸다)':'')+
+    ' · 단위는 원장 매출에 가장 가까운 10의 거듭제곱으로 골랐다 · 이해 도구다(신호 아님)'));
+  return w;
 }
 
 // 매출처 15년 — 색이 짙을수록 큰 비중

@@ -26,6 +26,7 @@ import shlex
 import webbrowser
 import urllib.parse
 import zlib
+import bisect
 import hashlib
 import socket
 from collections import Counter, defaultdict
@@ -1929,6 +1930,7 @@ def _druck_auto_loop():
             _druck_prebuild()
         except Exception as e:
             print("가속도 밤 미리 계산: %s" % e, flush=True)
+        _watch_kick("밤 가속도 계산 뒤")           # 관심 장부 — 새 분기 숫자 반영(훅은 루프에 — _druck_prebuild 를 부르는 시험이 개인 장부를 읽지 않게)
 
 
 # ---------------------------------------------------------------- 전 종목 미리 계산 — 풍경 · 궤도(2026-10-11)
@@ -9866,6 +9868,7 @@ def _val_auto_loop():
             old = (time.time() - os.path.getmtime(p)) if os.path.exists(p) else 1e9
             if not first or old > 20 * 3600:
                 _disc_refresh()                   # 공시 목록 → 공시 위험 먼저(저평가 등급이 읽는다)
+                _watch_kick("공시목록 갱신 뒤")    # 관심 장부 — 새 보고서 · 공시 위험
                 value_view(True)
         except Exception as e:
             print("저평가 자동 갱신: %s" % e, flush=True)
@@ -10454,6 +10457,43 @@ try:
 except Exception as _e:
     VCM = None
     print("밸류체인 모듈 로드 실패:", _e)
+# 제품 믹스(2026-10-17) — 밸류체인 캐시의 해마다 「주요 제품 등의 현황」을 원장 매출로 검산해 시계열로(제품믹스.py, 점검 = 도구/제품믹스_점검.py)
+try:
+    _mixspec = _ilu.spec_from_file_location("제품믹스", os.path.join(BASE, "제품믹스.py"))
+    MIX = _ilu.module_from_spec(_mixspec)
+    _mixspec.loader.exec_module(MIX)
+except Exception as _e:
+    MIX = None
+    print("제품믹스 모듈 로드 실패:", _e)
+MIX_AUDIT = {"at": 0, "d": None}
+
+
+def _mix_audit():
+    """전 종목 검산 요약(도구/제품믹스_점검.py 가 쓴 .cache/제품믹스/점검.json summary) — 10분 묵힌다. 없으면 None."""
+    if time.time() - MIX_AUDIT["at"] > 600:
+        try:
+            with open(os.path.join(CACHE_DIR, "제품믹스", "점검.json"), "r", encoding="utf-8") as fh:
+                MIX_AUDIT["d"] = json.load(fh).get("summary")
+        except Exception:
+            MIX_AUDIT["d"] = None
+        MIX_AUDIT["at"] = time.time()
+    return MIX_AUDIT["d"]
+
+
+def _mix_of(c, d):
+    """회사 하나의 제품 믹스 화면값 — 캐시만(밸류체인 캐시 d + 풍경 캐시 원장 매출). 실패하면 None."""
+    if MIX is None:
+        return None
+    try:
+        v = MIX.view(d, MIX.ledger_revenue(c["code"], CACHE_DIR))
+    except Exception:
+        return None
+    if v:
+        a = _mix_audit()
+        v["audit"] = {k: a.get(k) for k in ("pass10_rate", "gate", "with_ledger", "companies_5y_pass", "made")} if a else None
+    return v
+
+
 VC_V = 17            # 2: 표 · 이름만 나열 · 쉼표 비중 양식, 매입처 정리(2026-10-04)
                      # 17: 줄 조각 난 매출처 문장 · '10% 이상인 거래처는 A 및 종속회사' · 표 칸 안 빈 줄 · 수출 합계 행 · 점유율 표(2026-10-12)
 VC_DIR = os.path.join(CACHE_DIR, "밸류체인")
@@ -10884,7 +10924,7 @@ def valuechain_view(code):
             "hidden": hidden, "no_major": no_major, "types": types, "subs": subs, "materials": mats, "suppliers_hist": supp_hist,
             "export": exp, "segments": last.get("segments") or [], "competition": last.get("competitors") or [],
             "shared": sorted(shared.values(), key=lambda s: -len(s["via"]))[:20], "buyers": buyers, "sellers": sellers,
-            "orders": orders, "peer_n": peers["n"]}
+            "orders": orders, "peer_n": peers["n"], "mix": _mix_of(c, d)}
 
 
 def vcbuyer_view(key, kind="cust"):
@@ -11396,6 +11436,269 @@ def trades_change(body):
         new = TRD.apply(data, action, payload)
         TRD.save(path, new)
     return trades_view()
+
+
+# ---------------------------------------------------------- 관심 종목 성장 장부 (2026-10-17, 관심장부.py)
+# 종목마다 편입 때 사실을 사진으로 남기고, 새 숫자가 들어올 때마다 가설을 다시 따져 달라진 것만 알림함에 올린다.
+# 사실은 캐시만 읽는다 — druck() · matrix_cached · export_view · orbit() · landscape_view 는 부르지 않는다(DART · 네이버 · 쓰기가 생긴다).
+# 다시 따지는 때: 밤 가속도 계산 뒤(_druck_auto_loop) · 공시목록 · 저평가 갱신 뒤(06:30 _val_auto_loop) · 매일 07:20 · 20:40(_watch_auto_loop) · 화면 '지금 다시'.
+WATCH = _load_mod("관심장부")
+WATCH_LOCK = threading.Lock()
+WATCH_RUN = {"running": False, "at": None, "n": 0, "events": 0, "error": None}
+WATCH_AT = ((7, 20), (20, 40))      # 공시목록 · 저평가(06:30) 뒤 · 주가 확정(20:10) · 차트 스캔(20:15) 뒤
+_WEXP = {"mt": None, "items": {}, "v": None, "partial": False}
+REG_LABELS = ("사업보고서", "반기보고서", "분기보고서")
+
+
+def _watch_export(code):
+    """수출 추적 결과(result.json)를 직접 읽는다 — export_view 는 업종표(네이버)를 부를 수 있어 쓰지 않는다. 실행 중(partial)이면 없음."""
+    p = os.path.join(EXP_DIR, "result.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return {}
+    if _WEXP["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+        except Exception:
+            return {}
+        _WEXP.update(mt=mt, items={x.get("code"): x for x in d.get("items") or []}, v=d.get("v"), partial=bool(d.get("partial")))
+    if _WEXP["partial"]:
+        return {}
+    x = _WEXP["items"].get(code)
+    if not x or EXPM is None:
+        return {}
+    x = dict(x)
+    v_ = x.get("validation") or {}
+    cov = v_.get("coverage")
+    if cov is not None and (cov < 5 or cov > 150):
+        x["grade"] = "C"
+    al = None
+    if x.get("series_long") or x.get("series"):
+        try:
+            al = EXPM.aligned(x.get("series_long") or x["series"], v_.get("last_rev_q"), v_.get("pairs"))
+        except Exception:
+            al = None
+    return WATCH.export_facts(x, al, _WEXP["v"])
+
+
+def _watch_backlog(c, rev, asb=None):
+    """수주잔고 — .cache/수주 를 읽기만(company_series 는 없는 보고서를 읽어 파일을 쓴다). 최신 정기보고서 잔고를 아직 안 읽었으면 '대기'."""
+    if BACK is None:
+        return {}
+    try:
+        with open(BACK._cache_path(c["code"]), "r", encoding="utf-8") as fh:
+            cache = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    reps = [r for r in c["reports"] if not r["tag"] and r["label"] in REG_LABELS][-SYN_SURE_WIN:]
+    pts, pending = [], False
+    for r in reps:
+        hit = cache.get(r["rcept"])
+        if hit is None or hit.get("v") != BACK.VERSION:
+            pending = pending or r is reps[-1]
+            continue
+        if hit.get("value"):
+            pts.append({"stamp": r["stamp"], "label": r["label"], "rcept": r["rcept"], "value": hit["value"], "method": hit.get("method"),
+                        "verified": hit.get("verified"), "source": hit.get("source")})
+    if not pts:
+        return {}
+    pts = BACK._drop_outliers(pts)
+    tr = BACK.trend(pts)
+    if not tr:
+        return {}
+    is_ver = lambda p: bool(p.get("verified")) or "검산 일치" in (p.get("source") or "")      # noqa: E731
+    sure = sum(1 for p in pts if is_ver(p)) + sum(1 for p in pts if p.get("method") == "문장" and not is_ver(p))
+    last = tr.get("last")
+    rev_ttm = ((rev or {}).get("x") or {}).get("ttm") if (rev or {}).get("ok") else None
+    why = _syn_reliable_why(tr["n"], tr.get("jumps", 0),
+                            (tr.get("last_method") or "?", (last / tr["prev_value"]) if tr.get("prev_value") else 0) if tr.get("last_switch") else None,
+                            sure, len(pts), (last / rev_ttm) if (rev_ttm and last) else None,
+                            _syn_fresh_days((pts[-1].get("rcept") or "")[:8], asb))     # 신선도 — 시너지와 같은 규칙(묵은 잔고는 못 믿음)
+    if pending and not why:
+        why = "최신 보고서 잔고를 아직 안 읽음"
+    return WATCH.backlog_facts(tr, BACK.VERSION, rev, as_of=tr.get("to"), reliable_why=why)
+
+
+def _watch_facts(code):
+    """회사 하나의 사실 — 캐시만. 관심장부.step 에 들어간다."""
+    c = company_by_code(code)
+    if not c or WATCH is None:
+        return {}
+    out = {}
+    d = DRK.read_cache(os.path.join(CACHE_DIR, "druck", c["code"] + ".json")) if DRK is not None else None
+    out.update(WATCH.druck_facts(d))
+    out.update(_watch_backlog(c, out.get("rev_yoy"), ((out.get("accel_b") or {}).get("x") or {}).get("asb")))
+    regs = [r for r in c["reports"] if not r["tag"] and r["label"] in REG_LABELS]
+    last = c["reports"][-1]["rcept"] if c["reports"] else None
+    out.update(WATCH.per_facts(_land_read(c["code"]), LAND_V, last))
+    out.update(_watch_export(c["code"]))
+    rk = _disc_risk() or {}
+    out.update(WATCH.risk_facts((rk.get("codes") or {}).get(c["code"]), rk.get("기준일")))
+    tier = None
+    if regs:
+        try:
+            rows = _orbit_sum_rows(c)
+            if rows:
+                orbit_scale(rows)
+                tier = next((r.get("tier") for r in rows if r["rcept"] == regs[-1]["rcept"]), None)
+        except Exception:
+            tier = None
+        out.update(WATCH.filing_fact(regs[-1], tier))
+    out.update(WATCH.price_fact(_px_file(c["code"])))
+    return out
+
+
+def watch_run(why="수동"):
+    """열린 항목 전부 다시 따지기 → 알림함. 이미 돌고 있으면 False."""
+    if WATCH is None:
+        return False
+    with WATCH_LOCK:
+        if WATCH_RUN["running"]:
+            return False
+        WATCH_RUN["running"] = True
+    try:
+        path = WATCH.default_path()
+        today = dt.date.today().isoformat()
+        with WATCH_LOCK:
+            data = WATCH.load(path)
+        new, ev = WATCH.run_all(data, _watch_facts, today)       # 사실 읽기는 잠금 밖(캐시 읽기 × 종목 수)
+        with WATCH_LOCK:
+            # 늘 지금 디스크 판(cur)에 상태 · 알림을 옮겨 붙인다 — 도는 동안 사용자가 고친 장부 · 알림함(다 읽음 등)을 덮지 않는다.
+            # 도는 사이 닫았다 다시 넣은 종목(항목 id 가 바뀜)은 사용자가 새로 잡은 기준을 둔다
+            cur = WATCH.load(path)
+            ids0 = {}
+            for e in data["entries"]:
+                if not e.get("closed"):
+                    ids0.setdefault(e["code"], set()).add(e["id"])
+            for k, v in new["state"].items():
+                ids = {e["id"] for e in cur["entries"] if e["code"] == k and not e.get("closed")}
+                if ids and ids == ids0.get(k):
+                    cur["state"][k] = v
+            live = {e["code"] for e in cur["entries"] if not e.get("closed") and e["code"] in ids0}
+            WATCH.push_inbox(cur, [x for x in ev if x.get("code") in live], today)
+            new = cur
+            if new["entries"] or os.path.exists(path):
+                WATCH.save(path, new)
+        WATCH_RUN.update(at=dt.datetime.now().isoformat(timespec="seconds"), n=len([e for e in new["entries"] if not e.get("closed")]),
+                         events=len(ev), error=None, why=why)
+        return True
+    except Exception as e:
+        WATCH_RUN.update(error="%s: %s" % (type(e).__name__, e))
+        print("관심장부 다시 따지기 실패:", e)
+        return False
+    finally:
+        WATCH_RUN["running"] = False
+
+
+def _watch_kick(why):
+    if WATCH is not None and not READONLY:
+        threading.Thread(target=watch_run, args=(why,), daemon=True).start()
+
+
+def _watch_auto_loop():
+    """매일 WATCH_AT 시각에 다시 따진다(시작 2분 뒤 한 번)."""
+    time.sleep(120)
+    _watch_kick("시작")
+    while True:
+        n = dt.datetime.now()
+        cands = []
+        for h, m in WATCH_AT:
+            t = n.replace(hour=h, minute=m, second=0, microsecond=0)
+            if t <= n:
+                t += dt.timedelta(days=1)
+            cands.append(t)
+        nxt = min(cands)
+        time.sleep(max(60, (nxt - n).total_seconds()))
+        _watch_kick("정시 %02d:%02d" % (nxt.hour, nxt.minute))
+
+
+def _watch_entry_view(e, st):
+    """화면 한 줄 — 편입 사진 vs 지금, 가설 판정, 편입 이후 주가."""
+    now = (st or {}).get("now") or {}
+    hst = (st or {}).get("hyp") or {}
+    hyps = []
+    for h in e.get("hyps") or []:
+        t = WATCH.TPL.get(h["tpl"])
+        if not t:
+            continue
+        f = now.get(t["fact"]) or {}
+        hyps.append(dict(h, label=t["label"], grade=t["grade"], ev=t["ev"], fact=t["fact"], status=hst.get(h["id"], "unknown"),
+                         value=f.get("v"), value_txt=WATCH.fmt(t["fact"], f.get("v")), ok=f.get("ok"), why=f.get("why"),
+                         th_txt=WATCH._th_txt(t, h)))
+    # 편입 이후 수익률은 지금 수정주가 파일 하나로 — 사진 값(그날 명목가)과 섞으면 분할 · 무상증자 뒤 틀린다(리뷰 2026-10-17)
+    px = _px_file(e["code"]) or {}
+    d0 = ((e.get("snap") or {}).get("price") or {}).get("as_of") or (e.get("added") or "").replace("-", "")
+    p0 = p1 = None
+    if px and d0:
+        ks = sorted(px)
+        i = bisect.bisect_right(ks, d0) - 1
+        k0 = ks[i] if i >= 0 else next((k for k in ks if k >= d0), None)
+        p0, p1 = (px.get(k0) if k0 else None), px[ks[-1]]
+    facts = {k: {"v": f.get("v"), "txt": WATCH.fmt(k, f.get("v")), "ok": f.get("ok"), "why": f.get("why"), "as_of": f.get("as_of"),
+                 "x": f.get("x")} for k, f in now.items()}
+    snap = {k: dict(v, txt=WATCH.fmt(k, v.get("v"))) for k, v in (e.get("snap") or {}).items()}
+    return dict(e, hyps=hyps, facts=facts, snap=snap, ret=((p1 / p0 - 1) * 100) if (p0 and p1) else None,
+                log=((st or {}).get("log") or [])[-12:], at=(st or {}).get("at"), err=(st or {}).get("err"))
+
+
+def watch_view():
+    if WATCH is None:
+        return {"error": "관심장부.py 를 읽지 못했습니다"}
+    path = WATCH.default_path()
+    with WATCH_LOCK:
+        try:
+            data = WATCH.load(path)
+        except ValueError as e:
+            return {"error": str(e), "path": _trd_path_label(path)}
+    rows = [_watch_entry_view(e, data["state"].get(e["code"])) for e in data["entries"]]
+    rows.sort(key=lambda r: (bool(r.get("closed")), r.get("added") or ""))
+    return {"entries": rows, "inbox": data["inbox"][:200], "unseen": sum(1 for m in data["inbox"] if not m.get("seen")),
+            "templates": WATCH.templates_meta(), "labels": WATCH.FACT_LABEL, "run": dict(WATCH_RUN),
+            "path": _trd_path_label(path), "today": dt.date.today().isoformat(), "at": ["%02d:%02d" % t for t in WATCH_AT]}
+
+
+def watch_change(body):
+    """POST /api/watch {action, ...} → 바뀐 뒤 화면 자료. 넣을 때는 그날 사실을 사진으로 같이 남긴다."""
+    if WATCH is None:
+        raise ValueError("관심장부.py 를 읽지 못했습니다")
+    if not isinstance(body, dict):
+        raise ValueError("입력이 객체가 아닙니다")
+    action = body.get("action")
+    payload = dict(body)
+    today = dt.date.today()
+    now_iso = dt.datetime.now().isoformat(timespec="seconds")
+    name_of = lambda code: (company_by_code(code) or {}).get("name")      # noqa: E731
+    facts = None
+    if action == "add":
+        code = str(payload.get("code") or "").strip().upper()
+        if not company_by_code(code):
+            raise ValueError("수집한 회사가 아니다(색인에 없음): %s" % code)
+        facts = _watch_facts(code)
+        payload["snap"] = WATCH.snap_of(facts)
+        if payload.get("auto"):     # 회사 화면 빠른 넣기 — 이 회사에 없는 사실(반도체의 수주잔고 등)에 걸린 기본 가설은 빼고 단다
+            payload["hyps"] = [h for h in payload.get("hyps") or [] if (WATCH.TPL.get((h or {}).get("tpl")) or {}).get("fact") in facts]
+    path = WATCH.default_path()
+    with WATCH_LOCK:
+        data = WATCH.load(path)
+        new, e = WATCH.apply(data, action, payload, today, now_iso, name_of)
+        if action == "add":          # 첫 판 — 알림 없이 기준만
+            st, _ = WATCH.step(None, facts, e["hyps"], today.isoformat(), e["name"], e["code"])
+            st["now"] = facts
+            new["state"][e["code"]] = st
+        elif action == "update" and e and "hyps" in payload:
+            st = new["state"].get(e["code"])
+            if st is not None:          # 새로 단 가설은 지금 값으로 바로 판정(다음 판에서 '바뀜'으로 나가지 않게)
+                hy = [h for x in new["entries"] if x["code"] == e["code"] and not x.get("closed") for h in x.get("hyps") or []]
+                now = st.get("now") or {}
+                for h in hy:
+                    if h["id"] not in st.setdefault("hyp", {}):
+                        s_ = WATCH.judge(h, now.get(WATCH.TPL[h["tpl"]]["fact"]))
+                        if s_ != "unknown":
+                            st["hyp"][h["id"]] = s_
+        WATCH.save(path, new)
+    return watch_view()
 
 
 # ---------------------------------------------------------- 내러티브 — 이 종목 소식 피드 (2026-10-11)
@@ -12706,7 +13009,7 @@ class Handler(BaseHTTPRequestHandler):
         return not ref or any(ref == m or ref.startswith(m + "/") for m in mine)
 
     def do_POST(self):
-        """쓰기 요청 — 지금은 매매 일지만. 같은 출처(이 PC 의 이 화면)에서 온 JSON 만 받는다:
+        """쓰기 요청 — 매매 일지 · 관심 장부. 같은 출처(이 PC 의 이 화면)에서 온 JSON 만 받는다:
         Host · Origin 확인, Content-Type application/json(다른 사이트에서는 사전 확인에 막힌다), 64KB 한도."""
         u = urllib.parse.urlparse(self.path)
         if READONLY:                         # 조회 전용 — 쓰기 요청은 몸통을 읽기 전에 거절
@@ -12716,7 +13019,8 @@ class Handler(BaseHTTPRequestHandler):
             origin = (self.headers.get("Origin") or "").strip().lower()
             if not self._local_host() or origin not in ("http://127.0.0.1:%d" % port, "http://localhost:%d" % port):
                 return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
-            if u.path != "/api/trades":
+            post_fn = {"/api/trades": "trades_change", "/api/watch": "watch_change"}.get(u.path)   # 이름으로 찾는다(시험이 갈아 끼운다)
+            if not post_fn:
                 return self._send(404, {"error": "no route"})
             if (self.headers.get("Content-Type") or "").split(";")[0].strip().lower() != "application/json":
                 return self._send(415, {"error": "JSON 으로 보내야 합니다"})
@@ -12724,7 +13028,7 @@ class Handler(BaseHTTPRequestHandler):
             if n <= 0 or n > 65536:
                 return self._send(413, {"error": "요청 크기가 맞지 않습니다"})
             body = json.loads(self.rfile.read(n).decode("utf-8"))
-            return self._send(200, trades_change(body))
+            return self._send(200, globals()[post_fn](body))
         except ValueError as e:              # 입력 검증 · 보유 수량 초과 · 깨진 파일 · JSON 오류
             return self._send(400, {"error": str(e)})
         except Exception as e:
@@ -12972,6 +13276,14 @@ class Handler(BaseHTTPRequestHandler):
                 if not self._local_host():
                     return self._send(403, {"error": "이 PC 의 주소로만 열 수 있습니다"})
                 return self._send(200, trades_view())
+            if path == "/api/watch":            # 관심 장부(개인) — 이 PC 의 이 주소로 온 요청만. ?run=1 = 지금 다시 따지기(같은 출처)
+                if not self._local_host():
+                    return self._send(403, {"error": "이 PC 의 주소로만 열 수 있습니다"})
+                if q.get("run") == "1":
+                    if not self._same_origin_get():
+                        return self._send(403, {"error": "이 화면에서 누른 요청만 받습니다"})
+                    watch_run("화면")
+                return self._send(200, watch_view())
             if path == "/api/vocal":
                 return self._send(200, vocal_view(q.get("force") == "1"))
             if path == "/api/tech":
@@ -13168,6 +13480,7 @@ def main():
         threading.Thread(target=_ind_auto_loop, daemon=True).start()
         threading.Thread(target=_tech_auto_loop, daemon=True).start()
         threading.Thread(target=_druck_auto_loop, daemon=True).start()
+        threading.Thread(target=_watch_auto_loop, daemon=True).start()
         threading.Thread(target=_prebuild_auto_loop, daemon=True).start()
     # 예전 보컬 탭은 '차트 발굴'(Tech)로 바뀌어 매일 07:00 전 시장 일봉 · 깔때기 계산을 껐다(2026-10-09, 사용자 결정).
     # /api/vocal 은 그대로 살아 있다(부르면 그때 센다). 다시 켜려면 아래 줄을 되살린다.
