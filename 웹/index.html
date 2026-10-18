@@ -845,6 +845,10 @@ button.vbCo small{font:500 10px var(--mono);color:var(--faint)}button.vbCo.on sm
 .drkPlain{margin:6px 0 8px;padding:10px 14px;border-left:3px solid var(--p-gold2);background:rgba(241,217,160,.06);border-radius:0 8px 8px 0}
 .drkPlain b{display:block;font:600 15px var(--f-body);color:var(--p-hi);line-height:1.5}
 .drkPlain span{display:block;font-size:12px;color:var(--p-dim);margin-top:3px}
+.drkVZ{opacity:.1;pointer-events:none}.drkVZt{opacity:.85;pointer-events:none}
+.drkVBand{fill:rgba(214,180,106,.14);stroke:rgba(214,180,106,.3);stroke-width:.8;pointer-events:none}
+.drkVMid{fill:none;stroke:#f1d9a0;stroke-width:1.4;stroke-dasharray:5 4;opacity:.85;pointer-events:none}
+.drkValDef{margin-top:10px}
 .drkDef{margin:0 0 8px;padding:9px 14px;border:1px solid var(--p-line);border-radius:8px;font-size:12.5px;line-height:1.6;color:var(--p-ink)}
 .drkDef .h b{font-weight:700;color:var(--p-hi)}
 .drkDef p{margin:4px 0 0}.drkDef .it{white-space:nowrap}.drkDef .it b{margin:0 2px;color:var(--p-hi)}
@@ -9713,8 +9717,38 @@ function drkCalc(pts){
     r.s=r['속도']; r.a=r['가속B']; r.reg=r['국면']||null; r.turn=r['변곡']==='▲'?'up':r['변곡']==='▼'?'down':null; });
   // 띠(±3%p) 밖 같은 쪽 연속 분기 — 분기 키 n−1 로 잇는다(R 은 n 오름차순)
   R.forEach(r=>{ const p=by[r.n-1]; r.streak = !dNum(r.a)||Math.abs(r.a)<DRK_BAND ? 0 : (p&&dNum(p.a)&&Math.abs(p.a)>=DRK_BAND&&(p.a>0)===(r.a>0) ? p.streak+1 : 1); });
+  drkValPit(R);
   return R;
 }
+
+// 값 자리(2026-10-18) — 그 분기 공시일 PER 이 그때까지 쌓인 이 회사 PER 기록(8개↑) 중 몇 % 자리인가. 앞날 PER 은 섞지 않는다(풍경 lsPitLine 과 같은 생각).
+// 구간: 75%↑ 비싼 · 25%↓ 싸 보임 · 그 사이 보통. 싸 보이는데 이익(EPS TTM)이 그때까지 기록 꼭대기 근처(95%↑)거나 최근 12분기 EPS 가 크게 출렁이면(변동계수 0.62↑) 함정 의심.
+// 근거(도구/보통값_백테스트.py, 공시 11,949건 · 2017–2025 · 지금 상장사만, 1년 초과수익 중앙): 비싼 −3.4%p(30% 넘게 진 비율 15.0% vs 보통 10.3%) — 맞은 쪽.
+// 싼 +1.6 vs 보통 +2.7 — 싸다는 것만으로는 낫지 않았다(64%는 1년 뒤 이익이 줄었다). 꼭대기 근처 싼 값 +0.4 vs 나머지 +2.9(결과를 본 뒤 고른 문턱). 출렁이는 회사는 싼−비싼 차이가 0 을 걸쳤다
+const DRK_VAL_CV=0.62;
+function drkValPit(R){
+  const hist=[], eps=[];
+  R.forEach((r,i)=>{
+    r.val=null;
+    const per=r['PER_TTM'], e=r['EPS_TTM'];
+    const ok=dNum(per)&&per>0&&per<300&&!(r['품질']||[]).includes('cut');
+    if(dNum(e)&&e>0) eps.push(e);
+    if(!ok) return;
+    hist.push(per);
+    if(hist.length<8) return;
+    const sv=hist.slice().sort((a,b)=>a-b), q=p=>{ const k=(sv.length-1)*p, j=Math.floor(k); return sv[j]+(sv[Math.min(j+1,sv.length-1)]-sv[j])*(k-j); };
+    const pct=hist.filter(v=>v<=per).length/hist.length*100;
+    const peak=eps.length>=8&&dNum(e)&&e>=Math.max(...eps)*0.95;
+    const win=R.slice(Math.max(0,i-11),i+1).map(x=>x['EPS_TTM']).filter(dNum);
+    let cv=null;
+    if(win.length>=8){ const mu=win.reduce((a,b)=>a+b,0)/win.length; if(mu) cv=Math.sqrt(win.reduce((a,b)=>a+(b-mu)*(b-mu),0)/win.length)/Math.abs(mu); }
+    const zone=pct>75?'hi':pct<25?'lo':'mid';
+    r.val={per,pct,lo:q(.25),mid:q(.5),hi:q(.75),n:sv.length,peak,cv,zone,trap:zone==='lo'&&(peak||(cv!==null&&cv>=DRK_VAL_CV))};
+  });
+  return R;
+}
+const DRK_VZ={hi:['비싼 구간','#f5a35c'],mid:['보통','#8b95a3'],lo:['싸 보임','#7cc4ff'],trap:['싸 보임 · 함정 의심','#b48ead']};
+const drkVz=v=>!v?null:v.trap?'trap':v.zone;
 
 async function viewDruck(p){
   const c=S.co, code=c.code;
@@ -9983,7 +10017,8 @@ function drkTipBody(r, K){
    ['반년 전보다',dNum(r.a)&&dNum(r.s)?dPp(r.a,1)+' ('+dPct(r.s-r.a,0)+' → '+dPct(r.s,0)+')':'—'],['1년 합계 증가율',dPct(r.g,1)],
    ['TTM 영업이익률',dNum(r.m)?r.m.toFixed(1)+'%':'—'],['재고일수',dNum(r['재고일수'])?Math.round(r['재고일수'])+'일':'—'],
    ['채권일수',dNum(r['매출채권일수'])?Math.round(r['매출채권일수'])+'일':'—'],['주가',dNum(r['주가'])?Math.round(r['주가']).toLocaleString('ko-KR')+'원':'—'],
-   ['공시일 PER',dNum(r['PER_TTM'])&&r['PER_TTM']>0?r['PER_TTM'].toFixed(1)+'배':'—']]
+   ['공시일 PER',dNum(r['PER_TTM'])&&r['PER_TTM']>0?r['PER_TTM'].toFixed(1)+'배':'—'],
+   ['PER 자리(그때까지 기록)',r.val?Math.round(r.val.pct)+'% · '+DRK_VZ[drkVz(r.val)][0]:'—']]
     .forEach(([k,v])=>{ const c=el('div'); c.appendChild(el('span',null,k)); c.appendChild(el('b',null,v)); g.appendChild(c); });
   f.appendChild(g);
   if(r.turn){ const t=K.turnBy[r.n];
@@ -10054,6 +10089,27 @@ function drkDefBox(R, K, DIRC){
   return box;
 }
 
+// 주가 vs 이익 판의 싼 · 비싼 기준 — 정의 · 근거 · 지금(2026-10-18, 사용자: "저평가 기준치를 설정해 표기하고 싶은데 기준을 어떻게 잡을지")
+function drkValBox(R){
+  const box=el('div','drkDef drkValDef');
+  const now=R.filter(r=>r.val).pop();
+  const h=el('div','h'); h.appendChild(el('b',null,'주가 vs 이익 — 싼 값 · 비싼 값 기준')); box.appendChild(h);
+  const sw=c=>{ const i=el('i','sw'); i.style.background=c; return i; };
+  const p1=el('p');
+  p1.appendChild(document.createTextNode('기준 = 그 분기 공시일 PER 이 그때까지 쌓인 이 회사 PER 기록(8개 이상) 중 몇 % 자리인가 — 앞날 숫자는 섞지 않는다. '+
+    '노란 점선 = 보통 값(그때 이익 × 그때까지 PER 중앙값), 옅은 띠 = 싼 값~비싼 값(PER 기록 25–75% 자리). 주가 선이 띠 위면 비싼 자리, 아래면 싸 보이는 자리다. 칸 색: '));
+  [['hi','PER 자리 75% 넘음'],['lo','25% 아래'],['trap','25% 아래인데 이익이 기록 꼭대기 근처(95%↑)거나 크게 출렁임(변동계수 0.62↑)']].forEach(([k,t],i)=>{
+    const s_=el('span','it'); s_.appendChild(sw(DRK_VZ[k][1])); s_.appendChild(el('b',null,DRK_VZ[k][0])); s_.appendChild(document.createTextNode(' '+t+(i<2?' · ':''))); p1.appendChild(s_); });
+  box.appendChild(p1);
+  if(now){ const z=drkVz(now.val);
+    box.appendChild(el('p','dfx','지금 '+now.label+' — PER '+now.val.per.toFixed(1)+'배, 기록 '+now.val.n+'분기 중 '+Math.round(now.val.pct)+'% 자리 → '+DRK_VZ[z][0]+
+      ' (보통 값 PER '+now.val.mid.toFixed(1)+'배 · 싼 값~비싼 값 '+now.val.lo.toFixed(1)+'–'+now.val.hi.toFixed(1)+'배) · 공시일 종가로 잰 자리라 풍경 탭(분기 말 종가)과 몇 %p 다를 수 있다')); }
+  box.appendChild(el('p','dfn','근거(공시 11,949건 · 2017–2025 · 지금 상장사만, 1년 초과수익 중앙): 비싼 구간 −3.4%p · 30% 넘게 뒤처진 비율 15.0%(보통 10.3%) — 이 기준이 맞은 쪽은 「비싸면 피하라」다. '+
+    '싸 보이는 구간은 +1.6%p 로 보통(+2.7%p)보다 낫지 않았고, 64%는 1년 뒤 이익이 줄었다(이익이 막 늘어 PER 이 낮아 보인 때가 많다). 이익 꼭대기 근처의 싼 값은 +0.4%p. '+
+    '그래서 「저평가」라 부르지 않고 「싸 보임」이라 적는다. 검증을 통과한 저평가 판정은 저평가 탭이다(이익은 지켰는데 주가가 25% 넘게 빠진 회사 중 점수 50↑ · 빨간불 없음 — 묶음 +4.3%p [+1.8, +6.9]).'));
+  return box;
+}
+
 // 네 판을 한 가로축에: 흐름 띠 · 매출 증가율 · 마진 · 주가 vs 이익 · 선행지표. 가로 칸 = 분기 키(빈 분기도 칸을 둔다)
 function drkStack(R, K){
   const wrap=el('div','drkStackWrap'), C=K.C, M=K.M;
@@ -10077,7 +10133,7 @@ function drkStack(R, K){
   wrap.appendChild(chips);
   const fig=el('div','orbFig'); wrap.appendChild(fig);
   const N=R.length, W=1000, L=56, Rr=112, T=24;
-  const RIB=16, YRH=22, HA=160, HB=100, HC=104, HD=112, GAP=46;
+  const RIB=16, YRH=22, HA=160, HB=100, HC=104, HD=150, GAP=46;
   const ribY=T, yTop=ribY+RIB+YRH-4, aT=ribY+RIB+YRH+GAP-10, bT=aT+HA+GAP, dT=bT+HB+GAP, cT=dT+HD+GAP, bot=cT+HC, H=bot+34;   // 주가 vs 이익(D)이 선행지표(C) 위
   const step=(W-L-Rr)/N, X=i=>L+i*step+step/2, bw=Math.max(3,Math.min(18,step*.62));
   const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'orbSvg drkSSvg',role:'img','aria-label':'분기별 속도·마진·주가·선행지표'});
@@ -10209,13 +10265,16 @@ function drkStack(R, K){
   const posE=R.filter(okPE).map(r=>r['EPS_TTM']).sort((a,b)=>a-b), medE=posE.length?posE[posE.length>>1]:0;
   let bi=R.findIndex(r=>okPE(r)&&r['EPS_TTM']>=medE*.1);
   if(bi<0) bi=R.findIndex(okPE);
-  cap(dT-14,'주가 vs 이익',bi>=0?R[bi].label+' = 100 · 로그 눈금 · 주가 = 보고서 공시일 종가 · EPS 분할 보정':'');
-  legend(dT-14,[['line','주가',HI],['line','이익(EPS TTM)',GOLD]]);
+  cap(dT-14,'주가 vs 이익',bi>=0?R[bi].label+' 주가 = 100 · 로그 · 띠 위 = 비쌈':'');
+  legend(dT-14,[['line','주가',HI],['line','이익(EPS TTM)',GOLD],['dash','보통 값','#f1d9a0'],['band','싼 값~비싼 값','rgba(214,180,106,.35)']]);
   if(bi>=0){
     const p0=R[bi]['주가'], e0=R[bi]['EPS_TTM'];
     const pi=R.map((r,i)=>i>=bi&&dNum(r['주가'])&&r['주가']>0?r['주가']/p0*100:null);
     const ei=R.map((r,i)=>i>=bi&&dNum(r['EPS_TTM'])&&r['EPS_TTM']>0?r['EPS_TTM']/e0*100:null);
-    const allv=pi.concat(ei).filter(dNum);
+    // 값 선 — 주가와 같은 눈금(기준 분기 주가 = 100): 그때 EPS × 그때까지 PER 자리값 ÷ 기준 주가
+    const vAt=(i,k)=>{ const r=R[i], v=r.val; return i>=bi&&v&&dNum(r['EPS_TTM'])&&r['EPS_TTM']>0 ? r['EPS_TTM']*v[k]/p0*100 : null; };
+    const vm=R.map((r,i)=>vAt(i,'mid')), vl=R.map((r,i)=>vAt(i,'lo')), vh=R.map((r,i)=>vAt(i,'hi'));
+    const allv=pi.concat(ei,vm).filter(dNum);
     const llo=Math.log10(Math.min(...allv)*.85), lhi=Math.log10(Math.max(...allv)*1.15);
     const YD=v=>dT+HD-(Math.log10(v)-llo)/((lhi-llo)||1)*HD;
     // 기준 분기 앞은 비워 두되, 비운 까닭을 적는다
@@ -10231,14 +10290,28 @@ function drkStack(R, K){
     tk.forEach(v=>{
       put('line',{x1:L,x2:W-Rr,y1:YD(v),y2:YD(v),class:'drkGrid'+(v===100?' z':'')});
       put('text',{x:L-8,y:YD(v)+4,'text-anchor':'end',class:'orbTick'}).textContent=v>=10?Math.round(v).toLocaleString('ko-KR'):+v.toPrecision(2); });
+    // 구간 색 — 칸마다 옅게, 위 끝에 3px 줄(비싼 · 싸 보임 · 함정 의심). 보통은 칠하지 않는다
+    const YDc=v=>Math.max(dT,Math.min(dT+HD,YD(v)));
+    R.forEach((r,i)=>{ const z=i>=bi?drkVz(r.val):null; if(!z||z==='mid') return;
+      const c=DRK_VZ[z][1];
+      const a=put('rect',{x:X(i)-step/2,y:dT,width:step,height:HD,class:'drkVZ'}); a.style.fill=c;
+      const b=put('rect',{x:X(i)-step/2,y:dT-4,width:step,height:3,class:'drkVZt'}); b.style.fill=c; });
+    // 싼 값~비싼 값 띠 · 보통 값 점선 — 판 밖은 끝에 붙인다
+    { let seg=[]; const flush=()=>{ if(seg.length>1){
+        put('path',{d:'M'+seg.map(i=>X(i).toFixed(1)+','+YDc(vh[i]).toFixed(1)).join('L')+'L'+seg.slice().reverse().map(i=>X(i).toFixed(1)+','+YDc(vl[i]).toFixed(1)).join('L')+'Z',class:'drkVBand'}); } seg=[]; };
+      R.forEach((r,i)=>{ if(dNum(vl[i])&&dNum(vh[i])) seg.push(i); else flush(); }); flush(); }
+    put('path',{d:pathOf(vm.map(v=>dNum(v)?Math.max(Math.pow(10,llo),Math.min(Math.pow(10,lhi),v)):v),YD),class:'drkVMid'});
     put('path',{d:pathOf(ei,YD),class:'drkEps'});
     put('path',{d:pathOf(pi,YD),class:'drkPx'});
-    R.forEach((r,i)=>{ if(dNum(pi[i])) mk(i,YD(pi[i]),HI); if(dNum(ei[i])) mk(i,YD(ei[i]),GOLD); });
+    R.forEach((r,i)=>{ if(dNum(pi[i])) mk(i,YD(pi[i]),HI); if(dNum(ei[i])) mk(i,YD(ei[i]),GOLD); if(dNum(vm[i])) mk(i,YDc(vm[i]),'#f1d9a0'); });
     const iP=lastOf(pi), iE=lastOf(ei);
     if(iP>=0) endDot(iP,YD(pi[iP]),HI); if(iE>=0) endDot(iE,YD(ei[iE]),GOLD);
     const [yp,ye]=apart(iP>=0?YD(pi[iP])+4:null, iE>=0?YD(ei[iE])+4:null);
     if(iP>=0) endLab(yp,'주가 '+Math.round(pi[iP]));
     if(iE>=0) endLab(ye,'이익 '+Math.round(ei[iE]),'gold');
+    // 지금 자리 — 판 오른쪽 위에 한 줄(구간 색)
+    const nv=R.filter(r=>r.val).pop();
+    if(nv){ const z=drkVz(nv.val); const t=put('text',{x:W-Rr+12,y:dT+HD-2,class:'drkEndL'}); t.textContent=DRK_VZ[z][0]+' '+Math.round(nv.val.pct)+'%'; t.style.fill=DRK_VZ[z][1]; }
   } else {
     put('text',{x:L,y:dT+HD/2,class:'drkNA'}).textContent='흑자 분기의 주가·EPS 가 모자라 그리지 않았다';
   }
@@ -10260,6 +10333,7 @@ function drkStack(R, K){
     h.addEventListener('pointerleave',()=>{ col.style.display='none'; hov.innerHTML=''; tp.hidden=true; });
   });
   fig.appendChild(svg); fig.appendChild(tp);
+  if(R.some(r=>r.val)) wrap.appendChild(drkValBox(R));
   return wrap;
 }
 
