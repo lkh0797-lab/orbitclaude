@@ -82,11 +82,15 @@ TEMPLATES = [
     {"key": "inv_ok", "label": "재고일수가 1년 전보다 15일 넘게 늘지 않는다", "fact": "inv_d4", "op": "le",
      "th": 15.0, "unit": "일", "hyst": 3.0, "grade": "반박됨",
      "ev": "재고 쌓임 경고는 검증에서 수익을 가르지 못해 판정에서 뺐다 — 사실 확인용으로만 둔다"},
+    {"key": "cust_conc", "label": "가장 큰 고객 한 곳의 몫이 회사 매출의 30%를 넘지 않는다(한 고객 의존)", "fact": "cust", "op": "le",
+     "th": 30.0, "unit": "%", "hyst": 2.0, "grade": "검증 안 됨",
+     "ev": "한 고객 의존 위험을 숫자로 지켜보는 줄 — 수익률 검증은 없다. 사업보고서 매출처 표(회사 매출 기준 줄만, 자기 · 자회사 빼고)"},
 ]
 TPL = {t["key"]: t for t in TEMPLATES}
 FACT_LABEL = {"accel_b": "가속 B", "phase": "국면", "turn": "변곡", "rev_yoy": "매출 1년(최근 4분기)", "inv_d4": "재고일수 1년 변화",
               "blog_yoy": "수주잔고 1년", "btb": "북투빌", "blog_gap": "잔고 − 매출", "per_pct": "PER 자기 역사 자리",
-              "export": "수출 통관(분기 맞춤)", "risk": "공시 위험", "filing": "마지막 정기보고서", "price": "주가"}
+              "export": "수출 통관(분기 맞춤)", "risk": "공시 위험", "filing": "마지막 정기보고서", "price": "주가",
+              "cust": "가장 큰 고객 몫"}
 
 
 # ---------------------------------------------------------------- 사실 만들기(순수 — 이미 읽은 dict 를 받는다)
@@ -243,6 +247,41 @@ def risk_facts(row, base_day=None):
                       {"hits": [h.get("cat") for h in row.get("hits") or []]})}
 
 
+def _ckey(nm):
+    return re.sub(r"\(주\)|㈜|주식회사|[\s.,'’&\-·ㆍ/()]", "", str(nm or "")).lower()
+
+
+def cust_conc(vc, self_keys=()):
+    """고객 집중도 해마다(사업보고서 칸만) — 매출처 표의 회사 매출 기준 줄(부문 기준 줄은 뺀다)에서 자기 · 자회사(self_keys · 그해 subs)를 빼고
+    {year: {top1, top3, hhi(0~1), big:[(이름, %)] (10%↑), hidden(이름 없는 10%↑ 수), n}}. 표가 없거나 회사 기준 줄이 없는 해는 없다."""
+    out = {}
+    for y, v in sorted((vc.get("years") or {}).items()):
+        if not re.fullmatch(r"\d{4}", y):
+            continue
+        own = {_ckey(k) for k in self_keys or ()} | {_ckey(s.get("sub")) for s in v.get("subs") or [] if s.get("sub")}
+        rows = [x for x in v.get("customers") or [] if x.get("kind") in ("named", "hidden") and x.get("basis") != "부문"
+                and isinstance(x.get("pct"), (int, float)) and 0 < x["pct"] <= 100 and _ckey(x.get("name")) not in own]
+        if not rows:
+            continue
+        ps = sorted((x["pct"] for x in rows), reverse=True)
+        out[y] = {"top1": round(ps[0], 1), "top3": round(sum(ps[:3]), 1), "hhi": round(sum(p * p for p in ps) / 1e4, 3), "n": len(rows),
+                  "big": [(x.get("name"), x["pct"]) for x in sorted(rows, key=lambda x: -x["pct"]) if x["pct"] >= 10 and x.get("kind") == "named"],
+                  "hidden": sum(1 for x in rows if x.get("kind") == "hidden" and x["pct"] >= 10)}
+    return out
+
+
+def cust_facts(vc, self_keys=()):
+    """관심 장부 사실 'cust' — 마지막 해의 가장 큰 고객 몫. 기준 = 사업보고서 해(접수일이 늦은 해가 새 기준). x = top3 · hhi · 10%↑ 고객 이름."""
+    cc = cust_conc(vc, self_keys)
+    if not cc:
+        return {}
+    y = max(cc)
+    c = cc[y]
+    rc = ((vc.get("years") or {}).get(y) or {}).get("rcept") or ""
+    return {"cust": F(c["top1"], y, "c1", "|".join("%s:%s" % b for b in c["big"]), True, None,
+                      {"top3": c["top3"], "hhi": c["hhi"], "big": c["big"], "hidden": c["hidden"], "rcept": rc})}
+
+
 def filing_fact(rep, tier=None):
     """마지막 정기보고서(정정 아닌 것) — 접수번호가 바뀌면 '새 보고서'. tier = 궤도 등급(그 보고서에서 처음 본 값으로 얼린다)."""
     if not rep:
@@ -312,6 +351,8 @@ def fmt(key, v):
         return "%+.0f일" % v
     if key == "price":
         return "{:,.0f}".format(v)
+    if key == "cust":
+        return "%.0f%%" % v
     return str(v)
 
 
@@ -413,6 +454,16 @@ def step(st, facts, hyps, today, name="", code=""):
         if s0 != s1:
             add("export", "info", "수출 흐름 %s → %s" % (s0 or "—", s1 or "—"),
                 ["분기 맞춤 통관 %s (%s)" % (fmt("export", xf["v"]), xf.get("as_of"))])
+    # 4-2) 큰 고객(회사 매출 10%↑) 생김 · 빠짐 — 새 사업보고서 해에만(같은 해 다시 읽기는 아님)
+    cf = facts.get("cust")
+    if not first_run and cf and kinds.get("cust") == "new":
+        b0 = {n for n, _ in ((good.get("cust") or {}).get("x") or {}).get("big") or []}
+        b1 = {n: p for n, p in (cf.get("x") or {}).get("big") or []}
+        new_, gone_ = [n for n in b1 if n not in b0], [n for n in b0 if n not in b1]
+        if new_ or gone_:
+            add("cust", "info", "큰 고객(매출 10%↑) " + " · ".join(([("생김 " + ", ".join("%s %.0f%%" % (n, b1[n]) for n in new_))] if new_ else []) +
+                                                             ([("빠짐 " + ", ".join(gone_))] if gone_ else [])),
+                ["가장 큰 고객 몫 %s → %s (%s 사업보고서)" % (fmt("cust", (good.get("cust") or {}).get("v")), fmt("cust", cf.get("v")), cf.get("as_of"))])
     # 5) 공시 위험 등급
     rf = facts.get("risk")
     if not first_run and rf and rf.get("ok") and kinds.get("risk") in ("new", "amend"):

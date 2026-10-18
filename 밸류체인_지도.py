@@ -14,8 +14,9 @@ V = 5                     # 2: 근거마다 출처 객체(ev) · 설명 문장(e
                           # 4: 비중은 무엇의 몫인지 표 꼴대로(부문 · 매입처마다 한 줄인 표), 과거 공급망 해 목록(2021 · 2024년), 같은 제품 비중은 표 값만(금액 비율은 '추정'),
                           #    목표가 출처는 증권사 곳 수, 매출처 줄에서 품목 뺌(2026-10-13 3차 손질)
 NOTE = "규칙 점수 · 검증 전 — 예측 아님"
-GROUP_NOTE = {"B": "연결 세고 점수 높음", "C": "연결 있으나 일부만 확인", "D": "테마 위주 · 근거 약함",
-              "Fake": "위험 꼬리표 또는 급등 + 근거 약함 — 후속주로 보기 어려움"}
+GROUP_NAME = {"B": "확인된 연결", "C": "약한 연결", "D": "테마만", "Fake": "조심"}      # 화면 군 이름(2026-10-19 — B군 · Fake 대신 쉬운 말)
+GROUP_NOTE = {"B": "확인된 연결 — 매출처 · 매입처 표로 직접 이어짐", "C": "약한 연결 — 같은 제품 · 리포트 · 과거 공급망", "D": "테마만 — 근거 약함",
+              "Fake": "조심 — 위험 공시가 있거나 근거 없이 급등"}
 MAX_ROWS = 30             # 매트릭스 최대 줄(근거 많은 순)
 MAX_TRIG = 4
 REP_DF_MAX = 40          # 리포트 동시 언급 낱말이 180일 리포트에서 이만큼(종목 수) 넘게 걸리면 넓은 말 — 리포트 있는 곳 약 710 중.
@@ -109,6 +110,7 @@ class Linker:
         self.collected = dict(collected or {})          # {code: 이름}
         self.name_of = dict(self.collected)
         self.ko, self.en, self.acr, self.first = {}, {}, {}, {}
+        self.en_of = {}                                  # {code: 영문 이름 낱말} — 자기 이름 낱말 거르기(story_words drop)
         for code, nm in self.collected.items():
             for k in self._ko_keys(nm):
                 self.ko[k] = code
@@ -119,6 +121,7 @@ class Linker:
             ws = en_words(en)
             if not ws:
                 continue
+            self.en_of.setdefault(code, ws)
             full = "".join(ws)
             self.en.setdefault(full, []).append(code)
             if len(ws) > 1:
@@ -450,9 +453,28 @@ def _hay(r):
     return " ".join([r.get("title") or ""] + list(r.get("lines") or []) + [r.get("concl") or ""])
 
 
-def story_words(rows, since, name, hot, code="", top=4):
+# 회사 이름의 꼬리 조각 중 '회사 꼴'인 말 — 이름에서 떨어져 나와 스토리 낱말이 되면 엉뚱한 업종을 끌어온다
+# (효성중공업 '중공업' → 조선사 4곳, 리뷰 2026-10-19). '광통신'(대한광통신)처럼 업종을 말하는 꼬리는 남긴다
+CORP_TAIL = set("""중공업 일렉트릭 전자 전기 화학 케미칼 케미컬 산업 건설 홀딩스 지주 그룹 제약 바이오 바이오로직스 에너지 머티리얼즈 머티리얼
+테크 테크놀로지 시스템 시스템즈 솔루션 솔루션즈 엔지니어링 인터내셔널 글로벌 코리아 물산 상사 증권 생명 화재 은행 금융 정밀 기계 모터스
+스틸 제철 엔터프라이즈 네트웍스 인더스트리 이노텍 디스플레이 에너지솔루션 오션 일렉트로닉스 퓨처엠 앤컴퍼니 씨앤씨 이앤씨 티앤씨""".split())
+
+
+def self_words(name, en_words_=()):
+    """회사 자기 이름에서 나온 낱말(소문자) — 영문 이름 낱말 전부 + 국문 이름 꼬리 중 회사 꼴 말."""
+    out = {w.lower() for w in en_words_ or () if len(w) >= 2}
+    nm = re.sub(r"\(주\)|㈜|[\s·ㆍ]", "", name or "")
+    for t in CORP_TAIL:
+        if nm.endswith(t) and len(nm) > len(t):
+            out.add(t.lower())
+    return out
+
+
+def story_words(rows, since, name, hot, code="", top=4, drop=()):
     """최근(since 'YYYY-MM-DD' 이후) 리포트 제목 + 줄의 hot 낱말(내러티브.hot_words) → [{"w","n"}] 상위 top. 하이픈 낱말은 한 낱말로,
-    업황 · 실적 일반어(STORY_STOP)는 뺀다. hot 은 hot_words(items, since8, name, links, top=, code=) 꼴의 함수."""
+    업황 · 실적 일반어(STORY_STOP)는 뺀다. hot 은 hot_words(items, since8, name, links, top=, code=) 꼴의 함수.
+    drop = 자기 이름 낱말(self_words — 'LS' · 'ELECTRIC' · '중공업'): 그 낱말이거나 그 낱말로 시작 · 끝나는 낱말은 뺀다."""
+    drop = {d.lower() for d in drop or ()}
     seen, items = {}, []
     for r in rows or ():
         d = (r.get("date") or "")[:10]
@@ -468,6 +490,8 @@ def story_words(rows, since, name, hot, code="", top=4):
         lw = w.lower()
         if lw in STORY_STOP or re.fullmatch(r"[\d.,]+[가-힣A-Za-z]{0,2}", w) or VERB_TAIL.search(w) or (w[-1:] in JOSA and lw[:-1] in STORY_STOP):
             continue                  # 조사 붙은 일반어('가동률이')도
+        if drop and (lw in drop or (w[-1:] in JOSA and lw[:-1] in drop) or any(len(d) >= 2 and (lw.startswith(d) or lw.endswith(d)) and len(lw) - len(d) <= 1 for d in drop)):
+            continue                  # 자기 이름 낱말 · 조사만 붙은 꼴
         out.append({"w": seen[lw].most_common(1)[0][0] if lw in seen else w, "n": h["n"]})
         if len(out) >= top:
             break
@@ -501,6 +525,20 @@ def product_label(p):
 
 
 SUM_ROW = re.compile(r"합\s*계|소\s*계|총\s*계|매출\s*총계|내부\s*거래|연결\s*조정|단순\s*합계")       # 합계 · 조정 줄(품목 · 부문 · 용도 · 구분 칸 어디에 있든)
+# 띄어 쓴 표 칸('연 결 조 정' · '총 매 출 액')은 공백을 지운 뒤 맞춘다(2026-10-19 밸류체인 리뷰: LS 일렉트릭 IT 22.4% · 제룡전기 200%).
+# 순매출 · 내부매출 · 영업이익 줄(기아 표)도 제품이 아니다
+SUM_ROW_C = re.compile(r"합계|소계|총계|총매출|순매출|매출총계|매출계$|^계$|내부거래|내부매출|부문간|연결조정|조정및제거|연결제거|단순합계|영업이익|영업손실|영업손익")
+
+
+def is_sum_row(p):
+    """제품 줄 하나가 합계 · 조정 · 손익 줄인가 — 품목 · 부문 · 용도 · 구분 칸 어디에 있든, 공백을 지우고 맞춘다."""
+    cells = [re.sub(r"\s+", "", str(p.get(k) or "")) for k in ("item", "segment", "use", "kind")]
+    return any(c and SUM_ROW_C.search(c) for c in cells)
+
+
+def clean_product_rows(prods):
+    """합계 · 조정 · 손익 줄을 뺀 제품 줄(원래 칸 그대로) — 서버 화면값 · 같은 제품 맞추기 · 큰 줄 고르기가 같이 쓴다."""
+    return [p for p in prods or () if not is_sum_row(p)]
 
 
 def products_of(prods, top=None):
@@ -511,7 +549,7 @@ def products_of(prods, top=None):
     for p in prods or ():
         lab = product_label(p)
         seg = (p.get("segment") or "").strip() or None
-        if not lab or GEN_ITEM.match(lab) or SUM_ROW.search(" ".join(x for x in (lab, seg, p.get("use"), p.get("kind")) if x)):
+        if not lab or GEN_ITEM.match(lab) or is_sum_row(p) or SUM_ROW.search(" ".join(x for x in (lab, seg, p.get("use"), p.get("kind")) if x)):
             continue
         if seg and GEN_ITEM.match(seg):
             seg = None
@@ -519,6 +557,8 @@ def products_of(prods, top=None):
     if not rows:
         return []
     est = False
+    # 비중 칸이 하나라도 비고 금액이 다 있으면 모두 금액 몫(est)으로 — 한 기준으로 맞춘다(LS 일렉트릭: 전력 줄만 비중이 비어 주력 82% 가 빠졌다).
+    # 금액 몫이 부풀던 원인은 띄어 쓴 조정 · 합계 줄이었고 위 is_sum_row 가 거른다(2026-10-19)
     if any(r["pct"] is None for r in rows) and all(isinstance(r["amt"], (int, float)) and r["amt"] > 0 for r in rows):
         tot = sum(r["amt"] for r in rows)
         est = True
@@ -553,15 +593,15 @@ def pct0(p):
 
 def big_lines(prods, min_pct=PROD_MIN_PCT):
     """제품 줄 중 비중 min_pct 이상(비중이 없으면 금액 몫으로, 둘 다 없으면 다). 합계 · 기타 줄은 몫 셈에서 뺀다."""
-    rows = [p for p in prods or () if not GEN_ITEM.match((p.get("item") or "").strip())
-            and not re.search(r"합\s*계|소\s*계|총\s*계", (p.get("item") or "") + " " + (p.get("segment") or ""))]
+    prods = clean_product_rows(prods)
+    rows = [p for p in prods if not GEN_ITEM.match((p.get("item") or "").strip())]
     if any(p.get("pct") is not None for p in rows):            # 한 자리로 반올림해 견준다(products_of 와 같은 꼴 — 생체인식 4.95% = 5.0%)
-        return [p for p in prods or () if p.get("pct") is None or round(p["pct"], 1) >= min_pct]
+        return [p for p in prods if p.get("pct") is None or round(p["pct"], 1) >= min_pct]
     amt = [p.get("amt") for p in rows if isinstance(p.get("amt"), (int, float)) and p["amt"] > 0]
     tot = sum(amt)
     if not tot:
-        return list(prods or ())
-    return [p for p in prods or () if not isinstance(p.get("amt"), (int, float)) or p["amt"] / tot * 100 >= min_pct]
+        return list(prods)
+    return [p for p in prods if not isinstance(p.get("amt"), (int, float)) or p["amt"] / tot * 100 >= min_pct]
 
 
 def product_words(prods, min_pct=PROD_MIN_PCT):
@@ -603,7 +643,7 @@ def segment_words(prods):
 def uses_of(prods, top=6):
     """제품 용도 칸 → 수요처 낱말('스마트폰용, 전장용, PC용 등' → 스마트폰 · 전장 · PC)."""
     out = []
-    for p in prods or ():
+    for p in clean_product_rows(prods):
         for w in re.split(r"[,/·및]|\s+및\s+", p.get("use") or ""):
             w = re.sub(r"(?:용|向)?\s*(?:등|외)?\s*$", "", w.strip()).strip()
             w = re.sub(r"용$", "", w).strip()
@@ -706,8 +746,9 @@ def clip_sent(line, m, n=60):
     return s[st:en].strip(" ,:")
 
 
-def disc_triggers(discs, contracts, classify, today):
-    """공시 트리거 — 최근 1년 공급계약(계약 캐시 금액 합 · 매출 대비 % 합)과 설비투자 공시. discs = 내러티브.disc_rows 꼴(최신 먼저)."""
+def disc_triggers(discs, contracts, classify, today, own=None):
+    """공시 트리거 — 최근 1년 공급계약(계약 캐시 금액 합 · 매출 대비 % 합)과 설비투자 공시. discs = 내러티브.disc_rows 꼴(최신 먼저).
+    own(계약상대) → 참이면 계열 법인 경유 계약 — 합계 뒤에 '그중 계열 경유 n건 · 금액'으로 따로 적는다(LS 일렉트릭 미국 법인 7건 1.68조, 리뷰 2026-10-19)."""
     since = (today - dt.timedelta(days=365)).strftime("%Y%m%d")
     out = []
     ords = [x for x in discs or () if x["d"] >= since and ORD_RX.search(x["title"] or "") and "정정" not in x["title"] and "해지" not in x["title"]]
@@ -718,7 +759,9 @@ def disc_triggers(discs, contracts, classify, today):
         if amt:
             tot = sum(c["amount"] for _, c in amt)
             pct = sum(c.get("pct") or 0 for _, c in amt)
+            mine = [(x, c) for x, c in amt if own is not None and c.get("party") and own(c["party"])]
             text = "공급계약 %d건 · %s" % (len(amt), won(tot)) + (" (매출 대비 %.1f%%)" % pct if pct else "") + \
+                   (" · 그중 계열 법인 경유 %d건 %s" % (len(mine), won(sum(c["amount"] for _, c in mine))) if mine else "") + \
                    (" · 금액 미확인 %d건" % miss if miss else "")
             last = amt[0][0]
         else:
@@ -1127,14 +1170,14 @@ def _weak(s):
 
 
 def link_score(c):
-    """연결 칸 — 공급망 직접 5 · 같은 제품 4 · 리포트 동시 언급 3건↑ 또는 약한 공급망(지주가 연결 자회사 매입을 적은 것 — weak) 3 · 1–2건 2 · 테마만 1."""
+    """연결 칸 — 공급망 직접 5 · 리포트 동시 언급 3건↑ 또는 약한 공급망(지주가 연결 자회사 매입을 적은 것 — weak) 3 · 같은 제품 · 1–2건 2 · 테마만 1.
+    같은 제품은 4 → 2(2026-10-19): 시점 백테스트(도구/밸류체인_후속주_백테스트.py)에서 같은 제품 연결은 주도주 급등 뒤 6개월 −0.3 백분위점
+    [−1.6, +1.0] — 효과가 없었고 표본 30쌍 오탐 68%(동음어 '인버터'). 공급망 직접 연결은 +3.2 [+1.6, +4.9](같은 업종 아무 종목 +1.9 와 구간 겹침)."""
     if any(not _weak(s) for s in c["supply"]):
         return 5
-    if c["prod"]:
-        return 4
     if c["rep_n"] >= 3 or c["supply"]:
         return 3
-    if c["rep_n"]:
+    if c["prod"] or c["rep_n"]:
         return 2
     return 1 if c["themes"] else 0
 
@@ -1417,7 +1460,7 @@ def _sup_phrase(w, lead, subj=""):
 
 def score(c, *, lead_p3=None, px=None, ph=None, n_rep=0, up=None, risk=None, kis_bad=(), kis_tags=(), lead_name="", name="", srcs=None):
     """후보 한 곳 → {parts, ev, group, group_note, stars, why, flags, expl}. 칸마다 근거 객체(ev — {t, src, date, url, go})를 남긴다.
-    25점 = 연결 · 실적 · 주목 · 덜 오름 · 건전성 × 5. srcs = 서버가 모은 출처 {theme, xs, xs_date, kis_date, risk_date, prod:(src, date, url)}.
+    20점 = 연결 · 실적 · 주목 · 건전성 × 5(덜 오름은 근거만 적고 점수 밖 — 2026-10-19 검증). srcs = 서버가 모은 출처 {theme, xs, xs_date, kis_date, risk_date, prod:(src, date, url)}.
     up 은 upside_detail 꼴 {up, n, avg} 또는 숫자. 모든 숫자는 캐시 값(근거에 적힌 출처)에서만 — 없으면 '없음'이라 적는다."""
     S = srcs or {}
     E = {"link": [], "fund": [], "attn": [], "lag": [], "safe": []}
@@ -1481,7 +1524,8 @@ def score(c, *, lead_p3=None, px=None, ph=None, n_rep=0, up=None, risk=None, kis
                             ud.get("asof"), None, {"tab": "rep"}))         # n 은 집 수 — '리포트 n건'이라 적으면 글 수(LG이노텍 30건 · 10곳)와 어긋난다
         if ud["up"] >= 30:
             attn = min(5, attn + 1)
-    # 덜 오름
+    # 덜 오름 — 사실만 적고 점수에 넣지 않는다(2026-10-19): 시점 백테스트에서 주도주보다 30백분위 넘게 덜 오른 후속주가 6개월 평균 −4.1%p 더 못했다
+    # (중앙값은 반대 · 앞 기간은 부호가 반대라 뒤집지 않고 뺀다). 52주 고점 대비 −50% '망가짐' 감점도 단면의 1/3 에 걸려 변별력이 없어 같이 뺀다
     p3, dd = (px or {}).get("p3"), (px or {}).get("dd")
     xsrc, xdate = S.get("xs") or "전 종목 주가 단면", S.get("xs_date")
     if p3 is None or lead_p3 is None:            # 단면 출처 줄(xsrc)에 날짜가 있어 date 는 따로 안 붙인다(판 크기)
@@ -1492,20 +1536,21 @@ def score(c, *, lead_p3=None, px=None, ph=None, n_rep=0, up=None, risk=None, kis
         lag = 5 if d >= 30 else 4 if d >= 15 else 3 if d >= 0 else 1
         E["lag"].append(ev("3개월 수익률 백분위 %d (주도주 %d)" % (p3, lead_p3) + (" · 52주 고점 대비 %.1f%%" % dd if dd is not None else ""), xsrc))
     if dd is not None and dd < -50:
-        lag = max(0, lag - 1)
-        E["lag"].append(ev("52주 고점 대비 %.0f%% — 망가짐" % dd, xsrc))
+        E["lag"].append(ev("52주 고점 대비 %.0f%%" % dd, xsrc))
+    E["lag"].append(ev("점수에 넣지 않음 — 검증에서 덜 오른 쪽이 6개월 평균 −4.1%p 더 못했다", "도구/밸류체인_후속주_백테스트.py"))
+    lag = None
     # 건전성
     safe, items = risk_items(risk, kis_bad, kis_tags, opm, S.get("kis_date"), S.get("risk_date"), dsrc)
     flags = [x["t"] for x in items]
     E["safe"] = items[:] or [ev("위험 꼬리표 없음", _none_src(S))]
     parts = {"link": link, "fund": fund, "attn": attn, "lag": lag, "safe": safe}
-    tot = sum(parts.values())
+    tot = sum(v for v in parts.values() if v is not None)          # 20점 만점(덜 오름은 점수 밖)
     p1 = (px or {}).get("p1")
     if safe <= 2 or (link <= 1 and p1 is not None and p1 >= 95 and fund <= 1):
         grp = "Fake"
-    elif link >= 4 and tot >= 15:
+    elif link >= 5 and tot >= 12:                                  # B = 공급망 직접 연결(매출처 · 매입처 표)만 — 같은 제품 · 리포트만으로는 B 가 못 된다
         grp = "B"
-    elif link >= 2 and tot >= 11:
+    elif link >= 2 and tot >= 9:
         grp = "C"
     else:
         grp = "D"
@@ -1650,7 +1695,7 @@ def period_label(p):
     return st[:4]
 
 
-def up_groups(materials, products, link, sellers=(), skip=(), lead_name="", max_groups=3, max_items=5, name_of=None):
+def up_groups(materials, products, link, sellers=(), skip=(), lead_name="", max_groups=3, max_items=5, name_of=None, lead_code=None, grp=()):
     """원재료를 제품 부문별로 묶는다(금액 큰 부문부터 최대 3) — 묶음 = {seg, c, label, items:[{item, pct, sup:[{name, code, co}]}], listed}.
     co = 이은 상장사 이름(적힌 이름과 다를 때만 — 'COSMO' → 코스모신소재). '기타' 품목은 뒤로.
     나를 매출처로 적은 상장사(sellers)는 그 회사가 매입처로 잡힌 묶음에, 모르면 첫 묶음에."""
@@ -1675,8 +1720,13 @@ def up_groups(materials, products, link, sellers=(), skip=(), lead_name="", max_
             if key in seen:                  # 한 품목에 같은 회사 두 번('효성' · '효성' — 넥센타이어)
                 continue
             seen.add(key)
+            # 자기 회사를 매입처로 적은 줄(엘에스일렉트릭 '세라믹Assy' — 종속법인 표가 모회사를 적음)은 상류에 두지 않는다(리뷰 2026-10-19)
+            if sp.get("self") or (lead_code and cd == lead_code) or (lead_name and norm_ko(short_name(nm) or nm) == norm_ko(lead_name)):
+                continue
             co = name_of(cd) if cd and name_of else None
-            sup.append(dict({"name": short_name(nm) or nm, "code": cd}, **({"co": co} if co and norm_ko(co) != norm_ko(short_name(nm)) else {})))
+            g_ = bool(sp.get("grp") or sp.get("own") or (cd and cd in grp))
+            sup.append(dict({"name": short_name(nm) or nm, "code": cd}, **({"co": co} if co and norm_ko(co) != norm_ko(short_name(nm)) else {}),
+                            **({"grp": True} if g_ else {})))
         g["items"].append({"item": item, "pct": mt.get("pct"), "sup": sup})
     order = sorted(groups.values(), key=lambda g: (-(g["amt"] or 0), -(g["pct"] or 0)))[:max_groups]
     out = []
@@ -1825,7 +1875,7 @@ def node_rel(d, code):
                           x.get("url") or (DART % vrc if x.get("kind") == "customer" and vrc else None)))
     for r in d.get("matrix") or ():
         if r.get("code") == code:
-            out.append(ev("후속주 %s군 %d점 — %s" % (r["group"], r["score"], r.get("why") or ""), NOTE))
+            out.append(ev("같이 볼 회사 · %s %d점 — %s" % (GROUP_NAME.get(r["group"], r["group"]), r["score"], r.get("why") or ""), NOTE))
             # 매트릭스 연결 근거 — 그림 줄과 같은 보고서 · 같은 링크(원재료 표의 매입처 = '삼성전기 FILM 매입처')면 겹쳐 적지 않는다
             had = {(x.get("src"), x.get("url")) for x in out if x.get("url")}
             out += [w for w in ((w if isinstance(w, dict) else ev(w)) for w in (r.get("ev") or {}).get("link") or ())

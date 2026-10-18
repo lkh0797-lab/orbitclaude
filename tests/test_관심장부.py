@@ -240,3 +240,21 @@ def test_save_load_roundtrip_backup_and_corrupt(tmp_path):
     with pytest.raises(ValueError):
         W.save(p, d, "2026-10-19")
     assert open(p, encoding="utf-8").read() == "{깨짐"                      # 깨진 파일은 덮어쓰지 않는다
+
+
+def test_cust_conc_and_big_customer_event():
+    def vc(y_rows):
+        return {"years": {y: {"customers": rows, "subs": [{"sub": "자회사아메리카"}], "rcept": y + "0315000001"} for y, rows in y_rows.items()}}
+    a = [{"name": "고객갑", "pct": 25.0, "kind": "named"}, {"name": "고객을", "pct": 8.0, "kind": "named"},
+         {"name": "부문고객", "pct": 50.0, "kind": "named", "basis": "부문"}, {"name": "자회사아메리카", "pct": 40.0, "kind": "named"},
+         {"name": "이회사", "pct": 30.0, "kind": "named"}]
+    cc = W.cust_conc(vc({"2024": a}), ("이회사",))
+    assert cc["2024"]["top1"] == 25.0 and cc["2024"]["top3"] == 33.0 and cc["2024"]["big"] == [("고객갑", 25.0)]   # 부문 기준 · 자회사 · 자기는 뺀다
+    b = [{"name": "고객갑", "pct": 35.0, "kind": "named"}, {"name": "고객병", "pct": 12.0, "kind": "named"}]
+    hy = [{"id": "c1", "tpl": "cust_conc"}]
+    st, _ = W.step(None, W.cust_facts(vc({"2024": a}), ("이회사",)), hy, "d1")
+    st, ev = W.step(st, W.cust_facts(vc({"2024": a, "2025": b}), ("이회사",)), hy, "d2")
+    kinds = sorted(e["kind"] for e in ev)
+    assert kinds == ["cust", "hyp"]
+    c = next(e for e in ev if e["kind"] == "cust")
+    assert "생김 고객병 12%" in c["title"] and "25% → 35%" in c["lines"][0]

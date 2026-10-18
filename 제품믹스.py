@@ -19,7 +19,7 @@ years[YYYY].products = [{segment, kind, item, use, amt, pct}] — 금액 단위 
 """
 import os, re, json, math
 
-MIX_V = 2                # 2: 회사 단위 고정 · 십억원 뺌 · 비율 칸 대조 · 금액 칸에 든 비율표 · 소계 지우기는 원장으로 확인 · 조정 줄 정규식 좁힘 · use 칸 조정 · 금액 해 비중 = 금액만 (2026-10-17 리뷰)
+MIX_V = 3                # 3: 띄어 쓴 칸('연 결 조 정' · '총 매 출 액')도 공백을 지우고 맞춘다 · 순매출 · 내부매출 줄 (2026-10-19 밸류체인 리뷰). 2: 회사 단위 고정 · 십억원 뺌 · 비율 칸 대조 · 금액 칸에 든 비율표 · 소계 지우기는 원장으로 확인 · 조정 줄 정규식 좁힘 · use 칸 조정 · 금액 해 비중 = 금액만 (2026-10-17 리뷰)
 GATE = 0.60              # 단위를 고른 뒤 ±10% 통과율이 이만큼은 돼야 전 종목 시계열로 연다(점검.json gate)
 TOL = 0.10
 # 십억원은 뺀다 — 리뷰(2026-10-17)에서 십억원으로만 맞은 10건이 전부 비율 칸 · 1% 조각 표가 우연히 맞은 것이었다
@@ -58,8 +58,17 @@ def _norm(s):
     return re.sub(r"[\s·・,.()\[\]（）/\\\-_'\"]+", "", (s or "")).lower()
 
 
+ADJ_C = re.compile(r"연결조정|내부(?:거래|매출)|부문간(?:내부)?거래|조정및제거|(?:내부|채권채무|매출)상계|consolidat|eliminat", re.I)
+USE_ADJ_C = re.compile(r"연결조정|내부(?:거래|매출)(?:액)?제거|조정및제거|부문간", re.I)
+
+
+def _c(v):
+    return re.sub(r"\s+", "", str(v or ""))
+
+
 def is_adj(p):
-    return bool(ADJ.search(" ".join(str(p.get(k) or "") for k in ("segment", "kind", "item"))) or USE_ADJ.search(str(p.get("use") or "")))
+    """조정 · 내부거래 줄 — 칸마다 공백을 지우고 맞춘다(띄어 쓴 '연 결 조 정', 리뷰 2026-10-19)."""
+    return bool(any(ADJ_C.search(_c(p.get(k))) for k in ("segment", "kind", "item")) or USE_ADJ_C.search(_c(p.get("use"))))
 
 
 def item_key(p):
@@ -76,6 +85,7 @@ def label_of(p):
 
 
 TOTAL = re.compile(r"(?:매출|제품|상품|부문|사업)?\s*(?:총\s*계|합\s*계|소\s*계|매출\s*계|^\s*계\s*$|^\s*합\s*$)|^\s*total\s*$|sub\s*total", re.I)
+TOTAL_C = re.compile(r"총계|합계|소계|매출계$|^계$|^합$|^total$|subtotal|^총매출|^순매출", re.I)       # 공백을 지운 칸에
 BLEED = re.compile(r"^\s*제\s*\d+\s*기|^\s*(?:품\s*목|구\s*분|기\s*간|단\s*위)\s*$")
 
 
@@ -90,7 +100,7 @@ def clean(prods):
         cells = [str(p.get(k) or "") for k in ("segment", "kind", "item", "use")]
         if any(BLEED.search(c) for c in cells[:3]):
             break
-        if any(TOTAL.search(c) for c in cells):
+        if any(TOTAL.search(c) or TOTAL_C.search(_c(c)) for c in cells):
             continue
         a = _num(p.get("amt"))
         if a is not None and a > 0 and not is_adj(p):

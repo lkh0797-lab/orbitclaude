@@ -191,6 +191,7 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .vcGo:hover{color:var(--accent)}
 .vcCc{display:inline-block;font:600 9.5px/1 var(--mono);padding:3px 4px;border-radius:4px;background:var(--line2);color:var(--dim);flex:none;vertical-align:1px}
 .vcCc.fx{background:var(--vc-via-soft);color:var(--vc-via)}
+.vcBadge.grp{background:var(--line2);color:var(--dim)}
 /* 이 회사 */
 .vcMe{position:relative;border:2px solid var(--accent);border-radius:16px;background:var(--accent-soft);padding:18px 14px 14px;text-align:center;box-shadow:0 10px 30px -16px rgba(0,0,0,.35)}
 .vcMeN{font:700 21px/1.3 'Noto Serif KR',serif;color:var(--ink);word-break:keep-all}
@@ -291,6 +292,13 @@ p.sub{margin:0 0 16px;color:var(--dim);font-size:12.5px}
 .wtAdd>summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);margin:6px 0}
 .wtAct{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}.wtEdit{margin-top:8px}.wtClosed summary{cursor:pointer;color:var(--dim);font-size:12px;margin-top:8px}
 @media (max-width:640px){.wtHr{grid-template-columns:44px minmax(0,1fr);}.wtHr .v,.wtHr .wtG{grid-column:2}}
+/* 밸류체인 한 줄 요약 · 점수표 접기 */
+.vcPlain{margin:6px 0 12px;padding:10px 14px;border-left:3px solid var(--accent);background:var(--panel);border-radius:0 8px 8px 0}
+.vcPlain b{display:block;font-size:14.5px;line-height:1.55;color:var(--ink)}
+.vcPlain span{display:block;font-size:12px;color:var(--dim);margin-top:3px}
+.vcFold{margin:18px 0 6px;border:1px solid var(--line2);border-radius:10px;background:var(--panel);padding:8px 12px}
+.vcFold>summary{cursor:pointer;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.vcFold>summary b{font-size:14px;color:var(--ink)}.vcFold>summary span{font-size:12px;color:var(--dim)}
 /* 매출처 15년 열지도 */
 .vcMix .vcHeat th.n,.vcMix .vcHeat td.n{position:sticky;left:0;background:var(--panel);z-index:1}
 .vcMixC{margin-top:10px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);padding:10px 14px}
@@ -12373,12 +12381,14 @@ async function viewTimeline(p){
   if(VC_RO){ VC_RO.disconnect(); VC_RO=null; }
   if(VB_RO){ VB_RO.disconnect(); VB_RO=null; }
   p.appendChild(el('div','loading','밸류체인을 읽는 중 — 사업보고서 「사업의 내용」 15년치'));
-  const vbq=vbFetch(c.code);                                       // 밸류체인 한 장 — 같이 띄워 두고 판이 붙으면 받는다(뒤에서 만드는 동안 아래 화면을 막지 않는다)
+  // 밸류체인 한 장(점수표)은 접어 둔 자리에서 열 때만 부른다(2026-10-19 — 검증 안 된 점수판이 첫 화면을 차지하던 것). 열어 둔 채였으면 바로 부른다
+  const vbOpen=!!lsGet('vcBoardOpen',false);
+  let vbq=vbOpen?vbFetch(c.code):null;
   let d;
   try{ d=await (await fetch('/api/valuechain?code='+c.code)).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
   if(!S.co||S.co.code!==c.code||S.tab!=='tl') return;
   p.innerHTML='';
-  if(d.error){ p.appendChild(vcBoard(c,vbq)); p.appendChild(el('div','err',d.error)); return vcReports(p,c); }
+  if(d.error){ p.appendChild(vcBoard(c,vbq||vbFetch(c.code))); p.appendChild(el('div','err',d.error)); return vcReports(p,c); }
   const V=vcPrep(d);
   const hd=el('div','dipHead'); hd.appendChild(el('b',null,'밸류체인'));
   const pd=(d.periods||{})[V.y1]||{}, annY=V.Y.filter(y=>!((d.periods||{})[y]||{}).partial);
@@ -12386,7 +12396,7 @@ async function viewTimeline(p){
     (pd.partial?' + '+vcYear(V.y1)+' '+pd.label:'')+' 「사업의 내용」. 비중은 보고서가 적은 그대로'));
   if(pd.partial) hd.appendChild(el('span','vcNow','지금 모습 = '+vcYear(V.y1)+' '+pd.label+'('+pd.stamp+') — 새 분기 · 반기 · 사업보고서가 수집되면 그날 아침 06:00에 다시 뽑는다'));
   p.appendChild(hd);
-  p.appendChild(vcBoard(c,vbq));
+  const pl=vcPlain(d,V,c); if(pl) p.appendChild(pl);
   p.appendChild(vcSignals(d,V));
   const map=vcMap(d,V,c); p.appendChild(map);
   const key=el('div','vcHint');
@@ -12394,13 +12404,43 @@ async function viewTimeline(p){
     '<span><i style="background:var(--vc-via)"></i>계열 법인을 거쳐 가는 매출</span><span><u>밑줄</u> = 수집한 회사(누르면 이동)</span><span>매입처 옆 +n = 같은 곳에서 사는 상장사 수</span><span>카드에 마우스를 올리면 그 선만 진하게</span>';
   p.appendChild(key);
   p.appendChild(vcRipple(d,V,c));
+  // 같이 볼 회사 점수표 — 접힘(브라우저에 기억). 규칙 점수 · 검증 전
+  const fold=document.createElement('details'); fold.className='vcFold'; fold.open=vbOpen;
+  const sm=el('summary'); sm.appendChild(el('b',null,'같이 볼 회사 점수표 · 밸류체인 한 장')); sm.appendChild(el('span',null,'규칙 점수 · 검증 전 — 예측이 아니라 어디를 같이 볼지 고른 목록. 펼치면 불러온다'));
+  fold.appendChild(sm);
+  let armed=false;
+  const arm=()=>{ if(armed) return; armed=true; fold.appendChild(vcBoard(c,vbq||vbFetch(c.code))); };
+  if(vbOpen) arm();
+  fold.addEventListener('toggle',()=>{ lsSet('vcBoardOpen',fold.open); if(fold.open) arm(); });
+  p.appendChild(fold);
   p.appendChild(vcHeat(d,V));
   if(d.mix) p.appendChild(vcMix(d.mix));
   vcMore(p,d,V);
   p.appendChild(el('div','finnote','출처 = 사업보고서 「사업의 내용」(주요 매출처 및 비중 · 법인별 주요 매출처 · 주요 원재료 현황 · 매출실적 수출/내수 · 종속회사 판매경로) + 단일판매·공급계약 공시. '+
-    '비중 기준(회사 매출 중 / 부문 매출 중)은 회사마다 다르다. 이름이 상장사와 맞지 않으면(약칭 · 해외) 글자로만 남고, 그물망은 이름이 같은 것만 잇는다('+d.peer_n+'곳 대조).'));
+    '비중 기준(회사 매출 중 / 부문 매출 중)은 회사마다 다르다. 이름이 상장사와 맞지 않으면(약칭 · 해외) 글자로만 남고, 같은 고객 · 매입처 연결은 이름이 같은 것만 잇는다('+d.peer_n+'곳 대조). '+
+    '「계열」 = 자회사 · 법인, 「같은 그룹」 = 계열 상장사 · 모회사(소유 표) — 외부 거래처로 세지 않는다.'));
   vcReports(p,c);
   vcArm(map);
+}
+
+// 한 줄 요약(2026-10-19) — 보고서에 적힌 사실만: 무엇을 팔고(제품 몫) · 누가 사고(큰 고객 · 기준) · 어디로(수출) · 무엇이 바뀌나(커지는 · 줄어든 고객)
+function vcPlain(d,V,c){
+  const bits=[];
+  const P=V.prods||[], tot=P.reduce((a,x)=>a+(x.amt||0),0);
+  if(P.length){ const x=P[0], sh=x.pct!=null?x.pct:(tot&&x.amt?x.amt/tot*100:null);
+    const parts=x.item.replace(/\s*등$/,'').split(/\s*,\s*/), nm=parts.slice(0,2).join(', ')+(parts.length>2?' 등':'');
+    if(sh!=null&&sh>=20) bits.push('매출의 '+Math.round(sh)+'%가 '+nm); }
+  if(V.exY.length) bits.push('수출 '+Math.round(V.ex[V.exY[V.exY.length-1]])+'%');
+  const ext=V.cur.filter(h=>!h.own&&!h.grp&&h.pct!=null).sort((a,b)=>b.pct-a.pct).slice(0,2);
+  if(ext.length) bits.push('큰 고객 '+ext.map(h=>h.name+' '+vcPct(h.pct)+(h.seg?'('+h.seg+' 부문 중)':'')).join(' · '));
+  else if(d.no_major) bits.push('매출 10% 넘는 고객 없음(고루 퍼짐)');
+  const named=V.cur.filter(h=>!h.own&&h.pct!=null), up=named.filter(h=>h.tr&&h.tr.k==='up').sort((a,b)=>b.tr.d-a.tr.d)[0], dn=named.filter(h=>h.tr&&h.tr.k==='dn').sort((a,b)=>a.tr.d-b.tr.d)[0];
+  const ch=[up?'커지는 고객 '+up.name:'',dn?'줄어든 고객 '+dn.name:''].filter(Boolean);
+  if(!bits.length&&!ch.length) return null;
+  const w=el('div','vcPlain');
+  w.appendChild(el('b',null,c.name+' — '+bits.join(' · ')+(ch.length?'. '+ch.join(', '):'')+'.'));
+  w.appendChild(el('span',null,'모두 사업보고서가 적은 사실(비중 기준은 표마다 다르다 — 칸에 적힌 「무엇 중」을 보라). 아래 「같이 볼 회사 점수표」는 규칙 점수로 검증 전이라 접어 두었다.'));
+  return w;
 }
 
 function vcSignals(d,V){
@@ -12418,6 +12458,13 @@ function vcSignals(d,V){
   const gone=(d.customers||[]).filter(h=>!h.own&&h.last!==V.y1&&vcYear(h.last)>=vcYear(V.y1)-2&&Math.max(...Object.values(h.by_year).map(v=>v||0))>=3);
   if(!dns.length&&gone.length) add('dn','빠진 고객',gone[0].name,vcYY(gone[0].last)+'까지 적힘'+(gone.length>1?' · 외 '+(gone.length-1)+'곳':''),null,gone[0].name);
   if(!ups.length&&named.length){ const t=named.slice().sort((a,b)=>b.pct-a.pct)[0]; add('','가장 큰 고객',t.name,(t.seg?t.seg+' 부문 매출의 ':'회사 매출의 ')+vcPct(t.pct),null,t.name); }
+  // 한 고객 의존(2026-10-19) — 회사 매출 기준 매출처 줄만(부문 기준 줄 · 자기 · 자회사 빼고 · 계열 상장사는 넣고 표시), 사업보고서 해마다
+  const CC=d.conc||{}, cy=Object.keys(CC).sort();
+  if(cy.length){ const z=CC[cy[cy.length-1]], z0=cy.length>1?CC[cy[0]]:null;
+    const b0=(z.big||[])[0], g0=b0&&(d.customers||[]).find(h=>h.name===b0[0]||(h.aka||[]).includes(b0[0]));
+    add(z.top1>=30?'dn':'', '한 고객 의존', Math.round(z.top1)+'%', '가장 큰 고객'+(b0?' '+b0[0]+(g0&&g0.grp?'(같은 그룹)':''):'')+' 몫 · 상위 3곳 '+Math.round(z.top3)+'% · 회사 매출 기준 · '+vcYY(cy[cy.length-1])+
+      (z0?' ('+vcYY(cy[0])+' '+Math.round(z0.top1)+'%)':'')+(z.hidden?' · 이름 없는 10%↑ '+z.hidden+'곳':''), cy.length>1?vcSpark(cy.map(y=>[y,CC[y].top1]),88,28):null,
+      (z.big||[]).map(b=>b[0]+' '+Math.round(b[1])+'%').join(' · ')||null); }
   const hid=(d.hidden||[]).filter(x=>x.pct!=null||x.amt).sort((a,b)=>(b.pct||0)-(a.pct||0)||(b.amt||0)-(a.amt||0));
   if(!named.length&&hid.length) add('dn','큰 고객 의존(이름 비공개)',hid[0].pct!=null?vcPct(hid[0].pct):qWon(hid[0].amt),hid[0].name.replace(/\(이름 비공개\)/,'')+(hid.length>1?' · 외 '+(hid.length-1)+'곳':'')+' — 매출 10% 넘는 고객',null);
   if(d.no_major&&!named.length) add('up','고객 고루 퍼짐','10%+ 고객 없음','매출 10% 넘는 단일 고객이 없다 — 한 곳에 덜 휘둘린다',null);
@@ -12425,9 +12472,11 @@ function vcSignals(d,V){
   if(own.length) add('via','계열 법인으로 가는 몫',vcPct(own[0].pct)+(own[0].seg?' (부문)':''),(own[0].seg?own[0].seg+' 부문 매출의 '+vcPct(own[0].pct)+'가 ':'')+own[0].name+'(으)로 — 회사 전체가 아니라 '+(own[0].seg?'부문':'회사')+' 기준',null,own[0].name);
   const core=V.mats.find(m=>!/^(?:기타|저장품|상품|부재료|원재료\s*외|-)/.test(m.item));
   if(core){ const m=core; add('cost','원가 핵심',m.item.replace(/\s*등$/,''),[(m.segment?m.segment+' ':'')+(m.pct!=null?'매입의 '+vcPct(m.pct):(m.share!=null?'전체 매입의 '+vcPct(m.share*100):'')),m.amt?qWon(m.amt*1e6):''].filter(x=>x.trim()).join(' · '),null,m.item); }
-  if((d.orders||[]).length){ const t=d.orders.reduce((s,o)=>s+(o.amount||0),0), n=d.orders.reduce((s,o)=>s+o.n,0);
-    add('up','수주 공시 · 2년',t?qWon(t):n+'건',n+'건 · 가장 큰 '+(d.orders[0].kind==='사업'?'사업 ':'상대 ')+d.orders[0].party,null); }
-  cards.slice(0,5).forEach(x=>{ const b=el('div','vcSigC '+x.tone); b.appendChild(el('span','l',x.lab)); const r=el('div','v'); const bb=el('b',null,x.big); if(x.title) bb.title=x.title; r.appendChild(bb); if(x.spark) r.appendChild(x.spark); b.appendChild(r);
+  if((d.orders||[]).length){ const ext=d.orders.filter(o=>!o.own), mine=d.orders.filter(o=>o.own);   // 계열 법인 경유(자기 미국 법인 등)는 외부 수주로 세지 않는다
+    const t=ext.reduce((s,o)=>s+(o.amount||0),0), n=ext.reduce((s,o)=>s+o.n,0), tm=mine.reduce((s,o)=>s+(o.amount||0),0), nm_=mine.reduce((s,o)=>s+o.n,0);
+    if(ext.length||mine.length) add('up','수주 공시 · 2년',ext.length?(t?qWon(t):n+'건'):'계열만',
+      (ext.length?n+'건 · 가장 큰 '+(ext[0].kind==='사업'?'사업 ':'상대 ')+ext[0].party:'외부 상대 없음')+(nm_?' · 계열 법인 경유 '+nm_+'건'+(tm?' '+qWon(tm):'')+' 따로':''),null); }
+  cards.slice(0,6).forEach(x=>{ const b=el('div','vcSigC '+x.tone); b.appendChild(el('span','l',x.lab)); const r=el('div','v'); const bb=el('b',null,x.big); if(x.title) bb.title=x.title; r.appendChild(bb); if(x.spark) r.appendChild(x.spark); b.appendChild(r);
     if(x.sub) b.appendChild(el('span','s',x.sub)); w.appendChild(b); });
   return w;
 }
@@ -12438,6 +12487,7 @@ function vcRow(r,mx,opt){
   const l1=el('div','l1'); const cc=vcCc(r.country,r.name); if(cc) l1.appendChild(cc);
   const nm=el('span','nm'); nm.appendChild(vcNm(r.name,r.link)); nm.title=r.name+((r.aka||[]).length?' = '+r.aka.join(' · '):''); l1.appendChild(nm);
   if(r.own) l1.appendChild(el('span','vcBadge',r.self?'이 회사':'계열'));
+  else if(r.grp) l1.appendChild(el('span','vcBadge grp','같은 그룹'));
   if(opt.compact){ const mb=el('span','mini'); const f=el('i'); f.style.width=Math.max(4,(r.pct||0)/mx*100)+'%'; mb.appendChild(f); l1.appendChild(mb); }
   l1.appendChild(el('b','pc',vcPct(r.pct)));
   row.appendChild(l1);
@@ -12469,7 +12519,7 @@ function vcMap(d,V,c){
       mt.appendChild(el('em',null,m.pct!=null?(m.segment?m.segment+' ':'')+'매입의 '+vcPct(m.pct):'전체 매입의 '+vcPct(share))); cd.appendChild(mt); }
     const sp=el('div','vcSup');
     (m.suppliers||[]).slice(0,6).forEach(s=>{ const ch=el('span','vcSupC'); const cc=s.country!=='한국'?vcCc(s.country,s.name):null; if(cc) ch.appendChild(cc);
-      ch.appendChild(vcNm(s.name,s.link)); if(s.own) ch.appendChild(el('span','vcBadge',s.self?'이 회사':'계열'));
+      ch.appendChild(vcNm(s.name,s.link)); if(s.own) ch.appendChild(el('span','vcBadge',s.self?'이 회사':'계열')); else if(s.grp) ch.appendChild(el('span','vcBadge grp','같은 그룹'));
       if((s.others_n||(s.others||[]).length)&&s.key){ const o=el('small','vcOth','+'+(s.others_n||s.others.length)); o.title='같은 곳에서 사는 상장사: '+(s.others||[]).map(x=>x.name).join(', ')+' — 누르면 전부';
         o.onclick=e=>{ e.preventDefault(); e.stopPropagation(); vcBuyerPop(s.key,'supp',s.name); }; ch.appendChild(o); }
       sp.appendChild(ch); });
@@ -12573,15 +12623,17 @@ function vcArm(map){
 // 서버가 뒤 스레드에서 만드는 동안(pending) · 낡은 판을 다시 만드는 동안(stale) 2초마다 다시 묻는다 — 같은 탭 · 같은 회사 · 판이 붙어 있을 때만.
 // 점수는 규칙 점수 · 검증 전 — 예측이 아니다(문장 선행 점수 표본 외 실패, 국면 · 변곡 엣지 0 근처). 화면에 늘 적는다.
 let VB_RO=null;
-const VB_G=[['B','B군'],['C','C군'],['D','D군'],['Fake','Fake']], VB_GL={B:'B군',C:'C군',D:'D군',Fake:'Fake'};
-const VB_PART=[['link','연결'],['fund','실적'],['attn','주목'],['lag','덜 오름'],['safe','건전성']];
+// 군 이름 — 쉬운 말(2026-10-19): B 확인된 연결(공급망 직접) · C 약한 연결 · D 테마만 · Fake 조심(위험 공시 · 근거 없이 급등)
+const VB_G=[['B','확인된 연결'],['C','약한 연결'],['D','테마만'],['Fake','조심']], VB_GL={B:'확인된 연결',C:'약한 연결',D:'테마만',Fake:'조심'};
+const VB_PART=[['link','연결'],['fund','실적'],['attn','주목'],['lag','덜 오름(점수 밖)'],['safe','건전성']];
 const VB_RULE=[
-  ['연결','공급망 직접 5 · 같은 제품 4 · 리포트 동시 언급 3건+ 3 · 1–2건 2 · 테마만 1'],
+  ['연결','공급망 직접 5 · 리포트 동시 언급 3건+ 또는 약한 공급망 3 · 같은 제품 · 1–2건 2 · 테마만 1 (같은 제품은 검증에서 효과 0 · 오탐 68% 라 4 → 2)'],
   ['실적','국면 확장 가속 5 · 확장 4 · 회복 3 · 둔화 2 · 수축 1 · 적자(OPM<0) 0 · 자료 없음 2'],
   ['주목','키워드 리포트 180일 0건 0 · 1–2건 2 · 3–9건 3 · 10건+ 4, 상승여력 +30% 넘으면 +1'],
-  ['덜 오름','3개월 수익률 백분위가 주도주보다 30p+ 낮으면 5 · 15–30p 4 · 0–15p 3 · 더 높으면 1, 52주 고점 대비 −50% 아래 −1'],
+  ['덜 오름','점수에 넣지 않는다 — 3개월 수익률 백분위만 적는다. 검증에서 이 회사보다 30백분위 넘게 덜 오른 회사가 6개월 평균 −4.1%p 더 못했다'],
   ['건전성','5에서 — 작전주 꼴 · 상폐 절차 · 감사 비적정 · 자본잠식 −5, 투자경고 −3, 투자주의 · 자금조달 잦음 −2, 적자 −1'],
-  ['군','Fake = 건전성 2 이하 또는 (연결 1 이하 · 1개월 백분위 95+ · 실적 1 이하) · B = 연결 4+ · 합 15+ · C = 연결 2+ · 합 11+ · D = 나머지 · 별 = 연결 점수']];
+  ['군','조심 = 건전성 2 이하 또는 (연결 1 이하 · 1개월 백분위 95+ · 실적 1 이하) · 확인된 연결 = 공급망 직접(매출처 · 매입처 표) · 합 12+ · 약한 연결 = 연결 2+ · 합 9+ · 테마만 = 나머지 · 별 = 연결 점수 (20점 만점)'],
+  ['검증','공급망 직접 연결: 주도주 급등 뒤 6개월 +3.2 백분위점 [+1.6, +4.9] — 같은 업종 아무 종목(+1.9)과 구간이 겹쳐 연결 덕이라 말하기 어렵다 · 같은 제품: 효과 0 · 덜 오름: 반대(도구/밸류체인_후속주_백테스트.py) — 예측이 아니라 어디를 같이 볼지 고르는 목록']];
 const vbD=d=>{ const t=String(d||'').replace(/\D/g,''); return t.length>=8?t.slice(2,4)+'.'+t.slice(4,6)+'.'+t.slice(6,8):''; };
 const vbR=v=>v==null||!isFinite(v)?'—':(v>0?'+':v<0?'−':'')+(Math.abs(v)>=100?Math.round(Math.abs(v)):Math.abs(v).toFixed(1))+'%';
 const vbUD=v=>v>0?'vbUp':v<0?'vbDn':'';                          // 주가는 한국식 — 빨강 오름 · 파랑 내림
@@ -12662,7 +12714,7 @@ function vcBoard(c,pre){
   if(!S.vb||S.vb.code!==code) S.vb={code,filt:'',open:null,sel:null,more:false};   // 거르기 · 펼친 줄 · 고른 노드는 회사마다 — 폴링으로 다시 그려도 그대로
   const V=S.vb, box=el('section','vbBoard');
   const top=el('div','vbTop');
-  top.appendChild(vcSec('밸류체인 한 장 — 주도주 · 그물망 · 후속주','가운데 이 회사, 위로 모회사 · 원재료 매입처, 아래로 동종 후속주 · 자회사 · 고객. 코드가 붙은 회사를 누르면 근거 · 주가 · 국면'));
+  top.appendChild(vcSec('밸류체인 한 장 — 이 회사 · 관계도 · 같이 볼 회사','가운데 이 회사, 위로 모회사 · 원재료 매입처, 아래로 같은 일을 하는 회사 · 자회사 · 고객. 코드가 붙은 회사를 누르면 근거 · 주가 · 국면'));
   const note=el('span','vbNote','규칙 점수 · 검증 전 — 예측 아님'); top.appendChild(note);
   const stat=el('div','vbStat'), body=el('div','vbBody');
   body.appendChild(el('div','loading','밸류체인 한 장 불러오는 중…'));
@@ -12711,7 +12763,7 @@ function vcBoard(c,pre){
 function vbHead(D,ctx){
   const H=D.head||{}, w=el('div','vbHead');
   const card=(cls,lab)=>{ const b=el('div','vbHC '+cls); b.appendChild(el('span','l',lab)); w.appendChild(b); return b; };
-  const L=H.leader||{}, a=card('lead','주도주');
+  const L=H.leader||{}, a=card('lead','이 회사 주가');
   const nm=el('div','vbLead'); nm.appendChild(el('b',null,L.name||D.name||'')); nm.appendChild(el('span',null,L.code||D.code||'')); a.appendChild(nm);
   if(L.px!=null){ const px=el('div','vbPx'); px.appendChild(el('b',null,vbWon(L.px))); if(L.date) px.appendChild(el('span',null,vbD(L.date)+' 종가')); a.appendChild(px); }
   if(L.dd52!=null){ const dd=el('div','vbDd','52주 고점 대비 '); dd.appendChild(el('b',vbUD(L.dd52),vbR(L.dd52)));
@@ -12735,7 +12787,7 @@ function vbHead(D,ctx){
       r.appendChild(el('small',null,[t.src==='공시'?'':t.by,vbD(t.date)].filter(Boolean).join(' · '))); b.appendChild(r); }); }
   // 후속주 후보 — 군 수를 누르면 매트릭스를 그 군으로
   const n=H.counts;
-  if(n){ const b=card('cnt','후속주 후보'); const t=el('div','vbCnt'); t.appendChild(el('b',null,String(n.total||0))); t.appendChild(el('span',null,n.total?'곳':'곳 — 걸린 회사 없음')); b.appendChild(t);
+  if(n){ const b=card('cnt','같이 볼 회사'); const t=el('div','vbCnt'); t.appendChild(el('b',null,String(n.total||0))); t.appendChild(el('span',null,n.total?'곳':'곳 — 걸린 회사 없음')); b.appendChild(t);
     if(n.total){ const sk=el('div','vbStack'); VB_G.forEach(([g])=>{ if(!n[g]) return; const i=el('i'); i.dataset.g=g; i.style.background='var(--g)'; i.style.width=(n[g]/n.total*100)+'%'; i.title=VB_GL[g]+' '+n[g]+'곳'; sk.appendChild(i); }); b.appendChild(sk);
       const k=el('div','vbCntK'); VB_G.forEach(([g,l])=>{ const x=el('button'); x.type='button'; x.dataset.g=g; const dt=el('i','vbDot'); dt.style.setProperty('--k','var(--g)'); x.appendChild(dt);
         x.appendChild(document.createTextNode(l+' ')); x.appendChild(el('b',null,String(n[g]||0))); x.title=l+'만 보기'; x.onclick=()=>ctx.filt&&ctx.filt(g,true); k.appendChild(x); }); b.appendChild(k); } }
@@ -12753,7 +12805,8 @@ function vbNet(body,D,ctx){
     if(!x.code||x.code===D.code){ const s=el('span','vbCo',nm); if(bk) s.title=bk; return s; }
     rel(x.code,cn,t);
     const b=el('button','vbCo'+(V.sel&&V.sel.code===x.code?' on':'')); b.type='button'; b.dataset.code=x.code; if(x.group) b.dataset.g=x.group;
-    b.appendChild(document.createTextNode(nm+' ')); b.appendChild(el('small',null,x.code)); b.title=[t,bk].filter(Boolean).join(' · ')+(t||bk?' — ':'')+'누르면 근거 · 주가 · 국면';
+    b.appendChild(document.createTextNode(nm+' ')); b.appendChild(el('small',null,x.code)); if(x.grp) b.appendChild(el('span','vcBadge grp','같은 그룹'));
+    b.title=[t,bk].filter(Boolean).join(' · ')+(t||bk?' — ':'')+'누르면 근거 · 주가 · 국면';
     b.onclick=e=>{ e.stopPropagation(); ctx.sel(x.code,b); }; return b; };
   const node=(slot,kind,title,small,w)=>{ const n=el('div','vbNode '+kind); n.dataset.slot=slot; n.dataset.wire=kind; n.dataset.w=w; n.style.gridArea=slot;
     const h=el('div','vbNodeH'); h.appendChild(el('i','vbDot')); h.appendChild(el('span',null,title)); if(small) h.appendChild(el('small',null,small)); n.appendChild(h); return n; };
@@ -12804,8 +12857,8 @@ function vbNet(body,D,ctx){
     nodes.down=n; }
   // 동종 후속주 — 매트릭스 B · C 상위 6(점선, 군 색)
   const pe=(N.peers||[]).filter(x=>x&&x.name).slice(0,6);
-  if(pe.length){ const n=node('peer','peer','동종 후속주','B · C 상위','2.4'); const cs=el('div','vbCos');
-    pe.forEach(x=>cs.appendChild(co(x,'동종 후속주 · '+(VB_GL[x.group]||x.group||'')))); n.appendChild(cs); nodes.peer=n; }
+  if(pe.length){ const n=node('peer','peer','같은 일을 하는 회사','연결 확인 · 약함 상위','2.4'); const cs=el('div','vbCos');
+    pe.forEach(x=>cs.appendChild(co(x,'같은 일을 하는 회사 · '+(VB_GL[x.group]||x.group||'')))); n.appendChild(cs); nodes.peer=n; }
   // 상장 자회사 · 지분 — 상장 종속 0 이면 '상장 자회사 없음', 상장 지분(관계 · 투자)은 이름 · % · 목적
   const ho=(N.holdings||[]).filter(x=>x&&x.name);
   if(N.listed_subs!=null||ho.length){ const mx=Math.max(0,...ho.map(x=>x.pct||0));
@@ -12834,7 +12887,7 @@ function vbNet(body,D,ctx){
   net.appendChild(svgEl('svg',{class:'vbWires','aria-hidden':'true'}));
   ['me','own','u0','u1','u2','down','peer','sub'].forEach(s=>{ if(s==='me') grid.appendChild(me); else if(nodes[s]) grid.appendChild(nodes[s]); });   // 좁을 때 목록 순서
   net.appendChild(grid);
-  const key=el('div','vbKey'); [['up','상류 · 원재료'],['dn','하류 · 고객'],['peer','동종 후속주'],['tie','모회사 · 자회사']].forEach(([k,t])=>{ const s=el('span'); const i=el('i'); i.style.borderTopColor='var(--vb-'+k+')'; if(k==='peer') i.style.borderTopStyle='dashed'; s.appendChild(i); s.appendChild(document.createTextNode(t)); key.appendChild(s); });
+  const key=el('div','vbKey'); [['up','상류 · 원재료'],['dn','하류 · 고객'],['peer','같은 일을 하는 회사'],['tie','모회사 · 자회사']].forEach(([k,t])=>{ const s=el('span'); const i=el('i'); i.style.borderTopColor='var(--vb-'+k+')'; if(k==='peer') i.style.borderTopStyle='dashed'; s.appendChild(i); s.appendChild(document.createTextNode(t)); key.appendChild(s); });
   key.appendChild(el('span',null,'굵기 = 비중 · 지분 크기 · 선은 근거가 있는 쪽만'));
   net.appendChild(key); W.appendChild(net);
   const det=el('div'); det.hidden=true; W.appendChild(det);
@@ -12866,10 +12919,10 @@ function vbDetail(D,ctx,code,R,close,repaint){
   const x=el('button','vbX','×'); x.type='button'; x.title='닫기'; x.setAttribute('aria-label','심층 칸 닫기'); x.onclick=close; h.appendChild(x); w.appendChild(h);
   const sect=(l,node)=>{ const s=el('div','vbDS'); s.appendChild(el('span','l',l)); s.appendChild(node); w.appendChild(s); return s; };
   if(row){ const g=el('div','vbRowN'); g.appendChild(el('span','vbG',VB_GL[row.group]||row.group)); g.appendChild(vbStars(row.stars)); g.appendChild(el('span','pc',(row.score!=null?row.score:'—')+' / 25'));
-    sect('후속주 매트릭스',g); if(row.why) w.lastChild.appendChild(el('div','vbNone',row.why));
+    sect('같이 볼 회사 점수표',g); if(row.why) w.lastChild.appendChild(el('div','vbNone',row.why));
     if(row.expl) w.lastChild.appendChild(el('div','vbExpl',row.expl)); }   // 설명 문단은 줄 펼침과 같은 글 — 군 뜻 한 줄은 매트릭스 쪽에만
   // 서버 근거 줄({t,src,url,go})이 오면 그것 — 그림에서 모은 줄(칩 풍선 문자열)과 같은 사실이라 겹쳐 적지 않는다. 매트릭스 안이면 '후속주 B군 18점' 줄은 위 칸과 겹쳐 뺀다
-  const srv=!nd.loading&&!nd.error?vbEvs(nd.rel).filter(z=>!(row&&/^후속주 \S+군 \d+점/.test(z.t))):[];
+  const srv=!nd.loading&&!nd.error?vbEvs(nd.rel).filter(z=>!(row&&/^(?:후속주 \S+군|같이 볼 회사 · [^0-9]+) \d+점/.test(z.t))):[];
   // 문구가 같으면 하나(출처가 붙은 쪽이 먼저). 매트릭스 연결 줄이 서버 줄과 같은 보고서 · 같은 링크면(원재료 표의 매입처 = '삼성전기 FILM 매입처') 같은 사실이라 겹쳐 적지 않는다 — 서버 node_rel 과 같은 규칙
   const seen=new Set(), key=z=>(z.src||'')+'|'+z.url, had=new Set(srv.filter(z=>z.url).map(key));
   const rels=[...(srv.length?srv:vbEvs(R.rel)),...(row?vbEvs((row.ev||{}).link).filter(z=>!(z.url&&had.has(key(z)))):[])].filter(z=>!seen.has(z.t)&&seen.add(z.t));
@@ -12891,10 +12944,10 @@ function vbRepOf(r){ if(r.reports_n!=null) return r.reports_n; const t=vbEvs((r.
 function vbMatrix(D,ctx){
   const GO={B:0,C:1,D:2,Fake:3}, V=ctx.V, rows=(D.matrix||[]).slice().sort((a,b)=>((GO[a.group]??4)-(GO[b.group]??4))||(b.score||0)-(a.score||0));   // 군(B → C → D → Fake) 다음 점수 — 서버 순서와 같다
   const w=el('div','vbMx'), t=el('div','vbMxT');
-  t.appendChild(vcSec('후속주 매트릭스 · 25점 만점 · 행 클릭 시 심층분석','연결 · 실적 · 주목 · 덜 오름 · 건전성 다섯 칸 × 5점. 칸마다 근거 줄이 붙는다'));
+  t.appendChild(vcSec('같이 볼 회사 점수표 · 20점 만점 · 줄을 누르면 자세히','연결 · 실적 · 주목 · 건전성 네 칸 × 5점(덜 오름은 근거만 · 점수 밖). 칸마다 근거 줄이 붙는다'));
   const chips=el('div','vbChips'); t.appendChild(chips); w.appendChild(t);
   const list=el('div','vbRows'); w.appendChild(list);
-  if(!rows.length){ list.className='vbMxE'; list.textContent='후속주 후보를 찾지 못했다 — 스토리 낱말 · 테마 · 공급망 · 같은 제품 어디에도 걸린 수집 회사가 없다'; return w; }
+  if(!rows.length){ list.className='vbMxE'; list.textContent='같이 볼 회사를 찾지 못했다 — 스토리 낱말 · 테마 · 공급망 · 같은 제품 어디에도 걸린 수집 회사가 없다'; return w; }
   const cnt=g=>rows.filter(r=>r.group===g).length;
   // 칩은 한 번 만들고 켜짐만 바꾼다 — 다시 만들면 방금 누른 칩의 초점이 body 로 떨어진다
   const cb=[['','전체',rows.length],...VB_G.map(([g,l])=>[g,l,cnt(g)])].map(([g,l,n])=>{ const b=el('button'); b.type='button';
@@ -12919,7 +12972,7 @@ function vbRow(r,ctx){
   const b=el('button','vbRowB'); b.type='button'; b.setAttribute('aria-expanded',String(open));
   const nm=el('span','nm'); nm.appendChild(el('b',null,r.name)); nm.appendChild(el('span',null,r.code)); nm.appendChild(el('em',null,r.why||'')); if(r.why) nm.title=r.why; b.appendChild(nm);
   const tg=el('span','tg'); tg.appendChild(el('span','vbG',VB_GL[r.group]||r.group||'')); tg.appendChild(vbStars(r.stars)); b.appendChild(tg);
-  const sb=el('span','vbScore'), f=el('i'); f.style.width=Math.max(2,Math.min(100,(r.score||0)/25*100))+'%'; sb.appendChild(f);
+  const sb=el('span','vbScore'), f=el('i'); f.style.width=Math.max(2,Math.min(100,(r.score||0)/20*100))+'%'; sb.appendChild(f);
   const P=r.parts||{}; sb.title=VB_PART.map(([k,l])=>l+' '+(P[k]!=null?P[k]:'—')).join(' · '); b.appendChild(sb);
   b.appendChild(el('span','sc',r.score!=null?String(r.score):'—'));
   // 한 번에 한 줄만 펼친다 — 다시 그리지 않고 그 자리에서(초점 · 스크롤 유지)
@@ -13014,7 +13067,7 @@ function vcRipple(d,V,c){
     if(h.key) ps.appendChild(vcRevBtn(h.key,'cust','비중 변천 비교 ›',h.name)); r.appendChild(ps); A.appendChild(r); });
   if(!pairs.length) A.appendChild(el('div','vcRipE','같은 고객을 적은 다른 상장사가 아직 없다 — 고객이 해외 법인 · 약칭이거나, 다른 회사가 고객 이름을 가렸다.'));
   if((d.buyers||[]).length){ lab(A,'나를 매입처로 적은 회사 = 그쪽 보고서가 말하는 내 고객'); const ps=el('div','vcChipsR'); d.buyers.slice(0,8).forEach(x=>ps.appendChild(vcCo(x,x.pct!=null?' · 그쪽 매입의 '+vcPct(x.pct):''))); A.appendChild(ps); }
-  if((d.orders||[]).length){ lab(A,'수주 공시 상대 · 최근 2년'); d.orders.slice(0,5).forEach(o=>{ const r=el('div','vcOrd'); const n=el('span','n'); n.appendChild(vcNm(o.party,o.link)); if(o.kind==='사업') n.appendChild(el('span','vcTag2','사업·조합')); r.appendChild(n); r.appendChild(el('span',null,o.n+'건'+(o.amount?' · '+qWon(o.amount):''))); A.appendChild(r); }); }
+  if((d.orders||[]).length){ lab(A,'수주 공시 상대 · 최근 2년'); d.orders.slice(0,5).forEach(o=>{ const r=el('div','vcOrd'); const n=el('span','n'); n.appendChild(vcNm(o.party,o.link)); if(o.kind==='사업') n.appendChild(el('span','vcTag2','사업·조합')); if(o.own) n.appendChild(el('span','vcBadge','계열 경유')); r.appendChild(n); r.appendChild(el('span',null,o.n+'건'+(o.amount?' · '+qWon(o.amount):''))); A.appendChild(r); }); }
   // 2) 공급
   const B=card('supply','매입 ↑','이 회사가 더 팔면','부품 · 소재를 대는 회사가 같이 번다');
   const listed=[]; let plain=[];
@@ -13163,7 +13216,7 @@ function vcMix(M){
 // 매출처 15년 — 색이 짙을수록 큰 비중
 function vcHeat(d,V){
   const w=el('div','vcHeatW');
-  w.appendChild(vcSec('매출처 15년','해마다 보고서가 적은 비중. 색이 짙을수록 큰 비중, 빈칸은 그해 주요 매출처에 없음 · 점은 비중 없이 이름만 적힘'));
+  w.appendChild(vcSec('고객 15년 — 해마다 비중','해마다 보고서가 적은 비중(칸마다 회사 매출 중 또는 부문 매출 중). 색이 짙을수록 큰 비중, 빈칸은 그해 주요 매출처에 없음 · 점은 비중 없이 이름만 적힘'));
   const rows=(d.customers||[]).slice(0,18);
   if(!rows.length){ w.appendChild(el('div','vcEmpty','이름을 적은 매출처가 없다')); return w; }
   const mx=Math.max(1,...rows.flatMap(h=>Object.values(h.by_year).filter(v=>v!=null)));
@@ -13171,7 +13224,7 @@ function vcHeat(d,V){
   const t=el('table','vcHeat'); const hr=el('tr'); hr.appendChild(el('th','n','고객'));
   V.Y.forEach(y=>{ const th=el('th',part(y)?'pt':null,vcYY(y)); if(part(y)) th.title=((d.periods||{})[y]||{}).label+' '+((d.periods||{})[y]||{}).stamp+' — 그해 누적 기간의 비중'; hr.appendChild(th); }); t.appendChild(hr);
   rows.forEach(h=>{ const tr=el('tr'); const td=el('td','n'); const cc=vcCc(h.country,h.name); if(cc) td.appendChild(cc); td.appendChild(vcNm(h.name,h.link)); td.title=h.name+((h.aka||[]).length?' = '+h.aka.join(' · '):'');
-    if(h.own) td.appendChild(el('span','vcBadge',h.self?'이 회사':'계열')); if(h.seg) td.appendChild(el('small',null,' '+h.seg)); tr.appendChild(td);
+    if(h.own) td.appendChild(el('span','vcBadge',h.self?'이 회사':'계열')); else if(h.grp) td.appendChild(el('span','vcBadge grp','같은 그룹')); if(h.seg) td.appendChild(el('small',null,' '+h.seg)); tr.appendChild(td);
     V.Y.forEach(y=>{ const v=h.by_year[y]; const c2=el('td','c'+(part(y)?' pt':''));
       if(v!=null){ const a=0.14+0.8*Math.sqrt(v/mx); c2.style.setProperty('--a',a.toFixed(2)); c2.classList.add('on'); if(a>0.6) c2.classList.add('hi'); c2.textContent=v>=10?Math.round(v):(Math.round(v*10)/10); c2.title=h.name+' · '+y+' · '+vcPct(v); }
       else if(y in h.by_year){ c2.classList.add('dot'); c2.textContent='·'; c2.title=h.name+' · '+y+' · 비중 없이 적힘'; }

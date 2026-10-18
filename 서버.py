@@ -10789,11 +10789,34 @@ def valuechain_view(code):
     own_keys = {_vc_key(c["name"])} | {_vc_key(s["sub"]) for s in last.get("subs") or []}
     own_keys |= {_vc_key(x["scope"]) for x in last.get("customers") or [] if x.get("basis") == "부문" and x.get("scope")}
     own_keys = {k for k in own_keys if len(k) >= 4}
+    # 자기 이름은 짧아도(풍산 · 효성 · 대상) 통째로 같으면 자기다 · 영문 자기 이름(LS ELECTRIC)도(리뷰 2026-10-19 — 자기 거래 22행 · 14사가 빠졌다)
+    own_keys.add(me_k)
+    en_self = ""
+    try:
+        lk_ = _vcmap_linker() if VMAP is not None else None
+        en_self = "".join((lk_.en_of.get(c["code"]) or []) if lk_ is not None else [])
+    except Exception:
+        en_self = ""
+    if len(en_self) >= 2:
+        own_keys.add(en_self[:24])
+    # 계열 — 소유 표(회사의 개요 · 계열회사)의 상장 계열사 · 최대주주 법인 · 경영참여 지분. 그 코드로 이어지는 거래처는 '계열'로 적는다
+    # (같은 그룹 거래 148행 중 86% 가 표시 없이 외부 거래처로 보였다 — 기아의 현대모비스 98%)
+    try:
+        ow_ = _vcmap_own(c) or {}
+    except Exception:
+        ow_ = {}
+    grp_codes = {cd for _, cd in (ow_.get("group") or {}).get("names") or () if cd} - {c["code"]}
+    if (ow_.get("owner") or {}).get("code"):
+        grp_codes.add(ow_["owner"]["code"])
+    grp_codes |= {h["code"] for h in ow_.get("holdings") or () if h.get("code") and ((h.get("pct") or 0) >= 20 or "경영" in (h.get("purpose") or ""))}
+    grp_keys = {_vc_key(nm) for nm, _ in (ow_.get("group") or {}).get("names") or () if nm} - {me_k}
 
     def own_of(nm):
         k = _vc_key(nm)
         if k in own_keys:
-            return k
+            return me_k if k == en_self[:24] and en_self else k
+        if link(nm) and link(nm).get("code") == c["code"]:           # 이름은 달라도 내 코드로 이어지면 자기
+            return me_k
         hits = [o for o in own_keys if len(o) >= 6 and (k.startswith(o) or (o.startswith(k) and len(k) >= 6))]
         return max(hits, key=len) if hits else None
     sub_by_key = {_vc_key(s["sub"]): s["sub"] for s in last.get("subs") or []}
@@ -10839,16 +10862,24 @@ def valuechain_view(code):
     me_stem = _stem(c["name"])
     # 같은 그룹 = 두 글자 어간이 같다(효성 · 효성중공업 · HS효성 · 효성티앤씨). 두 글자가 흔한 말(삼성 · 현대 · 한국)이면 세 글자로 본다
     common = {"한국", "대한", "국제", "동양", "서울", "신한", "제일", "태양", "세계"}
-    same_group = lambda nm: bool(me_stem) and me_stem not in common and _stem(nm) == me_stem
+    _sg0 = lambda nm: bool(me_stem) and me_stem not in common and _stem(nm) == me_stem      # noqa: E731
+
+    def same_group(nm):
+        if _sg0(nm) or _vc_key(nm) in grp_keys:
+            return True
+        lk = link(nm)
+        return bool(lk and lk.get("code") in grp_codes)
     shared = {}
     for h in customers:
         o = own_of(h["name"])
         h["own"] = bool(o)
         h["self"] = o == me_k
         h["via_sub"] = sub_by_key.get(o) if o else None
+        h["grp"] = not h["own"] and same_group(h["name"])
     for s_ in subs:
         for x in s_["customers"]:
             x["self"] = own_of(x["name"]) == me_k
+            x["grp"] = not x.get("own") and same_group(x["name"])
     my_names = [h["name"] for h in customers if not h["own"] and h["last"] == years[-1]] + \
                [nm for s_ in subs for nm in [x["name"] for x in s_["customers"] if not x["own"]]]
     overlap = {}
@@ -10891,6 +10922,7 @@ def valuechain_view(code):
             sp["others"], sp["others_n"], sp["key"] = oth[:5], len(oth), _vc_key(sp["name"])
             o = own_of(sp["name"])
             sp["own"], sp["self"] = bool(o), o == me_k
+            sp["grp"] = not sp["own"] and same_group(sp["name"])
     buyers = [{"code": cd, "name": nm, "pct": pct, "as": raw} for cd, nm, pct, raw in peers["supp"].get(me_k, []) if cd != c["code"]]       # 나를 매입처로 적은 회사 = 내 고객
     sellers = [{"code": cd, "name": nm, "pct": pct, "as": raw, "group": same_group(nm, cd)} for cd, nm, pct, raw in peers["cust"].get(me_k, []) if cd != c["code"]]      # 나를 매출처로 적은 회사 = 내 공급사(같은 그룹이면 표시)
     # 수주 공시 상대(최근 2년) — 공시로 드러난 고객
@@ -10908,6 +10940,7 @@ def valuechain_view(code):
         orders = sorted(agg.values(), key=lambda a: -a["amount"])[:10]
         for a in orders:
             a["link"] = link(a["party"])
+            a["own"] = bool(own_of(a["party"]) or same_group(a["party"]))          # 계열 법인 경유(LS ELECTRIC AMERICA) — 외부 수주로 세지 않는다
             # 계약상대 칸에 사업 · 조합 이름을 적는 공시(건설 수주 '답십리 자동차 부품상가 도시정비형 재개발')
             a["kind"] = "사업" if re.search(r"재개발|재건축|정비\s*사업|조합|프로젝트|PJT|현장|신축|구역|공사$|사업$", a["party"]) else "상대"
     except Exception:
@@ -10918,13 +10951,18 @@ def valuechain_view(code):
     cust_years = [y for y in years if any(x.get("kind") == "named" for x in d["years"][y].get("customers") or [])]
     # 무엇을 파나(제품 매출 구성) · 판매경로 — 지금 모습 칸에 없으면 그 앞 해에서
     prods = next((d["years"][y].get("products") for y in reversed(years) if d["years"][y].get("products")), []) or []
+    if VMAP is not None:
+        prods = VMAP.clean_product_rows(prods)       # 띄어 쓴 '연 결 조 정' · '총 매 출 액' · 순매출 · 내부매출 줄(리뷰 2026-10-19)
     chans = next((d["years"][y].get("channels") for y in reversed(years) if d["years"][y].get("channels")), []) or []
     return {"v": VC_V, "code": c["code"], "name": c["name"], "years": years, "periods": periods, "stamp": last.get("stamp"),
             "customers": customers[:30], "cust_years": cust_years, "products": prods[:12], "channels": chans[:8],
             "hidden": hidden, "no_major": no_major, "types": types, "subs": subs, "materials": mats, "suppliers_hist": supp_hist,
             "export": exp, "segments": last.get("segments") or [], "competition": last.get("competitors") or [],
             "shared": sorted(shared.values(), key=lambda s: -len(s["via"]))[:20], "buyers": buyers, "sellers": sellers,
-            "orders": orders, "peer_n": peers["n"], "mix": _mix_of(c, d)}
+            "orders": orders, "peer_n": peers["n"], "mix": _mix_of(c, d),
+            "own_keys": sorted(own_keys), "grp_codes": sorted(grp_codes),
+            # 고객 집중도 해마다(회사 매출 기준 줄 · 자기 · 자회사만 빼고 — 계열 상장사 의존도 의존이다: 삼성전기 → 삼성전자 27%) — 관심장부.cust_conc 와 같은 셈
+            "conc": (WATCH.cust_conc(d, [c["name"]]) if WATCH is not None else None)}
 
 
 def vcbuyer_view(key, kind="cust"):
@@ -11547,6 +11585,11 @@ def _watch_facts(code):
             tier = None
         out.update(WATCH.filing_fact(regs[-1], tier))
     out.update(WATCH.price_fact(_px_file(c["code"])))
+    try:                                            # 고객 집중도 — 밸류체인 캐시만 읽는다(없으면 뽑지 않는다)
+        with open(os.path.join(VC_DIR, c["code"] + ".json"), "r", encoding="utf-8") as fh:
+            out.update(WATCH.cust_facts(json.load(fh), (c["name"],)))
+    except (OSError, ValueError):
+        pass
     return out
 
 
@@ -12117,7 +12160,7 @@ def story_view(code, refresh=False):
 # 재료는 모두 캐시 읽기 — 새 DART · KIS · 네이버 호출 없음(sector_map() · fetch_prices · druck() · inflect() 를 부르지 않는다).
 # 무거운 것(리포트 콜드 74초 · 988곳 주가 단면 17초)은 뒤 스레드 하나에서만, 한 번에 한 회사. 점수는 규칙 점수 · 검증 전 — 예측 아님.
 VMAP = _load_mod("밸류체인_지도")
-VCMAP_V = 9                       # 2: 동종 칸에서 위 · 아래 칸 공급망 회사를 뒤로(peer_nodes) · 3: 같은 제품 근거 줄 말줄임 · 5: 동시 언급에서 넓은 말(REP_DF_MAX 40곳) 빼기 · 8: 10년 넘게 묵은 제품 표는 같은 제품 아님 · 조사 끝소리(2026-10-13 통합)
+VCMAP_V = 11                      # 11: 주력 줄 금액 몫 되돌림 · 10: 띄어 쓴 합계 · 조정 줄 · 자기 이름 낱말 · 자기 매입처 · 계열 경유 계약(2026-10-19 리뷰) · 2: 동종 칸에서 위 · 아래 칸 공급망 회사를 뒤로(peer_nodes) · 3: 같은 제품 근거 줄 말줄임 · 5: 동시 언급에서 넓은 말(REP_DF_MAX 40곳) 빼기 · 8: 10년 넘게 묵은 제품 표는 같은 제품 아님 · 조사 끝소리(2026-10-13 통합)
                                   # 9: 비중은 표 꼴대로(부문 · 매입처마다 한 줄), 과거 공급망 해 목록 · '지금은 빠짐'은 더 새 표가 있을 때만, 표 없는 최신 칸이면 그 앞 칸의 매출처 · 매입처(2026-10-13 3차 손질)
                                   # 6: 제품 낱말 5%↑ · 매출 구분 말 빼기, 묶음 매입 줄 경쟁사 빼기, 좁은 테마 채우기, 업종(industry) 거름, 트리거 규칙, 칩 거르기(2026-10-12 검토)
                                   # 7: 근거마다 출처 객체(ev {t, src, date, url, go}) · 설명 문장(expl · group_note) · 과거 공급망 · 같은 고객+테마 · 건전성 차감 · 트리거 문장 자르기(2026-10-13)
@@ -12590,7 +12633,9 @@ def _vcmap_build(code):
     # 180일 리포트에서 넓은 말(REP_DF_MAX 곳↑ — 북미 · 유럽 · 영업이익률)은 칩에서도 뺀다. 칩 4개 중 좁은 말이 동시 언급 · 스토리 테마 순위 말,
     # 테마 맞추기는 좁은 말 8까지(위 4개만 쓰면 SK하이닉스 HBM(5위)이 빠져 HBM 테마 동종이 사라졌다 — 동시 언급까지 8개로 넓히면
     # 'LTA' · 'CPU' 가 SK하이닉스 · ISC 를 삼성전기 · LG이노텍 후보로 끌어왔다). 동시 언급은 여기서 한 번 세어 candidates 에 넘긴다
-    words12 = [w["w"] for w in VMAP.story_words(lead_rows, iso(90), c["name"], NAR.hot_words if NAR is not None else None, code=code, top=12)]
+    _lk0 = _vcmap_linker()
+    selfw = VMAP.self_words(c["name"], (_lk0.en_of.get(code) if _lk0 is not None else None) or ())     # 'LS' · 'ELECTRIC' · '중공업'
+    words12 = [w["w"] for w in VMAP.story_words(lead_rows, iso(90), c["name"], NAR.hot_words if NAR is not None else None, code=code, top=12, drop=selfw)]
     shared = VMAP.shared_rows(by, iso(180))
     df = Counter()                                  # 넓은 말 셈은 느슨하게(두 글자 한글 말 앞 글자 조건 없이 — '비율'은 '자본비율'로 흔하다)
     refs = {}                                       # 동시 언급 행마다 출처(증권사 · 날짜 · t.me) — 근거 줄의 '최신 1건 · 그다음 1건(more)'
@@ -12815,7 +12860,9 @@ def _vcmap_build(code):
     # 머리 띠 — 주도주 · 스토리 · 트리거
     VCMAP["step"] = "트리거 · 그물망"
     discs = (NAR.disc_rows(code, STORY_DISC_DIR) or []) if NAR is not None else []
-    trig = VMAP.pick_triggers(VMAP.disc_triggers(discs, _story_contracts(discs), GOOD.classify if GOOD is not None else None, today),
+    okeys, ocodes = set(vc.get("own_keys") or ()), set(vc.get("grp_codes") or ())
+    own_party = lambda nm: _vc_key(nm) in okeys or (_vcmap_link(nm) or "") in ocodes or (_vcmap_link(nm) or "") == code      # noqa: E731
+    trig = VMAP.pick_triggers(VMAP.disc_triggers(discs, _story_contracts(discs), GOOD.classify if GOOD is not None else None, today, own=own_party),
                               VMAP.report_triggers(lead_rows, iso(120), story_kw + pwords, skip=VMAP.shared_rows(by, iso(120), k=2), name=c["name"]))
     lph = VMAP.phase_of(_vcmap_druck(code), cur_v)
     leader = dict(VMAP.px_out(lead_x) or {}, code=code, name=c["name"], phase=lph["phase"] if lph else None)
@@ -12824,7 +12871,7 @@ def _vcmap_build(code):
     period = VMAP.period_label((vc.get("periods") or {}).get(ys[-1])) if ys else ""
     cperiod = (VMAP.period_label((vc.get("periods") or {}).get(cust_y)) if cust_y else "") or period      # 매출처 표를 쓴 칸(최신 칸에 표가 없으면 그 앞)
     mperiod = (VMAP.period_label((vc.get("periods") or {}).get(mat_y)) if mat_y else "") or period
-    up = VMAP.up_groups(mats, prods, link, sellers=keep, skip=excl | {h["code"] for h in holds if h.get("code")},
+    up = VMAP.up_groups(mats, prods, link, sellers=keep, skip=excl | {h["code"] for h in holds if h.get("code")}, lead_code=code, grp=excl,
                         lead_name=c["name"], name_of=_vcmap_linker().name_of.get)
     down = VMAP.down_nodes(custs, buyers, vc.get("orders"), link, cperiod, lead_name=nm0)
     net = {"owner": owner, "group": {"listed": grp.get("n"), "names": (grp.get("names") or [])[:40]},
@@ -12843,6 +12890,30 @@ def _vcmap_build(code):
                      triggers=trig, net=net, matrix=rows, src=src)
     d["sig"] = sig
     _atomic_json(_vcmap_path(code), d)
+    _vcmap_log(code, rows, leader)
+
+
+VCMAP_LOG = os.path.join(VCMAP_DIR, "_log.jsonl")
+
+
+def _vcmap_log(code, rows, leader):
+    """판정 기록(2026-10-19) — 판을 지을 때마다 한 줄: 그날 주도주 · 후속주별 군 · 점수 · 연결 · 칸 점수 · 주가. 같은 날 같은 주도주는 마지막 판으로 덮지 않고
+    덧붙인다(채점 때 그날 마지막 줄을 쓴다). 지난 판정은 다시 만들 수 없다(테마 · 리포트 · 국면은 그날 값) — 표본 밖 채점의 유일한 재료.
+    채점은 아직 없다 — 도구/밸류체인_후속주_백테스트.py 의 시점 검정과 같은 규칙(같은 달 · 같은 모멘텀 대조)으로 나중에 잰다."""
+    try:
+        line = {"d": dt.date.today().isoformat(), "at": dt.datetime.now().strftime("%H:%M:%S"), "v": VCMAP_V, "lead": code,
+                "lead_px": (leader or {}).get("px"), "lead_p3": (leader or {}).get("p3m"),
+                "rows": [{"code": r.get("code"), "g": r.get("group"), "s": r.get("score"), "l": (r.get("parts") or {}).get("link"),
+                          "p": r.get("parts"), "px": (r.get("px") or {}).get("px")} for r in rows]}
+        os.makedirs(VCMAP_DIR, exist_ok=True)
+        with VCMAP_LOG_LOCK:
+            with open(VCMAP_LOG, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(line, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print("밸류체인 판정 기록 실패:", e)
+
+
+VCMAP_LOG_LOCK = threading.Lock()
 
 
 def _vcmap_loop():

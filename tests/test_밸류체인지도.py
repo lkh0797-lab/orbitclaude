@@ -250,7 +250,7 @@ def test_candidates_union_exclusion_and_noise():
                      prod_keys=[("MLCC", "mlcc"), ("기판", "기판")], exclude={"005930"})
     assert set(c) == {"001820", "353200", "011070", "005070", "126730"}       # 고른 회사 · 모회사(exclude) · 수집 밖 · 포트폴리오 카드 잡음은 빠진다
     assert c["011070"]["rep_n"] == 3 and M.link_score(c["011070"]) == 3
-    assert M.link_score(c["005070"]) == 5 and M.link_score(c["126730"]) == 4 and M.link_score(c["001820"]) == 1
+    assert M.link_score(c["005070"]) == 5 and M.link_score(c["126730"]) == 2 and M.link_score(c["001820"]) == 1      # 같은 제품 4 → 2(2026-10-19 검증)
     assert c["353200"]["prod"] == [("기판", "인쇄회로기판", 95.0, False)] and c["353200"]["st"] == 1     # '회로기판 소재'는 기판이 아니라 소재 · 비중은 근거 줄용(est False = 표 값)
     order = sorted(c, key=lambda k: M.evidence_rank(c[k]), reverse=True)
     assert order[0] == "005070" and order[-1] == "001820"
@@ -296,21 +296,21 @@ PH = {"phase": "확장 가속", "B": 23.5, "opm": 17.5, "label": "2026Q2", "old"
 def test_score_parts_and_groups():
     s = M.score(_c(prod=[("FC-BGA", "반도체패키지기판")], rep_n=16, rep_by=Counter({"FC-BGA": 16})), lead_p3=45,
                 px={"p1": 98, "p3": 87, "dd": -17.4}, ph=PH, n_rep=34, up=27.0)
-    assert s["parts"] == {"link": 4, "fund": 5, "attn": 4, "lag": 1, "safe": 5} and s["score"] == 19 and s["group"] == "B" and s["stars"] == 4
+    assert s["parts"] == {"link": 3, "fund": 5, "attn": 4, "lag": None, "safe": 5} and s["score"] == 17 and s["group"] == "C" and s["stars"] == 3   # 리포트 3건↑ 3 · 덜 오름 점수 밖 · B 는 공급망 직접만
     assert s["why"] == "FC-BGA 동종 · 리포트 16건 · 확장 가속"
-    assert [e["t"] for e in s["ev"]["lag"]] == ["3개월 수익률 백분위 87 (주도주 45) · 52주 고점 대비 -17.4%"] and s["ev"]["safe"][0]["t"] == "위험 꼬리표 없음"
-    assert s["group_note"] == M.GROUP_NOTE["B"] and "확장 가속" in s["expl"] and "앞섰고" in s["expl"]
-    # B 경계: 연결 4 · 합 14 → C
+    assert [e["t"] for e in s["ev"]["lag"]][0] == "3개월 수익률 백분위 87 (주도주 45) · 52주 고점 대비 -17.4%" and s["ev"]["lag"][-1]["t"].startswith("점수에 넣지 않음") and s["ev"]["safe"][0]["t"] == "위험 꼬리표 없음"
+    assert s["group_note"] == M.GROUP_NOTE["C"] and "확장 가속" in s["expl"] and "앞섰고" in s["expl"]
+    # 같은 제품만: 연결 2 · 합 9 → 약한 연결(C) — 같은 제품만으로는 B(확인된 연결)가 못 된다(2026-10-19)
     s = M.score(_c(prod=[("MLCC", "MLCC")]), lead_p3=50, px={"p1": 50, "p3": 50, "dd": -10}, ph=None, up=None)
-    assert s["parts"] == {"link": 4, "fund": 2, "attn": 0, "lag": 3, "safe": 5} and s["score"] == 14 and s["group"] == "C"
+    assert s["parts"] == {"link": 2, "fund": 2, "attn": 0, "lag": None, "safe": 5} and s["score"] == 9 and s["group"] == "C"
     # 상승여력 +30% 이면 주목 +1 · 덜 오름 30p 이상 5 · 고점 대비 −50% 아래 −1
     s = M.score(_c(rep_n=10, rep_by=Counter({"MLCC": 10})), lead_p3=90, px={"p1": 10, "p3": 40, "dd": -62.6}, ph=PH, up=98.9)
-    assert s["parts"]["attn"] == 5 and s["parts"]["lag"] == 4 and s["parts"]["link"] == 3 and s["group"] == "C"
+    assert s["parts"]["attn"] == 5 and s["parts"]["lag"] is None and s["parts"]["link"] == 3 and s["group"] == "C"
     # C 경계: 연결 2 · 합 10 → D
     s = M.score(_c(rep_n=1, rep_by=Counter({"MLCC": 1})), lead_p3=None, px=None, ph={"phase": "수축 심화", "opm": 1.0, "label": "q"}, up=None)
-    assert s["parts"] == {"link": 2, "fund": 1, "attn": 2, "lag": 2, "safe": 5} and s["group"] == "C"
+    assert s["parts"] == {"link": 2, "fund": 1, "attn": 2, "lag": None, "safe": 5} and s["group"] == "C"
     s = M.score(_c(rep_n=1, rep_by=Counter({"MLCC": 1})), lead_p3=None, px=None, ph={"phase": "수축 심화", "opm": -3.0, "label": "q"}, up=None)
-    assert s["parts"]["fund"] == 0 and s["parts"]["safe"] == 4 and s["score"] == 10 and s["group"] == "D"
+    assert s["parts"]["fund"] == 0 and s["parts"]["safe"] == 4 and s["score"] == 8 and s["group"] == "D"
     # Fake: 건전성 ≤ 2 · 또는 테마만 + 1개월 백분위 ≥ 95 + 실적 ≤ 1
     s = M.score(_c(supply=[{"w": "w", "s": "s"}]), lead_p3=50, px={"p1": 50, "p3": 50}, ph=PH, risk={"level": "작전주 꼴"})
     assert s["parts"]["safe"] == 0 and s["group"] == "Fake" and s["why"].startswith("작전주 꼴")
@@ -408,7 +408,7 @@ def test_payload_shape_and_node_rel():
                   triggers=[], net=net, matrix=rows, src={})
     assert set(d) == {"v", "code", "name", "built", "head", "net", "matrix", "src", "note"} and d["note"] == M.NOTE
     assert set(d["head"]) == {"leader", "story", "triggers", "counts"}
-    assert d["head"]["counts"] == {"total": 2, "B": 1, "C": 0, "D": 1, "Fake": 0} and d["matrix"][0]["code"] == "001820"
+    assert d["head"]["counts"] == {"total": 2, "B": 0, "C": 1, "D": 1, "Fake": 0} and d["matrix"][0]["code"] == "001820"
     r0 = d["matrix"][0]
     assert set(r0["parts"]) == {"link", "fund", "attn", "lag", "safe"} and set(r0["ev"]) == set(r0["parts"])
     assert all(set(x) >= {"t", "src"} for v in r0["ev"].values() for x in v) and r0["expl"] and r0["group_note"]     # 근거는 모두 객체
@@ -416,7 +416,7 @@ def test_payload_shape_and_node_rel():
     assert (o["t"], o["src"]) == ("삼성전기 최대주주 23.69%", "2025-12 사업보고서") and "url" not in o      # '최대주주 최대주주 본인' 겹침 없이 · 접수번호 없으면 링크 없음
     assert [x["t"] for x in M.node_rel(d, "010140")] == ["삼성전기 보유 2.10% · 경영참여"]
     rel = M.node_rel(d, "001820")
-    assert rel[0]["t"].startswith("후속주 B군") and rel[0]["src"] == M.NOTE and rel[1]["t"].startswith("같은 제품 'MLCC'")
+    assert rel[0]["t"].startswith("같이 볼 회사 · 약한 연결") and rel[0]["src"] == M.NOTE and rel[1]["t"].startswith("같은 제품 'MLCC'")
     json.dumps(d, ensure_ascii=False)
 
 
@@ -687,7 +687,7 @@ def test_candidates_fill_narrow_themes_industry_gate_and_rank():
 
 def test_weak_supply_light_risk_and_why_keyword():
     weak = _c(supply=[{"w": "영풍이 삼성전기를 매입처로 적음 — 연결 자회사(코리아써키트) 매입", "s": "연결 자회사 매입 · 코리아써키트", "weak": True}])
-    assert M.link_score(weak) == 3 and M.link_score(dict(weak, prod=[("기판", "PCB")])) == 4
+    assert M.link_score(weak) == 3 and M.link_score(dict(weak, prod=[("기판", "PCB")])) == 3
     assert M.why_line(dict(weak, prod=[("기판", "PCB")]), None, 2, "C", []).startswith("기판 동종")
     s = M.score(_c(rep_n=8, rep_by=Counter({"DRAM": 8})), lead_p3=None, px=None, ph=PH)
     assert s["why"].startswith("DRAM 리포트 8건")                                              # 리포트만이면 낱말을 붙인다
@@ -809,7 +809,7 @@ def test_ev_objects_carry_sources_and_links():
     assert f["t"] == "확장 가속 · 가속B +23.5 · OPM 17.5% (2026Q2)" and f["go"] == {"tab": "druck"} and f["date"] == "20260813" and "v4" in f["src"] and "옛 판" in f["src"]
     a = s["ev"]["attn"]
     assert a[1]["t"] == "리포트 목표가 평균 190,000원 → +27%" and a[1]["src"] == "증권사 5곳 180일 증권사별 최신 목표가 평균(미표기 글은 같은 값이면 한 집 · 중앙값 3배 밖 제외)" and a[1]["go"] == {"tab": "rep"}   # n 은 집 수
-    assert s["ev"]["lag"] == [{"t": "3개월 수익률 백분위 87 (주도주 45) · 52주 고점 대비 -17.4%", "src": SRCS["xs"]}]      # 날짜는 출처 줄에
+    assert s["ev"]["lag"] == [{"t": "3개월 수익률 백분위 87 (주도주 45) · 52주 고점 대비 -17.4%", "src": SRCS["xs"]}, {"t": "점수에 넣지 않음 — 검증에서 덜 오른 쪽이 6개월 평균 −4.1%p 더 못했다", "src": "도구/밸류체인_후속주_백테스트.py"}]      # 날짜는 출처 줄에
     assert s["ev"]["safe"] == [{"t": "위험 꼬리표 없음", "src": "공시위험 · KIS 종목 상태 20261013"}]          # 두 기준일이 같으면 한 번만
     e = s["expl"]
     assert e.startswith("대덕전자는 SFA반도체의 PCB 매입처에 삼성전기와 함께 적혔다(2026 반기보고서 원재료 매입처 표).")       # 출처는 짧게(주어가 그 회사)
@@ -955,7 +955,7 @@ def test_vcmap_build_history_and_same_customer_links(srv, monkeypatch):
     d = srv.vcmap_view(CO)
     rows = {r["code"]: r for r in d["matrix"]}
     assert set(rows) == {"H00001", "S00001", "B00001", "NEW001"} and d["src"]["hist"] == {"n": 2, "same": 2}      # 장비사(같은 고객만)는 없다 · 2012 제품 표(옛제품사)는 같은 제품이 아니다
-    assert rows["NEW001"]["parts"]["link"] == 4 and rows["NEW001"]["expl"].startswith("새제품사는 가나전자와 같은 MLCC를 만든다(")
+    assert rows["NEW001"]["parts"]["link"] == 2 and rows["NEW001"]["expl"].startswith("새제품사는 가나전자와 같은 MLCC를 만든다(")
     h = rows["H00001"]
     assert h["parts"]["link"] == 3 and h["ev"]["link"][0]["t"] == "2022년 가나전자 PASTE 매입처 '옛공급' (지금은 빠짐)" and h["expl"].startswith("옛공급은 2022년 가나전자의 PASTE 매입처였다(지금은 빠짐")
     b = rows["B00001"]
