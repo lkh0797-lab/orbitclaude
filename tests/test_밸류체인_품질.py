@@ -76,3 +76,13 @@ def test_up_groups_skip_self_supplier_and_mark_group():
     assert "엘에스일렉트릭" not in names and "무석러현전자" in names
     grp = [sp for g in out for it in g["items"] for sp in it["sup"] if sp["name"] == "엘에스엠앤엠"]
     assert grp and grp[0].get("grp")
+
+
+def test_segment_named_total_does_not_wipe_table_and_merge_cap():
+    # 기아 꼴 — 부문 칸이 통째로 '총매출액'(머리 칸 밀림): 품목 줄은 지우지 않는다. 품목 칸의 '순매출액' 줄은 뺀다
+    rows = [P("승용", 60.0, seg="총매출액"), P("RV", 30.0, seg="총매출액"), P("순매출액", 100.0, seg="총매출액")]
+    got = [x["item"] for x in V.products_of(rows)]
+    assert got == ["승용", "RV"]
+    # 같은 이름이 다른 하위 표에서 또 나오면 100% 를 넘게 더하지 않는다
+    dup = V.products_of([P("판", 60.0, seg="동"), P("판", 80.0, seg="동"), P("봉", 20.0, seg="동")])
+    assert max(x["pct"] for x in dup) <= 100

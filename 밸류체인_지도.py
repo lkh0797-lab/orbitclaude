@@ -527,13 +527,15 @@ def product_label(p):
 SUM_ROW = re.compile(r"합\s*계|소\s*계|총\s*계|매출\s*총계|내부\s*거래|연결\s*조정|단순\s*합계")       # 합계 · 조정 줄(품목 · 부문 · 용도 · 구분 칸 어디에 있든)
 # 띄어 쓴 표 칸('연 결 조 정' · '총 매 출 액')은 공백을 지운 뒤 맞춘다(2026-10-19 밸류체인 리뷰: LS 일렉트릭 IT 22.4% · 제룡전기 200%).
 # 순매출 · 내부매출 · 영업이익 줄(기아 표)도 제품이 아니다
-SUM_ROW_C = re.compile(r"합계|소계|총계|총매출|순매출|매출총계|매출계$|^계$|내부거래|내부매출|부문간|연결조정|조정및제거|연결제거|단순합계|영업이익|영업손실|영업손익")
+SUM_ROW_C = re.compile(r"합계|소계|총계|매출총계|매출계$|^계$|내부거래|내부매출|부문간|연결조정|조정및제거|연결제거|단순합계|영업이익|영업손실|영업손익")
+# 총매출 · 순매출은 품목 · 용도 칸에 있을 때만 — 부문 · 구분 칸이 통째로 '총매출액'인 표(기아: 머리 칸이 밀림)를 지우지 않게(점검 2026-10-19)
+SUM_ITEM_C = re.compile(r"^(?:총|순)매출")
 
 
 def is_sum_row(p):
     """제품 줄 하나가 합계 · 조정 · 손익 줄인가 — 품목 · 부문 · 용도 · 구분 칸 어디에 있든, 공백을 지우고 맞춘다."""
     cells = [re.sub(r"\s+", "", str(p.get(k) or "")) for k in ("item", "segment", "use", "kind")]
-    return any(c and SUM_ROW_C.search(c) for c in cells)
+    return any(c and SUM_ROW_C.search(c) for c in cells) or any(c and SUM_ITEM_C.search(c) for c in (cells[0], cells[2]))
 
 
 def clean_product_rows(prods):
@@ -573,7 +575,10 @@ def products_of(prods, top=None):
         k = (r["item"], r["seg"])
         if k in merged:
             m = merged[k]
-            m["pct"] = (m["pct"] or 0) + (r["pct"] or 0) if (m["pct"] is not None or r["pct"] is not None) else None
+            if m["pct"] is not None or r["pct"] is not None:
+                tot_ = (m["pct"] or 0) + (r["pct"] or 0)
+                # 같은 이름이 다른 하위 표(종속회사 · 구분)에서 또 나오면 기준이 달라 더할 수 없다 — 100% 를 넘으면 큰 쪽(점검 2026-10-19: 풍산홀딩스 273%)
+                m["pct"] = tot_ if tot_ <= 100 else max(m["pct"] or 0, r["pct"] or 0)
             continue
         merged[k] = dict(r)
     rows = sorted(merged.values(), key=lambda r: -(r["pct"] or 0))
