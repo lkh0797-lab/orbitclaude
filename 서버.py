@@ -1931,6 +1931,10 @@ def _druck_auto_loop():
         except Exception as e:
             print("가속도 밤 미리 계산: %s" % e, flush=True)
         _watch_kick("밤 가속도 계산 뒤")           # 관심 장부 — 새 분기 숫자 반영(훅은 루프에 — _druck_prebuild 를 부르는 시험이 개인 장부를 읽지 않게)
+        try:
+            _toppick_nightly()                      # 탑픽 — 새 분기 숫자 · 어제 종가로 최신 후보(검증이 묵었으면 전체)
+        except Exception as e:
+            print("탑픽 밤 갱신: %s" % e, flush=True)
 
 
 # ---------------------------------------------------------------- 전 종목 미리 계산 — 풍경 · 궤도(2026-10-11)
@@ -13034,6 +13038,93 @@ def vcmap_node(code, of=""):
             "old": bool(ph and ph.get("old")), "reports_n": n180, "flags": flags, "rel": rel, "exp": _vcmap_export().get(code)}
 
 
+# ---------------------------------------------------------------- 탑픽 — 실적은 좋아졌거나 사상 최대인데 시가총액은 아직(2026-10-20)
+# 신호 · 문턱은 탑픽.py(고정), 검증 · 최신 후보는 도구/탑픽_백테스트.py(64비트 BT_PY 자식 프로세스 · 캐시만). 서버는 파일을 읽어 주고 띄우기만 한다.
+TOP = _load_mod("탑픽")
+TOPPICK_DIR = os.path.join(CACHE_DIR, "toppick")
+TOPPICK = {"running": None, "mode": None, "at": None, "rc": None, "py": None, "secs": None, "error": None}
+TOPPICK_LOCK = threading.Lock()
+TOPPICK_BT_MAX_AGE = 7 * 86400     # 초 — 밤 갱신 때 bt.json 이 이보다 묵었으면 검증 전체를 다시 돌린다
+
+
+def _toppick_path(name):
+    return os.path.join(TOPPICK_DIR, name)
+
+
+def _toppick_run(mode="latest"):
+    """도구/탑픽_백테스트.py 를 자식 프로세스로(BT_PY, 곧바로 실패하면 서버 파이썬) — mode 'latest' = 최신 후보만(1분 안팎) · 'full' = 검증 전체(몇 분).
+    로그 .cache/toppick/run.log. 이미 돌고 있으면 False."""
+    with TOPPICK_LOCK:
+        if TOPPICK["running"]:
+            return False
+        TOPPICK.update(running=mode, mode=mode, error=None)
+    script = os.path.join(BASE, "도구", "탑픽_백테스트.py")
+    os.makedirs(TOPPICK_DIR, exist_ok=True)
+    log = _toppick_path("run.log")
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+    t0, res = time.time(), {"py": None, "rc": None}
+    args = ["-X", "utf8", script] + (["--latest"] if mode == "latest" else [])
+    try:
+        with open(log, "w", encoding="utf-8") as fh:
+            fh.write("== %s %s\n" % (dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), mode))
+            fh.flush()
+            cmds = [_bt_cmd(), [sys.executable]]
+            for i, cmd in enumerate(cmds):
+                try:
+                    fh.write("실행: %s\n" % " ".join(cmd))
+                    fh.flush()
+                    t1 = time.time()
+                    pr = subprocess.run(cmd + args, cwd=BASE, stdout=fh, stderr=subprocess.STDOUT, env=env, timeout=2 * 3600,
+                                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                    res = {"py": " ".join(cmd), "rc": pr.returncode}
+                    if pr.returncode != 0 and time.time() - t1 < BT_QUICK_FAIL and i + 1 < len(cmds):
+                        fh.write("%s 가 곧바로 코드 %s 로 끝남 — 서버 파이썬으로 다시\n" % (" ".join(cmd), pr.returncode))
+                        fh.flush()
+                        continue
+                    break
+                except FileNotFoundError as e:
+                    fh.write("실행기 없음 %s: %s\n" % (" ".join(cmd), e))
+                    fh.flush()
+                except Exception as e:
+                    res = {"py": " ".join(cmd), "rc": None, "error": _no_secret("%s: %s" % (type(e).__name__, e))}
+                    break
+    finally:
+        TOPPICK.update(running=None, at=dt.datetime.now().isoformat(timespec="seconds"), rc=res.get("rc"), py=res.get("py"),
+                       secs=round(time.time() - t0), error=res.get("error"))
+    if res.get("rc") != 0:
+        print("탑픽 갱신 실패:", res, "— 로그", log, flush=True)
+    return True
+
+
+def toppick_kick(mode="latest"):
+    """뒤에서 한 번 — 이미 돌면 그대로(False)."""
+    if TOPPICK["running"]:
+        return False
+    threading.Thread(target=_toppick_run, args=(mode,), daemon=True).start()
+    return True
+
+
+def _toppick_nightly():
+    """밤 가속도 계산 뒤 — 최신 후보를 다시(새 분기 숫자 · 어제 종가). 검증(bt.json)이 TOPPICK_BT_MAX_AGE 넘게 묵었거나 없으면 전체."""
+    try:
+        old = (time.time() - os.path.getmtime(_toppick_path("bt.json"))) > TOPPICK_BT_MAX_AGE
+    except OSError:
+        old = True
+    return _toppick_run("full" if old else "latest")
+
+
+def toppick_view():
+    """탭이 읽는 것 — 최신 후보(latest.json) · 검증(bt.json) · 실행 상태 · 파일 시각. 파일이 없으면 None(화면은 '계산 전')."""
+    def mt(name):
+        try:
+            return dt.datetime.fromtimestamp(os.path.getmtime(_toppick_path(name))).isoformat(timespec="seconds")
+        except OSError:
+            return None
+    return {"latest": _ind_file("toppick_latest", _toppick_path("latest.json")), "bt": _ind_file("toppick_bt", _toppick_path("bt.json")),
+            "run": dict(TOPPICK), "files": {"latest": mt("latest.json"), "bt": mt("bt.json")},
+            "th": dict(TOP.TH) if TOP is not None else None, "th_name": dict(TOP.TH_NAME) if TOP is not None else None}
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
 
@@ -13339,6 +13430,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, d)
             if path == "/api/dip":
                 return self._send(200, dip_view(q.get("force") == "1"))
+            if path == "/api/toppick":          # 탑픽 — ?run=latest|full 은 이 PC 의 이 화면에서만(같은 출처)
+                if q.get("run") in ("latest", "full"):
+                    if not self._same_origin_get():
+                        return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
+                    toppick_kick(q["run"])
+                return self._send(200, toppick_view())
             if path == "/api/value":
                 return self._send(200, value_view(q.get("force") == "1"))
             if path == "/api/score":
