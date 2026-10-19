@@ -657,7 +657,8 @@ def latest(codes, ser, P, TV, idx, univ, snap, fin, hold, ksic, risk, asof=None,
                 excl.setdefault("분기 자료 없음", []).append(code)
             continue
         px_fn = lambda x, c=code: P.at(c, x)[0]
-        m = T.metrics(s_, d, px_fn, tv=TV.tv(code, d), th=th, fin=fin.get(code, False), hold=hold.get(code))
+        # 최신 후보만 거래량 봉 묵음을 20일까지 봐준다(ohlcv 는 차트 발굴 스캔이 받아 price 보다 1~2주 늦다) — 7일 넘으면 '묵은 거래 자료' 꼬리표
+        m = T.metrics(s_, d, px_fn, tv=TV.tv(code, d, stale=20), th=th, fin=fin.get(code, False), hold=hold.get(code))
         if m is None:
             excl.setdefault("알게 된 분기 없음", []).append(code)
             continue
