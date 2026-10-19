@@ -179,6 +179,15 @@ DILUTE_CATS = ("유상증자", "CB발행", "BW발행", "제3자배정")   # 희�
 DILUTE_DAYS = 730
 
 
+def load_sectors():
+    """업종 분류표(.cache/업종/map.json — 네이버 업종 · 테마, 업종.py 가 만든다) → {code: {sector, industry, themes}}. 없으면 빈 dict."""
+    m = _json(os.path.join(CACHE, "업종", "map.json")) or {}
+    out = {}
+    for code, x in (m.get("stocks") or {}).items():
+        out[code] = {"sector": x.get("sector") or None, "industry": x.get("industry") or None, "themes": list(x.get("themes") or [])}
+    return out, m.get("built")
+
+
 def load_risk():
     """공시위험.json → {code: {level, proc, dilute: [날짜들]}} · 기준일."""
     d = _json(os.path.join(CACHE, "공시목록", "공시위험.json")) or {}
@@ -643,10 +652,11 @@ def loose_variant(MRL, ERL, th):
 
 
 # ---------------------------------------------------------------- 최신 후보
-def latest(codes, ser, P, TV, idx, univ, snap, fin, hold, ksic, risk, asof=None, th=T.TH, fy=()):
+def latest(codes, ser, P, TV, idx, univ, snap, fin, hold, ksic, risk, asof=None, th=T.TH, fy=(), sectors=None):
     last_px = max((P.last_date(c) for c in codes if P.last_date(c)), default=None)
     d = asof or last_px
-    rows, near, ref, risky, excl = [], [], [], [], {}
+    rows, near, ref, risky, excl, flow = [], [], [], [], {}, []
+    sectors = sectors or {}
     counts = {"metrics": 0, "elig": 0, "A": 0, "B": 0, "C1": 0, "C2": 0, "L": 0, "cand": 0}
     for code in fy:
         excl.setdefault("결산월 다름", []).append(code)
@@ -681,10 +691,15 @@ def latest(codes, ser, P, TV, idx, univ, snap, fin, hold, ksic, risk, asof=None,
             tags.append("holdco")
         if dil:
             tags.append("dilution")
+        sc = sectors.get(code) or {}
         row = {"code": code, "name": (idx.get(code) or {}).get("name") or code, "market": u.get("market"), "cap_rank": u.get("rank"),
                "m": m, "j": j, "cap_alt": cap_alt, "fin": bool(fin.get(code)), "hold": bool(hold.get(code)), "ksic": ksic.get(code) or "",
                "px_date": P.at(code, d)[1], "tv_date": lb, "tv_stale": bool(lb and T.days_between(lb, d) > 7),
-               "risk": rk.get("level"), "risk_proc": rk.get("proc"), "dilute": dil[-3:], "tags": tags}
+               "risk": rk.get("level"), "risk_proc": rk.get("proc"), "dilute": dil[-3:], "tags": tags,
+               "sector": sc.get("sector"), "industry": sc.get("industry"), "themes": sc.get("themes") or []}
+        flow.append({"code": code, "sector": sc.get("sector"), "industry": sc.get("industry"), "themes": sc.get("themes") or [],
+                     "elig": m["elig"], "cand": bool(j["cand"]) and not (rk.get("level") in RISK_OUT or rk.get("proc")),
+                     "earn": bool(j["A"] or j["B"]), "mcap_g": m["mcap_g"]})
         if m["elig"]:
             counts["elig"] += 1
             if j["cand"] and (rk.get("level") in RISK_OUT or rk.get("proc")):
@@ -709,9 +724,11 @@ def latest(codes, ser, P, TV, idx, univ, snap, fin, hold, ksic, risk, asof=None,
     ref.sort(key=lambda r: -(r["m"]["tv"] or 0))
     risky.sort(key=lambda r: -(r["m"]["tv"] or 0))
     names = lambda cs: [[c, (idx.get(c) or {}).get("name") or c] for c in cs]      # noqa: E731
+    groups = T.flow_groups(flow, th)
     return {"v": T.VERSION, "asof": d, "today": dt.date.today().strftime("%Y%m%d"), "last_px": last_px, "n_univ": len(codes) + len(fy), "counts": counts,
             "th": dict(th), "rows": rows, "near": near[:60], "ref": ref[:30], "risky": risky[:30],
             "excluded": {k: {"n": len(v), "names": names(v[:40])} for k, v in sorted(excl.items(), key=lambda x: -len(x[1]))},
+            "groups": groups, "n_sectored": sum(1 for f in flow if f["elig"] and (f["sector"] or f["industry"])),
             "at": dt.datetime.now().isoformat(timespec="seconds")}
 
 
@@ -853,8 +870,10 @@ def main():
     T1 = max((P.last_date(c) for c in codes if P.last_date(c)), default=None)
     log("시세 %d · 거래량 %d · 분할 사건 %d곳 · 마지막 시세일 %s · %.0f초" % (len(P.codes()), len(TV.pre), len(splits), T1, time.time() - t0))
     codes = [c for c in codes if c in ser and c in P.ks]
-    LT = latest(codes, ser, P, TV, idx, univ, snap, fin, hold, ksic, risk, asof=a.asof, fy=fy)
+    sectors, sect_built = load_sectors()
+    LT = latest(codes, ser, P, TV, idx, univ, snap, fin, hold, ksic, risk, asof=a.asof, fy=fy, sectors=sectors)
     LT["risk_at"] = risk_at
+    LT["sect_built"] = dt.datetime.fromtimestamp(sect_built).strftime("%Y%m%d") if sect_built else None
     with open(os.path.join(a.out, "latest.json"), "w", encoding="utf-8") as fh:
         json.dump(LT, fh, ensure_ascii=False)
     log("최신 후보 %d (s−1 = %s) · 적격 %d · 아깝게 빠짐 %d · 금융·지주 참고 %d · 공시 위험 %d · %.0f초" % (

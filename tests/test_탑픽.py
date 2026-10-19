@@ -254,6 +254,23 @@ def test_eligibility_reasons_and_no_elig_option():
     assert "거래 자료 없음" in m4["why_not"]
 
 
+def test_flow_groups_counts_candidates_and_already_ran():
+    rows = [{"code": "1", "sector": "조선", "industry": "조선", "themes": ["LNG", "방산"], "elig": True, "cand": True, "earn": True, "mcap_g": 10.0},
+            {"code": "2", "sector": "조선", "industry": "조선", "themes": ["LNG"], "elig": True, "cand": False, "earn": True, "mcap_g": 80.0},     # 실적↑인데 이미 오름
+            {"code": "3", "sector": "조선", "industry": "조선기자재", "themes": [], "elig": True, "cand": False, "earn": False, "mcap_g": 50.0},  # 실적 조건 아님
+            {"code": "4", "sector": "반도체", "industry": "반도체", "themes": ["HBM"], "elig": False, "cand": True, "earn": True, "mcap_g": 5.0},     # 비적격은 안 센다
+            {"code": "5", "sector": None, "industry": None, "themes": ["방산"], "elig": True, "cand": True, "earn": True, "mcap_g": None}]
+    g = T.flow_groups(rows)
+    s = {x["name"]: x for x in g["sector"]}
+    assert list(s) == ["조선"] and s["조선"]["n_elig"] == 3 and s["조선"]["n_cand"] == 1 and s["조선"]["n_ran"] == 1
+    assert s["조선"]["cand_codes"] == ["1"] and s["조선"]["ran_codes"] == ["2"] and s["조선"]["mcap_g_med"] == 50.0
+    t = {x["name"]: x for x in g["themes"]}
+    assert t["방산"]["n_cand"] == 2 and t["LNG"]["n_cand"] == 1 and t["LNG"]["n_ran"] == 1
+    assert [x["name"] for x in g["themes"]] == ["방산", "LNG"]                               # 후보 많은 순
+    assert [x["name"] for x in g["industry"]] == ["조선"]                                    # 조선기자재는 후보도 이미 오름도 없어 빠진다
+    assert T.flow_groups(rows, min_show=2)["sector"] == []
+
+
 def test_prices_next_day_and_turnover_split_factor():
     P = T.Prices({"A": {"20240102": 100.0, "20240103": 110.0, "20240105": 120.0}})
     assert P.at("A", "20240104") == (110.0, "20240103") and P.at("A", "20240101") == (None, None)

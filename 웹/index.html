@@ -2145,6 +2145,14 @@ details.infclockwrap{margin-top:12px}details.infclockwrap>summary{cursor:pointer
 .tpEvd h5{margin:12px 0 4px;font-size:12.5px;color:var(--ink)}
 .tpEvd p,.tpEvd li{font-size:12px;line-height:1.55;color:var(--dim)}
 .tpEvd table{margin:4px 0 6px}
+.tpFlow{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:8px 12px;margin:0 0 12px}
+.tpFlow .h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:0 0 4px}.tpFlow .h b{font-size:13.5px}.tpFlow .h span{font-size:11.5px;color:var(--dim)}
+.tpFlow .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0}.tpFlow .row>em{font:600 11px var(--mono);font-style:normal;color:var(--accent);min-width:34px}
+.tpChip{display:inline-flex;align-items:baseline;gap:4px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--bg);font-size:12px;color:var(--ink);cursor:pointer;line-height:1.4}
+.tpChip b{font:700 12.5px var(--mono)}.tpChip small{font-size:10.5px;color:var(--dim)}.tpChip small.up{color:#b4453a}
+.tpChip:hover{border-color:var(--accent)}.tpChip.on{background:var(--accent-soft);border-color:var(--accent)}.tpChip.all{color:var(--dim)}
+.tpFlow .more{font-size:11px;color:var(--accent);cursor:pointer;background:none;border:0;padding:2px 6px}
+.tpFlow p{margin:4px 0 0;font-size:11.5px;line-height:1.5;color:var(--dim)}
 .tpWrap{overflow-x:auto}.tpTbl th{white-space:nowrap}.tpTbl td:first-child{white-space:nowrap}.tpTbl td:first-child small{color:var(--dim)}.tpTbl td.num{white-space:nowrap}
 .dipTbl td small{color:var(--faint);font-size:11px}
 .dipTbl td.num.pos{color:var(--add)}.dipTbl td.num.neg{color:var(--del)}.dipTbl td.num.mac{color:var(--warn)}
@@ -5240,7 +5248,7 @@ function tpRow(r, cols){
   const m=r.m||{}, j=r.j||{}, tr=el('tr','dipRow');
   const nm=el('td'); if(r.rank) nm.appendChild(el('b',null,r.rank+' '));
   const a=el('a',null,r.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(r.code); }; a.title='이 회사 열기'; nm.appendChild(a);
-  nm.appendChild(el('small',null,' '+r.code+(r.market?' · '+r.market:'')+(r.cap_rank?' · 시총 '+r.cap_rank+'위':'')));
+  nm.appendChild(el('small',null,' '+r.code+(r.market?' · '+r.market:'')+(r.cap_rank?' · 시총 '+r.cap_rank+'위':'')+(r.industry?' · '+r.industry:'')));
   nm.appendChild(tpFlags(r)); tr.appendChild(nm);
   cols.forEach(([k])=>{
     let v='—', cls='num', tip='';
@@ -5276,6 +5284,33 @@ function tpStatTable(G, cols){
   return t;
 }
 const tpSplitLine=(name,sp)=>name+': '+Object.entries(sp||{}).map(([k,v])=>k+' '+tpP(v.med12m,1)+'('+tpPc(v.hit)+', '+v.n12+')').join(' · ');
+// 돈의 흐름 — 적격 회사를 섹터 · 업종 · 테마로 묶어 후보(실적↑인데 아직 싸다) 와 이미 오름(실적↑인데 1년 시총이 C1 문턱 넘게 올랐다) 을 센다. 칩을 누르면 아래 표가 그 묶음만.
+const TP_KIND={sector:['섹터','네이버 업종을 큰 묶음으로 — 업종.py SECTOR_OF'],industry:['업종','네이버 업종(79)'],themes:['테마','네이버 테마(264) — 한 회사가 여러 테마에 든다']};
+function tpFlowBox(L, onPick){
+  const G=L.groups||{}; const box=el('div','tpFlow');
+  const h=el('div','h'); h.appendChild(el('b',null,'돈의 흐름 — 어느 쪽에 후보가 몰렸나'));
+  h.appendChild(el('span',null,'적격 '+(L.counts||{}).elig+'곳을 묶어 셌다. 굵은 수 = 후보(실적은 좋아졌는데 시가총액은 아직), ↑ = 실적은 좋아졌는데 1년 시총이 +'+Math.round((L.th||{}).c1||30)+'% 넘게 이미 오른 곳(돈이 먼저 간 쪽). 칩을 누르면 아래 표를 그 묶음만 본다.'));
+  box.appendChild(h);
+  const cur=S.tpPick||null;
+  Object.entries(TP_KIND).forEach(([kind,[lab,tip]])=>{
+    const lst=G[kind]||[]; if(!lst.length) return;
+    const row=el('div','row'); const em=el('em',null,lab); em.title=tip; row.appendChild(em);
+    const all=el('span','tpChip all'+(!cur||cur.kind!==kind?' on':''),'전체'); all.onclick=()=>onPick(null); row.appendChild(all);
+    const LIM=S.tpMore&&S.tpMore[kind]?lst.length:(kind==='themes'?14:12);
+    lst.slice(0,LIM).forEach(g=>{
+      const c=el('span','tpChip'+(cur&&cur.kind===kind&&cur.name===g.name?' on':'')); c.appendChild(document.createTextNode(g.name+' '));
+      c.appendChild(el('b',null,String(g.n_cand))); const sm=el('small',null,'/'+g.n_elig); c.appendChild(sm);
+      if(g.n_ran) c.appendChild(el('small','up','↑'+g.n_ran));
+      c.title=g.name+' — 적격 '+g.n_elig+'곳 가운데 후보 '+g.n_cand+' · 실적↑인데 이미 오름 '+g.n_ran+(g.mcap_g_med!=null?' · 묶음 시총 1년 변화 중앙 '+tpP(g.mcap_g_med):'');
+      c.onclick=()=>onPick(cur&&cur.kind===kind&&cur.name===g.name?null:{kind,name:g.name}); row.appendChild(c); });
+    if(lst.length>LIM){ const mb=el('button','more','… '+(lst.length-LIM)+'개 더'); mb.onclick=()=>{ S.tpMore=S.tpMore||{}; S.tpMore[kind]=true; onPick(cur); }; row.appendChild(mb); }
+    box.appendChild(row);
+  });
+  const sec=(G.sector||[]).filter(g=>g.n_cand>0).slice(0,3), ran=[...(G.sector||[])].sort((a,b)=>b.n_ran-a.n_ran||b.n_cand-a.n_cand).filter(g=>g.n_ran>0).slice(0,3);
+  if(sec.length||ran.length) box.appendChild(el('p',null,'읽기: 후보가 몰린 섹터 '+(sec.map(g=>g.name+' '+g.n_cand).join(' · ')||'없음')+' — 실적은 좋아졌는데 시장이 아직 값을 안 올린 쪽. 이미 오른 섹터 '+(ran.map(g=>g.name+' ↑'+g.n_ran).join(' · ')||'없음')+' — 돈이 먼저 간 쪽. 분류는 네이버 업종 · 테마'+(L.sect_built?'('+tpD(L.sect_built)+')':'')+'.'));
+  return box;
+}
+const tpInGroup=(r,pick)=>!pick||(pick.kind==='themes'?(r.themes||[]).includes(pick.name):r[pick.kind]===pick.name);
 function tpEvidence(B){
   const det=el('details','tpEvd'); det.open=!!lsGet('tpEvdOpen',false); det.addEventListener('toggle',()=>lsSet('tpEvdOpen',det.open));
   const E=B.event||{}, pp=E.primary||{}, M=B.monthly||{};
@@ -5365,11 +5400,18 @@ async function viewTop(p, run){
   const fn=el('div','dipFunnel'); const C=L.counts||{};
   [['숫자 있는 회사',C.metrics],['적격',C.elig],['A 실적 개선',C.A],['B 실적 신고점',C.B],['C1 괴리',C.C1],['C2 자기 자리',C.C2],['유동성',C.L],['네 관문 모두',C.cand]].forEach(([k,v],i)=>{ if(i) fn.appendChild(el('i',null,'·')); const x=el('div'); x.appendChild(el('b',null,v==null?'—':String(v))); x.appendChild(el('span',null,k)); fn.appendChild(x); });
   fn.title='조건마다 따로 센 수(깔때기가 아니다) — 마지막 칸이 적격이면서 네 관문을 다 넘은 후보'; body.appendChild(fn);
-  const blk=el('div','dipBlock'); const bh=el('div','dipBH'); bh.appendChild(el('b',null,'후보 '+(L.rows||[]).length+'곳')); bh.appendChild(el('span',null,'점수 순 — 회사 이름을 누르면 그 회사를 연다(가속도 · 분기 변화 탭에서 숫자를 확인). 숫자에 마우스를 올리면 원 금액. 꼬리표는 빼지 않고 알리는 것.')); blk.appendChild(bh);
-  if((L.rows||[]).length) blk.appendChild(tpTable(L.rows,TP_COLS)); else blk.appendChild(el('div','empty','지금은 네 관문을 모두 넘은 회사가 없다.'));
+  const pick=S.tpPick||null;
+  if(L.groups) body.appendChild(tpFlowBox(L, np=>{ S.tpPick=np; viewTop(p,false); }));
+  const rowsF=(L.rows||[]).filter(r=>tpInGroup(r,pick));
+  const blk=el('div','dipBlock'); const bh=el('div','dipBH'); bh.appendChild(el('b',null,'후보 '+rowsF.length+'곳'+(pick?' — '+pick.name:'')));
+  bh.appendChild(el('span',null,'점수 순 — 회사 이름을 누르면 그 회사를 연다(가속도 · 분기 변화 탭에서 숫자를 확인). 숫자에 마우스를 올리면 원 금액. 꼬리표는 빼지 않고 알리는 것.'));
+  if(pick){ const x=el('button','ghost','전체 보기'); x.style.marginLeft='auto'; x.onclick=()=>{ S.tpPick=null; viewTop(p,false); }; bh.appendChild(x); }
+  blk.appendChild(bh);
+  if(rowsF.length) blk.appendChild(tpTable(rowsF,TP_COLS)); else blk.appendChild(el('div','empty',pick?'이 묶음에는 후보가 없다.':'지금은 네 관문을 모두 넘은 회사가 없다.'));
   body.appendChild(blk);
-  if((L.near||[]).length){ const nd=el('details','dipCond'); nd.appendChild(el('summary',null,'아깝게 빠진 회사 '+L.near.length+'곳 — 적격인데 네 묶음 가운데 하나만 못 넘음(거래대금 큰 순)'));
-    nd.appendChild(tpTable(L.near,TP_COLS.filter(c=>c[0]!=='score'))); body.appendChild(nd); }
+  const nearF=(L.near||[]).filter(r=>tpInGroup(r,pick));
+  if(nearF.length){ const nd=el('details','dipCond'); nd.appendChild(el('summary',null,'아깝게 빠진 회사 '+nearF.length+'곳'+(pick?' — '+pick.name:'')+' — 적격인데 네 묶음 가운데 하나만 못 넘음(거래대금 큰 순)'));
+    nd.appendChild(tpTable(L.near.filter(r=>tpInGroup(r,pick)),TP_COLS.filter(c=>c[0]!=='score'))); body.appendChild(nd); }
   if((L.risky||[]).length){ const kd=el('details','dipCond'); kd.appendChild(el('summary',null,'공시 위험으로 뺀 회사 '+L.risky.length+'곳 — 네 관문은 넘었지만 상폐 절차 · 실질심사가 걸려 있다'));
     kd.appendChild(tpTable(L.risky,TP_COLS.filter(c=>c[0]!=='score'))); body.appendChild(kd); }
   if((L.ref||[]).length){ const rd=el('details','dipCond'); rd.appendChild(el('summary',null,'금융 · 지주 참고 '+L.ref.length+'곳 — 네 관문은 넘었지만 매출 개념이 달라 적격이 아니다(검증 표본 밖)'));

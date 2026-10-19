@@ -598,6 +598,44 @@ def rank(rows, th=TH):
     return rows
 
 
+GENERIC_THEME = ("밸류업", "지주사", "대표주", "S7(", "코리아 밸류업", "MSCI", "KOSPI", "KRX ", "우선주", "고배당")   # 돈의 흐름을 말하지 않는 꼬리표 — 테마 칩에서 뺀다
+
+
+def flow_groups(rows, th=TH, kinds=("sector", "industry", "themes"), min_show=1, skip=GENERIC_THEME):
+    """돈의 흐름 — 적격 회사를 섹터 · 업종 · 테마로 묶어 후보(실적↑인데 아직 싸다) · 이미 오름(실적↑인데 1년 시총이 C1 문턱 넘게 올랐다) · 시총 1년 변화 중앙을 센다.
+    rows = [{code, sector, industry, themes[], elig, cand, earn(A 또는 B), mcap_g}]. 돌려주는 것 {kind: [{name, n_elig, n_cand, n_ran, mcap_g_med, cand_codes, ran_codes}]} —
+    후보 많은 순 · 같으면 이미 오름 많은 순. min_show: 후보도 이미 오름도 이보다 적은 묶음은 뺀다(테마 264개가 다 나오지 않게)."""
+    out = {}
+    for kind in kinds:
+        agg = {}
+        for r in rows:
+            if not r.get("elig"):
+                continue
+            names = r.get(kind) if kind == "themes" else [r.get(kind)]
+            for nm in names or []:
+                if not nm or (kind == "themes" and any(x in nm for x in (skip or ()))):
+                    continue
+                g = agg.setdefault(nm, {"name": nm, "n_elig": 0, "n_cand": 0, "n_ran": 0, "mg": [], "cand_codes": [], "ran_codes": []})
+                g["n_elig"] += 1
+                if r.get("mcap_g") is not None:
+                    g["mg"].append(r["mcap_g"])
+                if r.get("cand"):
+                    g["n_cand"] += 1
+                    g["cand_codes"].append(r["code"])
+                elif r.get("earn") and r.get("mcap_g") is not None and r["mcap_g"] >= th["c1"]:
+                    g["n_ran"] += 1
+                    g["ran_codes"].append(r["code"])
+        lst = []
+        for g in agg.values():
+            if g["n_cand"] < min_show and g["n_ran"] < min_show:
+                continue
+            g["mcap_g_med"] = st.median(g.pop("mg")) if g["mg"] else None
+            lst.append(g)
+        lst.sort(key=lambda g: (-g["n_cand"], -g["n_ran"], -g["n_elig"], g["name"]))
+        out[kind] = lst
+    return out
+
+
 def sens_variants(th=TH):
     """문턱마다 ×0.5 · ×1.5 하나씩 바꾼 변형 [(이름, th, opts)] — 기본값 먼저. 끝에 규칙 변형(문턱 아님) 셋."""
     out = [("기본", dict(th), {})]
