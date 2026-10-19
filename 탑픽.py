@@ -252,14 +252,18 @@ class Turnover:
         return self.cal[pres[j]] if j >= 0 else None
 
     def tv(self, code, d, days=TV_DAYS, stale=STALE):
+        """창은 그 종목의 마지막 봉(≤ d)에서 끝난다 — 봉 자료가 며칠 늦게 받아졌을 때(ohlcv 가 price 보다 늦다) 없는 날을 0 으로 세지 않게.
+        마지막 봉이 d 보다 stale 일 넘게 오래됐으면 None(정지 · 상장폐지 · 묵은 자료)."""
         pre = self.pre.get(code)
         if pre is None:
             return None
+        pres = self.present.get(code) or []
         i = bisect.bisect_right(self.cal, str(d)) - 1
-        if i < days - 1:
+        j = bisect.bisect_right(pres, i) - 1
+        if j < 0:
             return None
-        lb = self.last_bar(code, d)
-        if not lb or days_between(lb, d) > stale:
+        i = pres[j]
+        if i < days - 1 or days_between(self.cal[i], d) > stale:
             return None
         if self.nz[code][i + 1] - self.nz[code][i + 1 - days] < TV_MIN_BARS:
             return None
