@@ -10566,7 +10566,7 @@ function drkStack(R, K){
   chips.appendChild(el('span','l','더 보기'));
   [['ttm','1년 합계 증가율(점선 — 최근 4분기를 더해 1년 전과 견줌 · 매끈하지만 한 분기쯤 늦다)','showTTM'],['turn','흐름이 뒤집힌 분기 ▲ 내림→오름 · ▼ 오름→내림 (주가 신호 아님 — 검증에서 수익을 가르지 못함)','showTurn'],
    ['peer','업종 중앙(같은 섹터 다른 회사들의 중앙값 — 점선)','showPeer'],
-   ['gap','엇갈림 칠하기(영업이익률과 1년 주가가 반대로 간 분기 — 검증 전, 신호 아님)','showGap']].forEach(([k,t,cls])=>{
+   ['gap','엇갈림 칠하기(영업이익률과 1년 주가가 반대로 간 분기 — 과거 전 종목 성적은 판 아래)','showGap']].forEach(([k,t,cls])=>{
     const lab=el('label','drkOpt'); const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!opt[k];
     wrap.classList.toggle(cls,cb.checked);
     cb.onchange=()=>{ opt[k]=cb.checked; lsSet('drkOpt',opt); wrap.classList.toggle(cls,cb.checked); if(k==='peer') draw(); };
@@ -10595,7 +10595,7 @@ function drkStack(R, K){
   const R=span==='all'?RP:RP.slice(-(+span*4));
   const N=R.length, W=1000, L=56, Rr=112, T=24;
   const RIB=16, YRH=22, HA=160, HB=100, HC=104, HD=150, GAP=46, HO=300;
-  const oT=T+34, ribY=oT+HO+92, yTop=ribY+RIB+YRH-4, aT=ribY+RIB+YRH+GAP-10, bT=aT+HA+GAP, dT=bT+HB+GAP, cT=dT+HD+GAP, bot=cT+HC, H=bot+34;   // 주가 vs 이익(D)이 선행지표(C) 위
+  const oT=T+34, ribY=oT+HO+106, yTop=ribY+RIB+YRH-4, aT=ribY+RIB+YRH+GAP-10, bT=aT+HA+GAP, dT=bT+HB+GAP, cT=dT+HD+GAP, bot=cT+HC, H=bot+34;   // 주가 vs 이익(D)이 선행지표(C) 위
   const step=(W-L-Rr)/N, X=i=>L+i*step+step/2, bw=Math.max(3,Math.min(18,step*.62));
   const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'orbSvg drkSSvg'+(drawn++?' still':''),role:'img','aria-label':'분기별 속도·마진·주가·선행지표'});
   const put=(tag,at)=>svg.appendChild(svgEl(tag,at));
@@ -10753,7 +10753,8 @@ function drkStack(R, K){
       evs.length ? '세로 점선 = 실적 발표일(잠정실적 → 없으면 정기보고서) · 아래 숫자 = 그 뒤 5거래일 '+(rx.mkt||'시장')+' 대비' : ''].filter(Boolean).join(' · ');
     put('text',{x:L,y:oT+HO+31,class:'drkONote'}).textContent=src;
     if(more) put('text',{x:L,y:oT+HO+44,class:'drkONote'}).textContent=more;
-    if(gu||gd) put('text',{x:L,y:oT+HO+57,class:'drkONote optGap'}).textContent='칠한 칸 = 영업이익률(1년 새 ±0.5%p 넘게)과 주가(1년 ±5% 넘게)가 반대로 간 분기 — 파랑 이익률↑ · 주가↓ '+gu+'칸 · 자홍 이익률↓ · 주가↑ '+gd+'칸 (검증 전 — 신호 아님)'; }
+    if(gu||gd){ put('text',{x:L,y:oT+HO+57,class:'drkONote optGap'}).textContent='칠한 칸 = 영업이익률(1년 새 ±0.5%p 넘게)과 주가(1년 ±5% 넘게)가 반대로 간 분기 — 파랑 이익률↑ · 주가↓ '+gu+'칸 · 자홍 이익률↓ · 주가↑ '+gd+'칸';
+      const gt=drkGapBtTxt(K); if(gt) put('text',{x:L,y:oT+HO+70,class:'drkONote optGap'}).textContent=gt; } }
 
   // 흐름 띠 — 세 가지만(2026-10-18): 반년 전보다 빨라짐 · 비슷 · 느려짐(±3%p). 늘었나 줄었나는 아래 노란 선이 0 위인지 아래인지로 본다.
   // 7국면 이름은 마우스를 올리면 쉬운 말로(DRK_PLAIN) — 나침반 · 기저율은 그대로 7국면
@@ -10935,7 +10936,7 @@ function drkStack(R, K){
   fig.appendChild(svg); fig.appendChild(tp);
   // 끝 이름표가 판 오른쪽 끝을 넘으면(글꼴 · 화면 배율) 글자 폭을 줄여 맞춘다 — 판에 붙은 뒤에야 잴 수 있다
   requestAnimationFrame(()=>{ if(!svg.isConnected) return;
-    svg.querySelectorAll('.drkOLab,.drkEndL').forEach(t=>{ try{ const b=t.getBBox(), room=W-3-b.x;
+    svg.querySelectorAll('.drkOLab,.drkEndL,.drkONote').forEach(t=>{ try{ const b=t.getBBox(), room=W-3-b.x;
       if(b.width>room&&room>20){ t.setAttribute('textLength',room.toFixed(1)); t.setAttribute('lengthAdjust','spacingAndGlyphs'); } }catch(e){} }); });
   };
   draw();
@@ -10976,6 +10977,9 @@ function drkGlance(r, K){
     const gap=dNum(r.mD4)&&dNum(dy) ? (r.mD4>=.5&&dy<=-5?'이익률은 올랐는데 주가는 내렸다. ':r.mD4<=-.5&&dy>=5?'이익률은 내렸는데 주가는 올랐다. ':'') : '';
     const parts=[g,m,p].filter(Boolean);
     if(parts.length) f.appendChild(el('p','gSum',gap+parts.join(' · ')));
+    const gk=drkGapOf(r, K), gb=K.gapbt&&gk?K.gapbt[gk==='u'?'U':'D']:null;
+    if(gb&&dNum(gb.med)) f.appendChild(el('p',null,'이 모양(이익률 '+(gk==='u'?'↑ · 주가 ↓':'↓ · 주가 ↑')+')의 과거 전 종목 성적 — 공시 다음 거래일부터 12개월 시장 대비 중앙 '+dPp(gb.med,1)+
+      ' (90% 구간 '+dPp(gb.ci[0],1)+' ~ '+dPp(gb.ci[1],1)+', '+Math.round(gb.n).toLocaleString('ko-KR')+'번). 한 종목의 앞날이 아니다'));
     const pe=((K.peer||{}).med||{})[r.n];
     if(pe&&(dNum(pe.s)||dNum(pe.m))) f.appendChild(el('p',null,'업종('+K.peer.sector+') 중앙 — 증가율 '+(dNum(pe.s)?dPct(pe.s,0):'—')+(M==='매출'&&dNum(pe.m)?' · 이익률 '+pe.m.toFixed(1)+'%':'')));
     const ev=drkEvOf(K, r.n);
@@ -10995,6 +10999,14 @@ function drkGapOf(r, K){
   const dy=(a/b-1)*100;
   return r.mD4>=.5&&dy<=-5 ? 'u' : r.mD4<=-.5&&dy>=5 ? 'd' : null;
 }
+// 엇갈림 칠하기의 과거 성적 한 줄(도구/엇갈림_백테스트.py) — 수치만, 처방 없음
+function drkGapBtTxt(K){
+  const g=K.gapbt; if(!g||!g.U||!dNum(g.U.med)) return '과거 성적: 아직 안 잼(도구/엇갈림_백테스트.py)';
+  const sp=g.sp||{}, a=sp.U_vs_DD||{}, b=sp.D_vs_UU||{};
+  return '과거 전 종목('+Math.round((g.ALL&&g.ALL.n)||g.rows).toLocaleString('ko-KR')+'분기 · 지금 상장사만 — 생존 편향): 12개월 시장 대비 중앙 파랑 '+dPp(g.U.med,1)+' · 자홍 '+dPp(g.D.med,1)+
+    ' · 주가 방향이 같은 칸과의 차 파랑 '+dPp(a.diff,1)+'(앞 기간 '+dPp(a.early,1)+') · 자홍 '+dPp(b.diff,1)+'(앞 '+dPp(b.early,1)+')';
+}
+
 // 두 시점 비교 한 줄 — 증가율 · 이익률은 수준 → 수준(차 %p), 1년 합 매출 · 영업이익은 변화율, 주가는 변화율과 같은 기간 시장
 function drkCmpBody(sel, K){
   const by=K.byN||{}, a=by[sel.a]||{}, b=by[sel.b]||{}, M=K.M, f=document.createDocumentFragment();
@@ -11028,7 +11040,7 @@ async function drkAuxLoad(wrap, K, draw){
   for(let k=0;k<40;k++){
     let x; try{ x=await (await fetch('/api/druck/aux?code='+code)).json(); }catch(e){ return; }
     if(!wrap.isConnected) return;
-    K.react=x.react||null; K.peer=x.peer||null;
+    K.react=x.react||null; K.peer=x.peer||null; K.gapbt=x.gapbt||null;
     draw();
     if(!(x.peer&&x.peer.building)) return;
     await new Promise(r=>setTimeout(r,3000));

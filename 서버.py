@@ -10146,7 +10146,33 @@ def druck_aux(code):
     pv = peer_view(code)
     if PEER["building"]:
         pv["building"] = True
-    return {"react": {"events": ev, "mkt": mk, "disc": disc is not None, "mq": idx_quarter_close(idx, pts)}, "peer": pv}
+    return {"react": {"events": ev, "mkt": mk, "disc": disc is not None, "mq": idx_quarter_close(idx, pts)}, "peer": pv,
+            "gapbt": _gap_bt()}
+
+
+_GAPBT = {"mt": None, "d": None}
+
+
+def _gap_bt():
+    """엇갈림 칠하기의 과거 성적(도구/엇갈림_백테스트.py → .cache/druck_bt/gap_bt.json) — 화면 설명에 쓰는 몫만. 없으면 None."""
+    p = os.path.join(CACHE_DIR, "druck_bt", "gap_bt.json")
+    mt = _story_mtime(p)
+    if not mt:
+        return None
+    if _GAPBT["mt"] != mt:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+            g, sp = d.get("groups") or {}, d.get("spreads") or {}
+            keep = ("n", "firms", "med", "ci", "hit", "early", "late")
+            _GAPBT.update(mt=mt, d={"at": d.get("at"), "rows": d.get("rows"), "firms": d.get("firms"), "rule": d.get("rule"),
+                                    "U": {k: (g.get("U") or {}).get(k) for k in keep}, "D": {k: (g.get("D") or {}).get(k) for k in keep},
+                                    "ALL": {k: (g.get("ALL") or {}).get(k) for k in keep},
+                                    "sp": {k: {kk: (sp.get(k) or {}).get(kk) for kk in ("diff", "ci", "early", "late", "pass")}
+                                           for k in ("U_vs_DD", "D_vs_UU", "U_vs_rest", "D_vs_rest")}})
+        except (OSError, ValueError):
+            return _GAPBT["d"]
+    return _GAPBT["d"]
 
 
 def idx_quarter_close(idx, pts, today=None):
