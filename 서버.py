@@ -2836,9 +2836,10 @@ def _syn_forward(rows, day=None):
 
 
 def _syn_risk_flags(code):
-    """종목 하나의 위험 표지(시너지.risk_flags) — 공시위험.json 이 없거나 s12 가 없으면(옛 파일 · 12개월 안 해당 공시 없음) []."""
+    """종목 하나의 위험 표지(시너지.risk_flags) — 공시위험.json 의 맨 위 s12(모든 종목코드, 도구/공시위험.s12_all). 파일이 없거나
+    s12 가 없으면(옛 파일 · 12개월 안 해당 공시 없음) []."""
     d = _disc_risk() or {}
-    return SYN.risk_flags(((d.get("codes") or {}).get(code) or {}).get("s12") or {})
+    return SYN.risk_flags((d.get("s12") or {}).get(code) or {})
 
 
 def _syn_row(b, good_by, bad_by, twins):      # bad_by — 2026-10-20 v3 부터 안 쓴다(위험 표지는 _syn_risk_flags). 부르는 모양만 그대로
@@ -2883,7 +2884,7 @@ def _syn_row(b, good_by, bad_by, twins):      # bad_by — 2026-10-20 v3 부터 
     new_pct = (new_amt / rev * 100) if (rev and new_amt) else \
         (sum(z.get("pct") or 0 for z in own) or None)
 
-    # 위험 표지(2026-10-20 v3) — 공시위험.json 의 12개월 셈(s12, 도구/공시위험.py 가 매일 공시 목록으로 센다) → 시너지.risk_flags.
+    # 위험 표지(2026-10-20 v3) — 공시위험.json 의 12개월 셈(맨 위 s12, 도구/공시위험.py 가 매일 공시 목록으로 센다) → 시너지.risk_flags.
     # 예전 40일 호재.BAD 정규식 감점은 기술적 매매정지(대형 수주 공시로 인한 정지까지)에도 −10 을 붙였다(2026-10-20 감사) — 쓰지 않는다
     flags = _syn_risk_flags(b["code"])
 

@@ -211,8 +211,8 @@ def test_synergy_view_old_report_without_overall_does_not_crash(monkeypatch):
 
 # ---------------------------------------------------------------- 2026-10-20 v3 — 위험 표지 · 점수 부분 정의 · v3 검증 표
 def test_risk_flags_read_s12_from_disclosure_risk(monkeypatch):
-    d = {"codes": {"A": {"name": "에이", "s12": {"CB발행": {"n": 1, "last": "20260901"}, "횡령배임": {"n": 2, "last": "20260310"}}},
-                   "B": {"name": "비", "level": None}}}
+    d = {"codes": {"B": {"name": "비", "level": None}},
+         "s12": {"A": {"CB발행": {"n": 1, "last": "20260901"}, "횡령배임": {"n": 2, "last": "20260310"}}}}
     monkeypatch.setattr(SRV, "_disc_risk", lambda: d)
     assert SRV._syn_risk_flags("A") == ["희석 — CB 발행 (12개월, 마지막 2026-09-01)", "부실 — 횡령·배임 (12개월, 마지막 2026-03-10)"]
     assert SRV._syn_risk_flags("B") == [] and SRV._syn_risk_flags("Z") == []      # s12 없음 · 목록 밖 = 표지 없음
@@ -240,3 +240,26 @@ def test_synergy_view_passes_parts_def_and_v3(monkeypatch):
 
 def test_spec_names_v3():
     assert SRV.SYN_SPEC.startswith("2026-10-20 v3") and "loss4" in SRV.SYN_SPEC
+
+
+def test_backtest_m1_label_rules():
+    """m1_test 믿음 표지(스펙 2절) — 두 기간 · 두 재표본 하한이 다 양이면 '근거 있음', 한 기간뿐인 부분 표본은 표지 없음(None)."""
+    import random
+    sp = ilu.spec_from_file_location("시너지_백테스트_시험", os.path.join(BASE, "도구", "시너지_백테스트.py"))
+    BT = ilu.module_from_spec(sp); sp.loader.exec_module(BT)
+    rnd = random.Random(5)
+    rows = []
+    for y in range(2014, 2026):
+        for mth in (1, 4, 7, 10):
+            t = "%d%02d28" % (y, mth)
+            for i in range(12):
+                sc = rnd.uniform(0, 100)
+                rows.append({"code": "C%02d" % i, "t": t, "score": sc, "ex12m": sc / 2 + rnd.uniform(-5, 5)})
+    x = BT.m1_test(rows, "score")
+    assert x["label"] == "근거 있음" and x["early"] > 0 and x["late"] > 0
+    late = [r for r in rows if r["t"] >= BT.W.SPLIT]
+    assert BT.m1_test(late, "score", label=False)["label"] is None
+    assert BT.m1_test(late, "score")["label"] == "근거 약함"          # 앞 기간 빈 표본에 표지를 붙이면 늘 '약함'이다 — 그래서 label=False
+    flat = [dict(r, ex12m=rnd.uniform(-5, 5)) for r in rows]
+    assert BT.m1_test(flat, "score")["label"] == "근거 약함"
+    assert BT._RISK_FROM == "20131231"                                     # 공시 목록 캐시가 2013Q1 부터 — 12개월 창이 다 드는 첫 날

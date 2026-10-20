@@ -73,6 +73,7 @@ sys.path.insert(0, HERE)
 import 공시분류 as K            # noqa: E402
 import 작전주_사망_검증 as DTH   # noqa: E402
 _RISK = {"d": None}
+_RISK_FROM = None          # risk_from() — 아래 정의 뒤 채운다
 _RISK_LOCK = __import__("threading").Lock()
 assert all(c in {x["id"] for x in K.CATEGORIES} for c in SYN.RISK_DIL + SYN.RISK_BAD), "위험 범주 이름이 공시분류와 다르다"
 
@@ -115,6 +116,20 @@ def risk_s12(code, t):
     return DTH.count_signals(f, DTH.shift(t, -12), t) if f else {}
 
 
+def risk_from():
+    """12개월 창 (t−12개월, t] 이 공시 목록 캐시 안에 다 드는 첫 날. 캐시가 2013Q1 부터라 20131231 — 그 전 달들은 창이 잘려
+    표지를 덜 센다(2026-10-20 리뷰: 2013-06 표지 비율 12% vs 2014 31%). 그 날들의 행은 위험 '모름'(감점 없음)이고 v3 표에서 뺀다."""
+    import glob
+    import re as _re
+    qs = [m.groups() for fp in glob.glob(os.path.join(K.DIR, "*_*Q*.jsonl"))
+          for m in [_re.search(r"_(\d{4})Q([1-4])\.jsonl$", fp)] if m]
+    if not qs:
+        return "99999999"
+    y, q = min((int(a), int(b)) for a, b in qs)
+    start = W.dt.date(y, 3 * (q - 1) + 1, 1) - W.dt.timedelta(days=1)       # 첫 분기 시작 전날
+    return DTH.shift(start.strftime("%Y%m%d"), 12)
+
+
 def qpanel_per_pct(code, year, q, t, qp=None):
     """시점 t 의 PER 자기 역사 백분위 — 분기 패널의 같은 code · 같은 분기(year, q) 줄, 접수일 ≤ t 일 때만(시너지.per_pct_at).
     아직 접수 안 된 줄 · 미래 분기는 안 본다. 없으면 None(적자 · 이력 8분기 미만 · 패널 밖) — '싼 수주'는 통과 못 한다(감점 아님)."""
@@ -128,7 +143,9 @@ def derive(r):
     r["lead"] = SYN.lead_of(r.get("backlog_yoy"), r.get("rev4_yoy"))
     lab = r.get("lab")
     r["per_pct"] = SYN.per_pct_at(QP.get((r["code"], lab)), r["t"]) if lab else None
-    r["flags"] = SYN.risk_flags(risk_s12(r["code"], r["t"]))      # 2026-10-20 v3 — 12개월 희석 · 부실(시점 t 까지)
+    # 2026-10-20 v3 — 12개월 희석 · 부실(시점 t 까지). 창이 캐시 밖으로 잘리는 날(risk_from 전)은 '모름' — 감점 없음, v3 표에서 뺀다
+    r["risk_known"] = r["t"] >= _RISK_FROM
+    r["flags"] = SYN.risk_flags(risk_s12(r["code"], r["t"])) if r["risk_known"] else []
     return r
 
 
@@ -294,6 +311,9 @@ def score_date(rows):
         r["score_old"] = blend([(old[k], w) for k, w in PARTS.items()])
 
 
+_RISK_FROM = risk_from()
+
+
 def boot_year(rows, fn, n=800, seed=11):
     """해(年) 단위 재표본 90% 구간 — 같은 해의 시장 충격을 한 덩어리로(회사 재표본만 하면 구간이 좁게 나온다, 2026-10-20 감사)."""
     import random
@@ -315,9 +335,10 @@ def _tspread(key, Y):
     return f
 
 
-def m1_test(rows, key, Y="ex12m"):
+def m1_test(rows, key, Y="ex12m", label=True):
     """스펙 2절 주 지표 — rows(보통 둔화 뺀) 안 key 의 날짜 안 분위 상⅓ − 하⅓. 회사 · 해 재표본 90% · ~2019 / 2020~ ·
-    믿음 표지(회사 하한 > 0 · 해 하한 > 0 · 앞 > 0 · 뒤 > 0 이면 '근거 있음')."""
+    믿음 표지(회사 하한 > 0 · 해 하한 > 0 · 앞 > 0 · 뒤 > 0 이면 '근거 있음'). 한 기간만 든 부분 표본(잠복 2020~)은 label=False —
+    앞 기간이 늘 비어 표지가 늘 '약함'으로 나오던 것(2026-10-20 리뷰)을 없앤다."""
     rs = [dict(r, _p=r.get(key)) for r in rows if r.get(Y) is not None and r.get(key) is not None]
     rs = SYN.date_pct(rs, "_p", "t")
     if len(rs) < 30:
@@ -327,7 +348,7 @@ def m1_test(rows, key, Y="ex12m"):
     e, l = sp([r for r in rs if r["t"] < W.SPLIT]), sp([r for r in rs if r["t"] >= W.SPLIT])
     ok = all(x is not None and x > 0 for x in (c[0], yr[0], e, l))
     return {"spread": sp(rs), "ci": list(c), "ci_year": list(yr), "early": e, "late": l, "n": len(rs),
-            "firms": len({r["code"] for r in rs}), "label": "근거 있음" if ok else "근거 약함"}
+            "firms": len({r["code"] for r in rs}), "label": ("근거 있음" if ok else "근거 약함") if label else None}
 
 
 def paired_test(rows, ka, kb, Y="ex12m"):
@@ -348,14 +369,19 @@ def paired_test(rows, ka, kb, Y="ex12m"):
 
 
 def v3_report(rows, nd, Y="ex12m"):
-    """2026-10-20 v3 — 스펙 2절에 미리 적은 표. 화면 '과거 검증' 상자와 종목 해석이 label 을 읽는다."""
-    out = {"spec": "docs/superpowers/specs/2026-10-20-synergy-score-v3-design.md"}
+    """2026-10-20 v3 — 스펙 2절에 미리 적은 표. 화면 '과거 검증' 상자와 종목 해석이 label 을 읽는다.
+    위험 창이 캐시 밖으로 잘리는 날(risk_known False — 2013-06 ~ 2013-11)은 뺀다(스펙 뒤 고침, README 에 적음)."""
+    n0, nd0 = len(rows), len(nd)
+    rows = [r for r in rows if r.get("risk_known", True)]
+    nd = [r for r in nd if r.get("risk_known", True)]
+    out = {"spec": "docs/superpowers/specs/2026-10-20-synergy-score-v3-design.md", "risk_from": _RISK_FROM,
+           "dropped_rows": n0 - len(rows), "dropped_no_slow": nd0 - len(nd)}
     out["m1"] = m1_test(nd, "score", Y)                       # 주 지표 — 둔화 뺀 안 v3
     out["m1_v2"] = m1_test(nd, "score_v2", Y)                 # 같은 잣대로 v2
     out["m1_all"] = m1_test(rows, "score", Y)                 # 전체 행(둔화 포함)
     out["paired"] = paired_test(nd, "score", "score_v2", Y)   # v3 − v2, 둔화 뺀 같은 행
     lat = [r for r in nd if r["stage"] == "잠복" and r["t"] >= W.SPLIT]
-    out["latent_late"] = m1_test(lat, "score", Y)             # 잠복만 2020~ (앞 기간은 날짜당 행이 적다)
+    out["latent_late"] = m1_test(lat, "score", Y, label=False)   # 잠복만 2020~ (앞 기간은 날짜당 행이 적다) — 믿음 표지 없음
     out["ic"] = W.ic_stats(nd, lambda r: r.get("score"), Y, overlap=12)
     out["ic_v2"] = W.ic_stats(nd, lambda r: r.get("score_v2"), Y, overlap=12)
     # 위험 표지 — 둔화 뺀 안에서 있음 vs 없음
@@ -382,7 +408,7 @@ def v3_report(rows, nd, Y="ex12m"):
         if x:
             print("  %-12s 차 %s 회사 %s~%s 해 %s~%s | ~2019 %s 2020~ %s | n %d (%d곳) → %s" % (
                 k, fm(x["spread"]), fm(x["ci"][0]), fm(x["ci"][1]), fm(x["ci_year"][0]), fm(x["ci_year"][1]),
-                fm(x["early"]), fm(x["late"]), x["n"], x["firms"], x["label"]))
+                fm(x["early"]), fm(x["late"]), x["n"], x["firms"], x["label"] or "—"))
     pt = out["paired"]
     if pt:
         print("  v3 − v2 짝 차 %s [%s, %s] (v3 %s · v2 %s) ~2019 %s 2020~ %s → %s" % (

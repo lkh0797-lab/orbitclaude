@@ -92,6 +92,29 @@ def last_signals(f, lo_date, D, cats):
     return {c: {"n": len(v), "last": max(v)} for c, v in days.items()}
 
 
+def s12_all(rows, D):
+    """{종목코드: {범주: {"n", "last"}}} — 2026-10-20 호재기업 점수 v3 위험 표지(시너지.risk_flags)용 12개월 셈(D−12개월, D].
+    judge_all · 묶음과 상관없이 종목코드가 있는 모든 공시를 센다 — 도구/시너지_백테스트._risk_info 와 같은 규칙(접수번호 중복 제거 ·
+    정정 · 첨부 재제출 제외 · '자회사사항'만인 공시 제외). codes 에 안 넣는 까닭: codes 는 '본표본을 잰 회사' 목록이라 다른 화면이 그렇게 읽는다."""
+    ev = collections.defaultdict(list)
+    for v in rows.values():
+        for r in v:
+            sc = (r.get("stock_code") or "").strip()
+            if not sc or K.norm(r["report_nm"])[1]:
+                continue
+            cs = K.classify(r["report_nm"], r.get("flr_nm"))
+            if not cs or cs == ("자회사사항",):
+                continue
+            ev[sc].append((r["rcept_dt"], frozenset(cs)))
+    lo, out = S.shift(D, -12), {}
+    for sc, v in ev.items():
+        v.sort(key=lambda e: e[0])
+        x = last_signals({"ev": v, "evd": [e[0] for e in v]}, lo, D, S12_CATS)
+        if x:
+            out[sc] = x
+    return out
+
+
 def main():
     t0 = time.time()
     rows = K.load_rows()
@@ -121,15 +144,11 @@ def main():
             rec.update(level=level, proc=proc, last_a=last_a, div=div,
                        hits=[{"cat": c, "name": NAME[c], "days": n, "need": t, "rows": rows_.get(c, [])[:8]} for c, n, t in hits],
                        ref=[{"cat": c, "days": n, "rows": rows_.get(c, [])[:4]} for c, n in ref])
-        # 2026-10-20 — 호재기업 점수 v3 위험 표지(시너지.risk_flags)용 12개월 셈: 희석 · 부실 범주의 서로 다른 날 수와 마지막 날.
-        # 묶음과 상관없이 센다(표지를 붙일지는 시너지가 정한다). 도구/시너지_백테스트.risk_s12 와 같은 창 (D−12개월, D]
-        s12 = last_signals(f, S.shift(D, -12), D, S12_CATS)
-        if s12:
-            rec["s12"] = s12
         cnt[rec["level"] or (grp if grp != "본표본" else "해당 없음")] += 1
         codes[code] = rec
     res = {"기준일": D, "만든때": time.strftime("%Y-%m-%d %H:%M"), "규칙": [[c, NAME[c], t] for c, t in RULE],
-           "evidence": EVIDENCE, "수": dict(cnt), "codes": codes}
+           "evidence": EVIDENCE, "수": dict(cnt), "codes": codes,
+           "s12": s12_all(rows, D)}
     tmp = OUT + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(res, fh, ensure_ascii=False)

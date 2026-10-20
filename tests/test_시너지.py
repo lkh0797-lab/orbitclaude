@@ -113,15 +113,15 @@ def test_explain_two_lines_with_real_numbers():
     SYN.score(rows)
     by = {r["code"]: r for r in rows}
     a = SYN.explain(by["A"])
-    assert len(a) == 2 and a[0].startswith("점수 %d = (수주 " % round(by["A"]["score"]))
+    assert len(a) == 2 and a[0].startswith("점수 %d ≈ (수주 " % SYN._half_up(by["A"]["score"]))
     assert "강점: 수주" in a[0] and "매출의 2.3배" in a[0] and "1.8년치(1년 새 +0.6년)" in a[0]
     b = SYN.explain(by["B"])
-    assert "강점: 값" in b[0] and "자기 과거 20% 자리 — 과거보다 싸다" in b[0] and b[1].startswith("약점: 수주")
+    assert "강점: 값" in b[0] and "자기 과거 20% 자리 — 목록 안에서 싼 편(자기 과거보다 싸다)" in b[0] and b[1].startswith("약점: 수주")
     c = SYN.explain(by["C"])
-    assert "값 50 · 여지 50" in c[0]                                       # 빈 부분은 50 으로 셈 — 줄 머리 산수가 맞는다
+    assert "값 50 + 여지 50" in c[0]                                       # 빈 부분은 50 으로 셈 — 줄 머리 산수가 맞는다
     assert "PER 자기 역사 없음" in c[1] and "4분기 적자 — 50 으로 셈" in c[1]
     d = SYN.explain(by["D"])
-    assert "− 위험 10" in d[0] and "위험 희석 −10(CB 발행)" in d[1] and "반영 단계" in d[1] and "과거보다 비싸다" in d[1]
+    assert "− 위험 10" in d[0] and "위험 희석 −10(CB 발행)" in d[1] and "반영 단계" in d[1] and "자기 과거보다 비싸다" in d[1]
     assert SYN.explain({"reliable": False, "why_not": "검산 부족"}) == ["점수 없음 — 검산 부족. 순위 밖이다."]
     assert SYN.explain(dict(_row("N"), score=None, parts={}))[0].startswith("점수 없음")
 
@@ -240,3 +240,39 @@ def test_explain_warns_slowdown_stage():
     SYN.score(rows)
     w = SYN.explain(rows[0])
     assert "둔화 단계" in w[1]
+
+
+def test_explain_head_arithmetic_and_rounding_match_table():
+    """첫 줄: 보이는 부분 셋 ÷ 3 − 감점 과 보이는 점수의 차가 0.5 안('≈'), 점수 반올림은 화면 표(toFixed — .5 올림)와 같다(2026-10-20 리뷰)."""
+    import random, re
+    rnd = random.Random(3)
+    rows = [dict(_row("R%d" % i, btb=rnd.uniform(0.5, 3), cov=rnd.uniform(-1, 2), m4=rnd.choice([None, -3.0, rnd.uniform(0.5, 20)]),
+                      per_pct=rnd.choice([None, rnd.uniform(0, 100)]),
+                      flags=SYN.risk_flags(rnd.choice([{}, {"CB발행": 1}, {"CB발행": 1, "횡령배임": 1}]))), cover=1.0) for i in range(60)]
+    SYN.score(rows)
+    for r in rows:
+        h = SYN.explain(r)[0]
+        m = re.match(r"점수 (\d+) ≈ \(수주 (\d+) \+ 값 (\d+) \+ 여지 (\d+)\) ÷ 3(?: − 위험 (\d+))?", h)
+        assert m, h
+        sc, a, b, c = (int(m.group(k)) for k in (1, 2, 3, 4))
+        pen = int(m.group(5) or 0)
+        assert sc == SYN._half_up(r["score"])
+        if (a + b + c) / 3 - pen > 0:
+            assert abs(sc - ((a + b + c) / 3 - pen)) <= 1.0          # 부분 반올림(각 ±0.5 → 평균 ±0.5) + 점수 반올림 ±0.5
+        else:
+            assert sc == 0 and "(0 아래는 0)" in h
+    assert SYN._half_up(70.5) == 71 and SYN._half_up(42.5) == 43 and SYN._half_up(0.4) == 0
+
+
+def test_explain_no_score_reason_follows_data():
+    base = dict(_row("N"), score=None, parts={"수주": None})
+    assert "1년 전 잔고가 없어" in SYN.explain(dict(base, backlog_yoy=None, cover=None))[0]
+    assert "최근 4분기 매출이 없어" in SYN.explain(dict(base, backlog_yoy=111.4, cover=None))[0]      # GST · 한화엔진 꼴
+    assert "1년 전 잔고가 없어" not in SYN.explain(dict(base, backlog_yoy=7.0, cover=1.2))[0]
+
+
+def test_explain_room_text_does_not_promise_a_rise():
+    rows = [dict(_row("L", m4=2.7), cover=1.0), _row("M", m4=8.0), _row("H", m4=20.0)]
+    SYN.score(rows)
+    w = " ".join(SYN.explain(rows[0]))
+    assert "흑자 회사 중 낮은 편" in w and "오를 여지" not in w
