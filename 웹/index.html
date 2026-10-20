@@ -1925,6 +1925,14 @@ details.infclockwrap{margin-top:12px}details.infclockwrap>summary{cursor:pointer
 .qtrLegend span{margin-left:10px;color:var(--faint)}
 .qtrChart{max-width:820px}.qtrChart .qRev{fill:var(--line)}.qtrChart .qOp{fill:var(--accent)}.qtrChart .qOpN{fill:var(--del)}
 .qtrChart .g{stroke:var(--line2);stroke-width:1}.qtrChart .zero0{stroke:var(--faint);stroke-width:1}.qtrChart .ax{font-size:10px;fill:var(--faint)}
+/* 두 칸 막대(2026-10-20) — 매출은 중성 회청, 영업이익은 흑자 녹 · 적자 빨강, 마지막 분기는 진하게 */
+.qtr2 .qRev2{fill:#8e9aa8;opacity:.62}.qtr2 .qRev2.last{opacity:1}
+.qtr2 .qOp2{fill:var(--accent);opacity:.7}.qtr2 .qOp2.last{opacity:1}
+.qtr2 .qOpN2{fill:var(--del);opacity:.75}.qtr2 .qOpN2.last{opacity:1}
+.qtr2 .qtV{font:600 11px var(--mono,ui-monospace);fill:var(--ink)}.qtr2 .qtV.last{font-size:12px;font-weight:700}.qtr2 .qtV.neg{fill:var(--del)}
+.qtr2 .qtS{font:500 9.5px var(--mono,ui-monospace);fill:var(--dim)}.qtr2 .qtS.pos{fill:var(--add)}.qtr2 .qtS.neg{fill:var(--del)}
+.qtr2 .qtLane{font:700 12.5px var(--f-body,inherit);fill:var(--ink)}.qtr2 .qtLaneD{font-size:10.5px;fill:var(--faint)}
+.qtr2 .ax.last{fill:var(--ink);font-weight:700}
 .qtrNums .expTrendW{max-width:820px}
 .qtrTbl{margin-top:6px;font-size:12px}.qtrTbl th small{font-weight:400;color:var(--faint)}
 .qtrTbl td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -3805,19 +3813,43 @@ function qFlags(rows,i){
   if(r.opm_qoq!=null&&Math.abs(r.opm_qoq)>=3) f.push(['이익률 '+qPp(r.opm_qoq),r.opm_qoq>0?'pos':'neg']);
   return f;
 }
-// 분기 단독 매출·영업이익 막대(같은 원 단위, 한 축) — 마우스를 올리면 그 분기 숫자
+// 분기 단독 매출 · 영업이익 — 위아래 두 칸에 각자 눈금(0 ~ 그 칸 최대)으로 막대, 막대 끝에 금액을 바로 적는다(2026-10-20, 사용자:
+// "막대 그래프가 가시성이 너무 안 좋아. 매출과 영업이익이 바로 잘 보이게"). 한 축에 두면 영업이익 막대가 매출의 몇 % 높이라 바닥에 깔렸다.
+// 매출 막대 위 = 금액 + 전년 동기 대비, 영업이익 막대 위(적자는 아래) = 금액 + 영업이익률. 칸이 좁으면 금액은 마우스로. 마지막 분기는 진하게
 function qtrChart(rows){
-  const W=760,H=170,L=58,R=8,T=10,B=22, n=rows.length;
-  const vals=rows.flatMap(r=>[r.rev,r.op]).filter(v=>v!=null);
-  const mx=Math.max(1,...vals), mn=Math.min(0,...vals);
-  const y=v=>T+(mx-v)/(mx-mn)*(H-T-B), gw=(W-L-R)/n, bw=Math.min(26,gw*0.34);
-  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'expTrend qtrChart'});
-  [mx,mx/2,0,mn<0?mn:null].filter(v=>v!=null).forEach(v=>{ svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:v===0?'zero0':'g'})); const t=svgEl('text',{x:L-6,y:y(v)+3,'text-anchor':'end',class:'ax'}); t.textContent=v?qWon(v):'0'; svg.appendChild(t); });
-  rows.forEach((r,i)=>{ const cx=L+gw*i+gw/2;
-    if(r.rev!=null) svg.appendChild(svgEl('rect',{x:cx-bw-1,y:Math.min(y(r.rev),y(0)),width:bw,height:Math.abs(y(r.rev)-y(0)),rx:2,class:'qRev'}));
-    if(r.op!=null) svg.appendChild(svgEl('rect',{x:cx+1,y:Math.min(y(r.op),y(0)),width:bw,height:Math.max(1,Math.abs(y(r.op)-y(0))),rx:2,class:r.op>=0?'qOp':'qOpN'}));
-    const t=svgEl('text',{x:cx,y:H-6,'text-anchor':'middle',class:'ax'}); t.textContent=qQ(r); svg.appendChild(t); });
-  const wrap=expHover(svg,W,H,rows.map((r,i)=>L+gw*i+gw/2),gw,
+  const n=rows.length, W=760, L=10, R=10, T=6;
+  const HA=124, HB=112, GAP=30, B=22;                  // 매출 칸 · 영업이익 칸 · 칸 사이 · 아래 분기 이름
+  const aT=T+18, bT=aT+HA+GAP+18, H=bT+HB+B;
+  const gw=(W-L-R)/Math.max(1,n), bw=Math.max(6,Math.min(36,gw*0.56)), cx=i=>L+gw*i+gw/2;
+  const lab=gw>=46;
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'expTrend qtrChart qtr2'});
+  const put=(t,a)=>svg.appendChild(svgEl(t,a));
+  const txt=(x,y,s,cls,anchor)=>{ const t=put('text',{x,y,'text-anchor':anchor||'middle',class:cls}); t.textContent=s; return t; };
+  const HEAD=30;                                        // 막대 위 글자 두 줄 자리
+  // A. 매출 — 0 ~ 최대
+  const rv=rows.map(r=>r.rev).filter(v=>v!=null&&v>0), rmx=Math.max(1,...rv);
+  const yA=v=>aT+HA-(Math.max(0,v)/rmx)*(HA-HEAD);
+  txt(L,aT-6,'매출','qtLane','start'); txt(L+34,aT-6,'막대 위 = 금액 · 1년 전 같은 분기 대비','qtLaneD','start');
+  put('line',{x1:L,x2:W-R,y1:aT+HA,y2:aT+HA,class:'zero0'});
+  rows.forEach((r,i)=>{ if(r.rev==null) return; const y=yA(r.rev), last=i===n-1;
+    put('rect',{x:cx(i)-bw/2,y,width:bw,height:Math.max(1,aT+HA-y),rx:3,class:'qRev2'+(last?' last':'')});
+    if(!lab&&!last) return;
+    txt(cx(i),y-(r.rev_yoy!=null?16:5),qWon(r.rev),'qtV'+(last?' last':''));
+    if(r.rev_yoy!=null) txt(cx(i),y-4,Math.abs(r.rev_yoy)<0.5?'0%':qPct(r.rev_yoy),'qtS '+(r.rev_yoy>=0.5?'pos':r.rev_yoy<=-0.5?'neg':'')); });
+  // B. 영업이익 — 적자가 있으면 0 아래로
+  const ov=rows.map(r=>r.op).filter(v=>v!=null), omx=Math.max(0,...ov), omn=Math.min(0,...ov), osp=(omx-omn)||1;
+  const neg=omn<0, room=HB-HEAD-(neg?HEAD:0);
+  const yB=v=>bT+HEAD+(omx-v)/osp*room;
+  txt(L,bT-6,'영업이익','qtLane','start'); txt(L+66,bT-6,'막대 위 = 금액 · 영업이익률(적자는 막대 아래)','qtLaneD','start');
+  put('line',{x1:L,x2:W-R,y1:yB(0),y2:yB(0),class:'zero0'});
+  rows.forEach((r,i)=>{ if(r.op==null) return; const y0=yB(0), y=yB(r.op), last=i===n-1, up=r.op>=0;
+    put('rect',{x:cx(i)-bw/2,y:Math.min(y,y0),width:bw,height:Math.max(1.5,Math.abs(y-y0)),rx:3,class:(up?'qOp2':'qOpN2')+(last?' last':'')});
+    if(!lab&&!last) return;
+    const m=r.opm!=null?'이익률 '+r.opm.toFixed(1)+'%':'';
+    if(up){ txt(cx(i),y-(m?16:5),qWon(r.op),'qtV'+(last?' last':'')); if(m) txt(cx(i),y-4,m,'qtS'); }
+    else { txt(cx(i),y+12,qWon(r.op),'qtV neg'+(last?' last':'')); if(m) txt(cx(i),y+24,m,'qtS'); } });
+  rows.forEach((r,i)=>txt(cx(i),H-6,qQ(r),'ax'+(i===n-1?' last':'')));
+  const wrap=expHover(svg,W,H,rows.map((r,i)=>cx(i)),gw,
     i=>{ const r=rows[i]; return [r.q.slice(0,4)+'년 '+r.q.slice(5)+'분기 · '+r.label,
       '매출 '+qWon(r.rev)+' · 직전 분기 '+qPct(r.rev_qoq)+' · 전년 동기 '+qPct(r.rev_yoy),
       '영업이익 '+qWon(r.op)+' · 직전 분기 '+qPct(r.op_qoq)+' · 전년 동기 '+qPct(r.op_yoy),
@@ -3956,7 +3988,7 @@ function qtrPipe(pp){
 }
 function qtrNumbers(rows){
   const w=el('div','qtrNums');
-  const lg=el('div','qtrLegend'); lg.innerHTML='<i class="r"></i>매출 <i class="o"></i>영업이익 <span>분기 단독 · 사업보고서 분기 = 연간 − 3분기 누적</span>'; w.appendChild(lg);
+  const lg=el('div','qtrLegend'); lg.innerHTML='<span style="margin-left:0">분기 단독 — 위 매출 · 아래 영업이익을 각자 눈금으로(높이끼리 견주지 않는다) · 마지막 분기는 진하게 · 사업보고서 분기 = 연간 − 3분기 누적 · 마우스를 올리면 직전 분기 · 전년 동기</span>'; w.appendChild(lg);
   w.appendChild(qtrChart(rows));
   const t=el('table','tbl qtrTbl');
   let h='<tr><th></th>'+rows.map(r=>'<th class="r">'+qQ(r)+'<br><small>'+r.label.replace('보고서','')+'</small></th>').join('')+'</tr>';
