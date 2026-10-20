@@ -705,3 +705,54 @@ def test_kfin_kick_unwinds_when_thread_cannot_start_and_refetches_old_version(mo
     monkeypatch.setattr(SRV.threading, "Thread", lambda target, daemon: type("T", (), {"start": lambda self: started.append(1)})())
     assert SRV._kfin_kick("000660") is False                            # 판을 모르면 그대로 둔다
     assert SRV._kfin_kick("000660", stale=True) is True and started == [1]   # 판이 달라 못 읽으면 묵지 않았어도 다시 받는다
+
+
+# ---------------------------------------------------------------- 실적 발표 반응 · 업종 중앙값(가속도 '한눈에' 판)
+def _days(start, n):
+    import datetime as _dt
+    d, out = _dt.date(*start), []
+    while len(out) < n:
+        if d.weekday() < 5:
+            out.append(d.strftime("%Y%m%d"))
+        d += _dt.timedelta(days=1)
+    return out
+
+
+def test_react_events_prefers_prelim_in_window_and_measures_vs_market():
+    ds = _days((2025, 10, 1), 60)
+    px = {d: 100.0 for d in ds}
+    mkt = {d: 1000.0 for d in ds}
+    i0 = ds.index("20251031")                       # 잠정실적 날(금)
+    for j, d in enumerate(ds[i0:]):
+        px[d] = 110.0 if j < 4 else 120.0           # 첫날 +10%, 5거래일째 +20%
+        mkt[d] = 1010.0                              # 시장 +1%
+    disc = [{"d": "20251031", "title": "연결재무제표기준영업(잠정)실적(공정공시)"},
+            {"d": "20251101", "title": "[기재정정]연결재무제표기준영업(잠정)실적(공정공시)"},
+            {"d": "20251020", "title": "영업(잠정)실적(공정공시)(자회사의 주요경영사항)"}]
+    n = 2025 * 4 + 2                                 # 2025Q3
+    pts = [{"n": n, "fs": "CFS", "기준일": "20251114"}, {"n": n + 1, "fs": None, "기준일": None}]
+    ev = SRV.react_events(pts, disc, px, mkt)
+    assert len(ev) == 1 and ev[0]["d"] == "20251031" and ev[0]["src"] == "잠정실적"
+    assert ev[0]["r1"] == 10.0 and ev[0]["x1"] == 9.0 and ev[0]["r5"] == 20.0 and ev[0]["x5"] == 19.0
+
+
+def test_react_events_falls_back_to_report_date_and_ignores_prelim_after_report():
+    ds = _days((2025, 10, 1), 60)
+    px = {d: 100.0 for d in ds}
+    n = 2025 * 4 + 2
+    disc = [{"d": "20251120", "title": "영업(잠정)실적(공정공시)"}]           # 정기보고서(11-14) 뒤 — 다음 분기 것일 수 있다
+    ev = SRV.react_events([{"n": n, "fs": "OFS", "기준일": "20251114"}], disc, px, {})
+    assert ev[0]["d"] == "20251114" and ev[0]["src"] == "정기보고서" and ev[0]["r1"] == 0.0 and "x1" not in ev[0]
+    assert SRV.react_events([{"n": n, "fs": "OFS", "기준일": "20251114"}], None, {}, {})[0].get("r1") is None
+
+
+def test_peer_view_median_excludes_self_and_needs_five(monkeypatch):
+    monkeypatch.setattr(SRV, "_sector", lambda code: "반도체")
+    rows = [("A%05d" % i, float(i), 10.0 + i) for i in range(6)] + [("005930", 99.0, 99.0)]
+    cells = {"반도체": {8100: rows, 8101: rows[:4] + [("005930", 1.0, 1.0)]}}
+    v = SRV.peer_view("005930", cells)
+    assert v["sector"] == "반도체" and v["firms"] == 6
+    assert v["med"]["8100"] == {"s": 2.5, "ks": 6, "m": 12.5, "km": 6}      # 자기(99) 빼고 0..5 중앙
+    assert "8101" not in v["med"]                                         # 다른 회사 4곳뿐
+    monkeypatch.setattr(SRV, "_sector", lambda code: None)
+    assert SRV.peer_view("005930", cells)["sector"] is None

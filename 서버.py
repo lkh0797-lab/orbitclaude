@@ -9906,6 +9906,248 @@ def kfin_view(code, pts):
             "why": why or (isq.get("why") or ""), "is_from": ((isq.get("rows") or [{}])[0] or {}).get("ym")}
 
 
+# 실적 발표 표시 · 주가 반응 + 업종 중앙값 — 가속도 '한눈에' 판(2026-10-20, 사용자가 고른 1 · 3번).
+# 증권사 자료 없이 DART 공시 목록 · 네이버 주가 · 가속도 캐시만 쓴다 — 유료판에도 넣을 수 있다. 사실만(판정 · 처방 없음).
+REACT_DAYS = (1, 5, 20)                     # 발표일(그 날 또는 그 뒤 첫 거래일)부터 k 거래일째 종가 ÷ 발표 전날 종가
+REACT_PRELIM = re.compile(r"영업\(잠정\)실적")
+REACT_WINDOW = 75                           # 분기 말 뒤 이 날수 안의 잠정실적 공시만 그 분기 것으로 본다(정기보고서 날보다 늦으면 안 씀)
+IDX_DIR = os.path.join(CACHE_DIR, "price_idx")   # 시장 지수는 종목 주가 폴더(.cache/price)와 따로 — 그 폴더를 종목 목록으로 훑는 곳이 있다
+_CORP_CLS = {"map": None}
+_IDX = {}
+PEER = {"building": False, "sig": None, "checked": 0.0, "data": None}
+PEER_LOCK = threading.Lock()
+PEER_MIN = 5                                # 업종 중앙값은 그 분기 값이 있는 다른 회사 5곳 이상일 때만
+PEER_EVERY = 600                            # 가속도 캐시가 바뀌었는지 이만큼(초)마다 본다
+_SECM = {"m": None}
+
+
+def _corp_cls_map():
+    """종목코드 → 'Y'(유가증권) · 'K'(코스닥) — 최근 정기보고서 공시 목록 네 분기에서(원자료 줄에만 corp_cls 가 있다)."""
+    if _CORP_CLS["map"] is None:
+        m = {}
+        try:
+            fs = sorted(f for f in os.listdir(STORY_DISC_DIR) if f.startswith("A001_") and f.endswith(".jsonl"))
+        except OSError:
+            fs = []
+        for f in fs[-4:]:
+            try:
+                with open(os.path.join(STORY_DISC_DIR, f), "r", encoding="utf-8") as fh:
+                    for ln in fh:
+                        try:
+                            r = json.loads(ln)
+                        except ValueError:
+                            continue
+                        if r.get("stock_code") and r.get("corp_cls") in ("Y", "K"):
+                            m[r["stock_code"]] = r["corp_cls"]
+            except OSError:
+                pass
+        _CORP_CLS["map"] = m
+    return _CORP_CLS["map"]
+
+
+def _idx_prices(sym):
+    """네이버 지수 일봉 종가 {YYYYMMDD: 종가} — sym = KOSPI | KOSDAQ. 하루 캐시(FIN._cache_ok), 못 받으면 받아 둔 것."""
+    p = os.path.join(IDX_DIR, sym + ".json")
+    mt = _story_mtime(p)
+    if sym in _IDX and _IDX[sym][0] == mt and FIN and FIN._cache_ok(p, 86400):
+        return _IDX[sym][1]
+    d = None
+    if FIN and os.path.exists(p) and FIN._cache_ok(p, 86400):
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+        except (OSError, ValueError):
+            d = None
+    if d is None and not READONLY:
+        try:
+            import requests
+            r = requests.get(FIN.NAVER, timeout=30, headers={"User-Agent": "Mozilla/5.0"},
+                             params={"symbol": sym, "requestType": "1", "startTime": "20100101",
+                                     "endTime": dt.date.today().strftime("%Y%m%d"), "timeframe": "day"})
+            r.raise_for_status()
+            rows = json.loads(r.text.replace("'", '"'))
+            d = {str(x[0]).strip(): float(x[4]) for x in rows[1:] if x and len(x) >= 5 and re.fullmatch(r"\d{8}", str(x[0]).strip()) and x[4]}
+            if len(d) > 100:
+                os.makedirs(IDX_DIR, exist_ok=True)
+                _atomic_json(p, d)
+                mt = _story_mtime(p)
+            else:
+                d = None
+        except Exception:
+            d = None
+    if d is None:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+        except (OSError, ValueError):
+            d = {}
+    _IDX[sym] = (mt, d)
+    return d
+
+
+def _qend(n):
+    """분기 키 n = 연도 × 4 + 분기 − 1 → 그 분기 마지막 날."""
+    y, q = n // 4, n % 4 + 1
+    return dt.date(y, 3 * q, (31, 30, 30, 31)[q - 1])
+
+
+def react_events(pts, disc, px, mkt):
+    """분기마다 발표일과 그 뒤 주가 반응 [{n, d, src, rep, r1, r5, r20, x1, x5, x20}].
+    발표일 = 그 분기 말 뒤 REACT_WINDOW 일 안 · 정기보고서 날 이전의 첫 '영업(잠정)실적' 공시(정정 · 자회사 것 제외), 없으면 정기보고서 기준일.
+    r k = 발표 전날 종가 → 발표일부터 k 거래일째 종가(%), x k = 같은 날들의 시장 지수 수익률을 뺀 값(%p)."""
+    prelim = sorted(r["d"] for r in disc or [] if REACT_PRELIM.search(r.get("title") or "")
+                    and "자회사" not in r["title"] and "정정" not in r["title"][:8])
+    ds = sorted(px or {})
+    ms = sorted(mkt or {})
+
+    def m_at(d):
+        i = bisect.bisect_right(ms, d) - 1
+        return mkt[ms[i]] if i >= 0 else None
+
+    out = []
+    for p in pts or []:
+        n, rep = p.get("n"), str(p.get("기준일") or "")
+        if n is None or not p.get("fs"):
+            continue
+        qe = _qend(n)
+        lo, hi = qe.strftime("%Y%m%d"), (qe + dt.timedelta(days=REACT_WINDOW)).strftime("%Y%m%d")
+        if len(rep) == 8 and rep < hi:
+            hi = rep
+        pre = next((d for d in prelim if lo < d <= hi), None)
+        d = pre or (rep if len(rep) == 8 else None)
+        if not d:
+            continue
+        ev = {"n": n, "d": d, "src": "잠정실적" if pre else "정기보고서", "rep": rep or None}
+        i0 = bisect.bisect_left(ds, d)
+        if 0 < i0 < len(ds):
+            b = px[ds[i0 - 1]]
+            mb = m_at(ds[i0 - 1])
+            for k in REACT_DAYS:
+                j = i0 + k - 1
+                if j >= len(ds) or not b:
+                    continue
+                r = px[ds[j]] / b - 1
+                ev["r%d" % k] = round(r * 100, 2)
+                me = m_at(ds[j])
+                if mb and me:
+                    ev["x%d" % k] = round((r - (me / mb - 1)) * 100, 2)
+        out.append(ev)
+    return out
+
+
+def _sec_mod():
+    if _SECM["m"] is None:
+        _SECM["m"] = _load_mod("산업_섹터") or False
+    return _SECM["m"] or None
+
+
+def _sector(code):
+    SM = _sec_mod()
+    if not SM:
+        return None
+    sec, _ = SM.sector_of(code, _ksic_of(corp_code_of(code) or ""))
+    return None if sec == "제외" else sec
+
+
+def _peer_sig():
+    n, mx = 0, 0.0
+    try:
+        with os.scandir(os.path.join(CACHE_DIR, "druck")) as it:
+            for e in it:
+                if e.name.endswith(".json"):
+                    n += 1
+                    mx = max(mx, e.stat().st_mtime)
+    except OSError:
+        pass
+    return "%d:%d" % (n, mx)
+
+
+def _peer_build(sig):
+    """가속도 캐시(전 종목) → {섹터: {n: [(code, 속도, TTM 영업이익률)]}}. 섹터는 산업 탭과 같은 산업_섹터.sector_of."""
+    try:
+        cells = {}
+        d0 = os.path.join(CACHE_DIR, "druck")
+        for f in sorted(os.listdir(d0)):
+            if not f.endswith(".json"):
+                continue
+            code = f[:-5]
+            sec = _sector(code)
+            if not sec:
+                continue
+            d = DRK.read_cache(os.path.join(d0, f))
+            for p in (d or {}).get("points") or []:
+                s, mt, ot = p.get("속도"), p.get("매출_TTM"), p.get("영업이익_TTM")
+                m = ot / mt * 100 if isinstance(mt, (int, float)) and mt > 0 and isinstance(ot, (int, float)) else None
+                s = s if isinstance(s, (int, float)) else None
+                if s is None and m is None or p.get("n") is None:
+                    continue
+                cells.setdefault(sec, {}).setdefault(p["n"], []).append((code, s, m))
+        PEER.update(data=cells, sig=sig)
+        print("업종 중앙(가속도): %d 섹터" % len(cells), flush=True)
+    except Exception as e:
+        print("업종 중앙(가속도) 실패: %s: %s" % (type(e).__name__, e), flush=True)
+    finally:
+        PEER["building"] = False
+
+
+def _peer_kick():
+    with PEER_LOCK:
+        if PEER["building"] or time.time() - PEER["checked"] < (PEER_EVERY if PEER["data"] is not None else 5):
+            return
+        PEER["checked"] = time.time()
+        sig = _peer_sig()
+        if sig == PEER["sig"] and PEER["data"] is not None:
+            return
+        PEER["building"] = True
+        try:
+            threading.Thread(target=_peer_build, args=(sig,), daemon=True).start()
+        except RuntimeError:
+            PEER["building"] = False
+
+
+def _med(xs):
+    xs = sorted(xs)
+    k = len(xs)
+    return (xs[k // 2] if k % 2 else (xs[k // 2 - 1] + xs[k // 2]) / 2) if k else None
+
+
+def peer_view(code, cells=None):
+    """그 회사 섹터의 분기별 중앙값(자기 회사는 뺌) {sector, firms, med: {n: {s, ks, m, km}}}."""
+    sec = _sector(code)
+    if not sec:
+        return {"sector": None, "why": "산업 탭 섹터 밖(금융 · 지주 · 업종코드 없음 등)", "med": {}}
+    cells = PEER["data"] if cells is None else cells
+    if cells is None:
+        return {"sector": sec, "building": True, "med": {}}
+    med, firms = {}, set()
+    for n, rows in (cells.get(sec) or {}).items():
+        ss = [s for c, s, m in rows if c != code and s is not None]
+        mm = [m for c, s, m in rows if c != code and m is not None]
+        firms.update(c for c, _, _ in rows if c != code)
+        e = {}
+        if len(ss) >= PEER_MIN:
+            e.update(s=round(_med(ss), 2), ks=len(ss))
+        if len(mm) >= PEER_MIN:
+            e.update(m=round(_med(mm), 2), km=len(mm))
+        if e:
+            med[str(n)] = e
+    return {"sector": sec, "firms": len(firms), "med": med}
+
+
+def druck_aux(code):
+    """/api/druck/aux — {react: {events, mkt}, peer}. 공시 목록 색인 · 주가 · 지수 · 가속도 캐시만 읽는다(지수는 하루 한 번 네이버)."""
+    res = druck(code, wait=False) or {}
+    pts = res.get("points") or []
+    disc = NAR.disc_rows(code, STORY_DISC_DIR) if NAR else None
+    mk = "KOSDAQ" if _corp_cls_map().get(code) == "K" else "KOSPI"
+    ev = react_events(pts, disc, _px_file(code), _idx_prices(mk))
+    _peer_kick()
+    pv = peer_view(code)
+    if PEER["building"]:
+        pv["building"] = True
+    return {"react": {"events": ev, "mkt": mk, "disc": disc is not None}, "peer": pv}
+
+
 def _val_apply_risk(rows):
     """행 복사본에 공시 위험 · 증권사 상태를 붙이고, 빨강 · 주황(공시)이거나 관리종목 · 거래정지 · 정리매매 · 투자위험(증권사)이면 저평가 → 관찰.
     보는 때마다 최신 공시위험.json · kis 스냅샷으로(계산 결과는 그대로 둔다)."""
@@ -13651,6 +13893,12 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(404, {"error": "회사 없음"})
                 res = druck(code_, wait=False) or {}
                 return self._send(200, kfin_view(code_, res.get("points") or []))
+            if path == "/api/druck/aux":
+                # 가속도 '한눈에' 판 — 실적 발표일 · 주가 반응 · 업종 중앙값(증권사 자료 없음). 업종 표를 만드는 중이면 peer.building
+                code_ = q.get("code", "")
+                if not company_by_code(code_):
+                    return self._send(404, {"error": "회사 없음"})
+                return self._send(200, druck_aux(code_))
             if path == "/api/orbit":
                 res = orbit(q.get("code", ""))
                 if res is None:
