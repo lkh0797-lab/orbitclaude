@@ -33,10 +33,18 @@ GOOD = [
 ]
 
 
+def _killed(x, year=2026):
+    """_inv_collect.killed 와 같은 규칙(문장 나누기는 끝 마침표를 떼므로 여기서도 뗀다)."""
+    x = x.rstrip(".")
+    if SRV.INV_FOOT.search(x) and not SRV._inv_anchor(x, year):
+        return True
+    return bool(SRV.INV_STD.search(x) or SRV.INV_CAPTION.search(x) or SRV.INV_NONE.search(x) or SRV.INV_POLICY.search(x) or SRV.ASK_STATUTE.search(x))
+
+
 def test_kill_regexes_catch_audit_boilerplate():
-    killed = [bool(SRV.INV_STD.search(x) or SRV.INV_CAPTION.search(x) or SRV.INV_NONE.search(x) or SRV.ASK_STATUTE.search(x)) for x in BOIL]
+    killed = [_killed(x) for x in BOIL]
     assert all(killed), killed
-    assert not any(SRV.INV_STD.search(x) or SRV.INV_CAPTION.search(x) or SRV.INV_NONE.search(x) or SRV.ASK_STATUTE.search(x) for x in GOOD)
+    assert not any(_killed(x) for x in GOOD)
 
 
 def test_industry_sentences_are_flagged_not_company_facts():
@@ -145,3 +153,52 @@ def test_between_reports_picks_regular_ones_inside_the_window():
                      {"rcept": "20260814000001", "label": "반기보고서", "tag": "", "stamp": "2026-06"}]}
     mid = SRV._inv_between(c, c["reports"][1], c["reports"][6])
     assert [r["stamp"] for r in mid] == ["2025-09", "2025-12", "2026-03"]
+
+
+# ---------------------------------------------------------------- 재감사(같은 10곳 + 하이록 2022-09, v12 첫 판 GOOD 23%) 뒤 보탠 것
+def test_footnote_with_anchor_survives_and_policy_sentence_dies():
+    kb = "주3) 2026년 4월 24일 시작한 직접 취득(예정금액 600,000백만원)은 2026년 7월 16일 취득을 100% 완료하였음."
+    yp = "(주1) 잡손실 중 증권선물위원회의 감리결과 조치 통보에 따른 회사 과징금으로 205억원을 인식하였음."
+    se = "※ 상기 공급계약은 계약기간의 시작일이 2027년 1월 1일임."
+    foot = "주1) 상기 결산배당횟수는 1991년부터 2025년까지의 횟수임."
+    assert all(SRV.INV_FOOT.search(x) for x in (kb, yp, se, foot))
+    assert all(SRV._inv_anchor(x, 2026) for x in (kb, yp, se)) and SRV._inv_anchor(foot, 2026) is None
+    assert SRV.INV_POLICY.search("고객과의 계약에서 수행의무를 이행하는 시점에 수익을 인식함")
+    assert not SRV.INV_CAPTION.search(kb)                                  # 각주 머리는 더 이상 캡션 규칙이 아니다
+
+
+def test_party_token_hygiene():
+    assert not SRV._inv_party("국내 반도체 수요가 늘어 관련 회사들과 계약을 검토하고 있음")        # '반도체' · '회사들' 은 상대방이 아니다
+    assert SRV._inv_party("LG전자와 2026년 3월 공급계약을 체결하였음")
+    assert SRV._inv_party("제이피모간체이스은행 등으로부터 계약이행보증을 제공받고 있음")
+    assert not SRV._inv_party("고객과의 계약에서 수익을 인식함")
+
+
+def test_suit_direction_when_company_is_defendant_but_wins():
+    tags = ["리스크·소송"]
+    s1 = "회사는 당반기말 현재 피고로 계류 중인 손해배상 청구 소송 중 항소심 1건(소송가액 약 72,761천원)에서 2026년 7월 8일자로 항소 기각(회사 승소) 판결을 받았음."
+    assert SRV._inv_dir_role(s1, tags, -0.6) > 0
+    s2 = "원고가 당사를 상대로 제기한 손해배상 청구가 1심에서 기각되었음."
+    assert SRV._inv_dir_role(s2, tags, -0.8) > 0
+    s3 = "원고가 당사를 상대로 제기한 손해배상 청구 소송에서 당사가 패소하였음."
+    assert SRV._inv_dir_role(s3, tags, -0.8) == -0.8
+
+
+def test_index_treats_split_history_list_as_known():
+    ix = SRV._InvIndex()
+    old = ["- 2020.05 인도네시아 현지 법인 85% 지분 취득 (지분율 : KB캐피탈 85%, Sunindo Primasura 15%)", "- 2021.05 박성우 법인장 취임 및 현지 영업 개시"]
+    ix.add_skels([SRV._ask_skel(x) for x in old])
+    joined = "- 2020.05 인도네시아 현지 법인 85% 지분 취득 (지분율 : KB캐피탈 85%, Sunindo Primasura 15%) - 2021.05 박성우 법인장 취임 및 현지 영업 개시"
+    assert ix.has(SRV._ask_skel(joined))                                   # 두 문장이 나눠 덮어도 있던 말
+
+
+def test_num_channel_ignores_trailing_note_reference():
+    after = "보고기간말 현재 변동이자율이 적용되는 차입금은 879,162,536천원(전기말 : 738,267,028천원)이며, 다른 모든 변수가 동일하고 이자율이 100 basis points 변동하는 경우 이자비용이 변동함(주석 29 참조)."
+    b = {"sections": [{"section": "재무에 관한 사항", "file": "f", "numbers": [{"after": after, "diff": [{"pct": 44.4, "from": "608,807,108", "to": "879,162,536"}], "tags": []}]}]}
+    out = SRV._inv_nums(b, "r")
+    assert len(out) == 1 and out[0]["label"].startswith("차입금 +44%")
+
+
+def test_industry_macro_prose_flagged():
+    assert SRV._inv_is_industry("다만, 향후 환율 경로는 한ㆍ미ㆍ일 정책 공조와 글로벌 위험 선호 심리 회복 등에 힘입어 연말까지 하락할 수 있다는 전망임.")
+    assert SRV._inv_is_industry("AI 서버·고사양용 고부가 MLCC는 주문이 급증해 일본·한국 업체 가동률이 80%를 웃도는 반면 범용 IT용은 상대적으로 부진함.")

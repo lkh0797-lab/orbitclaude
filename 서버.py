@@ -3991,9 +3991,13 @@ INV_VERBISH = re.compile(r"(하거나|하며|하여|하고|하는|하기|되어|
 # ---- v12 (2026-10-21, docs/superpowers/specs/2026-10-21-brief-cards-v12-design.md) — 상용구를 걷어내고 붙잡을 사실만 카드에.
 # 감사(10곳 × 상위 8): 글 신호 35개 중 새롭고 구체적인 회사 사실은 6개(17%) — 상용구 10 · 묵은 문장 13 · 잘못 분류 4 · 잡음 2.
 INV_STD = re.compile(r"기준서\s*(?:제\s*)?\d{3,4}\s*호|해석서|개정\s*사항|적용\s*범위|개념\s*체계|최초\s*적용|소급\s*적용|경과\s*규정|시행\s*일\s*(?:이후|부터)")
-INV_CAPTION = re.compile(r"^\s*(?:주\s*\d+\s*\)|\(\s*주\s*\d*\s*\)|[①-⑳※▶◆■]|\[\s*주\s*\d*\s*\])|(?:다음|아래|하기|상기)[과와]\s*같|현황은\s*(?:다음|아래)|(?:은|는)\s*(?:다음|아래)\s*표")
+INV_CAPTION = re.compile(r"(?:다음|아래|하기|상기)[과와]\s*같|현황은\s*(?:다음|아래)|(?:은|는)\s*(?:다음|아래)\s*표")
+INV_FOOT = re.compile(r"^\s*(?:주\s*\d+\s*\)|\(\s*주\s*\d*\s*\)|[①-⑳※▶◆■]|\[\s*주\s*\d*\s*\]|\(\*\d*\))")      # 각주 머리 — 앵커 없으면 버린다(KB 자사주 6,000억 '주3)' 는 산다)
+INV_CHRONO = re.compile(r"^\s*[-·•▶]?\s*(20\d\d)\s*[.\-/]\s*(?:0?[1-9]|1[0-2])(?:\s*[.\-/]\s*\d{1,2})?\s")     # 연혁 목록 줄 '- 2020.05 …'
+INV_POLICY = re.compile(r"수익을?\s*인식|수행\s*의무|고객과의\s*계약에서|진행률|통제가\s*이전|계약\s*부채로|계약\s*자산(?:은|으로)|보고기간\s*말\s*현재\s*미청구")   # 수익 인식 회계 정책 문장
 INV_NONE = re.compile(r"(?:없음|없습니다|없다|해당\s*사항\s*없음|해당\s*없음|해당\s*사항이?\s*없)\.?\s*$")
 INV_INDUSTRY = re.compile(r"산업(?:은|이|의|에서|별|계)|시장\s*규모|CAGR|연평균\s*성장|전망(?:이|은|되|됩|임|이다)|글로벌\s*[^\s]{0,12}\s*시장|"
+                          r"환율\s*(?:경로|전망|변동|상승|하락)|정부\s*예산|정책\s*공조|위험\s*선호|업체\s*가동률|업체(?:들|의|가|는)\s|상용화의\s*(?:최대\s*)?관건|기술적\s*(?:난제|과제)|업계\s*전반|"
                           r"시장(?:은|이)\s*[^.]{0,24}(?:성장|확대|증가|커지)|수요(?:가|는)\s*[^.]{0,16}(?:증가|확대|늘)|성장할\s*것|전\s*세계|"
                           r"(?:국내|세계|글로벌|해외|북미|유럽|중국)\s*[^\s.]{0,8}\s*(?:시장|산업|매출액|수요|출하량|생산량|판매량)(?:은|는|이|가)\s|"
                           r"해상\s*운임|운임\s*강세|운임(?:이|은)\s|유가(?:가|는|의)|환율(?:이|은|의)\s|금리(?:가|는|의)\s|분쟁|전쟁|종전|제재\s*완화|캐즘|업계(?:는|의|에서)|업체들")
@@ -4001,9 +4005,9 @@ INV_SELF = re.compile(r"당사|회사는|회사의|회사가|연결실체|당\s*
 INV_AUTH = re.compile(r"증선위|증권선물위원회|금감원|금융감독원|금융위|공정위|공정거래위원회|법원|검찰|국세청|관세청|세무서|환경부|고용노동부|"
                       r"과징금|과태료|제재|시정명령|고발|기소|판결|영업정지|감리")
 INV_PARTY = re.compile(r"주식회사|㈜|\(주\)|Inc\.?|Ltd\.?|Co\.,?\s*Ltd|Corp\.?|GmbH|\bAG\b|LLC|S\.A\.?|Pte|PLC|Limited|Company|"
-                       r"[가-힣A-Za-z]{2,12}\s*(?:공사|은행|대학교?|병원|그룹|홀딩스|전자|화학|건설|중공업|제약|바이오|에너지|반도체|디스플레이|자동차|모터스|조선|해양|항공|통신|카드|증권|보험|생명|물산|상사|테크|텍|소재|시스템즈?|산업|정유|제철|철강|전력|가스)(?![가-힣])")
+                       r"(?<![\s가-힣])[가-힣A-Za-z]{2,12}(?:공사|은행|대학교?|병원|그룹|홀딩스|전자|화학|건설|중공업|제약|바이오|모터스|조선|해양|항공|통신|카드|증권|보험|생명|물산|상사|테크|텍|소재|시스템즈?|정유|제철|철강|전력|가스)(?=[㈜(\s,.와과에의로를을은는]|$)")
 INV_PARTY2 = re.compile(r"([가-힣A-Za-z0-9&]{2,16})(?:와|과|에게|으로부터|로부터)[^\n]{0,40}?(?:계약|합작|제휴|공급|납품|거래|협약|양수도|양수|양도|MOU|인수|매각|투자|출자)")
-INV_PARTY_STOP = re.compile(r"(?:고객|거래처|소비자|수요처|수요|당사|회사|주주|임직원|직원|시장|업체|기업|협력사|협력업체|파트너|상대방|투자자|기관|정부|국가|수요고객|주요고객|고객사)$")
+INV_PARTY_STOP = re.compile(r"(?:고객|거래처|소비자|수요처|수요|당사|회사|주주|임직원|직원|시장|업체|기업|협력사|협력업체|파트너|상대방|투자자|기관|정부|국가|수요고객|주요고객|고객사|관련\s*회사|자회사|종속회사|계열회사|계열사|금융기관|은행들|채권자|거래상대방|이해관계자)(?:들)?$")
 
 
 def _inv_party(sent):
@@ -4085,10 +4089,14 @@ def _inv_dir_role(sent, tags, d):
     """주체를 보고 방향을 고친다 — 소송: 당사가 제기 · 승소 · 기각은 음이 아니다(항소 기각(회사 승소)이 리스크 −0.6 이던 것)."""
     if "리스크·소송" in (tags or ()):
         against = bool(INV_SUIT_AGAINST.search(sent or ""))
+        if re.search(r"(?:회사|당사)\s*승소", sent or ""):
+            return abs(d) * 0.5                       # '항소 기각(회사 승소)' — 피고여도 이긴 결말
         if INV_SUIT_SELF.search(sent or "") and not against:
             return max(d, 0.0) if INV_WIN.search(sent or "") else 0.0
         if INV_WIN.search(sent or "") and not against:
             return abs(d) * 0.5
+        if against and re.search(r"기각|각하|취하", sent or "") and not re.search(r"(?:당사|회사)(?:가|는|의)\s*[^.]{0,20}(?:항소|상고|청구)", sent or ""):
+            return abs(d) * 0.3                       # 피고인데 원고 청구가 기각 · 각하 · 취하됐다
     return d
 
 
@@ -4162,12 +4170,14 @@ class _InvIndex:
             lst = self.inv.get(t)
             if lst and len(lst) <= 400:
                 hit.update(lst)
+        cover = set()
         for i, _ in hit.most_common(6):
             o = self.grams[i]
             k = len(g & o)
             if k / (len(g) + len(o) - k) >= 0.5 or k / len(g) >= 0.75:
                 return True
-        return False
+            cover |= (g & o)
+        return len(cover) / len(g) >= 0.75 if g else False      # 여러 문장이 나눠 덮는 경우(연혁 목록 · 다르게 쪼개진 문단)
 
 
 def _inv_skels(c, r, norms):
@@ -4567,7 +4577,7 @@ def _inv_nums(b, rcept=None):
     for s_ in b.get("sections", [])[:8]:
         for nn in s_.get("numbers", []):
             after = nn.get("after", "")
-            if BOILER.search(after) or INV_STD.search(after) or INV_CAPTION.search(after) or INV_NONE.search(after):
+            if INV_STD.search(after) or INV_NONE.search(after) or INV_POLICY.search(after):
                 continue
             k = SKEL_RE.sub("", after)[:30]     # 같은 문장이 재무·재무제표 섹션에 두 번 실린다
             if k in seen:
@@ -4580,6 +4590,8 @@ def _inv_nums(b, rcept=None):
                 nx = after[pos_n + len(to_):pos_n + len(to_) + 1] if pos_n >= 0 else ""
                 if pos_n >= 0 and nx and nx in "기건회차호명개년월일":      # 횟수 · 건수 · 기수 — 금액 · 수량이 아니다
                     continue
+                if pos_n >= 0 and (BOILER.search(after[:pos_n + len(to_)]) or INV_CAPTION.search(after[:pos_n + len(to_)])):
+                    continue                                         # 숫자 앞쪽이 상용구(주석 · 회계정책 · 표 머리말)면 안 센다 — 뒤에 붙는 '…은 다음과 같습니다' 는 괜찮다
                 win = after[max(0, pos_n - 12):pos_n] if pos_n >= 0 else ""
                 hit = next((w for w in INV_NUM if w[0] in win), None)
                 if hit:
@@ -4872,8 +4884,13 @@ def _inv_collect(c, base, rep, b, ryear, known=None, regular=None, stats=None):
         return len(sk) >= 20 and any(sk[:22] in t or sk[-22:] in t for t in texts)
 
     def killed(sent):
-        return bool(INV_GOV.search(sent) or INV_BOIL.search(sent) or INV_CAVEAT.search(sent) or INV_STD.search(sent) or INV_CAPTION.search(sent)
-                    or INV_NONE.search(sent) or ASK_STATUTE.search(sent) or ASK_BOILER.search(sent) or ASK_ACCT.search(sent)
+        if (INV_FOOT.search(sent) or INV_CAPTION.search(sent)) and not _inv_anchor(sent, ryear):
+            return True                      # 각주 머리 · 표 머리말 — 붙잡을 것이 없을 때만(KB 자사주 '주3) … 6,000억 … 완료' 는 산다)
+        mc = INV_CHRONO.match(sent)
+        if mc and int(mc.group(1)) < ryear - 1:
+            return True                      # 연혁 목록 줄 — 그 해가 오래됐으면 배경 설명이다
+        return bool(INV_GOV.search(sent) or INV_BOIL.search(sent) or INV_CAVEAT.search(sent) or INV_STD.search(sent)
+                    or INV_NONE.search(sent) or INV_POLICY.search(sent) or ASK_STATUTE.search(sent) or ASK_BOILER.search(sent) or ASK_ACCT.search(sent)
                     or (INV_HOLDER.search(sent) and INV_MAY.search(sent)))
 
     def mk(src, sent, section, v, text, file, rcept, tags):
@@ -4892,6 +4909,8 @@ def _inv_collect(c, base, rep, b, ryear, known=None, regular=None, stats=None):
         base_text, base_file = sec_text(base, sx["section"])
         bi = _InvIndex()
         bi.add_skels(k for k in (_ask_skel(t) for t, _, _ in _inv_sents(base_text)) if len(k) >= 20)
+        ri = _InvIndex()                     # 지금 보고서 — 사라진 문장이 바뀐 말로 남아 있는지(더한옥호텔앤리조트 → 더한옥헤리티지)
+        ri.add_skels(k for k in (_ask_skel(t) for t, _, _ in _inv_sents(rep_text)) if len(k) >= 20)
         k = 0
         for v, sent, j in nc["cands"]:
             if k >= 3:
@@ -4948,6 +4967,8 @@ def _inv_collect(c, base, rep, b, ryear, known=None, regular=None, stats=None):
                 continue      # 그 종류 보고서에 늘 쓰던 말이 아니면 서식 차이(사업보고서에만 있는 절)
             if common is not None and _inv_skel_key(sent) in common:
                 continue
+            if ri.has(_ask_skel(sent)):
+                continue      # 바뀐 말로 아직 있다 — 사라진 게 아니다
             seen.add(key)
             kept.append(_tokset(sent))
             took += 1
@@ -4985,7 +5006,7 @@ def invest_view(c, rep, lite=False):
         rv_ = next((r_.get("pct") for r_ in (fin.get("rows") or []) if r_.get("key") == "매출액"), None)
         # 당사 · 연결실체 · 자기 이름이 주어인 문장만 — 계열사끼리의 합병 문장(HD현대건설기계 ↔ 인프라코어)을 이 회사 범위 변화로 읽지 않게
         sc_all = [x for x in sigs if x.get("src") == "new" and INV_SCOPE.search(x.get("raw") or x.get("text") or "")
-                  and (INV_SELF.search(x.get("raw") or "") or (c.get("name") and c["name"] in (x.get("raw") or "")))]
+                  and (re.search(r"당사|연결실체|당\s*회사|지배기업|지배회사|연결회사", x.get("raw") or "") or (c.get("name") and c["name"] in (x.get("raw") or "")))]
         sc_ = sc_all[0] if sc_all else None
         if sc_ is not None and rv_ is not None and abs(rv_) > 40:
             sigs.append({"src": "scope", "label": "범위 변화 · " + (INV_SCOPE.search(sc_.get("raw") or sc_.get("text") or "").group(0)), "text": sc_["text"], "raw": sc_.get("raw"),
