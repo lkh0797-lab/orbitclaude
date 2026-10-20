@@ -756,3 +756,12 @@ def test_peer_view_median_excludes_self_and_needs_five(monkeypatch):
     assert "8101" not in v["med"]                                         # 다른 회사 4곳뿐
     monkeypatch.setattr(SRV, "_sector", lambda code: None)
     assert SRV.peer_view("005930", cells)["sector"] is None
+
+
+def test_idx_quarter_close_last_trading_day_of_each_quarter_through_today():
+    import datetime as _dt
+    idx = {"20250328": 100.0, "20250331": 101.0, "20250630": 110.0, "20250701": 111.0, "20251015": 120.0}
+    pts = [{"n": 2025 * 4}, {"n": 2025 * 4 + 1}]
+    mq = SRV.idx_quarter_close(idx, pts, today=_dt.date(2025, 10, 20))
+    assert mq == {str(2025 * 4): 101.0, str(2025 * 4 + 1): 110.0, str(2025 * 4 + 2): 111.0, str(2025 * 4 + 3): 120.0}
+    assert SRV.idx_quarter_close({}, pts) == {} and SRV.idx_quarter_close(idx, []) == {}

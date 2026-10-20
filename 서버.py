@@ -10140,12 +10140,28 @@ def druck_aux(code):
     pts = res.get("points") or []
     disc = NAR.disc_rows(code, STORY_DISC_DIR) if NAR else None
     mk = "KOSDAQ" if _corp_cls_map().get(code) == "K" else "KOSPI"
-    ev = react_events(pts, disc, _px_file(code), _idx_prices(mk))
+    idx = _idx_prices(mk)
+    ev = react_events(pts, disc, _px_file(code), idx)
     _peer_kick()
     pv = peer_view(code)
     if PEER["building"]:
         pv["building"] = True
-    return {"react": {"events": ev, "mkt": mk, "disc": disc is not None}, "peer": pv}
+    return {"react": {"events": ev, "mkt": mk, "disc": disc is not None, "mq": idx_quarter_close(idx, pts)}, "peer": pv}
+
+
+def idx_quarter_close(idx, pts, today=None):
+    """{n: 그 분기 마지막 거래일 지수 종가} — 첫 분기부터 오늘이 든 분기까지(진행 중 분기는 가장 최근 종가). 화면의 두 시점 비교가 '같은 기간 시장'으로 쓴다."""
+    ks = sorted(idx or {})
+    ns = [p.get("n") for p in pts or [] if p.get("n") is not None]
+    if not ks or not ns:
+        return {}
+    t = today or dt.date.today()
+    out = {}
+    for n in range(min(ns), t.year * 4 + (t.month - 1) // 3 + 1):
+        i = bisect.bisect_right(ks, _qend(n).strftime("%Y%m%d")) - 1
+        if i >= 0 and ks[i] >= _qend(n - 1).strftime("%Y%m%d"):
+            out[str(n)] = idx[ks[i]]
+    return out
 
 
 def _val_apply_risk(rows):
