@@ -2183,6 +2183,30 @@ details.infclockwrap{margin-top:12px}details.infclockwrap>summary{cursor:pointer
 .tpEvd h5{margin:12px 0 4px;font-size:12.5px;color:var(--ink)}
 .tpEvd p,.tpEvd li{font-size:12px;line-height:1.55;color:var(--dim)}
 .tpEvd table{margin:4px 0 6px}
+.tpRule .tpRuleEq{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 4px;font-size:13px;color:var(--ink)}
+.tpRuleEq span{padding:4px 11px;border-radius:999px;background:var(--bg);border:1px solid var(--line2)}
+.tpRuleEq em{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;margin-right:2px;border-radius:50%;background:var(--accent);color:var(--panel);font:700 10.5px var(--mono);font-style:normal;vertical-align:1px}
+.tpRuleEq i{font-style:normal;font-weight:700;color:var(--faint)}
+.tpRuleEq .res{background:var(--accent-soft);border-color:var(--accent);font-weight:700}
+.tpRuleEx{font-size:11.5px;color:var(--dim);margin:2px 0 8px}
+.tpRuleGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media(max-width:1100px){.tpRuleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.tpRuleGrid{grid-template-columns:1fr}}
+.tpRuleCard{display:flex;flex-direction:column;gap:6px;padding:11px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line2)}
+.tpRuleCard .hd{display:flex;align-items:center;gap:6px}
+.tpRuleCard .hd em{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--panel);font:700 11px var(--mono);font-style:normal}
+.tpRuleCard .hd span{font-size:11.5px;font-weight:600;color:var(--accent)}
+.tpRuleCard .hd small{margin-left:auto;font:600 11px var(--mono);color:var(--dim)}
+.tpRuleCard .q{font-size:14.5px;line-height:1.35;color:var(--ink)}
+.tpRuleCard .rule{font-size:12.5px;line-height:1.65;color:var(--ink)}
+.tpRuleCard .rule strong{font-weight:700;color:var(--accent);white-space:nowrap}
+.tpRuleCard .ex{margin-top:auto;padding-top:6px;border-top:1px dashed var(--line2);font-size:11.5px;color:var(--dim)}
+.tpRuleCard .fine summary{font-size:11px;color:var(--faint);cursor:pointer}
+.tpRuleCard .fine ul{margin:4px 0 0;padding-left:16px}.tpRuleCard .fine li{font-size:11.5px;line-height:1.5;color:var(--dim)}
+.tpRuleNotes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 18px;margin:12px 0 2px}
+@media(max-width:760px){.tpRuleNotes{grid-template-columns:1fr}}
+.tpRuleNotes div{display:flex;gap:10px;font-size:12px;line-height:1.5;color:var(--dim)}
+.tpRuleNotes b{flex:0 0 56px;font-weight:600;color:var(--ink)}
 .tpFlow{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:8px 12px;margin:0 0 12px}
 .tpFlow .h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:0 0 4px}.tpFlow .h b{font-size:13.5px}.tpFlow .h span{font-size:11.5px;color:var(--dim)}
 .tpFlow .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0}.tpFlow .row>em{font:600 11px var(--mono);font-style:normal;color:var(--accent);min-width:34px}
@@ -5394,6 +5418,63 @@ function tpEvidence(B){
   const ul=el('ul'); (B.limits||[]).forEach(x=>ul.appendChild(el('li',null,x))); det.appendChild(ul);
   return det;
 }
+// 탑픽 조건 상자(2026-10-20 다시 짬) — 식 한 줄 → 관문 카드 넷(질문 · 문턱 · 지금 통과 수 · 1위 회사로 든 예 · 자세히) → 알아둘 것
+function tpRuleBox(L, th){
+  th=th||{}; const T_=k=>th[k]==null?'?':th[k], C=(L&&L.counts)||{}, ex=L&&(L.rows||[])[0], m=(ex&&ex.m)||{}, j=(ex&&ex.j)||{};
+  const det=el('details','dipCond tpRule'); det.open=!lsGet('tpCondClosed',false); det.addEventListener('toggle',()=>lsSet('tpCondClosed',!det.open));
+  det.appendChild(el('summary',null,'조건 — 네 관문을 모두 넘으면 후보'));
+  const eq=el('div','tpRuleEq');
+  [['1','실적'],['2','괴리'],['3','자기 역사로 쌈'],['4','살 수 있음']].forEach(([n,t],i)=>{ if(i) eq.appendChild(el('i',null,'+'));
+    const x=el('span'); x.appendChild(el('em',null,n)); x.appendChild(document.createTextNode(' '+t)); eq.appendChild(x); });
+  eq.appendChild(el('i',null,'='));
+  eq.appendChild(el('span','res','후보'+(C.cand!=null?' '+C.cand+'곳':'')));
+  det.appendChild(eq);
+  if(ex) det.appendChild(el('p','tpRuleEx','카드 아래 "예)"는 지금 1위 '+ex.name+'의 숫자다.'));
+  const grid=el('div','tpRuleGrid');
+  // rule = 줄들, 줄 = 글 조각들 — 문자열은 그대로, [글] 은 굵게(문턱 숫자)
+  const card=(n,tag,q,rule,cnt,exTxt,fine)=>{ const c=el('div','tpRuleCard');
+    const h=el('div','hd'); h.appendChild(el('em',null,n)); h.appendChild(el('span',null,tag)); if(cnt) h.appendChild(el('small',null,cnt)); c.appendChild(h);
+    c.appendChild(el('b','q',q));
+    const ru=el('div','rule'); rule.forEach(line=>{ const ln=el('div'); line.forEach(seg=>ln.appendChild(typeof seg==='string'?document.createTextNode(seg):el('strong',null,seg[0]))); ru.appendChild(ln); }); c.appendChild(ru);
+    if(exTxt) c.appendChild(el('div','ex','예) '+exTxt));
+    if(fine&&fine.length){ const d=el('details','fine'); d.appendChild(el('summary',null,'자세히')); const ul=el('ul'); fine.forEach(x=>ul.appendChild(el('li',null,x))); d.appendChild(ul); c.appendChild(d); }
+    grid.appendChild(c); };
+  card('1','실적','이익이 좋아졌나?',
+    [['영업이익 1년 전보다 ',['+'+T_('op_yoy')+'%↑'],' 그리고 매출 ',['+'+T_('rev_yoy')+'%↑']],['또는 영업이익 ',['적자 → 흑자']],['또는 4분기 합 영업이익 ',['사상 최대']]],
+    (C.A!=null?'A '+C.A+' · B '+C.B+'곳':''),
+    ex?((m.turn?'영업이익 흑자 전환':'영업이익 '+tpP(m.op_yoy)+' · 매출 '+tpP(m.rev_yoy))+(j.B?' · 4분기 합 사상 최대':'')):'',
+    ['1년 전 숫자는 그 분기 보고서에 적힌 비교값(공시 당시 값)으로 잰다.','전년 영업이익이 매출의 1% 미만이면 전년 대비를 보지 않는다 — 작은 기저에서 수천 %가 찍힌다.',
+     '흑자 전환인데 영업이익이 매출의 1% 미만이면 치지 않는다.','사상 최대는 과거 4분기 합이 '+T_('hist_min')+'개 이상일 때만 센다.','순위에 쓰는 증가율은 +'+T_('cap')+'% 에서 자른다.']);
+  card('2','괴리','주가가 이익을 덜 따라왔나?',
+    [['4분기 합 영업이익 증가율'],['− 시가총액 증가율'],['= ',['+'+T_('c1')+'%p 이상']]],
+    (C.C1!=null?C.C1+'곳':''),
+    ex?('이익 '+tpP(m.ttm_g)+' − 시총 '+tpP(m.mcap_g)+' = '+tpPp(m.gap)):'',
+    ['둘 다 1년 전과 견준다 — 이익은 4분기 전 합, 시가총액은 1년 전 같은 날.','4분기 전 합이 0 이하였다가 양수가 되면 증가율을 +'+T_('cap')+'% 로 본다.',
+     '시가총액 = 보정 종가 × 그때 알던 주식 수(순이익 ÷ EPS 역산, 가까운 4개 중앙값).']);
+  card('3','자기 역사로 쌈','자기 과거보다 싼가?',
+    [['지금 POR = 시가총액 ÷ 4분기 합 영업이익'],['과거 '+T_('por_win')+'분기 가운데 ',['하위 '+T_('c2')+'%']]],
+    (C.C2!=null?C.C2+'곳':''),
+    ex?('POR '+tpN(m.por,1)+' — 과거 '+(j.pct_n||0)+'개 가운데 '+(j.pct==null?'—':Math.round(j.pct)+'%')+' 자리'):'',
+    ['남과 견주지 않고 자기 역사와 견준다.','과거 POR = 각 분기 보고서 접수일의 시가총액 ÷ 그 4분기 합 — 이익이 양수인 분기만, '+T_('hist_min')+'개 이상.',
+     '자리 = 과거 값 가운데 지금보다 싼 것의 비율. 0% 면 과거 어느 때보다 싸다.']);
+  card('4','살 수 있음','사고팔 수 있고, 잴 수 있나?',
+    [['20거래일 평균 거래대금 ',[(th.tv?Math.round(th.tv/1e8):'?')+'억 원 이상']],['그리고 ',['적격'],' (자세히)']],
+    (C.L!=null?'유동성 '+C.L+' · 적격 '+C.elig+'곳':''),
+    ex?('20일 평균 '+(m.tv?Math.round(m.tv/1e8).toLocaleString('ko-KR')+'억':'—')):'',
+    ['거래대금 = 보정 종가 × 거래량 × 분할 배수. 거래가 없던 날은 0 — 거래 정지 종목은 떨어진다.',
+     '적격 = 최근 분기 자료가 온전함 · 최근 보고서가 150일 안 · 금융 · 순수 지주 아님 · 지금과 1년 전 시가총액을 앎 · 과거 이력 12분기 이상.','기준선 저PER 도 같은 적격 집합 안에서 센다.']);
+  det.appendChild(grid);
+  const notes=el('div','tpRuleNotes');
+  [['시점','어떤 날의 판정이든 전날까지 접수된 보고서와 전날 종가만 쓴다 — 분기 말이 아니라 접수일 기준.'],
+   ['정정','정정 보고서가 있으면 그 접수일에야 그 숫자를 안 것으로 본다. 4분기 합은 네 분기를 다 안 날부터.'],
+   ['4분기','4분기 숫자는 사업보고서(이듬해 3월)에서 연간 − 3분기 누적으로 뗀다 — 3월 말에야 알 수 있다.'],
+   ['잠정실적','잠정실적 · 손익구조변동 공시는 신호에 쓰지 않는다 — 표의 "먼저 알려진 날"로만 보인다.'],
+   ['순위','후보끼리 영업이익 증가율(상한 +'+T_('cap')+'%) · 괴리 · 자기 역사 자리(낮을수록)의 백분위 평균.'],
+   ['문턱','고정 — 성과를 보고 바꾸지 않는다. 대신 아래 검증 상자에 ±50% 민감도 표.']]
+  .forEach(([k,t])=>{ const d=el('div'); d.appendChild(el('b',null,k)); d.appendChild(el('span',null,t)); notes.appendChild(d); });
+  det.appendChild(notes);
+  return det;
+}
 async function viewTop(p, run){
   p.innerHTML='';
   const box=el('div','valBox'); p.appendChild(box);
@@ -5423,23 +5504,7 @@ async function viewTop(p, run){
   else l2.appendChild(document.createTextNode('과거 검증 전 — "검증 전체 다시"를 누른다(5분 안팎).'));
   body.appendChild(l2);
   // 조건 상자
-  const cond=el('details','dipCond'); cond.open=!lsGet('tpCondClosed',false); cond.addEventListener('toggle',()=>lsSet('tpCondClosed',!cond.open));
-  cond.appendChild(el('summary',null,'조건 — 네 관문 + 적격 (문턱은 고정: 성과를 보고 바꾸지 않는다, 대신 ±50% 민감도 표)'));
-  const g=el('div','dipGates');
-  const T_=k=>th[k]==null?'?':th[k];
-  [['실적','A 실적 개선 또는 B 실적 신고점',['A1: 최근 분기 영업이익이 1년 전 같은 분기보다 '+T_('op_yoy')+'% 넘게 늘고, 매출도 '+T_('rev_yoy')+'% 넘게 늘었다 — 그 보고서에 적힌 전년 비교값으로. A2: 영업이익이 적자에서 흑자로 돌았다.',
-      'B: 최근 4분기 합 영업이익이 자료 안 과거 모든 4분기 합보다 크다(과거 값 '+T_('hist_min')+'개 이상).','(전년 영업이익이 매출의 1% 미만이면 전년 대비를 보지 않고, 흑자 전환인데 이익이 매출의 1% 미만이면 치지 않는다. 순위에 쓰는 증가율은 +'+T_('cap')+'% 에서 자른다)'],'이익이 좋아졌다는 사실. 둘 중 하나면 된다.'],
-   ['C1','괴리 — 이익은 늘었는데 시가총액은 덜 늘었다',['최근 4분기 합 영업이익 증가율(4분기 전 합 대비) − 시가총액 증가율(1년 전 같은 날 대비) ≥ +'+T_('c1')+'%p',
-      '4분기 전 합이 0 이하였다가 양수가 됐으면 증가율을 +'+T_('cap')+'% 로 본다','(시가총액 = 보정 종가 × 그때 알던 주식 수 — 순이익 ÷ EPS 역산, 믿을 만한 가까운 4개의 중앙값)'],'주가가 이익을 아직 못 따라왔다.'],
-   ['C2','자기 배수 — 자기 역사에서 싼 쪽',['지금 POR(시가총액 ÷ 4분기 합 영업이익)이 자기 과거 최근 '+T_('por_win')+'분기 POR(각 분기 접수일 시가총액 ÷ 그 4분기 합, 양수만, '+T_('hist_min')+'개 이상) 가운데 하위 '+T_('c2')+'% 안',
-      '(= 지금보다 싼 과거 값의 비율 ≤ '+T_('c2')+'%)'],'남과 견주지 않고 자기 역사와 견준다.'],
-   ['유동성 · 적격','20거래일 평균 거래대금 ≥ '+(th.tv?Math.round(th.tv/1e8):'?')+'억 원',['보정 종가 × 거래량 × 분할 배수 — 시장 달력에 봉이 없는 날은 0(정지 종목은 떨어진다)',
-      '적격 = 신호 분기가 온전하고 · 최근 보고서가 150일 안이고 · 금융 · 순수 지주가 아니고 · 지금과 1년 전 시가총액을 알고 · 과거 이력 12분기↑','(기준선 저PER 도 같은 적격 집합 안에서 센다)'],'살 수 있고, 잴 수 있는 종목만.']]
-  .forEach(([k,t,items,why])=>{ const c=el('div','dipGate'); c.appendChild(el('em',null,k)); c.appendChild(el('b',null,t)); const ul=el('ul'); items.forEach(x=>ul.appendChild(el('li',x.startsWith('(')?'soft':null,x))); c.appendChild(ul); c.appendChild(el('p',null,why)); g.appendChild(c); });
-  cond.appendChild(g);
-  cond.appendChild(el('p',null,'값을 아는 날 = 그 분기 보고서(정정이 있으면 정정 보고서) 접수일 — 4분기 합은 창 네 분기를 다 아는 날. 후보 = 적격 그리고 (A 또는 B) 그리고 C1 그리고 C2 그리고 유동성. 순위 = 영업이익 전년 대비(상한) · C1 괴리 · C2 자리(낮을수록)의 후보 안 백분위 평균. '+
-    '시점: 어떤 날의 신호든 전날까지 접수된 보고서와 전날 종가만 — 분기 말이 아니라 접수일이다. 4분기 숫자는 사업보고서(이듬해 3월)에서 연간 − 3분기 누적으로 떼므로 3월 말에야 알게 된다. 잠정실적 · 손익구조변동 공시는 신호에 쓰지 않고 "먼저 알려진 날"로만 보인다.'));
-  body.appendChild(cond);
+  body.appendChild(tpRuleBox(L, th));
   if(!L) return;
   const fn=el('div','dipFunnel'); const C=L.counts||{};
   [['숫자 있는 회사',C.metrics],['적격',C.elig],['A 실적 개선',C.A],['B 실적 신고점',C.B],['C1 괴리',C.C1],['C2 자기 자리',C.C2],['유동성',C.L],['네 관문 모두',C.cand]].forEach(([k,v],i)=>{ if(i) fn.appendChild(el('i',null,'·')); const x=el('div'); x.appendChild(el('b',null,v==null?'—':String(v))); x.appendChild(el('span',null,k)); fn.appendChild(x); });
