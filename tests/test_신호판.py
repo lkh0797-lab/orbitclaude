@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""꿰미.py — 구슬 함수 · 문턱이 그 탭과 같음 · K 와 순위 · 해석 줄 (2026-10-20)."""
+"""신호판.py — 신호 함수 · 문턱이 그 탭과 같음 · K 와 순위 · 해석 줄 (2026-10-20)."""
 import os
 import re
 import sys
@@ -16,7 +16,7 @@ def _load(name):
     return m
 
 
-KM = _load("꿰미")
+KM = _load("신호판")
 TOP = _load("탑픽")
 
 
@@ -89,7 +89,7 @@ def test_string_counts_base_and_ref_and_gates():
                        risk={"level": "작전주 꼴", "flags": ["희석 — CB 발행 (12개월, 마지막 2026-08-12)"], "kis": ["관리종목"]}))
     assert [x["key"] for x in g["gates"]] == ["risk", "slow", "magenta"] and g["gated"] and g["k"] == 0
     assert "공시 위험 작전주 꼴" in g["gates"][0]["why"] and "희석: CB 발행" in g["gates"][0]["why"] and "증권사 상태 관리종목" in g["gates"][0]["why"]
-    assert g["rank_key"][0] is True            # 가림은 맨 뒤
+    assert g["rank_key"][0] is True            # 빨간불은 맨 뒤
 
 
 def test_rank_key_orders_k_then_ref_then_cap():
@@ -107,7 +107,7 @@ def test_explain_lines_carry_numbers_and_tab_names():
                earn={"A": False, "B": False, "op_yoy": 4.0, "rev_yoy": 2.0, "label": "2026Q2"}, text={"x": 2.3, "tier": "격변", "label": "반기보고서", "stamp": "2026-06", "gist": "신규 수주 공시함"},
                exp=None, chart={"has_journal": True, "rows": []}, rep={"warm": True, "up": 27.0, "n": 3}, risk={}, mine={"watch": True, "n_judge": 2})
     e = dict(KM.explain(row))
-    assert e["꿰미"].startswith("근거 구슬 5개 켜짐(관측 가능 5/5) · 참고 2개 · 가림 없음")
+    assert e["요약"].startswith("근거 신호 5개 켜짐(관측 가능 5/5) · 참고 2개 · 빨간불 없음")
     assert e["● 수주"].startswith("수주 부분 72점(상⅓ = 67↑) — 북투빌 1.9배 · 잔고/연매출 1년 +0.6년 · 단계 점화 [호재기업]")
     assert e["● 값"] == "PER 9.6배 — 자기 과거 PER 가운데 23% 자리(30 이하 = 싸다) [풍경]"
     assert e["● 엇갈림"] == "이익률 1년 +1.8%p · 주가 1년 −22% (2026Q2) — 파랑(이익률↑ · 주가↓) [가속도]".replace("−", "-")
@@ -123,8 +123,8 @@ def test_explain_gated_row_lists_gates():
     row = _inp(syn={"reliable": True, "p_su": 10, "stage": "둔화"}, gap={"dm": -2.0, "dp": 30.0}, risk={"level": "작전주 꼴"})
     e = KM.explain(row)
     keys = [k for k, _ in e]
-    assert keys[0] == "꿰미" and "가림 위험" in keys and "가림 둔화" in keys and "가림 자홍" in keys
-    assert dict(e)["가림 자홍"] == "이익률 1년 -2.0%p 인데 주가 1년 +30%"
+    assert keys[0] == "요약" and "빨간불 위험" in keys and "빨간불 둔화" in keys and "빨간불 자홍" in keys
+    assert dict(e)["빨간불 자홍"] == "이익률 1년 -2.0%p 인데 주가 1년 +30%"
 
 
 def test_counts():

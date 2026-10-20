@@ -161,7 +161,7 @@ def test_forward_writes_daily_file_with_spec_fields(monkeypatch, tmp_path):
     assert d["spec"] == SRV.SYN_SPEC and "loss4" in d["spec"] and d["at"] > 0 and d["n"] == 2
     a, b = d["rows"]
     assert set(a) == {"code", "name", "reliable", "stage", "score", "btb", "backlog_yoy", "lead", "per", "per_pct", "per_date", "cheap", "loss4", "n_flags",
-                      "p_su", "cover_chg"}          # p_su · cover_chg — 꿰미 탭의 수주 구슬 재료(2026-10-20, 출력 꼴만)
+                      "p_su", "cover_chg"}          # p_su · cover_chg — 신호판 탭의 수주 신호 재료(2026-10-20, 출력 꼴만)
     assert a["cheap"] is True and a["n_flags"] == 1 and a["per_pct"] == 30.0 and a["p_su"] is None and a["cover_chg"] is None
     assert a["per_date"] == "20261013" and b["per_date"] is None                 # per · per_pct 의 주가 날짜(풍경 계산일) — 채점 기준(2026-10-15)
     assert b["cheap"] is False and b["loss4"] is True and b["score"] is None

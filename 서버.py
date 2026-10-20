@@ -2830,7 +2830,7 @@ def _syn_forward(rows, day=None):
             "per": r.get("per"), "per_pct": r.get("per_pct"), "per_date": r.get("per_date"),
             "cheap": bool(r.get("cheap")), "loss4": bool(r.get("loss4")),
             "n_flags": len(r.get("flags") or []),
-            # 꿰미 탭(2026-10-20)이 메모리 결과가 없을 때 읽는 수주 재료 — 수주 부분 점수 · 잔고/연매출 1년 변화(출력 꼴만, 점수 식은 그대로)
+            # 신호판 탭(2026-10-20)이 메모리 결과가 없을 때 읽는 수주 재료 — 수주 부분 점수 · 잔고/연매출 1년 변화(출력 꼴만, 점수 식은 그대로)
             "p_su": (r.get("parts") or {}).get("수주"), "cover_chg": r.get("cover_chg")} for r in rows]
     path = os.path.join(CACHE_DIR, "시너지", "forward", "%s.json" % day)
     _atomic_json(path, {"at": time.time(), "date": day, "spec": SYN_SPEC, "n": len(out), "rows": out})
@@ -10321,7 +10321,7 @@ def _val_auto_loop():
                 _disc_refresh()                   # 공시 목록 → 공시 위험 먼저(저평가 등급이 읽는다)
                 _watch_kick("공시목록 갱신 뒤")    # 관심 장부 — 새 보고서 · 공시 위험
                 value_view(True)
-                beads_kick()                      # 꿰미 — 저평가 · 공시 위험 · 주가가 새로 됐으니 구슬 줄을 다시(캐시만, 2026-10-20)
+                beads_kick()                      # 신호판 — 저평가 · 공시 위험 · 주가가 새로 됐으니 신호 줄을 다시(캐시만, 2026-10-20)
         except Exception as e:
             print("저평가 자동 갱신: %s" % e, flush=True)
         first = False
@@ -13660,12 +13660,12 @@ def qualdip_view():
             "run": dict(QUALDIP), "files": {"latest": mt("latest.json"), "bt": mt("bt.json")}}
 
 
-# ---------------------------------------------------------------- 꿰미 — 흩어진 탭의 구슬을 회사마다 한 줄로 (2026-10-20, docs/superpowers/specs/2026-10-20-beads-design.md)
-# 구슬 함수 · 문턱 · 해석은 꿰미.py(순수) 한 곳 — 백테스트(도구/꿰미_백테스트.py)와 같은 함수. 서버는 캐시에서 재료를 모아 넘기고 결과를 저장만 한다.
+# ---------------------------------------------------------------- 신호판 — 흩어진 탭의 신호를 회사마다 한 줄로 (2026-10-20, docs/superpowers/specs/2026-10-20-beads-design.md)
+# 신호 함수 · 문턱 · 해석은 신호판.py(순수) 한 곳 — 백테스트(도구/신호판_백테스트.py)와 같은 함수. 서버는 캐시에서 재료를 모아 넘기고 결과를 저장만 한다.
 # 새 DART · 네이버 · KIS · 관세청 · 텔레그램 호출 없음. 재료: 저평가 행(공시 위험 · KIS 반영 뒤) · 시너지(메모리, 없으면 forward 스냅샷) · 수출 선행 ·
 # 가속도 캐시 · 탑픽 latest(judged) · 풍경 decide · 궤도 요약 · 밸류체인 캐시 + 주가 단면(_xs) · Tech 스캔 일지 · 리포트(데워져 있을 때만) · 공시위험 · 관심 장부 · 매매 일지(이 PC 만).
-KM = _load_mod("꿰미")
-BEADS_DIR = os.path.join(CACHE_DIR, "꿰미")
+KM = _load_mod("신호판")
+BEADS_DIR = os.path.join(CACHE_DIR, "신호판")
 BEADS = {"running": False, "at": 0, "secs": None, "error": None}
 BEADS_LOCK = threading.Lock()
 BEADS_MAX_AGE = 6 * 3600
@@ -13677,8 +13677,8 @@ def _beads_path(name):
 
 
 def _beads_syn_rows():
-    """시너지 재료 {code: {reliable, p_su, stage, btb, cover_chg, score}} — 메모리 결과가 있으면 그것, 없으면 forward 최신 스냅샷(p_su 가 있는 판만 수주 구슬에 쓴다).
-    꿰미가 시너지 계산을 시키지는 않는다(호재 스캔이 DART 를 부른다). (rows, 출처, 시각)"""
+    """시너지 재료 {code: {reliable, p_su, stage, btb, cover_chg, score}} — 메모리 결과가 있으면 그것, 없으면 forward 최신 스냅샷(p_su 가 있는 판만 수주 신호에 쓴다).
+    신호판이 시너지 계산을 시키지는 않는다(호재 스캔이 DART 를 부른다). (rows, 출처, 시각)"""
     with SYNERGY_LOCK:
         rows, at = list(SYNERGY["rows"]), SYNERGY["at"]
     if rows:
@@ -13766,7 +13766,7 @@ def _beads_link(nm, names):
 
 
 def _beads_chain(code, names, xs):
-    """밸류체인 캐시 최신 매출처 표 → {custs: [{code, name, pct, p3}], year}. 표 없음 · 이어지는 고객 없음 → None(빈 구슬)."""
+    """밸류체인 캐시 최신 매출처 표 → {custs: [{code, name, pct, p3}], year}. 표 없음 · 이어지는 고객 없음 → None(자료 없는 신호)."""
     try:
         with open(os.path.join(VC_DIR, code + ".json"), "r", encoding="utf-8") as fh:
             d = json.load(fh)
@@ -13913,7 +13913,7 @@ def _run_beads():
         since = (dt.date.today() - dt.timedelta(days=180)).isoformat()
         try:
             if REP is not None and not READONLY:
-                _rep_rows()                       # 리포트 모음을 데운다(리포트 탭 · 밸류체인 한 장과 같은 길 — 첫 번은 70초 안팎) — 리포트 구슬이 늘 빈 구슬이 되지 않게
+                _rep_rows()                       # 리포트 모음을 데운다(리포트 탭 · 밸류체인 한 장과 같은 길 — 첫 번은 70초 안팎) — 리포트 신호가 늘 자료 없는 신호가 되지 않게
         except Exception:
             pass
         with REP_LOCK:
@@ -13971,7 +13971,7 @@ def _run_beads():
         _atomic_json(_beads_path("_result.json"), out)
         with BEADS_LOCK:
             BEADS.update(at=time.time(), secs=out["secs"], error=None)
-        print("꿰미 — %d곳 %.0f초" % (len(rows), out["secs"]), flush=True)
+        print("신호판 — %d곳 %.0f초" % (len(rows), out["secs"]), flush=True)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -13995,7 +13995,7 @@ def beads_kick():
 
 
 def beads_view(force=False):
-    """탭이 읽는 것 — 저장한 결과(_result.json) · 검증(bt.json) · 구슬 정의 · 실행 상태. 결과가 없거나 BEADS_MAX_AGE 넘게 묵었으면 뒤에서 다시(조회 전용은 저장분만)."""
+    """탭이 읽는 것 — 저장한 결과(_result.json) · 검증(bt.json) · 신호 정의 · 실행 상태. 결과가 없거나 BEADS_MAX_AGE 넘게 묵었으면 뒤에서 다시(조회 전용은 저장분만)."""
     res = _ind_file("beads_result", _beads_path("_result.json"))
     if force or (not READONLY and (not res or _age_stale(res.get("at") or 0, BEADS_MAX_AGE))):
         beads_kick()
@@ -14337,7 +14337,7 @@ class Handler(BaseHTTPRequestHandler):
                         return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
                     toppick_kick(q["run"])
                 return self._send(200, toppick_view())
-            if path == "/api/beads":            # 꿰미 — ?run=1 은 이 PC 의 이 화면에서만(같은 출처). 캐시만 읽어 다시 꿴다(1~3분)
+            if path == "/api/beads":            # 신호판 — ?run=1 은 이 PC 의 이 화면에서만(같은 출처). 캐시만 읽어 다시 계산한다(1~3분)
                 if q.get("run") == "1":
                     if not self._same_origin_get():
                         return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})

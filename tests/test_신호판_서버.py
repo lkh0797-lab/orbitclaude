@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""서버 꿰미 배선 — 파일 서빙(beads_view) · 시너지 재료 되돌림(forward) · 엇갈림 재료 · 스캔 일지 거르기 · 라우트 · 조회 전용. 서버를 띄우지 않고 모듈만 읽는다."""
+"""서버 신호판 배선 — 파일 서빙(beads_view) · 시너지 재료 되돌림(forward) · 엇갈림 재료 · 스캔 일지 거르기 · 라우트 · 조회 전용. 서버를 띄우지 않고 모듈만 읽는다."""
 import os
 import sys
 import json
@@ -8,7 +8,7 @@ import importlib.util as ilu
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
-_sp = ilu.spec_from_file_location("서버_꿰미_시험", os.path.join(BASE, "서버.py"))
+_sp = ilu.spec_from_file_location("서버_신호판_시험", os.path.join(BASE, "서버.py"))
 SRV = ilu.module_from_spec(_sp)
 _sp.loader.exec_module(SRV)
 
@@ -38,7 +38,7 @@ def test_view_reads_result_and_does_not_kick_when_fresh(monkeypatch, tmp_path):
     v = SRV.beads_view()
     assert v["result"]["rows"][0]["k"] == 2 and v["bt"]["primary"]["label"] == "근거 약함" and kicks == []
     SRV.beads_view(True)
-    assert kicks == [1]                                   # force 는 다시 꿴다
+    assert kicks == [1]                                   # force 는 다시 계산한다
     (tmp_path / "_result.json").write_text(json.dumps({"at": time.time() - 7 * 3600, "rows": []}), encoding="utf-8")
     os.utime(tmp_path / "_result.json", (time.time() + 5, time.time() + 5))
     SRV.beads_view()
@@ -86,7 +86,7 @@ def test_gap_material_from_druck_points(monkeypatch):
     g = SRV._beads_gap("000001", px)
     assert g["label"] == lab and abs(g["dm"] - 2.0) < 1e-9 and abs(g["dp"] + 20.0) < 1e-9 and g["d"] == "20260814"
     assert SRV.KM.gap_of(g["dm"], g["dp"]) == "blue"
-    assert SRV._beads_gap("000001", {})["dp"] is None                   # 주가 없으면 dp 없음 → 빈 구슬
+    assert SRV._beads_gap("000001", {})["dp"] is None                   # 주가 없으면 dp 없음 → 자료 없는 신호
 
 
 def test_chart_journal_latest_day_only_and_stage_filter(monkeypatch, tmp_path):

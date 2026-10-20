@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
-"""꿰미 — 흩어진 탭의 신호를 회사마다 구슬 한 줄로 꿴다 (2026-10-20, docs/superpowers/specs/2026-10-20-beads-design.md).
+"""신호판 — 흩어진 탭의 신호를 회사마다 한 줄로 계산한다 (2026-10-20, docs/superpowers/specs/2026-10-20-beads-design.md).
 
-구슬 열 개(정보가 들어오는 순서) + 가림 셋 + 내 기록. 문턱은 **그 탭 것 그대로** — 여기서 새로 맞추지 않는다.
-  근거 구슬(K 에 센다 — 그 탭 과거 검증에서 12개월 초과수익 90% 구간이 0 을 비켰다): 수주 · 엇갈림 · 값 · 눌림 · 사슬
-  참고 구슬(보이지만 K 밖 — 검증이 없거나 실패했거나 주가 신호가 아니었다): 수출 · 실적 · 글 · 차트 · 리포트
-  가림(하나라도 있으면 줄을 어둡게): 위험(공시 위험 · 12개월 희석 · 부실 · KIS) · 둔화(시너지 단계) · 자홍(이익률↓ · 주가↑)
-순위 = K → 참고 구슬 수 → 시가총액 순. 점수를 합치지 않는다.
+신호 열 개(정보가 들어오는 순서) + 빨간불 셋 + 내 기록. 문턱은 **그 탭 것 그대로** — 여기서 새로 맞추지 않는다.
+  근거 신호(K 에 센다 — 그 탭 과거 검증에서 12개월 초과수익 90% 구간이 0 을 비켰다): 수주 · 엇갈림 · 값 · 눌림 · 사슬
+  참고 신호(보이지만 K 밖 — 검증이 없거나 실패했거나 주가 신호가 아니었다): 수출 · 실적 · 글 · 차트 · 리포트
+  빨간불(하나라도 있으면 줄을 어둡게): 위험(공시 위험 · 12개월 희석 · 부실 · KIS) · 둔화(시너지 단계) · 자홍(이익률↓ · 주가↑)
+순위 = K → 참고 신호 수 → 시가총액 순. 점수를 합치지 않는다.
 
-서버(`beads_view`)와 백테스트(`도구/꿰미_백테스트.py`)가 **같은 함수**(`string`)를 부른다 — 입력은 정규화한 dict 하나(아래 `string` 설명).
-켜짐 · 꺼짐 · 빈(그 회사엔 그 자료가 없다)을 가른다: 빈 구슬은 K 에서 꺼짐으로 센다(해석 줄에는 '빈'으로).
+서버(`beads_view`)와 백테스트(`도구/신호판_백테스트.py`)가 **같은 함수**(`string`)를 부른다 — 입력은 정규화한 dict 하나(아래 `string` 설명).
+켜짐 · 꺼짐 · 자료 없음(그 회사엔 그 자료가 없다)을 가른다: 자료 없는 신호는 K 에서 꺼짐으로 센다(해석 줄 표시 ◌).
+이름(2026-10-21): 처음 '꿰미 · 구슬 · 가림'이었다 — 사용자가 안 와닿는다 해 '신호판 · 신호 · 빨간불'로 바꿨다. 안쪽 이름(beads · BEADS · gates)은 그대로.
 """
 VERSION = 1
 
-# ---------------------------------------------------------------- 문턱(그 탭 것을 복사 — tests/test_꿰미.py 가 같음을 고정한다)
+# ---------------------------------------------------------------- 문턱(그 탭 것을 복사 — tests/test_신호판.py 가 같음을 고정한다)
 TH = {
     "su": 200.0 / 3,     # 수주 — 시너지 수주 부분 점수(그날 믿을 수 있는 회사끼리 북투빌 · 잔고/매출 변화 백분위 평균) 상⅓
     "op_yoy": 20.0,      # 실적 A — 탑픽.TH["op_yoy"]
@@ -34,7 +35,7 @@ TH = {
 STAGE_SLOW = "둔화"
 RISK_RED = ("상폐 절차", "보고서 없음", "작전주 꼴")      # 공시위험 level — 저평가 DRISK_RED 와 같다
 
-# 구슬 정의 — key · 이름 · 출처 탭(data-t) · 종류(근거 base / 참고 ref) · 문턱 글 · 과거 검증 한 줄(그 탭 README 숫자, 2026-10-20)
+# 신호 정의 — key · 이름 · 출처 탭(data-t) · 종류(근거 base / 참고 ref) · 문턱 글 · 과거 검증 한 줄(그 탭 README 숫자, 2026-10-20)
 BEADS = [
     {"key": "exp", "name": "수출", "tab": "exp", "tab_name": "수출 추적", "kind": "ref",
      "rule": "수출 선행 단서 A·B — 아직 공시 안 된 분기 통관 +20%↑ · 덩어리 아님",
@@ -86,13 +87,13 @@ def _f(x):
 
 
 def _bead(on, known=True, **val):
-    """구슬 하나 {on, known, …재료}. known=False 면 on 은 늘 False."""
+    """신호 하나 {on, known, …재료}. known=False 면 on 은 늘 False."""
     d = {"on": bool(on) and bool(known), "known": bool(known)}
     d.update(val)
     return d
 
 
-# ---------------------------------------------------------------- 구슬 함수 — 정규화한 재료 → 구슬
+# ---------------------------------------------------------------- 신호 함수 — 정규화한 재료 → 신호
 def bead_exp(x):
     """수출 — x = {clue, tier, cur, months_label, cur_q, grade} (수출 선행 행) · None 이면 통로 없음(빈)."""
     if not x:
@@ -101,7 +102,7 @@ def bead_exp(x):
 
 
 def bead_su(x):
-    """수주 — x = {reliable, p_su, stage, btb, cover_chg, score}. 믿을 수 없는 행 · 행 없음 → 빈."""
+    """수주 — x = {reliable, p_su, stage, btb, cover_chg, score}. 믿을 수 없는 행 · 행 없음 → 자료 없음."""
     if not x or not x.get("reliable") or _f(x.get("p_su")) is None:
         return _bead(False, False, stage=(x or {}).get("stage"))
     p = _f(x["p_su"])
@@ -109,7 +110,7 @@ def bead_su(x):
 
 
 def bead_earn(x):
-    """실적 — x = 탑픽 판정 {A, B, op_yoy, rev_yoy, turn, ttm_g, label, known, fin, hold}. 금융 · 지주 · 판정 없음 → 빈."""
+    """실적 — x = 탑픽 판정 {A, B, op_yoy, rev_yoy, turn, ttm_g, label, known, fin, hold}. 금융 · 지주 · 판정 없음 → 자료 없음."""
     if not x or x.get("fin") or x.get("hold"):
         return _bead(False, False)
     return _bead(bool(x.get("A")) or bool(x.get("B")), True, A=bool(x.get("A")), B=bool(x.get("B")), op_yoy=_f(x.get("op_yoy")), rev_yoy=_f(x.get("rev_yoy")),
@@ -117,7 +118,7 @@ def bead_earn(x):
 
 
 def bead_text(x):
-    """글 — x = 최근 정기보고서 궤도 행 {x(배수), tier, label, stamp, gist}. 배수 없음(첫 보고서 · 정정) → 빈."""
+    """글 — x = 최근 정기보고서 궤도 행 {x(배수), tier, label, stamp, gist}. 배수 없음(첫 보고서 · 정정) → 자료 없음."""
     if not x or _f(x.get("x")) is None:
         return _bead(False, False)
     return _bead(_f(x["x"]) >= TH["text_x"], True, x=_f(x["x"]), tier=x.get("tier"), label=x.get("label"), stamp=x.get("stamp"), gist=x.get("gist"))
@@ -136,7 +137,7 @@ def gap_of(dm, dp):
 
 
 def bead_gap(x):
-    """엇갈림 — x = {dm, dp, label, d}. 둘 중 하나라도 없으면 빈. 자홍은 가림(gates)에서 같은 재료로 본다."""
+    """엇갈림 — x = {dm, dp, label, d}. 둘 중 하나라도 없으면 자료 없음. 자홍은 빨간불(gates)에서 같은 재료로 본다."""
     if not x:
         return _bead(False, False)
     c = gap_of(x.get("dm"), x.get("dp"))
@@ -146,7 +147,7 @@ def bead_gap(x):
 
 
 def bead_val(x):
-    """값 — x = 풍경 decide {per, pct, n, date}. PER 없음(적자) · 표본 < 8 → 빈."""
+    """값 — x = 풍경 decide {per, pct, n, date}. PER 없음(적자) · 표본 < 8 → 자료 없음."""
     if not x or _f(x.get("pct")) is None or (_f(x.get("per")) or 0) <= 0 or (x.get("n") is not None and int(x["n"]) < TH["val_n"]):
         return _bead(False, False, per=_f((x or {}).get("per")))
     return _bead(_f(x["pct"]) <= TH["val_pct"], True, per=_f(x.get("per")), pct=_f(x["pct"]), n=x.get("n"), date=x.get("date"), zone=x.get("zone"))
@@ -161,7 +162,7 @@ def bead_dip(x):
 
 
 def bead_chain(x):
-    """사슬 — x = {custs: [{code, name, pct, p3}], year}. 이어지는 상장 고객(비중 10%↑)이 없으면 빈."""
+    """사슬 — x = {custs: [{code, name, pct, p3}], year}. 이어지는 상장 고객(비중 10%↑)이 없으면 자료 없음."""
     custs = [c for c in ((x or {}).get("custs") or []) if c.get("code") and (_f(c.get("pct")) or 0) >= TH["chain_pct"]]
     if not custs:
         return _bead(False, False, n=0)
@@ -171,7 +172,7 @@ def bead_chain(x):
 
 
 def bead_chart(x):
-    """차트 — x = {rows: [{pattern, stage, asof}], has_journal}. 일지 자체가 없으면 빈."""
+    """차트 — x = {rows: [{pattern, stage, asof}], has_journal}. 일지 자체가 없으면 자료 없음."""
     if not x or not x.get("has_journal"):
         return _bead(False, False)
     rows = list(x.get("rows") or [])
@@ -187,7 +188,7 @@ def bead_rep(x):
 
 
 def gates_of(inp):
-    """가림 [{key, name, why}] — 위험(공시 level · 12개월 표지 · KIS) · 둔화 · 자홍."""
+    """빨간불 [{key, name, why}] — 위험(공시 level · 12개월 표지 · KIS) · 둔화 · 자홍."""
     out = []
     rk = inp.get("risk") or {}
     why = []
@@ -207,8 +208,8 @@ def gates_of(inp):
 
 
 def string(inp):
-    """회사 하나의 구슬 줄. inp = {code, name, exp, syn, earn, text, gap, val, dip, chain, chart, rep, risk, mine, …} — 키마다 위 bead_* 의 재료(없으면 None).
-    돌려줌 {beads{key: 구슬}, k(근거 켜짐 수), k_ref(참고 켜짐 수), n_known(근거 관측 가능 수), gates[], gated(bool), rank_key}."""
+    """회사 하나의 신호 줄. inp = {code, name, exp, syn, earn, text, gap, val, dip, chain, chart, rep, risk, mine, …} — 키마다 위 bead_* 의 재료(없으면 None).
+    돌려줌 {beads{key: 신호}, k(근거 켜짐 수), k_ref(참고 켜짐 수), n_known(근거 관측 가능 수), gates[], gated(bool), rank_key}."""
     beads = {
         "exp": bead_exp(inp.get("exp")), "su": bead_su(inp.get("syn")), "earn": bead_earn(inp.get("earn")), "text": bead_text(inp.get("text")),
         "gap": bead_gap(inp.get("gap")), "val": bead_val(inp.get("val")), "dip": bead_dip(inp.get("dip")), "chain": bead_chain(inp.get("chain")),
@@ -223,7 +224,7 @@ def string(inp):
             "rank_key": (bool(gates), -k, -k_ref, cap_rank if isinstance(cap_rank, int) else 10 ** 6, str(inp.get("code") or ""))}
 
 
-# ---------------------------------------------------------------- 해석 — 구슬마다 숫자 한 줄
+# ---------------------------------------------------------------- 해석 — 신호마다 숫자 한 줄
 def _pct_txt(v, d=0):
     return "—" if v is None else ("%+." + str(d) + "f%%") % v
 
@@ -274,7 +275,7 @@ def _line(key, b, inp):
             body = "TTM 이익률 1년 변화 또는 1년 주가를 모른다"
         else:
             body = "이익률 1년 %+.1f%%p · 주가 1년 %+.0f%% (%s)" % (b["dm"], b["dp"], b.get("label") or "")
-            body += {"blue": " — 파랑(이익률↑ · 주가↓)", "magenta": " — 자홍(이익률↓ · 주가↑, 가림)"}.get(b.get("color"), " — 엇갈리지 않음")
+            body += {"blue": " — 파랑(이익률↑ · 주가↓)", "magenta": " — 자홍(이익률↓ · 주가↑, 빨간불)"}.get(b.get("color"), " — 엇갈리지 않음")
     elif key == "val":
         if not b["known"]:
             body = "PER 자기 역사 없음(적자 · 표본 8분기 미만 · 풍경 없음)"
@@ -315,16 +316,16 @@ def _line(key, b, inp):
 
 
 def explain(row):
-    """[[구슬, 내용], …] — 머리 한 줄(근거 n/m · 참고 n · 가림) → 구슬 열 개(정보 순서) → 가림 → 내 기록. 숫자는 모두 입력 재료 값."""
+    """[[신호, 내용], …] — 머리 한 줄(근거 n/m · 참고 n · 빨간불) → 신호 열 개(정보 순서) → 빨간불 → 내 기록. 숫자는 모두 입력 재료 값."""
     s = row.get("string") or string(row)
     B = s["beads"]
-    head = "근거 구슬 %d개 켜짐(관측 가능 %d/%d) · 참고 %d개" % (s["k"], s["n_known"], len(BASE_KEYS), s["k_ref"])
-    head += (" · 가림 " + " · ".join(g["name"] for g in s["gates"])) if s["gates"] else " · 가림 없음"
-    out = [["꿰미", head]]
+    head = "근거 신호 %d개 켜짐(관측 가능 %d/%d) · 참고 %d개" % (s["k"], s["n_known"], len(BASE_KEYS), s["k_ref"])
+    head += (" · 빨간불 " + " · ".join(g["name"] for g in s["gates"])) if s["gates"] else " · 빨간불 없음"
+    out = [["요약", head]]
     for b in BEADS:
         out.append(_line(b["key"], B[b["key"]], row))
     for g in s["gates"]:
-        out.append(["가림 " + g["name"], g["why"]])
+        out.append(["빨간불 " + g["name"], g["why"]])
     m = row.get("mine") or {}
     if m:
         bits = [t for ok, t in ((m.get("watch"), "관심 장부에 있다"), (m.get("hold"), "보유 중"), (m.get("n_judge"), "판정 기록 %s번" % m.get("n_judge"))) if ok]
@@ -334,7 +335,7 @@ def explain(row):
 
 
 def counts(rows):
-    """구슬마다 {on, known} 수 · K 분포 — 화면 설명 띠."""
+    """신호마다 {on, known} 수 · K 분포 — 화면 설명 띠."""
     per = {b["key"]: {"on": 0, "known": 0} for b in BEADS}
     gates = {g["key"]: 0 for g in GATES}
     kd = {}
