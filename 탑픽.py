@@ -304,7 +304,7 @@ def series_of(druck, filed=None, first=None, strict=True):
              "valid": not ({"gap", "basis", "cut"} & set(q)), "q": q,
              "rev": rev, "rev_p": p.get("매출액_전"), "op": p.get("영업이익"), "op_p": p.get("영업이익_전"), "ni": ni,
              "ttm": p.get("영업이익_TTM"), "rev_ttm": p.get("매출_TTM"), "eps_ttm": p.get("EPS_TTM"), "sh": sh, "sh_ok": sh_ok, "k": k,
-             "opm_bad": bool(p.get("이익률_비정상")), "px_known": p.get("주가")}
+             "opm_bad": bool(p.get("이익률_비정상")), "px_known": p.get("주가"), "eq": p.get("자본총계")}
         s["ttm_ok"] = s["ttm"] is not None and not ({"gap", "basis"} & set(q))
         s["opm"] = (s["ttm"] / s["rev_ttm"] * 100) if (s["ttm"] is not None and s["rev_ttm"]) else None
         if sh_ok:

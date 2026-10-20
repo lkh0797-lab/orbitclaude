@@ -1935,6 +1935,10 @@ def _druck_auto_loop():
             _toppick_nightly()                      # 탑픽 — 새 분기 숫자 · 어제 종가로 최신 후보(검증이 묵었으면 전체)
         except Exception as e:
             print("탑픽 밤 갱신: %s" % e, flush=True)
+        try:
+            _qualdip_nightly()                      # 우량 급락 — 같은 때(검증이 묵었으면 전체)
+        except Exception as e:
+            print("우량 급락 밤 갱신: %s" % e, flush=True)
 
 
 # ---------------------------------------------------------------- 전 종목 미리 계산 — 풍경 · 궤도(2026-10-11)
@@ -13125,6 +13129,93 @@ def toppick_view():
             "th": dict(TOP.TH) if TOP is not None else None, "th_name": dict(TOP.TH_NAME) if TOP is not None else None}
 
 
+# ---------------------------------------------------------------- 우량 급락 — 꾸준히 버는 큰 회사가 급락했을 때(2026-10-20)
+# 잣대 · 문턱은 우량급락.py(사전 등록), 검증 · 최신 후보는 도구/우량급락_백테스트.py(64비트 BT_PY 자식 프로세스 · 캐시만). 서버는 파일을 읽어 주고 띄우기만 한다.
+QUALDIP_DIR = os.path.join(CACHE_DIR, "qualdip")
+QUALDIP = {"running": None, "mode": None, "at": None, "rc": None, "py": None, "secs": None, "error": None}
+QUALDIP_LOCK = threading.Lock()
+QUALDIP_BT_MAX_AGE = 7 * 86400
+
+
+def _qualdip_path(name):
+    return os.path.join(QUALDIP_DIR, name)
+
+
+def _tool_run(state, lock, script, log, args):
+    """도구를 자식 프로세스로(BT_PY, 곧바로 실패하면 서버 파이썬). state 에 running · rc · py · secs · error. 이미 돌면 False."""
+    with lock:
+        if state["running"]:
+            return False
+        state.update(running=args[1] if len(args) > 1 else "run", error=None)
+    os.makedirs(os.path.dirname(log), exist_ok=True)
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+    t0, res = time.time(), {"py": None, "rc": None}
+    try:
+        with open(log, "w", encoding="utf-8") as fh:
+            fh.write("== %s %s\n" % (dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), " ".join(args)))
+            fh.flush()
+            cmds = [_bt_cmd(), [sys.executable]]
+            for i, cmd in enumerate(cmds):
+                try:
+                    fh.write("실행: %s\n" % " ".join(cmd))
+                    fh.flush()
+                    t1 = time.time()
+                    pr = subprocess.run(cmd + ["-X", "utf8", script] + list(args[2:]), cwd=BASE, stdout=fh, stderr=subprocess.STDOUT, env=env,
+                                        timeout=2 * 3600, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                    res = {"py": " ".join(cmd), "rc": pr.returncode}
+                    if pr.returncode != 0 and time.time() - t1 < BT_QUICK_FAIL and i + 1 < len(cmds):
+                        fh.write("%s 가 곧바로 코드 %s 로 끝남 — 서버 파이썬으로 다시\n" % (" ".join(cmd), pr.returncode))
+                        fh.flush()
+                        continue
+                    break
+                except FileNotFoundError as e:
+                    fh.write("실행기 없음 %s: %s\n" % (" ".join(cmd), e))
+                    fh.flush()
+                except Exception as e:
+                    res = {"py": " ".join(cmd), "rc": None, "error": _no_secret("%s: %s" % (type(e).__name__, e))}
+                    break
+    finally:
+        state.update(running=None, at=dt.datetime.now().isoformat(timespec="seconds"), rc=res.get("rc"), py=res.get("py"),
+                     secs=round(time.time() - t0), error=res.get("error"))
+    if res.get("rc") != 0:
+        print("도구 실패:", script, res, "— 로그", log, flush=True)
+    return True
+
+
+def _qualdip_run(mode="latest"):
+    """mode 'latest' = 최신 후보만(1분 안팎) · 'full' = 검증 전체(몇 분)."""
+    QUALDIP["mode"] = mode
+    return _tool_run(QUALDIP, QUALDIP_LOCK, os.path.join(BASE, "도구", "우량급락_백테스트.py"), _qualdip_path("run.log"),
+                     ["qualdip", mode] + (["--latest"] if mode == "latest" else []))
+
+
+def qualdip_kick(mode="latest"):
+    if QUALDIP["running"]:
+        return False
+    threading.Thread(target=_qualdip_run, args=(mode,), daemon=True).start()
+    return True
+
+
+def _qualdip_nightly():
+    """밤 — 최신 후보를 다시. 검증(bt.json)이 7일 넘게 묵었거나 없으면 전체."""
+    try:
+        old = (time.time() - os.path.getmtime(_qualdip_path("bt.json"))) > QUALDIP_BT_MAX_AGE
+    except OSError:
+        old = True
+    return _qualdip_run("full" if old else "latest")
+
+
+def qualdip_view():
+    def mt(name):
+        try:
+            return dt.datetime.fromtimestamp(os.path.getmtime(_qualdip_path(name))).isoformat(timespec="seconds")
+        except OSError:
+            return None
+    return {"latest": _ind_file("qualdip_latest", _qualdip_path("latest.json")), "bt": _ind_file("qualdip_bt", _qualdip_path("bt.json")),
+            "causes": _ind_file("qualdip_causes", _qualdip_path("origin_causes.json")),
+            "run": dict(QUALDIP), "files": {"latest": mt("latest.json"), "bt": mt("bt.json")}}
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
 
@@ -13430,6 +13521,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, d)
             if path == "/api/dip":
                 return self._send(200, dip_view(q.get("force") == "1"))
+            if path == "/api/qualdip":          # 우량 급락 — ?run=latest|full 은 이 PC 의 이 화면에서만(같은 출처)
+                if q.get("run") in ("latest", "full"):
+                    if not self._same_origin_get():
+                        return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
+                    qualdip_kick(q["run"])
+                return self._send(200, qualdip_view())
             if path == "/api/toppick":          # 탑픽 — ?run=latest|full 은 이 PC 의 이 화면에서만(같은 출처)
                 if q.get("run") in ("latest", "full"):
                     if not self._same_origin_get():

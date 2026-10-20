@@ -2153,6 +2153,10 @@ details.infclockwrap{margin-top:12px}details.infclockwrap>summary{cursor:pointer
 .tpChip:hover{border-color:var(--accent)}.tpChip.on{background:var(--accent-soft);border-color:var(--accent)}.tpChip.all{color:var(--dim)}
 .tpFlow .more{font-size:11px;color:var(--accent);cursor:pointer;background:none;border:0;padding:2px 6px}
 .tpFlow p{margin:4px 0 0;font-size:11.5px;line-height:1.5;color:var(--dim)}
+.qdDots{font:11px var(--mono);letter-spacing:1px;white-space:nowrap}.qdDots i{font-style:normal;color:var(--accent)}.qdDots i.x{color:var(--faint)}
+.qdOrigin{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:8px 12px;margin:0 0 12px}
+.qdOrigin>summary{cursor:pointer;font-weight:600;font-size:13px;color:var(--accent)}
+.qdOrigin li{font-size:12px;line-height:1.55;margin:3px 0}.qdOrigin li small{color:var(--dim)}
 .tpWrap{overflow-x:auto}.tpTbl th{white-space:nowrap}.tpTbl td:first-child{white-space:nowrap}.tpTbl td:first-child small{color:var(--dim)}.tpTbl td.num{white-space:nowrap}
 .dipTbl td small{color:var(--faint);font-size:11px}
 .dipTbl td.num.pos{color:var(--add)}.dipTbl td.num.neg{color:var(--del)}.dipTbl td.num.mac{color:var(--warn)}
@@ -3336,6 +3340,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
       <div class="tabs" id="tabs" hidden>
         <button data-t="val">저평가</button>
         <button data-t="top">탑픽</button>
+        <button data-t="qd">우량 급락</button>
         <button data-t="tech">차트 발굴</button>
         <button data-t="score">기록 채점</button>
         <button data-t="trd">매매 일지</button>
@@ -3704,7 +3709,7 @@ function show(t){
   ({orbit:viewOrbit, land:viewLand, story:viewStory, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, rep:viewReports, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    cat:viewCatalyst, exp:viewExport, val:viewValue, top:viewTop, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades, watch:viewWatch}[t])(p);
+    cat:viewCatalyst, exp:viewExport, val:viewValue, top:viewTop, qd:viewQd, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades, watch:viewWatch}[t])(p);
 }
 
 // ---------------------------------------------------------- 분기 변화 — 보고서가 나올 때마다 직전 공시(3개월 전)와 맞댄다
@@ -5286,28 +5291,29 @@ function tpStatTable(G, cols){
 const tpSplitLine=(name,sp)=>name+': '+Object.entries(sp||{}).map(([k,v])=>k+' '+tpP(v.med12m,1)+'('+tpPc(v.hit)+', '+v.n12+')').join(' · ');
 // 돈의 흐름 — 적격 회사를 섹터 · 업종 · 테마로 묶어 후보(실적↑인데 아직 싸다) 와 이미 오름(실적↑인데 1년 시총이 C1 문턱 넘게 올랐다) 을 센다. 칩을 누르면 아래 표가 그 묶음만.
 const TP_KIND={sector:['섹터','네이버 업종을 큰 묶음으로 — 업종.py SECTOR_OF'],industry:['업종','네이버 업종(79)'],themes:['테마','네이버 테마(264) — 한 회사가 여러 테마에 든다']};
-function tpFlowBox(L, onPick){
+function tpFlowBox(L, onPick, o){
+  o=o||{}; const PK=o.pk||'tpPick', MK=o.mk||'tpMore';
   const G=L.groups||{}; const box=el('div','tpFlow');
   const h=el('div','h'); h.appendChild(el('b',null,'돈의 흐름 — 어느 쪽에 후보가 몰렸나'));
-  h.appendChild(el('span',null,'적격 '+(L.counts||{}).elig+'곳을 묶어 셌다. 굵은 수 = 후보(실적은 좋아졌는데 시가총액은 아직), ↑ = 실적은 좋아졌는데 1년 시총이 +'+Math.round((L.th||{}).c1||30)+'% 넘게 이미 오른 곳(돈이 먼저 간 쪽). 칩을 누르면 아래 표를 그 묶음만 본다.'));
+  h.appendChild(el('span',null,o.sub||('적격 '+(L.counts||{}).elig+'곳을 묶어 셌다. 굵은 수 = 후보(실적은 좋아졌는데 시가총액은 아직), ↑ = 실적은 좋아졌는데 1년 시총이 +'+Math.round((L.th||{}).c1||30)+'% 넘게 이미 오른 곳(돈이 먼저 간 쪽). 칩을 누르면 아래 표를 그 묶음만 본다.')));
   box.appendChild(h);
-  const cur=S.tpPick||null;
+  const cur=S[PK]||null;
   Object.entries(TP_KIND).forEach(([kind,[lab,tip]])=>{
     const lst=G[kind]||[]; if(!lst.length) return;
     const row=el('div','row'); const em=el('em',null,lab); em.title=tip; row.appendChild(em);
     const all=el('span','tpChip all'+(!cur||cur.kind!==kind?' on':''),'전체'); all.onclick=()=>onPick(null); row.appendChild(all);
-    const LIM=S.tpMore&&S.tpMore[kind]?lst.length:(kind==='themes'?14:12);
+    const LIM=S[MK]&&S[MK][kind]?lst.length:(kind==='themes'?14:12);
     lst.slice(0,LIM).forEach(g=>{
       const c=el('span','tpChip'+(cur&&cur.kind===kind&&cur.name===g.name?' on':'')); c.appendChild(document.createTextNode(g.name+' '));
       c.appendChild(el('b',null,String(g.n_cand))); const sm=el('small',null,'/'+g.n_elig); c.appendChild(sm);
       if(g.n_ran) c.appendChild(el('small','up','↑'+g.n_ran));
       c.title=g.name+' — 적격 '+g.n_elig+'곳 가운데 후보 '+g.n_cand+' · 실적↑인데 이미 오름 '+g.n_ran+(g.mcap_g_med!=null?' · 묶음 시총 1년 변화 중앙 '+tpP(g.mcap_g_med):'');
       c.onclick=()=>onPick(cur&&cur.kind===kind&&cur.name===g.name?null:{kind,name:g.name}); row.appendChild(c); });
-    if(lst.length>LIM){ const mb=el('button','more','… '+(lst.length-LIM)+'개 더'); mb.onclick=()=>{ S.tpMore=S.tpMore||{}; S.tpMore[kind]=true; onPick(cur); }; row.appendChild(mb); }
+    if(lst.length>LIM){ const mb=el('button','more','… '+(lst.length-LIM)+'개 더'); mb.onclick=()=>{ S[MK]=S[MK]||{}; S[MK][kind]=true; onPick(cur); }; row.appendChild(mb); }
     box.appendChild(row);
   });
   const sec=(G.sector||[]).filter(g=>g.n_cand>0).slice(0,3), ran=[...(G.sector||[])].sort((a,b)=>b.n_ran-a.n_ran||b.n_cand-a.n_cand).filter(g=>g.n_ran>0).slice(0,3);
-  if(sec.length||ran.length) box.appendChild(el('p',null,'읽기: 후보가 몰린 섹터 '+(sec.map(g=>g.name+' '+g.n_cand).join(' · ')||'없음')+' — 실적은 좋아졌는데 시장이 아직 값을 안 올린 쪽. 이미 오른 섹터 '+(ran.map(g=>g.name+' ↑'+g.n_ran).join(' · ')||'없음')+' — 돈이 먼저 간 쪽. 분류는 네이버 업종 · 테마'+(L.sect_built?'('+tpD(L.sect_built)+')':'')+'.'));
+  if(sec.length||ran.length) box.appendChild(el('p',null,'읽기: 후보가 몰린 섹터 '+(sec.map(g=>g.name+' '+g.n_cand).join(' · ')||'없음')+' — '+(o.candMean||'실적은 좋아졌는데 시장이 아직 값을 안 올린 쪽')+'. 이미 오른 섹터 '+(ran.map(g=>g.name+' ↑'+g.n_ran).join(' · ')||'없음')+' — 돈이 먼저 간 쪽. 분류는 네이버 업종 · 테마'+(L.sect_built?'('+tpD(L.sect_built)+')':'')+'.'));
   return box;
 }
 const tpInGroup=(r,pick)=>!pick||(pick.kind==='themes'?(r.themes||[]).includes(pick.name):r[pick.kind]===pick.name);
@@ -5422,6 +5428,138 @@ async function viewTop(p, run){
   const F=d.files||{};
   body.appendChild(el('div','finnote','분기 숫자 = 가속도 캐시(DART 원장, 4분기는 연간 − 3분기 누적 · 값은 마지막으로 받은 원장). 주가 = 네이버 수정주가(분할 보정, 그대로). 주식 수 = 지배주주 순이익 ÷ EPS 역산(우선주 포함 가중평균에 가깝다 — 시가총액 수준은 흔히 5~15% 크고 증가율 · 자기 자리엔 영향이 작다). '+
     '거래대금 = 보정 종가 × 거래량 × 분할 배수(거래량이 뛴 날짜로). 공시 위험 꼬리표 = 공시목록 분류'+(L.risk_at?'('+tpD(L.risk_at)+')':'')+'. 최신 후보 파일 '+(F.latest?F.latest.replace('T',' ').slice(0,16):'없음')+' · 검증 파일 '+(F.bt?F.bt.replace('T',' ').slice(0,16):'없음')+(R.py?' · 실행기 '+R.py:'')+'. "후보"는 싸다는 뜻이지 오른다는 뜻은 아니다 — 왜 싼지 마지막 확인은 사람이 한다.'));
+}
+
+// ---------------------------------------------------------- 우량 급락 — 꾸준히 버는 큰 회사가 급락했을 때 (/api/qualdip · 우량급락.py · 도구/우량급락_백테스트.py, 2026-10-20)
+// 한 개인 투자자의 2026-10-16 인증 12종목('수익은 꾸준한데 일시적 급락, 성장성 뒷받침')을 전 종목과 견줘 역산한 관문 여덟 — 사전 등록, 결과를 보고 바꾸지 않는다.
+// 판정은 사전 등록 주 지표(월말 패널 · 12개월 · 같은 달 저PER 하위 30% 와의 달별 차이 · 분기/연 블록 구간 가운데 넓은 쪽) 하나로만.
+const QD_G=[['cap','큰 회사'],['steady','이익 꾸준'],['roe','ROE'],['opm','마진'],['growth','성장'],['drop','최근 빠짐'],['cheap','자기 역사로 쌈'],['calm','덜 출렁임']];
+function qdDots(r){ const w=el('span','qdDots'); const g=r.gates||{};
+  QD_G.forEach(([k,n])=>{ const i=el('i',g[k]?null:'x',g[k]?'●':'○'); i.title=n+(g[k]?' — 넘음':' — 못 넘음'); w.appendChild(i); }); return w; }
+const qdMissName=m=>(m||[]).map(k=>(QD_G.find(x=>x[0]===k)||[k,k])[1]).join(' · ');
+function qdTable(rows, withScore){
+  const w=el('div','tpWrap'), t=el('table','tbl dipTbl tpTbl');
+  const cols=[['gates','관문 ①~⑧'],...(withScore?[['score','점수']]:[['miss','못 넘은 관문']]),['cap','시총(순위)'],['roe','ROE'],['opm','영업이익률'],['grow','3년 성장 매출 · 이익'],
+    ['r3m','3개월'],['dd52','52주 고점 대비'],['per','PER(자기 자리)'],['por','POR 자기 자리'],['vol','변동성(자리)'],['loss','12분기 적자'],['q','분기 · 접수일']];
+  const hr=el('tr'); hr.appendChild(el('th',null,'회사')); cols.forEach(([k,n])=>hr.appendChild(el('th',k==='gates'||k==='miss'?null:'r',n))); t.appendChild(hr);
+  rows.forEach(r=>{ const tr=el('tr','dipRow'); const nm=el('td');
+    const a=el('a',null,r.name||r.code); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(r.code); }; a.title='이 회사 열기'; nm.appendChild(a);
+    nm.appendChild(el('small',null,' '+r.code+(r.market?' · '+r.market:'')+(r.industry?' · '+r.industry:''))); tr.appendChild(nm);
+    cols.forEach(([k])=>{ let v='—', cls='num', tip='';
+      if(k==='gates'){ tr.appendChild((()=>{ const td=el('td'); td.appendChild(qdDots(r)); return td; })()); return; }
+      if(k==='miss'){ v=qdMissName(r.miss); cls='tpWhy'; }
+      else if(k==='score'){ v=r.score==null?'—':tpN(r.score,0); cls='num strong'; tip='열한 특징의 그날 백분위 평균 — '+Object.entries(r.parts||{}).map(([f,x])=>f+' '+Math.round(x)).join(' · '); }
+      else if(k==='cap'){ v=tpWon(r.mcap)+(r.cap_rank?' ('+r.cap_rank+'위)':''); tip='보정 종가 × 역산 주식수 — 우리 유니버스 안 그날 순위'; }
+      else if(k==='roe'){ v=tpP(r.roe,1); cls='num '+(r.roe!=null&&r.roe>=10?'pos':''); }
+      else if(k==='opm'){ v=r.opm==null?'—(금융)':tpP(r.opm,1); }
+      else if(k==='grow'){ v=tpP(r.rev_cagr3)+' · '+tpP(r.ttm_cagr3); tip='4분기 합 매출 · 영업이익의 3년 연평균'; }
+      else if(k==='r3m'){ v=tpP(r.r3m); cls='num '+tpTone(r.r3m); }
+      else if(k==='dd52'){ v=tpP(r.dd52); cls='num '+tpTone(r.dd52); }
+      else if(k==='per'){ v=(r.per==null?'—':tpN(r.per,1))+(r.per_pct==null?'':' ('+Math.round(r.per_pct)+'%)'); tip='PER = 종가 ÷ 4분기 합 EPS · 괄호 = 자기 최근 40분기 PER 가운데 지금보다 싼 비율'; }
+      else if(k==='por'){ v=r.por_pct==null?'—':Math.round(r.por_pct)+'%'; tip='POR(시총 ÷ 4분기 합 영업이익) 자기 최근 20분기 가운데 지금보다 싼 비율'; }
+      else if(k==='vol'){ v=(r.vol==null?'—':Math.round(r.vol)+'%')+(r.vol_pct==null?'':' ('+Math.round(r.vol_pct)+')'); tip='1년 변동성(연율) · 괄호 = 그날 전 종목 가운데 자리(50 이하 = 덜 출렁임)'; }
+      else if(k==='loss'){ v=r.loss_q12==null?'—':r.loss_q12+'/'+(r.nq12||12); }
+      else if(k==='q'){ v=tpQ(r.lab)+' '+tpD(r.known); tip='그날까지 알게 된 최근 분기 · 그 숫자를 알게 된 날(정정 포함)'; }
+      const td=el('td',cls,v); if(tip) td.title=tip; tr.appendChild(td); });
+    t.appendChild(tr); });
+  w.appendChild(t); return w;
+}
+function qdEvidence(B){
+  const det=el('details','tpEvd'); det.open=!!lsGet('qdEvdOpen',false); det.addEventListener('toggle',()=>lsSet('qdEvdOpen',det.open));
+  const pp=B.primary||{};
+  det.appendChild(el('summary',null,'과거 검증 — '+(B.verdict||'검증 전')+' (주 지표: 달 '+(pp.n_months||0)+'개 중 이긴 달 '+(pp.wins||0)+' · 달별 차이 중앙 '+tpPp(pp.diff_med,1)+' · 90% 구간 '+tpCI(pp.ci)+')'));
+  det.appendChild(el('p',null,'사전 등록 주 지표(돌리기 전에 정함): '+(B.primary_def||'')+'. 분기 블록 '+tpCI(pp.ci_q)+' · 연 블록 '+tpCI(pp.ci_y)+'. 나머지 표는 보조다.'));
+  det.appendChild(el('p',null,B.dates[0].slice(0,4)+'.'+B.dates[0].slice(4,6)+'~'+B.dates[1].slice(0,4)+'.'+B.dates[1].slice(4,6)+' 매달 말 우리 유니버스 '+B.n_firms+'곳 — 그날까지 알게 된 분기와 그날 종가로 관문을 세우고, 다음 거래일 종가부터 3 · 6 · 12개월 수익률을 같은 기간 전 종목 중앙과 견줬다(초과수익). 시세 '+tpD(B.T1)+'까지.'));
+  const SC=[[x=>String(x.n12),'행'],[x=>String(x.firms),'회사'],[x=>String(x.dates),'있던 달'],[x=>tpP(x.med3m,1),'3개월'],[x=>tpP(x.med6m,1),'6개월'],[x=>tpP(x.med12m,1),'12개월 중앙'],[x=>tpCI(x.ci12),'90% 구간(회사)'],[x=>tpCI(x.ci12_season),'90% 구간(분기)'],[x=>tpPc(x.hit),'이긴 비율'],[x=>tpPc(x.crash),'−30%↓'],[x=>tpP(x.early,1),'~2019'],[x=>tpP(x.late,1),'2020~']];
+  det.appendChild(el('h5',null,'묶음별 — 같은 달 · 같은 적격 집합')); det.appendChild(tpStatTable(B.groups,SC));
+  const VC=[[x=>tpPp(x.diff,1),'차이'],[x=>tpCI(x.ci),'90% 구간(회사)'],[x=>tpCI(x.ci_season),'90% 구간(분기)'],[x=>tpPp(x.early,1),'~2019'],[x=>tpPp(x.late,1),'2020~']];
+  det.appendChild(el('p',null,'후보 − 기준선(12개월 중앙 차이):')); det.appendChild(tpStatTable(B.vs,VC));
+  const vq=B.vs_quality||{}; det.appendChild(el('p',null,'급락에 사는 것이 더하나 — 후보 − 우량만(①~⑤ · ⑧), 달마다: 이긴 달 '+(vq.wins||0)+'/'+(vq.n_months||0)+' · 달별 차이 중앙 '+tpPp(vq.diff_med,1)+' · 90% 구간 '+tpCI(vq.ci)+'.'));
+  const ul=el('ul'); Object.entries(B.splits||{}).forEach(([k,sp])=>ul.appendChild(el('li',null,tpSplitLine(k,sp)))); det.appendChild(el('p',null,'나눠 보기(12개월 중앙(이긴 비율, 행)):')); det.appendChild(ul);
+  const ic=B.ic||{}; det.appendChild(el('p',null,'순위 점수(일곱 이상 안): 날짜별 순위상관 평균 '+(ic.ic==null?'—':ic.ic.toFixed(3))+' (양수인 날 '+tpPc(ic.pos)+' · 날짜 '+(ic.dates||0)+') — 순위는 참고.'));
+  if((B.crash_months||[]).length) det.appendChild(el('p',null,'시장 급락 달(전 종목 1개월 중앙 ≤ −5%): '+B.crash_months.map(d=>d.slice(2,4)+'.'+d.slice(4,6)).join(' · ')));
+  det.appendChild(el('h5',null,'민감도 — 문턱 하나씩 ×0.5 · ×1.5 (문턱은 바꾸지 않는다, 표만)'));
+  const st_=el('table','tbl dipTbl mini'); const hr=el('tr'); ['변형','행','회사','달 평균 후보','후보 있던 달','6개월','12개월 중앙','이긴 비율','~2019','2020~'].forEach((n,i)=>hr.appendChild(el('th',i?'r':null,n))); st_.appendChild(hr);
+  (B.sens||[]).forEach(x=>{ const tr=el('tr'); tr.appendChild(el('td',null,x.name));
+    [String(x.n12),String(x.firms),x.per_month==null?'—':tpN(x.per_month,2),String(x.months_with),tpP(x.med6m,1),tpP(x.med12m,1),tpPc(x.hit),tpP(x.early,1),tpP(x.late,1)]
+      .forEach((v,i)=>tr.appendChild(el('td','num'+(i==5&&x.name==='기본'?' strong':''),v))); st_.appendChild(tr); });
+  det.appendChild(st_);
+  det.appendChild(el('h5',null,'한계')); const ul2=el('ul'); (B.limits||[]).forEach(x=>ul2.appendChild(el('li',null,x))); det.appendChild(ul2);
+  return det;
+}
+function qdOrigin(L, C){
+  const det=el('details','qdOrigin'); det.open=!!lsGet('qdOriginOpen',true); det.addEventListener('toggle',()=>lsSet('qdOriginOpen',det.open));
+  const O=L.origin||[]; const n8=O.filter(o=>o.n_pass===8).length;
+  det.appendChild(el('summary',null,'잣대의 출처 — 2026-10-16 인증 12종목이 지금('+tpD(L.asof)+') 이 잣대로 어떻게 보이나: 여덟 다 '+n8+' · 일곱 '+O.filter(o=>o.n_pass===7).length+' · 그 아래 '+O.filter(o=>(o.n_pass||0)<7).length));
+  det.appendChild(el('p',null,'평균 매입가는 거의 모두 2026-10-08 ~ 10-16 종가와 맞는다 — 10-07 ~ 10-15 시장 급락(수집 종목 중앙 9-01 대비 −13.7%, 10-15 하루 −5.9%) 안, 120일 최저 근처에서 샀다. '+
+    '12종목을 전 종목과 가르는 특징: 큰 시가총액 · 높은 ROE · 높은 영업이익률 · 낮은 변동성 · 꾸준한 분기 이익 · 3년 매출 성장 · 최근 3개월 하락 · 자기 역사로 싼 PER · POR. '+
+    '하나 빼고 검사(11종목으로 특징을 고르고 뺀 종목을 매김) 11/12 가 전 종목 상위 10%.'));
+  const cm=(C&&C.by)||{}; const ul=el('ul');
+  O.forEach(o=>{ const li=el('li'); li.appendChild(el('b',null,(o.name||o.code)+' ')); if(o.gates) li.appendChild(qdDots(o));
+    li.appendChild(document.createTextNode(' '+(o.n_pass==null?'자료 없음':o.n_pass+'/8')+(o.miss&&o.miss.length?' — 못 넘음: '+qdMissName(o.miss):'')));
+    const c=cm[o.code]; if(c){ li.appendChild(el('br')); li.appendChild(el('small',null,'빠진 까닭(검증 에이전트가 리포트 · 공시 · 뉴스로 확인): '+c.cause+' → '+c.verdict+(c.note?' · '+c.note:''))); }
+    ul.appendChild(li); });
+  det.appendChild(ul);
+  if(C&&C.at) det.appendChild(el('p',null,'빠진 까닭은 '+tpD(C.at)+' 조사 — 기사 · 리포트 요지라 사실 확인은 원문으로.'));
+  return det;
+}
+async function viewQd(p, run){
+  p.innerHTML='';
+  const box=el('div','valBox'); p.appendChild(box);
+  const hd=el('div','dipHead'); hd.appendChild(el('b',null,'우량 급락'));
+  hd.appendChild(el('span',null,'꾸준히 버는 큰 회사가 급락했을 때 — 한 투자자의 12종목에서 역산한 관문 여덟, 어제까지 접수된 보고서와 어제 종가로'));
+  const b1=el('button','ghost','최신 후보 다시'); b1.style.marginLeft='auto'; b1.title='어제 종가 · 어제까지 접수된 보고서로 다시 센다(1분 안팎)'; b1.onclick=()=>viewQd(p,'latest');
+  const b2=el('button','ghost','검증 전체 다시'); b2.title='과거 검증 · 민감도 · 최신 후보를 다시 돌린다(몇 분). 문턱은 바뀌지 않는다'; b2.onclick=()=>viewQd(p,'full');
+  hd.appendChild(b1); hd.appendChild(b2); box.appendChild(hd);
+  const body=el('div'); box.appendChild(body);
+  let d;
+  try{ d=await (await fetch('/api/qualdip'+(run?'?run='+run:''))).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
+  if(!box.isConnected) return;
+  if(d.error){ body.appendChild(el('div','err',d.error)); return; }
+  const L=d.latest, B=d.bt, R=d.run||{};
+  if(R.running){ const pr=el('div','prog'); pr.appendChild(el('span',null,(R.running==='full'?'과거 검증 전체':'최신 후보')+' 계산 중 — 캐시만 읽는다(네트워크 없음)'));
+    const bar=el('div','bar'); const i=el('i'); i.style.width='30%'; bar.appendChild(i); pr.appendChild(bar); body.appendChild(pr);
+    setTimeout(()=>{ if(box.isConnected&&S.tab==='qd') viewQd(p,false); },5000); }
+  else if(R.at&&R.rc!==0&&R.rc!=null) body.appendChild(el('div','err','마지막 계산이 실패했다(코드 '+R.rc+', '+R.at.replace('T',' ')+') — .cache/qualdip/run.log 를 본다'));
+  const l1=el('div','tpLine');
+  if(L){ const C=L.counts||{}; l1.appendChild(el('b',null,'지금 후보 '+(L.rows||[]).length+'곳')); l1.appendChild(document.createTextNode(' — '+tpD(L.asof)+' 종가와 그날까지 접수된 보고서로. 적격 '+(C.elig||0)+'곳 가운데 관문 여덟을 다 넘은 곳 · 하나만 못 넘은 곳 '+(C.near||0)+(L.at?' (센 때 '+L.at.replace('T',' ').slice(0,16)+')':''))); }
+  else l1.appendChild(document.createTextNode('최신 후보 계산 전 — "최신 후보 다시"를 누른다.'));
+  body.appendChild(l1);
+  const l2=el('div','tpLine sub');
+  if(B&&B.primary){ const pp=B.primary, g=(B.groups||{})['후보(여덟 다)']||{}, lp=(B.groups||{})['저PER 하위 30%']||{};
+    l2.appendChild(el('b',null,'과거 검증: '+B.verdict)); l2.appendChild(document.createTextNode(' — '+B.dates[0].slice(0,4)+'~'+B.dates[1].slice(0,4)+' 매달 말 이 잣대로 사서 12개월. 같은 달 저PER 하위 30% 보다 나았던 달 '+pp.wins+'/'+pp.n_months+', 달별 차이 중앙 '+tpPp(pp.diff_med,1)+' (90% 구간 '+tpCI(pp.ci)+'). 12개월 초과수익 중앙 후보 '+tpP(g.med12m,1)+' vs 저PER '+tpP(lp.med12m,1)+' · 이긴 비율 '+tpPc(g.hit)+' vs '+tpPc(lp.hit)+'. 잣대는 12종목 · 하루 단면에서 역산했다 — 과거 기간으로는 표본 밖이지만 근거가 작다.')); }
+  else l2.appendChild(document.createTextNode('과거 검증 전 — "검증 전체 다시"를 누른다.'));
+  body.appendChild(l2);
+  const cond=el('details','dipCond'); cond.open=!lsGet('qdCondClosed',false); cond.addEventListener('toggle',()=>lsSet('qdCondClosed',!cond.open));
+  cond.appendChild(el('summary',null,'잣대 — 관문 여덟 (사전 등록: 결과를 보고 바꾸지 않는다, 대신 ±50% 민감도 표)'));
+  const g=el('div','dipGates');
+  (L&&L.gates||[]).forEach(([k,n,t],i)=>{ const c=el('div','dipGate'); c.appendChild(el('em',null,'①②③④⑤⑥⑦⑧'[i])); c.appendChild(el('b',null,n)); const ul=el('ul'); ul.appendChild(el('li',null,t)); c.appendChild(ul); g.appendChild(c); });
+  cond.appendChild(g);
+  cond.appendChild(el('p',null,'후보 = 여덟 다 · 아깝게 = 일곱. 순위 점수 = 시총 · ROE · 마진 · 변동성(낮을수록) · 3개월(낮을수록) · 3년 매출 성장 · 4분기 합 최저/최고 · 분기 이익 변동계수(낮을수록) · PER 자리(낮을수록) · POR 자리(낮을수록) · 적자 분기(적을수록)의 그날 백분위 평균. '+
+    '시점: 그날까지 알게 된 분기(정정 포함 접수일)와 그날 종가 — 탑픽과 같다.'));
+  body.appendChild(cond);
+  if(!L) return;
+  body.appendChild(qdOrigin(L, d.causes));
+  const fn=el('div','dipFunnel'); const C=L.counts||{};
+  [['적격',C.elig],...QD_G.map(([k,n])=>[n,C[k]]),['여덟 다',C.cand]].forEach(([k,v],i)=>{ if(i) fn.appendChild(el('i',null,'·')); const x=el('div'); x.appendChild(el('b',null,v==null?'—':String(v))); x.appendChild(el('span',null,k)); fn.appendChild(x); });
+  fn.title='관문마다 따로 센 수(깔때기가 아니다) — 마지막 칸이 여덟 다 넘은 후보'; body.appendChild(fn);
+  const pick=S.qdPick||null;
+  if(L.groups) body.appendChild(tpFlowBox(L, np=>{ S.qdPick=np; viewQd(p,false); }, {pk:'qdPick', mk:'qdMore', candMean:'꾸준히 버는 큰 회사인데 급락해 자기 역사로 싸진 쪽',
+    sub:'적격 '+(C.elig||0)+'곳을 묶어 셌다. 굵은 수 = 후보(우량인데 급락 · 자기 역사로 쌈), ↑ = 우량(①~⑤ · ⑧)인데 1년 시총이 +30% 넘게 이미 오른 곳(돈이 먼저 간 쪽). 칩을 누르면 아래 표를 그 묶음만 본다.'}));
+  const rowsF=(L.rows||[]).filter(r=>tpInGroup(r,pick));
+  const blk=el('div','dipBlock'); const bh=el('div','dipBH'); bh.appendChild(el('b',null,'후보 '+rowsF.length+'곳'+(pick?' — '+pick.name:'')));
+  bh.appendChild(el('span',null,'점수 순 — ● 넘음 ○ 못 넘음(①~⑧). 회사 이름을 누르면 그 회사를 연다. 숫자에 마우스를 올리면 정의.'));
+  if(pick){ const x=el('button','ghost','전체 보기'); x.style.marginLeft='auto'; x.onclick=()=>{ S.qdPick=null; viewQd(p,false); }; bh.appendChild(x); }
+  blk.appendChild(bh);
+  if(rowsF.length) blk.appendChild(qdTable(rowsF,true)); else blk.appendChild(el('div','empty',pick?'이 묶음에는 후보가 없다.':'지금은 여덟을 다 넘은 회사가 없다.'));
+  body.appendChild(blk);
+  const nearF=(L.near||[]).filter(r=>tpInGroup(r,pick));
+  if(nearF.length){ const nd=el('details','dipCond'); nd.appendChild(el('summary',null,'아깝게 — 일곱만 넘은 회사 '+nearF.length+'곳'+(pick?' — '+pick.name:'')+' (점수 순)'));
+    nd.appendChild(qdTable(nearF,false)); body.appendChild(nd); }
+  if(B) body.appendChild(qdEvidence(B));
+  const F=d.files||{};
+  body.appendChild(el('div','finnote','분기 숫자 = 가속도 캐시(DART 원장). 주가 = 네이버 수정주가(분할 보정). 시가총액 = 보정 종가 × 역산 주식수(순이익 ÷ EPS — 우선주 포함 가중평균에 가깝다). ROE 분모는 자본총계(비지배 포함). '+
+    '"큰 회사"는 우리 유니버스(지금 시총 상위 약 990곳) 안 순위. 최신 후보 파일 '+(F.latest?F.latest.replace('T',' ').slice(0,16):'없음')+' · 검증 파일 '+(F.bt?F.bt.replace('T',' ').slice(0,16):'없음')+(R.py?' · 실행기 '+R.py:'')+'. "후보"는 잣대를 넘었다는 뜻이지 오른다는 뜻은 아니다 — 왜 빠졌는지(일시적인가) 마지막 확인은 사람이 한다.'));
 }
 
 // ---------------------------------------------------------- 산업 성장률 — 섹터별 성장률 추이 · 시장 규모 · 시가총액 · 전망(/api/industry · 산업.py)
