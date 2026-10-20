@@ -12774,7 +12774,7 @@ function invOnePager(d, sigs, fin, lead, pos, neg){
   if(rv!=null||op!=null) li(u1,'숫자 — 매출 '+iPct(rv,0)+' · 영업이익 '+iPct(op,0)+' (전년 동기 대비)'+(d.ttm&&d.ttm.reg?' · 최근 4분기 '+d.ttm.reg+' '+iPct(d.ttm.g,0):''));
   const scope=sigs.find(s=>s.src==='scope');
   if(scope) li(u1,'범위 변화 주의 — '+(scope.note||'')+' (“'+cut(scope.text,60)+'”)',scope,'small');
-  const story=sigs.filter(s=>invCardOk(s)&&!s.routine&&!(scope&&s.text===scope.text)).sort((a,b)=>rankTxt(b)-rankTxt(a)).slice(0,3);
+  const story=sigs.filter(s=>invCardOk(s)&&!s.routine&&s.size!=='작음'&&!(scope&&s.text===scope.text)).sort((a,b)=>rankTxt(b)-rankTxt(a)).slice(0,3);   // 재감사 2판: 작은 사건(1억 미만 · 회사 대비 미미)은 ① 에 안 선다
   story.forEach(s=>li(u1,(s.src==='gone'?'빠진 문장 · ':'')+s.label+' ('+invSizeTxt(s)+(s.n_rel?' · 관련 문장 '+(s.n_rel+1)+'개':'')+') — '+cut(s.text,70)+' ['+s.sec+']',s));
   if(!story.length) li(u1,'새로 적힌 사실 0건 — 숫자만 갱신된 보고서에 가깝다'+((DR.statute||DR.common||DR.stale)?' (걸러낸 문장: 규정 · 상용구 '+((DR.statute||0)+(DR.common||0))+' · 묵은 말 '+(DR.stale||0)+')':''),null,'small');
 

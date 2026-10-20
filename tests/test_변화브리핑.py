@@ -202,3 +202,14 @@ def test_num_channel_ignores_trailing_note_reference():
 def test_industry_macro_prose_flagged():
     assert SRV._inv_is_industry("다만, 향후 환율 경로는 한ㆍ미ㆍ일 정책 공조와 글로벌 위험 선호 심리 회복 등에 힘입어 연말까지 하락할 수 있다는 전망임.")
     assert SRV._inv_is_industry("AI 서버·고사양용 고부가 MLCC는 주문이 급증해 일본·한국 업체 가동률이 80%를 웃도는 반면 범용 IT용은 상대적으로 부진함.")
+
+
+def test_tiny_amount_sentence_is_small_and_scope_hint_survives_stale():
+    kona = "회사는 당반기말 현재 피고로 계류 중인 손해배상 청구 소송 중 항소심 1건(소송가액 약 72,761천원)에서 2026년 7월 8일자로 항소 기각(회사 승소) 판결을 받았음"
+    a = SRV._inv_anchor(kona, 2026)
+    assert a and a.get("tiny") and "amt" not in a
+    base = {"src": "new", "label": "리스크 · 손해배상", "text": "t", "raw": kona, "section": "재무에 관한 사항", "sec": "재무", "tags": ["리스크·소송"], "dir": 0.3, "hz": .45, "mag": .5, "gurus": [],
+            "loc": {"rcept": "r", "file": "f", "blk": 1, "off": 0, "len": 10}, "anchor": True, "anc": a}
+    out = SRV._inv_refine([base], {"rev": 1e12, "op": 1e11, "cap": 1e13})
+    assert out[0]["size"] == "작음"
+    assert SRV.INV_SCOPE.search("2026년 4월 30일자 이사회 결의에 따라 종속기업인 CCP ehf.와 그 종속기업의 지분매각을 결정하였으며")

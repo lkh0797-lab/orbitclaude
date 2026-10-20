@@ -4038,6 +4038,7 @@ INV_SKIP_SEC = re.compile(r"임원|직원|정관|주석|감사(?!보고)")     #
 INV_SUIT_SELF = re.compile(r"(?:당사|회사)(?:가|는|의|에서)\s*[^.]{0,30}(?:제기|청구|신청|승소|기각|각하|승리)")
 INV_SUIT_AGAINST = re.compile(r"(?:당사|회사)(?:를|을)\s*(?:상대로|피고로)|피고\s*(?:로|인|는|가)|피소|제소\s*당|청구\s*당|(?:당사|회사)(?:에게|에)\s*[^.]{0,12}(?:청구|제기)")
 INV_WIN = re.compile(r"승소|기각|각하|취하|무혐의|불기소|승리")
+INV_WON_TINY = re.compile(r"(?<![\d.,제])\d[\d,]*(?:\.\d+)?\s*(?:천\s*원|만\s*원|백만\s*원|천만\s*원|원)(?![가-힣])")     # 1억 미만일 금액 꼴(천원 · 만원 · 백만원 …)
 INV_WON_BARE = re.compile(r"(?<![\d.,제])(\d[\d,]*(?:\.\d+)?)\s*(조|억)(?!\s*원)(?![가-힣\d])")      # '6,000억)' · '205억' — 원 없이 적은 금액
 INV_COMMON_MIN, INV_COMMON_PREFIX = 5, 3            # 회사 5곳↑ · 이름 머리(두 글자) 3가지↑ 이면 회사 사이 상용구
 INV_SKEL_DIR = os.path.join(CACHE_DIR, "invest", "_skel")
@@ -4077,6 +4078,8 @@ def _inv_anchor(sent, ryear):
         out["party"] = True
     if amt and INV_AUTH.search(sent or ""):
         out["auth"] = True
+    if not amt and INV_WON_TINY.search(sent or ""):
+        out["tiny"] = True                     # 금액은 있는데 1억 미만 — 사건 크기는 '작음'
     return out or None
 
 
@@ -4731,6 +4734,8 @@ def _inv_refine(sigs, scale):
                 big = any(v is not None and v >= INV_MAT["big"][i] for v, i in vals)
                 small = all(v is None or v < INV_MAT["small"][i] for v, i in vals) and any(v is not None for v, _ in vals)
                 s["size"] = "중요" if big else "작음" if small else "보통"
+            elif (s.get("anc") or {}).get("tiny"):
+                s["size"] = "작음"                   # 1억 미만 금액만 든 문장(7천만원 소송)
             else:
                 s["size"] = "금액 미상"
             if INV_RELATED.search(s.get("text", "")):
@@ -4924,6 +4929,8 @@ def _inv_collect(c, base, rep, b, ryear, known=None, regular=None, stats=None):
                 continue          # 원문에 있던 문장(고쳐 쓴 것 포함)
             if ki.has(sk):
                 st["stale"] += 1
+                if INV_SCOPE.search(sent) and re.search(r"당사|연결실체|당\s*회사|지배기업|지배회사|연결회사|종속기업", sent) and not st.get("scope_hint"):
+                    st["scope_hint"] = {"raw": sent[:400], "text": _short(sent, 110), "section": sx["section"]}     # 범위 변화 주의는 묵어도 남긴다
                 continue          # 그 사이 보고서에 이미 있던 말 — 시장이 읽은 것
             if common is not None and _inv_skel_key(sent) in common:
                 st["common"] += 1
@@ -5008,6 +5015,10 @@ def invest_view(c, rep, lite=False):
         sc_all = [x for x in sigs if x.get("src") == "new" and INV_SCOPE.search(x.get("raw") or x.get("text") or "")
                   and (re.search(r"당사|연결실체|당\s*회사|지배기업|지배회사|연결회사", x.get("raw") or "") or (c.get("name") and c["name"] in (x.get("raw") or "")))]
         sc_ = sc_all[0] if sc_all else None
+        if sc_ is None and dropped.get("scope_hint") and rv_ is not None and abs(rv_) > 40:
+            h_ = dropped["scope_hint"]
+            sc_ = {"text": h_["text"], "raw": h_["raw"], "loc": None, "section": h_["section"], "sec": SEC_SHORT.get(h_["section"], h_["section"])}
+        dropped.pop("scope_hint", None)          # 쓰고 나면 수만 남긴다(화면 '걸러낸 문장' 띠)
         if sc_ is not None and rv_ is not None and abs(rv_) > 40:
             sigs.append({"src": "scope", "label": "범위 변화 · " + (INV_SCOPE.search(sc_.get("raw") or sc_.get("text") or "").group(0)), "text": sc_["text"], "raw": sc_.get("raw"),
                          "loc": sc_.get("loc"), "section": sc_["section"], "sec": sc_["sec"], "tags": ["범위 변화"], "dir": 0.0, "hz": .2, "mag": .6, "gurus": [],
