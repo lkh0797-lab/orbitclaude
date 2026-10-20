@@ -916,7 +916,15 @@ button.vbCo small{font:500 10px var(--mono);color:var(--faint)}button.vbCo.on sm
 .drkOEnd{stroke:var(--p-bg);stroke-width:2}
 .drkOKey{stroke-width:3;stroke-linecap:round}
 .drkOLead{stroke:var(--p-faint);stroke-width:1}
-.drkOLab{font:700 12.5px var(--f-num);fill:var(--p-ink)}
+.drkOLab{font:700 12px var(--f-num);fill:var(--p-ink)}
+/* 한눈에 판 마우스 요약 */
+.spTip.drkGlance{width:262px;padding:11px 13px 10px}
+.drkGlance .gRow{display:grid;grid-template-columns:12px 1fr auto;align-items:baseline;gap:7px;margin-top:6px}
+.drkGlance .gRow i{display:block;width:11px;height:3px;border-radius:2px;align-self:center}
+.drkGlance .gRow span{font-size:11.5px;color:var(--p-dim)}
+.drkGlance .gRow b{font:700 13px var(--f-num);color:var(--p-hi);text-align:right}
+.drkGlance .gRow small{grid-column:2/4;margin-top:-2px;font:500 11px var(--f-num);color:var(--p-dim)}
+.drkGlance p.gSum{margin-top:9px;color:var(--p-ink);font-size:12px}
 .drkOChk{fill:none;stroke:var(--p-hi);stroke-width:1.8}
 .drkSwRing{fill:none;stroke-width:1.8}
 .drkOChk.asf,.drkSwRing.asf{stroke-dasharray:3 2.5}
@@ -10550,7 +10558,8 @@ function drkStack(R, K){
   chips.prepend(seg);
   wrap.appendChild(chips);
   const fig=el('div','orbFig'); wrap.appendChild(fig);
-  const RP=drkPad(R);          // 마지막 자료 분기 뒤 오늘이 든 분기까지 빈 칸(보고서 전) — 증권사 주간 주가가 그 칸까지 이어진다
+  const RP=drkPad(R);
+  K.byN=Object.fromEntries(RP.map(r=>[r.n,r]));          // 마지막 자료 분기 뒤 오늘이 든 분기까지 빈 칸(보고서 전) — 증권사 주간 주가가 그 칸까지 이어진다
   const draw=()=>{ fig.innerHTML='';
   const R=span==='all'?RP:RP.slice(-(+span*4));
   const N=R.length, W=1000, L=56, Rr=112, T=24;
@@ -10621,6 +10630,8 @@ function drkStack(R, K){
       if(i===undefined) return null;
       const a=Date.UTC(y,qm,1), b=Date.UTC(y,qm+3,1); return L+(i+(Date.UTC(y,m,d)-a)/(b-a))*step; };
     const kp=kis.px&&kis.px.t&&kis.px.t.length>1?kis.px:null;
+    K.kpq={};
+    if(kp) kp.t.forEach((t,j)=>{ const m=+t.slice(4,6)-1; if(kp.c[j]>0) K.kpq[+t.slice(0,4)*4+Math.floor(m/3)]={t, c:kp.c[j]}; });
     const wk=kp?kp.t.map((t,j)=>({t, c:kp.c[j], x:xOf(t)})).filter(o=>o.x!==null&&o.c>0):[];
     const S=[
       {k:'g', lab:M+' 증가율', vals:R.map(r=>dNum(r.s)?r.s:null), rng:(a,b)=>dPct(a,0)+'~'+dPct(b,0), end:v=>'증가율 '+dPct(v,0)},
@@ -10656,14 +10667,13 @@ function drkStack(R, K){
       if(Math.abs(y-YO(0))>12&&Math.abs(y-YO(1))>12) put('text',{x:L-8,y:y+4,'text-anchor':'end',class:'orbTick'}).textContent='증가율 0'; }
     if(!S.length) put('text',{x:L,y:oT+HO/2,class:'drkNA'}).textContent='증가율 · 이익률 · 주가가 두 분기 넘게 쌓이지 않아 그리지 않았다';
     const ends=[];
-    K.kpq={};
     S.forEach(s=>{
       if(s.wk){
         put('path',{d:'M'+s.wk.map(o=>o.x.toFixed(1)+','+YO(s.t(o.c)).toFixed(1)).join('L'),class:'drkOLine p'});
         // 칸마다 그 분기의 마지막 주 — 마우스 점 · 풍선 숫자
         let j=0; R.forEach((r,i)=>{ const x1=L+(i+1)*step; let last=null;
           while(j<s.wk.length&&s.wk[j].x<x1){ last=s.wk[j]; j++; }
-          if(last){ K.kpq[r.n]=last; mk(i,YO(s.t(last.c)),OC.p); } });
+          if(last) mk(i,YO(s.t(last.c)),OC.p); });
         const o=s.wk[s.wk.length-1], d=put('circle',{cx:o.x,cy:YO(s.t(o.c)),r:5.5,class:'drkOEnd'}); d.style.fill=OC.p;
         d.appendChild(svgEl('title',{})).textContent='한투 주간 수정주가 '+Math.round(o.c).toLocaleString('ko-KR')+'원 ('+dDate(o.t)+' 주)';
         ends.push({s,x:o.x,y:YO(s.t(o.c)),v:o.c});
@@ -10827,25 +10837,71 @@ function drkStack(R, K){
   // 마우스 — 분기 칸을 밝히고 각 선 위에 점, 옆에 그 분기 숫자
   const hov=put('g',{class:'drkHovG'});
   const tp=el('div','spTip drkTip'); tp.hidden=true;
+  let cur='';
   R.forEach((r,i)=>{
     const h=put('rect',{x:L+i*step,y:oT,width:step,height:bot-oT,class:'hit drkHit'});
-    h.addEventListener('pointerenter',()=>{
+    const show=e=>{
+      const sb=svg.getBoundingClientRect(), sy=(e.clientY-sb.top)*H/(sb.height||1), top=sy<ribY-24;   // 한눈에 판 위인가
+      const key=i+(top?'o':'f'); if(key===cur) return; cur=key;
       col.style.display=''; col.setAttribute('x',L+i*step);
       hov.innerHTML=''; marks[i].forEach(([y,c,opt])=>{ if(opt&&!wrap.classList.contains(opt)) return;
         const d=svgEl('circle',{cx:X(i),cy:y,r:4.2,class:'drkHov'}); d.style.fill=c; hov.appendChild(d); });
-      tp.innerHTML=''; tp.appendChild(drkTipBody(r, K)); tp.hidden=false;
+      tp.className='spTip '+(top?'drkGlance':'drkTip');
+      tp.innerHTML=''; tp.appendChild(top?drkGlance(r, K):drkTipBody(r, K)); tp.hidden=false;
       const box=fig.getBoundingClientRect(), sc=box.width/W;
       let lx=X(i)*sc+18; if(lx+tp.offsetWidth>box.width-4) lx=X(i)*sc-tp.offsetWidth-18;
-      tp.style.left=Math.max(4,lx)+'px'; tp.style.top=Math.max(4,aT*sc)+'px';
-    });
-    h.addEventListener('pointerleave',()=>{ col.style.display='none'; hov.innerHTML=''; tp.hidden=true; });
+      tp.style.left=Math.max(4,lx)+'px'; tp.style.top=Math.max(4,(top?oT+24:aT)*sc)+'px';
+    };
+    h.addEventListener('pointerenter',show); h.addEventListener('pointermove',show);
+    h.addEventListener('pointerleave',()=>{ cur=''; col.style.display='none'; hov.innerHTML=''; tp.hidden=true; });
   });
   fig.appendChild(svg); fig.appendChild(tp);
+  // 끝 이름표가 판 오른쪽 끝을 넘으면(글꼴 · 화면 배율) 글자 폭을 줄여 맞춘다 — 판에 붙은 뒤에야 잴 수 있다
+  requestAnimationFrame(()=>{ if(!svg.isConnected) return;
+    svg.querySelectorAll('.drkOLab,.drkEndL').forEach(t=>{ try{ const b=t.getBBox(), room=W-3-b.x;
+      if(b.width>room&&room>20){ t.setAttribute('textLength',room.toFixed(1)); t.setAttribute('lengthAdjust','spacingAndGlyphs'); } }catch(e){} }); });
   };
   draw();
   drkKisLoad(wrap, K, draw);
   if(R.some(r=>r.val)) wrap.appendChild(drkValBox(R));
   return wrap;
+}
+
+// 한눈에 판 마우스 요약 — 그 분기의 매출 증가율 · 영업이익률 · 주가가 어땠는지 세 줄 + 한 문장(사용자: "마우스로 가져다대면 간략요약").
+// 주가는 증권사 주간 주가(그 분기 마지막 주)로 분기 · 1년 변화, 없으면 공시일 종가. 문장은 방향만 적는다 — 좋다/나쁘다 · 사라/팔라는 없다
+function drkGlance(r, K){
+  const f=document.createDocumentFragment(), M=K.M, by=K.byN||{};
+  const pxS=v=>v>=1e4?(v/1e4).toFixed(v>=1e6?0:1)+'만':Math.round(v).toLocaleString('ko-KR');
+  const h=el('div','spTipH'); h.innerHTML='<b></b><i></i><small></small>';
+  h.querySelector('b').textContent=r.label;
+  h.querySelector('i').style.background=r.reg?K.C(r.reg):'transparent';
+  h.querySelector('small').textContent=r.pad?'보고서 전 — 실적 없음':r.reg?'흐름 '+DRK_DIRN[drkDir(r)]:'흐름 판단 전';
+  f.appendChild(h);
+  const row=(c,name,val,sub)=>{ const d=el('div','gRow'), k=el('i'); k.style.background=c;
+    d.appendChild(k); d.appendChild(el('span',null,name)); d.appendChild(el('b',null,val)); if(sub) d.appendChild(el('small',null,sub)); f.appendChild(d); };
+  const arw=(v,t)=>!dNum(v)?'':v>=t?'↑ ':v<=-t?'↓ ':'– ';
+  // 주가 — 증권사 그 분기 마지막 주, 없으면 공시일 종가
+  const kq=K.kpq||{}, pAt=n=>kq[n]?kq[n].c:(by[n]&&dNum(by[n]['주가'])&&by[n]['주가']>0?by[n]['주가']:null);
+  const pc=pAt(r.n), pq=pAt(r.n-1), py=pAt(r.n-4), ch=(a,b)=>dNum(a)&&dNum(b)&&b>0?(a/b-1)*100:null;
+  const dq=ch(pc,pq), dy=ch(pc,py);
+  if(!r.pad){
+    row('#c98500', M+' 증가율', dPct(r.s,0), dNum(r.a)?'반년 전보다 '+arw(r.a,DRK_BAND)+dPp(r.a,1):'최근 반년 평균');
+    row('#3987e5', '영업이익률', dNum(r.m)?r.m.toFixed(1)+'%':'—', dNum(r.mD4)?'1년 새 '+arw(r.mD4,.5)+dPp(r.mD4,1):''); }
+  row('#d55181', '주가'+(kq[r.n]?'':' (공시일)'), dNum(pc)?pxS(pc)+'원':'—',
+    [dNum(dq)?'그 분기 '+arw(dq,3)+dPct(dq,0):'', dNum(dy)?'1년 '+arw(dy,5)+dPct(dy,0):''].filter(Boolean).join(' · '));
+  // 한 문장 — 세 방향을 잇고, 이익률과 주가가 엇갈리면 그 점을 앞에
+  if(!r.pad){
+    const g=!dNum(r.a)?null:dNum(r.s)&&r.s<0 ? (r.a>=DRK_BAND?'매출 감소 폭이 줄어듦':r.a<=-DRK_BAND?'매출 감소 폭이 커짐':'매출 감소 이어짐')
+      : (r.a>=DRK_BAND?'매출 증가가 빨라짐':r.a<=-DRK_BAND?'매출 증가가 느려짐':'매출 증가 속도 비슷');
+    const m=!dNum(r.mD4)?null:r.mD4>=.5?'이익률 오름':r.mD4<=-.5?'이익률 내림':'이익률 비슷';
+    const p=!dNum(dy)?null:dy>=5?'주가 1년 오름':dy<=-5?'주가 1년 내림':'주가 1년 비슷';
+    const gap=dNum(r.mD4)&&dNum(dy) ? (r.mD4>=.5&&dy<=-5?'이익률은 올랐는데 주가는 내렸다. ':r.mD4<=-.5&&dy>=5?'이익률은 내렸는데 주가는 올랐다. ':'') : '';
+    const parts=[g,m,p].filter(Boolean);
+    if(parts.length) f.appendChild(el('p','gSum',gap+parts.join(' · ')));
+    const kc=K.kis&&K.kis.chk&&K.kis.chk[r.n];
+    if(kc) f.appendChild(el('p',null,'한투 분기 손익과 다름 — '+[['rev','매출'],['op','영업이익']].filter(([k])=>kc[k]).map(([k,t])=>t+' '+dPct(kc[k].pct,1)+(kc[k].src==='재작성'?'':' (공시 당시 값과)')).join(' · ')));
+  }
+  return f;
 }
 
 // 마지막 자료 분기 뒤로 오늘이 든 분기까지 빈 칸(pad) — 아직 보고서가 없는 분기. 다른 판은 그 칸을 비워 둔다
