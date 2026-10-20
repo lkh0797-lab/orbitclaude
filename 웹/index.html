@@ -1135,6 +1135,39 @@ button.vbCo small{font:500 var(--fs-1) var(--mono);color:var(--faint)}button.vbC
 .invplate.anim .invLabs{animation:spFade .6s .6s both}
 .invNode.on .sh{filter:drop-shadow(0 0 8px rgba(241,217,160,.6))}
 .invplate.anim .invNode{animation:spFade .5s var(--d,0ms) both}
+/* 기회 지형도 칸 판(2026-10-21) */
+.invTG{display:grid;grid-template-columns:62px repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+.invTGc{min-width:0}
+.invTGc.hd{padding:2px 6px 6px;border-bottom:1px solid rgba(255,255,255,.12);text-align:center}
+.invTGc.hd b{display:block;font:700 var(--fs-5) var(--f-disp);color:var(--p-hi)}.invTGc.hd small{display:block;font:500 var(--fs-1) var(--f-num);letter-spacing:.06em;color:var(--p-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.invTGc.rh{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:8px;font:700 var(--fs-4) var(--f-disp)}
+.invTGc.rh small{font:500 var(--fs-1) var(--f-num);color:var(--p-faint)}
+.invTGc.rh.up{color:#f1d9a0;background:rgba(214,180,106,.1)}.invTGc.rh.dn{color:#f0a39c;background:rgba(217,89,38,.12)}.invTGc.rh.nu{color:var(--p-faint);background:rgba(255,255,255,.03)}
+.invTGc.cell{display:flex;flex-direction:column;gap:5px;padding:6px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);min-height:58px}
+.invTGc.cell.up{background:linear-gradient(180deg,rgba(214,180,106,.09),rgba(255,255,255,.02))}.invTGc.cell.dn{background:linear-gradient(0deg,rgba(217,89,38,.09),rgba(255,255,255,.02))}
+.invTGc .none{color:var(--p-faint);font-size:var(--fs-3);text-align:center;margin:auto}
+.invTGc .more{font:500 var(--fs-2) var(--f-num);color:var(--p-faint);padding:2px 4px}
+.invChip{position:relative;padding:6px 8px 6px 10px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-left:3px solid #8a95a3;cursor:pointer;transition:background .15s,border-color .15s}
+.invChip.up{border-left-color:#f1d9a0}.invChip.dn{border-left-color:#d95926}.invChip.hollow{border-style:dashed;border-left-style:solid}
+.invChip:hover,.invChip.on{background:rgba(255,255,255,.08);border-color:rgba(214,180,106,.5)}
+.invChip .ch{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;min-width:0}.invChip .ch b{font-size:var(--fs-4);color:var(--p-hi);word-break:keep-all}.invChip .ch small{font:500 var(--fs-1) var(--f-num);color:var(--p-faint)}
+.invChip .ch .n{font:600 var(--fs-1) var(--f-num);color:var(--p-faint)}.invChip .ch .n.lnk{cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}
+.invChip .wt{display:block;height:3px;border-radius:2px;background:rgba(241,217,160,.6);margin:4px 0 3px}.invChip.dn .wt{background:rgba(217,89,38,.65)}.invChip.nu .wt{background:rgba(138,149,163,.55)}
+.invChip p{margin:0;font-size:var(--fs-2);line-height:1.4;color:var(--p-dim);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.invChip.open>p{display:none}
+.invTerrG.focusing .invChip:not(.on){opacity:.35}
+@media (max-width:900px){.invTG{grid-template-columns:48px repeat(3,minmax(0,1fr))}.invTGc.hd small{display:none}}
+/* 원문 안내 상자 — 카드 줄 · 신호 목록 · 지형도 칩 공용 */
+.invDet{margin-top:6px;padding:8px 10px;border-radius:8px;background:rgba(214,180,106,.07);border:1px solid rgba(214,180,106,.28);font-size:var(--fs-3);line-height:1.55;color:var(--p-ink);cursor:default;white-space:normal}
+.invDet p.q{margin:0 0 4px;font:400 var(--fs-4)/1.65 var(--f-disp);color:var(--p-hi);word-break:keep-all;overflow-wrap:anywhere}
+.invDet p.rel{margin:0 0 3px;color:var(--p-dim)}.invDet .meta{color:var(--p-faint);font-size:var(--fs-2);margin-top:3px}
+.invDet .acts{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.invBtn{font:600 var(--fs-2) var(--f-body);padding:3px 10px;border-radius:6px;color:var(--p-hi);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);cursor:pointer}
+.invBtn:hover{border-color:rgba(214,180,106,.7);color:#f1d9a0}
+.invM li.exp{cursor:pointer;padding-right:14px}.invM li.exp::after{content:'▾';position:absolute;right:0;top:.1em;color:var(--p-faint);font-size:var(--fs-2)}.invM li.exp.open::after{content:'▴'}
+.invM li.exp:hover{color:var(--p-hi)}
+.invSigList li.exp{cursor:pointer}.invSigList li.open p{display:block;-webkit-line-clamp:unset}
+.invSigList li.flash{outline:1px solid rgba(214,180,106,.75);background:rgba(214,180,106,.12)}
 .invLegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:6px;font-size:var(--fs-3);color:var(--p-dim)}
 .invLegend span{display:inline-flex;align-items:center;gap:6px}
 .invLegend i{display:inline-block;width:10px;height:10px;background:var(--p-dim)}
@@ -12399,6 +12432,33 @@ function invNum(s, d){
   if(ok){ n.title='본문에서 이 문장 보기 — '+(s.loc.rcept===(d.base||{}).rcept?'기준 보고서':'이 보고서')+' · '+(s.sec||''); n.onclick=e=>{ e.stopPropagation(); invOpenRead(s,d); }; }
   return n;
 }
+// 원문 안내 상자(2026-10-21 사용자: "#1, #4 내용에 … 라고 끊겨서 원내용을 다 보고 싶다") — 카드 줄 · 신호 목록 · 지형도 칩에서 같은 상자를 연다:
+// 문장 전체(raw) · 같은 사건 문장 · 출처 · 크기 · 방향 · 지평, 그리고 '본문에서 보기'(형광펜) · '신호 목록에서 보기'
+const invHzTxt=h=>h<1/3?'지금':h<2/3?'1–2년':'구조';
+function invSigDetail(s, d){
+  const box=el('div','invDet'); box.onclick=e=>e.stopPropagation();
+  if(s.src==='fin') box.appendChild(el('p','q',s.text||''));
+  else box.appendChild(el('p','q','“'+(s.raw||s.text||'')+'”'));
+  (s.related||[]).forEach(x=>box.appendChild(el('p','rel','＋ '+x)));
+  const bits=[INV_SRC[s.src]||s.src, s.sec?'['+s.sec+']':'', (s.size||s.amt)?'크기 '+invSizeTxt(s):'', '방향 '+(s.dir>0?'+':'')+(+s.dir).toFixed(2), '지평 '+invHzTxt(s.hz)];
+  if(s.src==='gone') bits.push('기준 보고서(전년 동기)에 있던 문장 — 이번 보고서에서 빠졌다');
+  if(s.src!=='fin'&&s.src!=='scope'&&!s.anchor) bits.push('붙잡을 사실(금액 · 날짜 · 상대방) 없음');
+  box.appendChild(el('div','meta',bits.filter(Boolean).join(' · ')));
+  const acts=el('div','acts');
+  if(s.loc&&s.loc.rcept&&s.loc.file&&s.src!=='fin'){ const a=el('button','invBtn','본문에서 보기 → 형광펜'); a.onclick=e=>{ e.stopPropagation(); invOpenRead(s,d); }; acts.appendChild(a); }
+  const b=el('button','invBtn','신호 목록에서 보기'); b.onclick=e=>{ e.stopPropagation(); invScrollSig(s.id); }; acts.appendChild(b);
+  box.appendChild(acts);
+  return box;
+}
+function invToggleDetail(host, s, d){
+  const ex=host.querySelector(':scope > .invDet');
+  if(ex){ ex.remove(); host.classList.remove('open'); return false; }
+  host.appendChild(invSigDetail(s,d)); host.classList.add('open'); return true;
+}
+function invScrollSig(id){
+  const li=document.querySelector('.invSigList li[data-id="'+id+'"]'); if(!li) return;
+  li.scrollIntoView({block:'center',behavior:'smooth'}); li.classList.add('flash'); setTimeout(()=>li.classList.remove('flash'),1800);
+}
 // 크기 → 0~1 — INV_MAT '중요' 문턱(영업이익 10% · 시총 1% · 매출 2%)에서 1. 금액 없는 앵커(상대방+날짜)는 0.3, 그 밖 0.15
 const invMat=s=>{ const m=Math.max(s.p_op!=null?s.p_op/10:0, s.p_cap!=null?s.p_cap/1:0, s.p_rev!=null?s.p_rev/2:0); return m>0?Math.min(1,m):(s.anc&&(s.anc.party||s.anc.date)?0.3:0.15); };
 const invRiskBig=s=>invCardOk(s)&&((s.p_op!=null&&s.p_op>=2)||(s.p_cap!=null&&s.p_cap>=0.2)||!!(s.anc&&s.anc.auth));
@@ -13072,13 +13132,13 @@ function invPlate(plate, d, c, L, rep){
 
   // ── 기회 지형도 | 신호 목록
   const duo=el('div','invDuo');
-  const terr=invTerrain(sigs, plate);
+  const terr=invTerrain(sigs, plate, d);
   duo.appendChild(terr);
   const lst=el('div','invSigList');
   lst.appendChild(el('div','spIdeasH','신호')).appendChild(el('em',null,'SIGNALS · 무게 순'));
   const ol=el('ol');
   sigs.slice(0,12).forEach(s=>{
-    const li=el('li',invTone(s.dir)+(s.routine?' routine':'')); li.dataset.id=s.id;
+    const li=el('li',invTone(s.dir)+(s.routine?' routine':'')+(s.src!=='fin'?' exp':'')); li.dataset.id=s.id;
     const n=el('span','n'+(s.loc&&s.loc.rcept&&s.src!=='fin'?' lnk':''),String(s.id)); n.style.setProperty('--c',invCol(s.dir));
     if(s.loc&&s.loc.rcept&&s.src!=='fin'){ n.title='본문에서 이 문장 보기'; n.onclick=()=>invOpenRead(s,d); }
     li.appendChild(n);
@@ -13094,6 +13154,7 @@ function invPlate(plate, d, c, L, rep){
     (s.related||[]).slice(0,2).forEach(x=>m.appendChild(el('p','rel','＋ '+x)));
     li.appendChild(m);
     li.onmouseenter=()=>terr.focusId&&terr.focusId(s.id); li.onmouseleave=()=>terr.blur&&terr.blur();
+    if(s.src!=='fin'){ li.title='누르면 문장 전체'; li.onclick=e=>{ if(e.target.closest('.n')) return; const on=invToggleDetail(m,s,d); li.classList.toggle('open',on); }; }
     ol.appendChild(li);
   });
   lst.appendChild(ol);
@@ -13132,7 +13193,9 @@ function invOnePager(d, sigs, fin, lead, pos, neg){
   const box=el('div','invMemo invOne');
   const grid=el('div','invMemoG invOneG'); box.appendChild(grid);
   const card=(k,sub)=>{ const c=el('div','invM'); const h=el('div','h'); h.appendChild(el('b',null,k)); if(sub) h.appendChild(el('small',null,sub)); c.appendChild(h); const ul=el('ul'); c.appendChild(ul); grid.appendChild(c); return ul; };
-  const li=(ul,txt,s,cls)=>{ const x=el('li',(s?invTone(s.dir):'')+(cls?' '+cls:'')); if(s) x.appendChild(invNum(s,d)); x.appendChild(document.createTextNode(txt)); ul.appendChild(x); return x; };
+  const li=(ul,txt,s,cls)=>{ const x=el('li',(s?invTone(s.dir):'')+(cls?' '+cls:'')); if(s) x.appendChild(invNum(s,d)); x.appendChild(document.createTextNode(txt)); ul.appendChild(x);
+    if(s&&s.src!=='fin'){ x.classList.add('exp'); x.title='누르면 문장 전체 · 본문 · 신호 목록으로'; x.onclick=e=>{ if(e.target.closest('.n')) return; invToggleDetail(x,s,d); }; }   // …로 끊긴 문장은 눌러서 전체(2026-10-21)
+    return x; };
   const fp=k=>fin[k]&&fin[k].pct!=null?fin[k].pct:null;
   const cut=(t,n)=>t.length>n?t.slice(0,n)+'…':t;
   const DR=d.dropped||{};
@@ -13656,8 +13719,57 @@ function invCdlSvg(box, hold, tip, c){
   });
 }
 
-// 기회 지형도 — 가로 시간 지평(지금 → 구조), 세로 방향(위 기회 · 아래 위험), 크기 무게, 모양 출처
-function invTerrain(sigs, plate){
+// 기회 지형도(2026-10-21 사용자: "좀 더 직관적으로") — 점을 흩뿌린 SVG 대신 (언제 드러나나 3열 × 기회 · 중립 · 위험 3행) 칸 판.
+// 열 = 지평(INV_TAG 시간 지평: 실적 · 자금조달 = 지금, 수주 · 고객 · 리스크 · M&A · 주주환원 = 1–2년, 증설 · 신사업 · R&D = 구조), 행 = 방향(±0.15).
+// 칸 안은 무게(mag × (0.4 + |방향|), 신호 목록과 같은 순) 순 칩 ≤ 6: 번호(본문 링크) · 이름 · 크기 · 무게 막대 · 문장. 칩을 누르면 원문 상자. 옛 SVG 판은 invTerrainSvg.
+function invTerrain(sigs, plate, d){
+  const box=el('div','invTerr invTerrG');
+  box.appendChild(el('div','spIdeasH','기회 지형도')).appendChild(el('em',null,'OPPORTUNITY TERRAIN · 가로 = 언제 드러나나 · 세로 = 기회 / 위험 · 칸 안은 무게 순'));
+  const HZ=[['지금','실적 · 이번 숫자 · 자금'],['1–2년','수주 · 고객 · 소송 · M&A · 주주환원'],['구조','증설 · 신사업 · R&D · 해자']];
+  const hzOf=s=>s.hz<1/3?0:s.hz<2/3?1:2, rowOf=s=>s.dir>0.15?'up':s.dir<-0.15?'dn':'nu';
+  const wt=s=>s.mag*(0.4+Math.abs(s.dir));
+  const byCell={};
+  sigs.forEach(s=>{ const k=rowOf(s)+hzOf(s); (byCell[k]=byCell[k]||[]).push(s); });
+  const rows=[['up','기회'],['nu','중립'],['dn','위험']].filter(([r])=>r!=='nu'||[0,1,2].some(i=>byCell['nu'+i]));
+  const grid=el('div','invTG');
+  grid.appendChild(el('div','invTGc hd'));
+  HZ.forEach(([k,sub])=>{ const h=el('div','invTGc hd'); h.appendChild(el('b',null,k)); h.appendChild(el('small',null,sub)); grid.appendChild(h); });
+  rows.forEach(([r,k])=>{
+    const n=[0,1,2].reduce((a,i)=>a+((byCell[r+i]||[]).length),0);
+    const rh=el('div','invTGc rh '+r); rh.appendChild(el('b',null,k)); rh.appendChild(el('small',null,n+'건')); grid.appendChild(rh);
+    [0,1,2].forEach(i=>{ const c=el('div','invTGc cell '+r);
+      const L=(byCell[r+i]||[]).slice().sort((a,b)=>wt(b)-wt(a));
+      if(!L.length) c.appendChild(el('span','none','—'));
+      L.slice(0,6).forEach(s=>c.appendChild(invChip(s,d,plate)));
+      if(L.length>6){ const m=el('span','more','+'+(L.length-6)+'건 — 신호 목록에'); c.appendChild(m); }
+      grid.appendChild(c); });
+  });
+  box.appendChild(grid);
+  const lg=el('div','invLegend');
+  [['sq','재무'],['ci','새 문장'],['di','숫자 변화'],['ho','사라진 문장(점선)']].forEach(([c2,t])=>{ const x=el('span'); x.appendChild(el('i',c2)); x.appendChild(document.createTextNode(t)); lg.appendChild(x); });
+  const cs=el('span','cols'); cs.innerHTML='<i style="background:#f1d9a0"></i>기회 <i style="background:#8a95a3"></i>중립 <i style="background:#d95926"></i>위험 · 막대 길이 = 무게 · 칩을 누르면 문장 전체, #번호는 본문 형광펜';
+  lg.appendChild(cs); box.appendChild(lg);
+  box.focusId=id=>{ box.classList.add('focusing'); box.querySelectorAll('.invChip').forEach(x=>x.classList.toggle('on',+x.dataset.id===id)); };
+  box.blur=()=>{ box.classList.remove('focusing'); box.querySelectorAll('.invChip').forEach(x=>x.classList.remove('on')); };
+  return box;
+}
+function invChip(s, d, plate){
+  const w=el('div','invChip '+invTone(s.dir)+' '+s.src+(s.src==='gone'?' hollow':'')); w.dataset.id=s.id;
+  const h=el('div','ch'); h.appendChild(invNum(s,d)); h.appendChild(el('b',null,s.label));
+  const sz=(s.size||s.amt||s.src==='fin')?invSizeTxt(s):''; if(sz) h.appendChild(el('small',null,sz));
+  if(s.n_rel) h.appendChild(el('small',null,'같은 사건 '+(s.n_rel+1)+'개'));
+  w.appendChild(h);
+  const bar=el('i','wt'); bar.style.width=Math.round(18+82*Math.min(1,Math.max(0,s.mag)))+'%'; w.appendChild(bar);
+  if(s.src!=='fin'&&s.text) w.appendChild(el('p',null,s.text));
+  w.title='누르면 문장 전체 · 본문 · 신호 목록으로';
+  w.onclick=e=>{ if(e.target.closest('.n')) return; invToggleDetail(w,s,d); };
+  w.onmouseenter=()=>plate.querySelectorAll('.invSigList li').forEach(li=>li.classList.toggle('on',+li.dataset.id===s.id));
+  w.onmouseleave=()=>plate.querySelectorAll('.invSigList li').forEach(li=>li.classList.remove('on'));
+  return w;
+}
+
+// (옛) 기회 지형도 SVG — 가로 시간 지평(지금 → 구조), 세로 방향(위 기회 · 아래 위험), 크기 무게, 모양 출처. 2026-10-21 칸 판으로 바꿈 — 안 부른다
+function invTerrainSvg(sigs, plate){
   const box=el('div','invTerr');
   box.appendChild(el('div','spIdeasH','기회 지형도')).appendChild(el('em',null,'OPPORTUNITY TERRAIN · 위 = 기회 · 아래 = 위험'));
   const W=720,H=480,L=18,R=18,T=40,B=34;
