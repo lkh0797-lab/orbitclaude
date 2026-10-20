@@ -9391,7 +9391,9 @@ function synTable(rows){
     if(m1&&m1.label&&r.score!=null&&r.stage!=='둔화'){ const g=el('span','synexpev','점수 순위 과거 근거(표본 안 · forward 전): '+m1.label.replace('근거 ',''));
       g.title='둔화 뺀 회사 안 점수 상⅓ − 하⅓, 12개월 초과수익 '+(m1.spread>=0?'+':'')+m1.spread.toFixed(1)+'%p (~2019 '+(m1.early!=null?m1.early.toFixed(1):'—')+' · 2020~ '+(m1.late!=null?m1.late.toFixed(1):'—')+
         ') — 미리 정한 규칙(회사 · 해 재표본 90% 하한 > 0, 두 기간 > 0). 부품은 감사를 보고 골라 표본 안 확인이다. 위 "과거 검증" 상자'; ft.appendChild(g); }
-    const go=el('a','syngo','궤도 →'); go.href='#'; go.title=r.name+' 회사 화면(궤도 탭)으로'; go.onclick=e=>{ e.preventDefault(); synGo(r.code,r.name); }; ft.appendChild(go);
+    // 2026-10-20 — 새 탭으로(시작 코드가 ?co=종목코드&tab=탭 을 읽어 그 회사 · 탭으로 연다). 지금 보던 호재기업 표는 그대로 남는다
+    const go=el('a','syngo','궤도 ↗'); go.href=location.pathname+'?co='+encodeURIComponent(r.code)+'&tab=orbit'; go.target='_blank'; go.rel='noopener';
+    go.title=r.name+' 회사 화면(궤도 탭)을 새 탭으로'; ft.appendChild(go);
     wc.appendChild(ft);
     wr.appendChild(wc); t.appendChild(wr);
     nb.onclick=e=>{ e.preventDefault(); const o=!S.synOpen.has(r.code); if(o) S.synOpen.add(r.code); else S.synOpen.delete(r.code);
@@ -17663,8 +17665,20 @@ function jump(t){
 }
 
 // ---------------------------------------------------------- 시작
+// 바로가기 주소(2026-10-20) — ?co=종목코드[&tab=탭] 이면 그 회사를 그 탭으로 연다(호재기업 해석 줄 '궤도 ↗' 가 새 탭으로 연다).
+// 목록에 없는 종목코드 · 없는 탭이면 무시하고 평소처럼 연다
+function startLink(c){
+  const qs=new URLSearchParams(location.search), qc=qs.get('co'), qt=qs.get('tab');
+  const hit=qc&&c.find(x=>x.code===qc);
+  if(!hit) return false;
+  if(qt&&/^[a-z]+$/.test(qt)&&$('#tabs').querySelector('button[data-t="'+qt+'"]')){
+    S.tab=qt; [...$('#tabs').children].forEach(x=>x.classList&&x.classList.toggle('on', x.dataset.t===qt)); }
+  $('#q').value=hit.name; pick(hit.code);
+  return true;
+}
 waitIndex().then(()=>{
   const c=S.companies;
+  if(startLink(c)) return;
   if(c.length===1){ $('#q').value=c[0].name; pick(c[0].code); }
 });
 </script>
