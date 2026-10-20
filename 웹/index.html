@@ -2204,6 +2204,23 @@ details.infclockwrap{margin-top:12px}details.infclockwrap>summary{cursor:pointer
 .tpEvd h5{margin:12px 0 4px;font-size:12.5px;color:var(--ink)}
 .tpEvd p,.tpEvd li{font-size:12px;line-height:1.55;color:var(--dim)}
 .tpEvd table{margin:4px 0 6px}
+.bdStr{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap}
+.bdChip{display:inline-block;min-width:30px;padding:0 6px;border-radius:9px;font-size:11px;line-height:17px;text-align:center;border:1px solid var(--line);color:var(--faint);background:transparent;white-space:nowrap}
+.bdChip.base.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.bdChip.ref.on{color:var(--accent);border-color:var(--accent);font-weight:600}
+.bdChip.off{color:var(--dim)}
+.bdChip.unk{border-style:dashed;color:var(--faint)}
+.bdChip.gate{background:var(--del);color:#fff;border-color:var(--del)}
+.bdTbl td.bdK{font-weight:700;color:var(--accent)}
+tr.bdGated td{opacity:.6}
+.bdLegend{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+.bdLegend .lg{flex:1 1 220px;max-width:300px;border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:11.5px;background:var(--panel);line-height:1.45}
+.bdLegend .lg b{color:var(--accent)}.bdLegend .lg.ref b{color:var(--ink)}.bdLegend .lg.gate b{color:var(--del)}
+.bdLegend .lg small{color:var(--faint)}.bdLegend .lg .r{color:var(--dim)}.bdLegend .lg .e{color:var(--faint);font-size:11px}
+.bdOpts{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--dim);margin:2px 0 8px}
+.bdOpts input[type=text]{font-size:12px;padding:2px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.bdOpts select{font-size:12px}
+.synexpg .k.head{color:var(--accent)}
 .tpRule .tpRuleEq{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 4px;font-size:13px;color:var(--ink)}
 .tpRuleEq span{padding:4px 11px;border-radius:999px;background:var(--bg);border:1px solid var(--line2)}
 .tpRuleEq em{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;margin-right:2px;border-radius:50%;background:var(--accent);color:var(--panel);font:700 10.5px var(--mono);font-style:normal;vertical-align:1px}
@@ -3424,6 +3441,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
         <span class="tabLab" title="전 종목을 보는 탭 · 내 기록">전체</span>
         <button data-t="val">저평가</button>
         <button data-t="top">탑픽</button>
+        <button data-t="beads">꿰미</button>
         <button data-t="qd" hidden title="2026-10-20 숨김 — 탭 · 서버 · 밤 갱신은 그대로, 지우려면 hidden 만 뺀다">우량 급락</button>
         <button data-t="tech">차트 발굴</button>
         <button data-t="cat">호재기업</button>
@@ -3453,6 +3471,7 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
         <div class="empty" id="welcome">
           <span id="welcomeMsg">왼쪽 위 검색창에 기업명을 넣으면 최근 15년 보고서가 전부 열립니다.</span>
           <div style="margin-top:14px"><button class="ghost" onclick="S.tab='val';jump('val')">저평가 종목 보기 — 가치는 지켰는데 주가가 빠진 회사</button></div>
+          <div style="margin-top:8px"><button class="ghost" onclick="S.tab='beads';jump('beads')">꿰미 — 흩어진 탭의 신호를 회사마다 구슬 한 줄로(근거 구슬 몇 개 · 가림은 없나)</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='grow';jump('grow')">산업 성장률 — 섹터별 매출 · 이익 · 생산 · 수출 추이와 시장 규모 · 시가총액 · 전망</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='tech';jump('tech')">차트 발굴 — 전 종목 차트 패턴(컵 앤 핸들 사용자 식 · 《차트의 기술》 기법 6개 · 보컬 관찰)</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='score';jump('score')">기록 채점 — 매일 남긴 판정(저평가 · 차트 발굴)이 그 뒤 실제로 어땠나</button></div>
@@ -3795,7 +3814,7 @@ function show(t){
   ({orbit:viewOrbit, land:viewLand, story:viewStory, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, rep:viewReports, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    cat:viewCatalyst, exp:viewExport, val:viewValue, top:viewTop, qd:viewQd, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades, watch:viewWatch}[t])(p);
+    cat:viewCatalyst, exp:viewExport, val:viewValue, top:viewTop, beads:viewBeads, qd:viewQd, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades, watch:viewWatch}[t])(p);
 }
 
 // ---------------------------------------------------------- 분기 변화 — 보고서가 나올 때마다 직전 공시(3개월 전)와 맞댄다
@@ -5581,6 +5600,174 @@ async function viewTop(p, run){
   const F=d.files||{};
   body.appendChild(el('div','finnote','분기 숫자 = 가속도 캐시(DART 원장, 4분기는 연간 − 3분기 누적 · 값은 마지막으로 받은 원장). 주가 = 네이버 수정주가(분할 보정, 그대로). 주식 수 = 지배주주 순이익 ÷ EPS 역산(우선주 포함 가중평균에 가깝다 — 시가총액 수준은 흔히 5~15% 크고 증가율 · 자기 자리엔 영향이 작다). '+
     '거래대금 = 보정 종가 × 거래량 × 분할 배수(거래량이 뛴 날짜로). 공시 위험 꼬리표 = 공시목록 분류'+(L.risk_at?'('+tpD(L.risk_at)+')':'')+'. 최신 후보 파일 '+(F.latest?F.latest.replace('T',' ').slice(0,16):'없음')+' · 검증 파일 '+(F.bt?F.bt.replace('T',' ').slice(0,16):'없음')+(R.py?' · 실행기 '+R.py:'')+'. "후보"는 싸다는 뜻이지 오른다는 뜻은 아니다 — 왜 싼지 마지막 확인은 사람이 한다.'));
+}
+
+// ---------------------------------------------------------- 꿰미 — 흩어진 탭의 구슬을 회사마다 한 줄로 (/api/beads · 꿰미.py · 도구/꿰미_백테스트.py, 2026-10-20)
+// 구슬 열 개(정보가 들어오는 순서) + 가림 셋 + 내 기록. 문턱 · 해석은 서버(꿰미.py)가 주고 화면은 그리기만. 순위 = 근거 구슬 켜진 수 → 참고 켜진 수 → 시가총액 순.
+// 설계 docs/superpowers/specs/2026-10-20-beads-design.md. "구슬이 많다 = 여러 탭이 같은 회사를 가리킨다"는 뜻이지 오른다는 뜻이 아니다 — 과거 검증 상자가 그 몫을 잰다.
+const BD_OPT_DEF={gate:true,minK:2,unk:true,mine:false,q:''};
+function bdOpt(){ if(!S.bdOpt){ S.bdOpt=Object.assign({},BD_OPT_DEF,lsGet('bdOpt',{})||{}); } return S.bdOpt; }
+function bdSetOpt(k,v){ bdOpt()[k]=v; lsSet('bdOpt',S.bdOpt); }
+const bdState=b=>!b||!b.known?'unk':b.on?'on':'off';
+const bdLabel={'근거 있음':'켜진 구슬이 많을수록 나았다(근거 있음)','근거 약함':'켜진 수가 많다고 더 나았다고 확신할 수 없다(근거 약함)','반대':'많이 켜진 쪽이 오히려 못했다(반대)'};
+function bdChip(def, b, line){
+  const st=bdState(b), c=el('span','bdChip '+st+(def.kind==='ref'?' ref':' base'),def.name);
+  c.title=def.name+' ['+def.tab_name+'] — '+(st==='on'?'켜짐':st==='off'?'꺼짐':'빈(자료 없음)')+'\n문턱: '+def.rule+(line?'\n지금: '+line:'')+'\n과거: '+def.ev;
+  return c;
+}
+function bdString(r, D){
+  const w=el('span','bdStr'); const why=Object.fromEntries((r.why||[]).map(([k,v])=>[k.replace(/^[●○◌]\s*/,''),v]));
+  (D.beads_def||[]).forEach(def=>w.appendChild(bdChip(def,(r.beads||{})[def.key],why[def.name])));
+  (r.gates||[]).forEach(g=>{ const c=el('span','bdChip gate',g.name); c.title='가림 '+g.name+' — '+g.why; w.appendChild(c); });
+  return w;
+}
+function bdRowOk(r,o,pick){
+  if(o.gate&&r.gated) return false;
+  if(r.k<o.minK) return false;
+  if(!o.unk&&r.n_known<(S.bdBase||5)) return false;
+  if(o.mine&&!(r.mine&&(r.mine.watch||r.mine.hold||r.mine.n_judge))) return false;
+  if(o.q&&!((r.name||'').includes(o.q)||(r.code||'').includes(o.q))) return false;
+  return tpInGroup(r,pick);
+}
+function bdTable(rows, D){
+  const w=el('div','tpWrap'), t=el('table','tbl dipTbl tpTbl bdTbl');
+  const cols=[['str','구슬 줄 — 수출 · 수주 · 실적 · 글 · 엇갈림 · 값 · 눌림 · 사슬 · 차트 · 리포트 (+ 가림)'],['k','근거/관측'],['px','주가'],['dd','52주'],['r3','3개월(자리)'],['per','PER(자리)'],['cap','시총 순위'],['mine','내 기록']];
+  const hr=el('tr'); hr.appendChild(el('th',null,'회사')); cols.forEach(([k,n])=>hr.appendChild(el('th',k==='str'?null:'r',n))); t.appendChild(hr);
+  S.bdOpen=S.bdOpen||new Set();
+  rows.forEach(r=>{
+    const tr=el('tr','dipRow'+(r.gated?' bdGated':'')); const nm=el('td');
+    const a=el('a','synnm'+(S.bdOpen.has(r.code)?' on':''),r.name||r.code); a.href='#'; a.title='누르면 구슬마다 숫자 · 까닭을 아래에 펼친다';
+    a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); if(S.bdOpen.has(r.code)) S.bdOpen.delete(r.code); else S.bdOpen.add(r.code); const ex=tr.nextSibling; if(ex&&ex.classList&&ex.classList.contains('synexprow')) ex.remove(); else tr.after(bdExpand(r,D,cols.length+1)); a.classList.toggle('on'); };
+    nm.appendChild(a); nm.appendChild(el('small',null,' '+r.code+(r.market?' · '+r.market:'')+(r.industry?' · '+r.industry:''))); tr.appendChild(nm);
+    const px=r.px||{};
+    cols.forEach(([k])=>{ let v='—', cls='num', tip='';
+      if(k==='str'){ const td=el('td','bdc'); td.appendChild(bdString(r,D)); tr.appendChild(td); return; }
+      if(k==='k'){ v=r.k+'/'+r.n_known; cls='num bdK'; tip='근거 구슬 켜진 수 / 관측 가능한 수(다섯 중) · 참고 켜짐 '+r.k_ref; }
+      else if(k==='px'){ v=px.px==null?'—':Math.round(px.px).toLocaleString('ko-KR'); tip='종가 '+tpD(px.d); }
+      else if(k==='dd'){ v=tpP(px.dd); cls='num '+tpTone(px.dd); tip='52주 고점 대비'; }
+      else if(k==='r3'){ v=tpP(px.r3)+(px.p3==null?'':' ('+Math.round(px.p3)+')'); cls='num '+tpTone(px.r3); tip='3개월 수익률 · 괄호 = 전 종목 가운데 자리(백분위)'; }
+      else if(k==='per'){ v=(r.per==null?'—':tpN(r.per,1))+(r.per_pct==null?'':' ('+Math.round(r.per_pct)+'%)'); tip='풍경 PER · 괄호 = 자기 최근 40분기 가운데 지금보다 싼 비율(30 이하 = 값 구슬)'; }
+      else if(k==='cap'){ v=r.cap_rank==null?'—':r.cap_rank+'위'; }
+      else if(k==='mine'){ const m=r.mine||{}; v=[m.watch?'관심':'',m.hold?'보유':'',m.n_judge?'판정 '+m.n_judge:''].filter(Boolean).join(' · ')||'—'; cls='tpWhy'; }
+      const td=el('td',cls,v); if(tip) td.title=tip; tr.appendChild(td); });
+    t.appendChild(tr);
+    if(S.bdOpen.has(r.code)) t.appendChild(bdExpand(r,D,cols.length+1));
+  });
+  w.appendChild(t); return w;
+}
+function bdExpand(r, D, span){
+  const tr=el('tr','synexprow'), td=el('td'); td.colSpan=span; const wc=el('div','synexp');
+  const byName=Object.fromEntries((D.beads_def||[]).map(d=>[d.name,d]));
+  const gd=el('div','synexpg');
+  (r.why||[]).forEach(([k,v])=>{ const nm=k.replace(/^[●○◌]\s*/,''), mark=k.slice(0,1), def=byName[nm];
+    const kk=el('b','k'+(k.startsWith('가림')?' risk':k==='꿰미'?' head':k.startsWith('●')?' good':''),k); gd.appendChild(kk);
+    const vv=el('span','v'+(k==='꿰미'?' head':'')); vv.appendChild(document.createTextNode(v+' '));
+    if(def){ const go=el('a','syngo','↗'); go.href=location.pathname+'?co='+encodeURIComponent(r.code)+'&tab='+def.tab; go.target='_blank'; go.rel='noopener'; go.title=def.tab_name+' 탭을 새 탭으로'; vv.appendChild(go); }
+    void mark; gd.appendChild(vv); });
+  wc.appendChild(gd);
+  const ft=el('div','synexpft');
+  const go=el('a','syngo','궤도 ↗'); go.href=location.pathname+'?co='+encodeURIComponent(r.code)+'&tab=orbit'; go.target='_blank'; go.rel='noopener'; go.title=r.name+' 회사 화면(궤도 탭)을 새 탭으로'; ft.appendChild(go);
+  wc.appendChild(ft); td.appendChild(wc); tr.appendChild(td); return tr;
+}
+function bdLegend(D, C){
+  const box=el('div','bdLegend');
+  (D.beads_def||[]).forEach(def=>{ const c=(C.beads||{})[def.key]||{}; const g=el('div','lg '+def.kind);
+    g.appendChild(el('b',null,def.name+(def.kind==='base'?'':' (참고)'))); g.appendChild(el('small',null,' ['+def.tab_name+'] 켜짐 '+(c.on||0)+' / 관측 '+(c.known||0)));
+    g.appendChild(el('div','r',def.rule)); g.appendChild(el('div','e',def.ev)); box.appendChild(g); });
+  (D.gates_def||[]).forEach(def=>{ const g=el('div','lg gate'); g.appendChild(el('b',null,'가림 '+def.name)); g.appendChild(el('small',null,' '+((C.gates||{})[def.key]||0)+'곳'));
+    g.appendChild(el('div','r',def.rule)); g.appendChild(el('div','e',def.ev)); box.appendChild(g); });
+  return box;
+}
+const bdT=t=>t?tpPp(t.diff,1)+' '+tpCI(t.ci)+' · 해 '+tpCI(t.ci_year)+' · ~2019 '+tpPp(t.early,1)+' · 2020~ '+tpPp(t.late,1)+' · 행 '+t.a.n+' / '+t.b.n:'— (표본 부족)';
+function bdStat(rows){
+  const t=el('table','tbl dipTbl mini'); const hr=el('tr'); ['비교','차이','90% 회사','90% 해','~2019','2020~','행 a / b'].forEach((n,i)=>hr.appendChild(el('th',i?'r':null,n))); t.appendChild(hr);
+  rows.forEach(([nm,x])=>{ const tr=el('tr'); tr.appendChild(el('td',null,nm));
+    (x?[tpPp(x.diff,1),tpCI(x.ci),tpCI(x.ci_year),tpPp(x.early,1),tpPp(x.late,1),x.a.n+' / '+x.b.n]:['—','','','','','']).forEach((v,i)=>tr.appendChild(el('td','num'+(i===0&&/^\+/.test(v)?' pos':i===0&&/^[−-]\d/.test(v)?' neg':''),v))); t.appendChild(tr); });
+  return t;
+}
+function bdEvidence(B, D){
+  const det=el('details','tpEvd'); det.open=!!lsGet('bdEvdOpen',false); det.addEventListener('toggle',()=>lsSet('bdEvdOpen',det.open));
+  const pp=B.primary||null;
+  det.appendChild(el('summary',null,'과거 검증 — '+(pp&&pp.label?bdLabel[pp.label]||pp.label:'표본 부족')+(pp?' (주 지표: 근거 구슬 2개↑ − 1개 = '+tpPp(pp.diff,1)+' 90% 구간 '+tpCI(pp.ci)+')':'')));
+  det.appendChild(el('p',null,'사전 등록 주 지표(돌리기 전에 정함): '+(B.primary_def||'')+' 나머지 표는 보조다.'));
+  det.appendChild(el('p',null,(B.dates||['',''])[0].slice(0,4)+'~'+(B.dates||['',''])[1].slice(0,4)+' '+B.grid+' 격자 '+B.n+'행 · '+B.firms+'곳 · 가림 없는 행 '+B.n_clear+'. 구슬은 서버와 같은 함수로 그날 알 수 있던 재료에서 다시 꿰고, 결과는 다음 거래일 진입 12개월 초과수익(전 종목 중앙 대비).'));
+  det.appendChild(el('h5',null,'묶음 비교(12개월 초과수익 중앙 차이, %p)'));
+  det.appendChild(bdStat([['M1 근거 2개↑ − 1개 (가림 없음)',B.primary],['2개↑ − 0개',B.k2_vs_k0],['1개 − 0개',B.k1_vs_k0],['M2 눌림 켜진 행 안 2개↑ − 1개 (저평가에 둘째 구슬이 보태나)',B.m2_dip_second],['수주 관측 가능한 행 안 2개↑ − 1개',B.su_known],['넷↑ 관측 가능한 행 안 2개↑ − 1개',B.all_known]]));
+  const kg=el('table','tbl dipTbl mini'); const hr=el('tr'); ['켜진 수','행','회사','중앙','이긴 %','−30%↓ %','~2019','2020~'].forEach((n,i)=>hr.appendChild(el('th',i?'r':null,n))); kg.appendChild(hr);
+  Object.entries(B.k_groups||{}).forEach(([k,g])=>{ const tr=el('tr'); tr.appendChild(el('td',null,k)); [String(g.n),String(g.firms),tpP(g.med,1),tpPc(g.hit),tpPc(g.crash),tpP(g.early,1),tpP(g.late,1)].forEach(v=>tr.appendChild(el('td','num',v))); kg.appendChild(tr); });
+  det.appendChild(el('h5',null,'켜진 수 묶음(가림 없음)')); det.appendChild(kg);
+  det.appendChild(el('h5',null,'구슬 하나가 보태는 몫 — 다른 근거 구슬 1개↑ 켜진 행 안에서 켜짐 − 꺼짐(관측 가능한 행만)'));
+  const nm=Object.fromEntries((D.beads_def||[]).map(d=>[d.key,d.name+(d.kind==='ref'?' (참고)':'')]));
+  det.appendChild(bdStat([...Object.entries(B.base_addon||{}),...Object.entries(B.ref_addon||{})].map(([k,x])=>[nm[k]||k,x])));
+  det.appendChild(el('h5',null,'구슬 쌍 — 둘 다 켜짐 − 하나만 켜짐 · 자카드(겹침)'));
+  const pt=el('table','tbl dipTbl mini'); const ph=el('tr'); ['쌍','둘 다 행','차이','90% 회사','~2019','2020~','자카드'].forEach((n,i)=>ph.appendChild(el('th',i?'r':null,n))); pt.appendChild(ph);
+  Object.entries(B.pairs||{}).forEach(([k,p])=>{ const tr=el('tr'); tr.appendChild(el('td',null,k.split('+').map(x=>(nm[x]||x).replace(' (참고)','')).join(' + '))); const t=p.test;
+    [String(p.n_both),t?tpPp(t.diff,1):'—',t?tpCI(t.ci):'—',t?tpPp(t.early,1):'—',t?tpPp(t.late,1):'—',p.jaccard==null?'—':p.jaccard.toFixed(2)].forEach(v=>tr.appendChild(el('td','num',v))); pt.appendChild(tr); });
+  det.appendChild(pt);
+  det.appendChild(el('h5',null,'가림 확인 — 근거 1개↑ 켜진 행에서 가림 있음 − 없음(음수여야 가림이 맞다)'));
+  det.appendChild(bdStat(Object.entries(B.gate_check||{}).map(([k,x])=>[k==='all'?'가림 전부':((D.gates_def||[]).find(g=>g.key===k)||{}).name||k,x])));
+  const cv=el('p',null,'덮임(관측 가능 / 켜짐 행): '+Object.entries(B.coverage||{}).map(([k,c])=>(nm[k]||k).replace(' (참고)','')+' '+c.known+' / '+c.on).join(' · ')+'. 가림 수: '+Object.entries(B.gates_n||{}).map(([k,v])=>k+' '+v).join(' · ')+'.'); det.appendChild(cv);
+  det.appendChild(el('h5',null,'한계')); const ul=el('ul'); (B.limits||[]).forEach(x=>ul.appendChild(el('li',null,x))); det.appendChild(ul);
+  return det;
+}
+async function viewBeads(p, run){
+  p.innerHTML='';
+  const box=el('div','valBox'); p.appendChild(box);
+  const hd=el('div','dipHead'); hd.appendChild(el('b',null,'꿰미'));
+  hd.appendChild(el('span',null,'흩어진 탭의 신호를 회사마다 구슬 한 줄로 — 근거 구슬(수주 · 엇갈림 · 값 · 눌림 · 사슬)이 몇 개 켜졌나, 가림(작전주 꼴 · 희석 · 부실 · 둔화 · 자홍)은 없나. 구슬 서 말도 꿰어야 보배'));
+  const b1=el('button','ghost','다시 꿰기'); b1.style.marginLeft='auto'; b1.title='캐시만 읽어 전 종목을 다시 꿴다(1~3분) — 새 수집 없음'; b1.onclick=()=>viewBeads(p,'1');
+  hd.appendChild(b1); box.appendChild(hd);
+  const body=el('div'); box.appendChild(body);
+  let d;
+  try{ d=await (await fetch('/api/beads'+(run?'?run=1':''))).json(); }catch(e){ d={error:'불러오지 못했습니다'}; }
+  if(!box.isConnected) return;
+  if(d.error){ body.appendChild(el('div','err',d.error)); return; }
+  const R=d.result, B=d.bt, RUN=d.run||{};
+  S.bdBase=(d.base_keys||[]).length||5;
+  if(RUN.running){ const pr=el('div','prog'); pr.appendChild(el('span',null,'구슬을 꿰는 중 — 저평가 · 시너지 · 수출 · 가속도 · 탑픽 · 풍경 · 궤도 · 밸류체인 · 스캔 일지 · 리포트 · 공시 위험 캐시를 읽는다(네트워크 없음, 1~3분)'));
+    const bar=el('div','bar'); const i=el('i'); i.style.width='30%'; bar.appendChild(i); pr.appendChild(bar); body.appendChild(pr);
+    setTimeout(()=>{ if(box.isConnected&&S.tab==='beads') viewBeads(p,false); },5000); }
+  else if(RUN.error) body.appendChild(el('div','err','마지막 꿰기가 실패했다: '+RUN.error));
+  if(!R){ body.appendChild(el('div','tpLine',d.readonly?'아직 꿴 결과가 없다 — 메인 PC 가 06:30 저평가 갱신 뒤 꿴다.':'아직 꿴 결과가 없다 — 곧 뒤에서 꿴다(1~3분).')); return; }
+  const rows=R.rows||[], C=R.counts||{}, o=bdOpt();
+  const nTop=rows.filter(r=>!r.gated&&r.k>=2).length, nTop3=rows.filter(r=>!r.gated&&r.k>=3).length, nG=rows.filter(r=>r.gated).length;
+  const l1=el('div','tpLine'); l1.appendChild(el('b',null,'지금 근거 구슬 2개↑ · 가림 없음 '+nTop+'곳'+(nTop3?' (3개↑ '+nTop3+')':'')));
+  l1.appendChild(document.createTextNode(' — 수집한 '+R.n+'곳 가운데. 가림이 있는 회사 '+nG+'곳. 주가 단면 '+tpD(R.asof)+' · 꿴 때 '+new Date(R.at*1000).toLocaleString('ko-KR',{hour12:false}).slice(0,-3)+(R.secs?' ('+R.secs+'초)':'')+'.'));
+  body.appendChild(l1);
+  const l2=el('div','tpLine sub'); const pp=B&&B.primary;
+  if(pp){ l2.appendChild(el('b',null,'과거 검증: '+(bdLabel[pp.label]||pp.label||'표본 부족'))); l2.appendChild(document.createTextNode(' — '+B.dates[0].slice(0,4)+'~'+B.dates[1].slice(0,4)+' 보고서 접수일마다 그날 재료로 구슬을 다시 꿰어, 가림 없는 회사 가운데 근거 구슬 2개↑ 켜진 묶음이 1개 켜진 묶음보다 12개월 초과수익 중앙이 '+tpPp(pp.diff,1)+' (회사 90% '+tpCI(pp.ci)+' · 해 '+tpCI(pp.ci_year)+' · ~2019 '+tpPp(pp.early,1)+' · 2020~ '+tpPp(pp.late,1)+'). 탭 하나하나는 그 탭에서 이미 쟀고 여기서 잰 건 겹침이 보태는 몫이다.'));
+    // 보조 둘을 결론 옆에 — 자료가 다 있는 회사끼리의 차이(빈 구슬 몫) · 구슬마다 보태는 몫 가운데 음인 것(2026-10-20 결과: 값)
+    const sk=B.su_known, ak=B.all_known, add=B.base_addon||{}, nmB=Object.fromEntries((d.beads_def||[]).map(x=>[x.key,x.name]));
+    const neg=Object.entries(add).filter(([,x])=>x&&x.ci&&x.ci[1]!=null&&x.ci[1]<0).map(([k,x])=>nmB[k]+' '+tpPp(x.diff,1)+' '+tpCI(x.ci));
+    const pos=Object.entries(add).filter(([,x])=>x&&x.ci&&x.ci[0]!=null&&x.ci[0]>0).map(([k,x])=>nmB[k]+' '+tpPp(x.diff,1)+' '+tpCI(x.ci));
+    l2.appendChild(document.createTextNode(' 다만 자료가 다 있는 회사끼리만 보면('+(sk?'수주 관측 행 '+tpPp(sk.diff,1)+' '+tpCI(sk.ci):'')+(ak?' · 넷↑ 관측 행 '+tpPp(ak.diff,1)+' '+tpCI(ak.ci):'')+') 차이가 '+((sk&&sk.ci&&sk.ci[0]>0)||(ak&&ak.ci&&ak.ci[0]>0)?'남는다':'사라진다 — 빈 구슬(자료 없음 = 꺼짐) 몫이 섞여 있다')+'. 구슬 하나가 보태는 몫: '+(pos.length?'뚜렷한 쪽 '+pos.join(' · '):'뚜렷한 것 없음')+(neg.length?' · 오히려 음인 쪽 '+neg.join(' · '):'')+'. 지금 상장사만이라 수준은 부풀어 있다 — 아래 검증 상자.')); }
+  else l2.appendChild(document.createTextNode('과거 검증 전 — py -3.13 도구/꿰미_백테스트.py 를 돌리면 검증 상자가 생긴다.'));
+  body.appendChild(l2);
+  body.appendChild(bdLegend(d, C));
+  // 고르기
+  const op=el('div','bdOpts');
+  const mk=(lab,key)=>{ const l=el('label'); const c=el('input'); c.type='checkbox'; c.checked=!!o[key]; c.onchange=()=>{ bdSetOpt(key,c.checked); viewBeads(p,false); }; l.appendChild(c); l.appendChild(document.createTextNode(' '+lab)); return l; };
+  op.appendChild(mk('가림 있는 회사 뺌','gate'));
+  const sl=el('label'); sl.appendChild(document.createTextNode('근거 구슬 최소 ')); const sel=el('select'); [0,1,2,3].forEach(k=>{ const x=el('option',null,k+'개'); x.value=k; if(k===o.minK) x.selected=true; sel.appendChild(x); }); sel.onchange=()=>{ bdSetOpt('minK',+sel.value); viewBeads(p,false); }; sl.appendChild(sel); op.appendChild(sl);
+  op.appendChild(mk('빈 구슬 있는 회사도','unk'));
+  if(!d.readonly) op.appendChild(mk('내 기록만(관심 · 보유 · 판정)','mine'));
+  const q=el('input'); q.type='text'; q.placeholder='이름 · 코드 찾기'; q.value=o.q||''; q.onchange=()=>{ bdSetOpt('q',q.value.trim()); viewBeads(p,false); }; op.appendChild(q);
+  body.appendChild(op);
+  const pick=S.bdPick||null;
+  if(R.groups) body.appendChild(tpFlowBox({groups:R.groups,counts:{elig:R.n},th:{c1:30},sect_built:null}, np=>{ S.bdPick=np; viewBeads(p,false); },
+    {pk:'bdPick',mk:'bdMore',sub:'수집한 '+R.n+'곳을 묶어 셌다. 굵은 수 = 근거 구슬 2개↑ · 가림 없음, ↑ = 근거 구슬 1개↑ 켜졌는데 6개월 주가가 +30% 넘게 이미 오른 곳. 칩을 누르면 아래 표를 그 묶음만 본다.',candMean:'여러 탭이 같이 가리키는데 아직 덜 오른 쪽'}));
+  const rowsF=rows.filter(r=>bdRowOk(r,o,pick));
+  const blk=el('div','dipBlock'); const bh=el('div','dipBH'); bh.appendChild(el('b',null,'회사 '+rowsF.length+'곳'+(pick?' — '+pick.name:'')));
+  bh.appendChild(el('span',null,'순서: 근거 구슬 켜진 수 → 참고 켜진 수 → 시가총액. ● 켜짐 · ○ 꺼짐 · ◌ 빈(그 자료 없음) · 빨강 = 가림. 회사 이름을 누르면 구슬마다 숫자 · 까닭과 그 탭으로 가는 ↗ 가 펼쳐진다. 구슬에 마우스를 올리면 문턱 · 지금 값 · 과거 검증.'));
+  if(pick){ const x=el('button','ghost','전체 보기'); x.style.marginLeft='auto'; x.onclick=()=>{ S.bdPick=null; viewBeads(p,false); }; bh.appendChild(x); }
+  blk.appendChild(bh);
+  if(rowsF.length) blk.appendChild(bdTable(rowsF.slice(0,400),d)); else blk.appendChild(el('div','empty','이 조건에 드는 회사가 없다 — 고르기를 푼다.'));
+  if(rowsF.length>400) blk.appendChild(el('div','finnote','400곳까지만 보인다 — 찾기나 묶음으로 좁힌다.'));
+  body.appendChild(blk);
+  if(B) body.appendChild(bdEvidence(B,d));
+  const sr=R.src||{};
+  body.appendChild(el('div','finnote','재료 시각 — 저평가 '+(sr.value?new Date(sr.value*1000).toLocaleDateString('ko-KR'):'없음')+' · 시너지 '+(sr.synergy&&sr.synergy.src?sr.synergy.src:'없음(수주 구슬 빈)')+' · 수출 선행 '+(sr.exlead?'있음':'없음')+' · 탑픽 판정 '+tpD(sr.toppick)+' · 주가 단면 '+tpD(sr.xs)+' · 공시 위험 '+tpD(sr.risk)+' · 증권사 상태 '+(sr.kis?tpD(sr.kis):'없음')+' · 스캔 일지 '+(sr.chart?tpD(sr.chart):'없음')+' · 리포트 '+(sr.reports?'데워짐':'안 데워짐(빈 구슬)')+'. '+
+    '문턱은 그 탭 것 그대로(바꾸려면 그 탭에서). 점수를 합치지 않는다 — 탭마다 단위 · 표본이 다르다. 개인 자료(관심 · 보유)는 이 PC 에서만 붙는다.'));
 }
 
 // ---------------------------------------------------------- 우량 급락 — 꾸준히 버는 큰 회사가 급락했을 때 (/api/qualdip · 우량급락.py · 도구/우량급락_백테스트.py, 2026-10-20)

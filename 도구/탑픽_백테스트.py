@@ -655,7 +655,7 @@ def loose_variant(MRL, ERL, th):
 def latest(codes, ser, P, TV, idx, univ, snap, fin, hold, ksic, risk, asof=None, th=T.TH, fy=(), sectors=None):
     last_px = max((P.last_date(c) for c in codes if P.last_date(c)), default=None)
     d = asof or last_px
-    rows, near, ref, risky, excl, flow = [], [], [], [], {}, []
+    rows, near, ref, risky, excl, flow, judged = [], [], [], [], {}, [], {}
     sectors = sectors or {}
     counts = {"metrics": 0, "elig": 0, "A": 0, "B": 0, "C1": 0, "C2": 0, "L": 0, "cand": 0}
     for code in fy:
@@ -677,6 +677,10 @@ def latest(codes, ser, P, TV, idx, univ, snap, fin, hold, ksic, risk, asof=None,
         jn = T.judge(m, th, {"no_elig": True})
         for k in ("A", "B", "C1", "C2", "L"):
             counts[k] += bool(j[k])
+        # 꿰미 탭(2026-10-20)이 읽는 전 종목 판정 — 후보 밖 회사도 A · B 를 안다(실적 구슬). 적격과 무관하게 적고 fin · hold 를 같이 둔다
+        judged[code] = {"A": bool(j["A"]), "B": bool(j["B"]), "C1": bool(j["C1"]), "C2": bool(j["C2"]), "L": bool(j["L"]), "elig": bool(m["elig"]), "cand": bool(j["cand"]),
+                        "op_yoy": m["op_yoy"], "rev_yoy": m["rev_yoy"], "turn": bool(m["turn"]), "ttm_g": m["ttm_g"], "label": m["label"], "known": m["known"],
+                        "fin": bool(fin.get(code)), "hold": bool(hold.get(code))}
         u = univ.get(code) or {}
         cap_alt = None
         if u.get("cap") and snap:
@@ -729,6 +733,7 @@ def latest(codes, ser, P, TV, idx, univ, snap, fin, hold, ksic, risk, asof=None,
             "th": dict(th), "rows": rows, "near": near[:60], "ref": ref[:30], "risky": risky[:30],
             "excluded": {k: {"n": len(v), "names": names(v[:40])} for k, v in sorted(excl.items(), key=lambda x: -len(x[1]))},
             "groups": groups, "n_sectored": sum(1 for f in flow if f["elig"] and (f["sector"] or f["industry"])),
+            "judged": judged,
             "at": dt.datetime.now().isoformat(timespec="seconds")}
 
 

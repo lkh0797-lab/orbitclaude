@@ -2829,7 +2829,9 @@ def _syn_forward(rows, day=None):
             "score": r.get("score"), "btb": r.get("btb"), "backlog_yoy": r.get("backlog_yoy"), "lead": r.get("lead"),
             "per": r.get("per"), "per_pct": r.get("per_pct"), "per_date": r.get("per_date"),
             "cheap": bool(r.get("cheap")), "loss4": bool(r.get("loss4")),
-            "n_flags": len(r.get("flags") or [])} for r in rows]
+            "n_flags": len(r.get("flags") or []),
+            # 꿰미 탭(2026-10-20)이 메모리 결과가 없을 때 읽는 수주 재료 — 수주 부분 점수 · 잔고/연매출 1년 변화(출력 꼴만, 점수 식은 그대로)
+            "p_su": (r.get("parts") or {}).get("수주"), "cover_chg": r.get("cover_chg")} for r in rows]
     path = os.path.join(CACHE_DIR, "시너지", "forward", "%s.json" % day)
     _atomic_json(path, {"at": time.time(), "date": day, "spec": SYN_SPEC, "n": len(out), "rows": out})
     return path
@@ -10319,6 +10321,7 @@ def _val_auto_loop():
                 _disc_refresh()                   # 공시 목록 → 공시 위험 먼저(저평가 등급이 읽는다)
                 _watch_kick("공시목록 갱신 뒤")    # 관심 장부 — 새 보고서 · 공시 위험
                 value_view(True)
+                beads_kick()                      # 꿰미 — 저평가 · 공시 위험 · 주가가 새로 됐으니 구슬 줄을 다시(캐시만, 2026-10-20)
         except Exception as e:
             print("저평가 자동 갱신: %s" % e, flush=True)
         first = False
@@ -13657,6 +13660,353 @@ def qualdip_view():
             "run": dict(QUALDIP), "files": {"latest": mt("latest.json"), "bt": mt("bt.json")}}
 
 
+# ---------------------------------------------------------------- 꿰미 — 흩어진 탭의 구슬을 회사마다 한 줄로 (2026-10-20, docs/superpowers/specs/2026-10-20-beads-design.md)
+# 구슬 함수 · 문턱 · 해석은 꿰미.py(순수) 한 곳 — 백테스트(도구/꿰미_백테스트.py)와 같은 함수. 서버는 캐시에서 재료를 모아 넘기고 결과를 저장만 한다.
+# 새 DART · 네이버 · KIS · 관세청 · 텔레그램 호출 없음. 재료: 저평가 행(공시 위험 · KIS 반영 뒤) · 시너지(메모리, 없으면 forward 스냅샷) · 수출 선행 ·
+# 가속도 캐시 · 탑픽 latest(judged) · 풍경 decide · 궤도 요약 · 밸류체인 캐시 + 주가 단면(_xs) · Tech 스캔 일지 · 리포트(데워져 있을 때만) · 공시위험 · 관심 장부 · 매매 일지(이 PC 만).
+KM = _load_mod("꿰미")
+BEADS_DIR = os.path.join(CACHE_DIR, "꿰미")
+BEADS = {"running": False, "at": 0, "secs": None, "error": None}
+BEADS_LOCK = threading.Lock()
+BEADS_MAX_AGE = 6 * 3600
+BEADS_CHART_STAGE_SKIP = ("failed", "extended")
+
+
+def _beads_path(name):
+    return os.path.join(BEADS_DIR, name)
+
+
+def _beads_syn_rows():
+    """시너지 재료 {code: {reliable, p_su, stage, btb, cover_chg, score}} — 메모리 결과가 있으면 그것, 없으면 forward 최신 스냅샷(p_su 가 있는 판만 수주 구슬에 쓴다).
+    꿰미가 시너지 계산을 시키지는 않는다(호재 스캔이 DART 를 부른다). (rows, 출처, 시각)"""
+    with SYNERGY_LOCK:
+        rows, at = list(SYNERGY["rows"]), SYNERGY["at"]
+    if rows:
+        return ({r["code"]: {"reliable": r.get("reliable"), "p_su": (r.get("parts") or {}).get("수주"), "stage": r.get("stage"), "btb": r.get("btb"),
+                             "cover_chg": r.get("cover_chg"), "score": r.get("score")} for r in rows if r.get("code")}, "메모리", at)
+    d = os.path.join(CACHE_DIR, "시너지", "forward")
+    try:
+        files = sorted(f for f in os.listdir(d) if re.fullmatch(r"\d{8}\.json", f))
+    except OSError:
+        files = []
+    if not files:
+        return {}, None, None
+    try:
+        with open(os.path.join(d, files[-1]), "r", encoding="utf-8") as fh:
+            j = json.load(fh)
+    except (OSError, ValueError):
+        return {}, None, None
+    return ({r["code"]: {"reliable": r.get("reliable"), "p_su": r.get("p_su"), "stage": r.get("stage"), "btb": r.get("btb"),
+                         "cover_chg": r.get("cover_chg"), "score": r.get("score")} for r in (j.get("rows") or []) if r.get("code")},
+            "forward " + files[-1][:8], j.get("at"))
+
+
+def _beads_px_at(px, d, stale=10):
+    """{날짜: 종가} 에서 d 이하 마지막 종가(10일 안) — 분기 말 주가."""
+    import bisect
+    ks = px.get("_ks")
+    if ks is None:
+        ks = px["_ks"] = sorted(k for k in px if k[:1].isdigit())
+    i = bisect.bisect_right(ks, d) - 1
+    if i < 0:
+        return None
+    k = ks[i]
+    if (dt.datetime.strptime(d, "%Y%m%d") - dt.datetime.strptime(k, "%Y%m%d")).days > stale:
+        return None
+    return px.get(k)
+
+
+def _beads_gap(code, px):
+    """가속도 캐시 마지막 분기 점 → 엇갈림 재료 {dm, dp, label, d} — TTM 영업이익률 − 4분기 전 · 분기 말 주가 1년 변화(네이버 수정주가, 도구/엇갈림_백테스트 와 같은 정의). 없으면 None."""
+    d = _druck_read(code)
+    pts = sorted((p for p in (d or {}).get("points") or [] if p.get("n") is not None and p.get("label")), key=lambda p: p["n"])
+    if not pts:
+        return None
+    by_n = {p["n"]: p for p in pts}
+    p = pts[-1]
+
+    def m_of(x):
+        a, b = x.get("영업이익_TTM"), x.get("매출_TTM")
+        return a / b * 100 if (a is not None and b) and b > 0 else None
+    m0, p4 = m_of(p), by_n.get(p["n"] - 4)
+    m4 = m_of(p4) if p4 else None
+    lab = p["label"]
+    try:
+        y, q = int(lab[:4]), int(lab[5:])
+        qe = "%04d%02d%02d" % (y, 3 * q, (31, 30, 30, 31)[q - 1])
+        a, b = _beads_px_at(px or {}, (dt.datetime.strptime(qe, "%Y%m%d") - dt.timedelta(days=365)).strftime("%Y%m%d")), _beads_px_at(px or {}, qe)
+        dp = (b / a - 1) * 100 if (a and b) else None
+    except (ValueError, TypeError):
+        dp = None
+    return {"dm": (m0 - m4) if (m0 is not None and m4 is not None) else None, "dp": dp, "label": lab, "d": str(p.get("기준일") or "")}
+
+
+def _beads_text(c):
+    """궤도 요약 → 최근 정기보고서(정정 아님) {x, tier, label, stamp, gist}."""
+    rows = _orbit_sum_rows(c)
+    if not rows:
+        return None
+    orbit_scale(rows)
+    for r in reversed(rows):
+        if r.get("tag") or r.get("x") is None:
+            continue
+        g = r.get("gist") or []
+        return {"x": r["x"], "tier": r.get("tier"), "label": r.get("label"), "stamp": r.get("stamp"), "gist": (g[0].get("text") if g and isinstance(g[0], dict) else None)}
+    return None
+
+
+def _beads_link(nm, names):
+    """매출처 이름 → 수집 회사 코드(valuechain_view.link 의 한글 쪽 — 영문 별명 색인은 안 쓴다)."""
+    cn = _vc_canon(nm)
+    for cand in (cn, re.sub(r"\(\*+\)|\s*본사$|\(주\)|㈜|주식회사", "", nm or "").strip()):
+        cd = names.get(_norm_corp(cand))
+        if cd and company_by_code(cd):
+            return cd
+    return None
+
+
+def _beads_chain(code, names, xs):
+    """밸류체인 캐시 최신 매출처 표 → {custs: [{code, name, pct, p3}], year}. 표 없음 · 이어지는 고객 없음 → None(빈 구슬)."""
+    try:
+        with open(os.path.join(VC_DIR, code + ".json"), "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    years = d.get("years") or {}
+    best = None
+    for y, dy in years.items():
+        rc = str(dy.get("rcept") or "")
+        if len(rc) >= 8 and (best is None or rc > best[0]):
+            best = (rc, y, dy)
+    if not best:
+        return None
+    _, y, dy = best
+    custs = []
+    for x in dy.get("customers") or []:
+        if x.get("kind") != "named" or (x.get("pct") or 0) < KM.TH["chain_pct"]:
+            continue
+        cd = _beads_link(x["name"], names)
+        if cd and cd != code:
+            r = xs.get(cd) or {}
+            custs.append({"code": cd, "name": (company_by_code(cd) or {}).get("name") or x["name"], "pct": x.get("pct"), "p3": r.get("p3")})
+    return {"custs": custs, "year": y} if custs else None
+
+
+def _beads_chart():
+    """Tech 스캔 일지 → ({code: [{pattern, stage, asof}]}, 마지막 스캔 날, 7일 안인가). 규칙 있는 줄(지금 식)만 · 마지막 스캔 날만 · failed · extended 단계 뺌."""
+    p = _score_journal_path()
+    if SCR is None or not os.path.exists(p):
+        return {}, None, False
+    try:
+        rows = [r for r in SCR.load_journal(p) if r.get("rule")]
+    except Exception:
+        return {}, None, False
+    if not rows:
+        return {}, None, False
+    last = max(r["asof"] for r in rows)
+    fresh = (dt.date.today() - dt.datetime.strptime(last, "%Y%m%d").date()).days <= KM.TH["chart_days"]
+    by = {}
+    for r in rows:
+        if r["asof"] == last and (r.get("stage") or "").lower() not in BEADS_CHART_STAGE_SKIP:
+            by.setdefault(r["code"], []).append({"pattern": r.get("pattern"), "stage": r.get("stage"), "asof": r["asof"]})
+    return by, last, fresh
+
+
+def _beads_rep(code, price, since):
+    """리포트 합의 — 데워진 모음(_REP)만. {warm, up, n, n180, tp_avg}."""
+    with REP_LOCK:
+        warm, by = bool(_REP.get("sig")), _REP.get("by_code") or {}
+    if not warm or REP is None:
+        return None
+    rows = by.get(code) or []
+    recent = [r for r in rows if (r.get("date") or "")[:10] >= since]
+    try:
+        cs = REP.consensus(rows, price, since) or {}
+    except Exception:
+        cs = {}
+    return {"warm": True, "up": cs.get("up"), "n": cs.get("n"), "n180": len(recent), "tp_avg": cs.get("avg")}
+
+
+def _beads_mine():
+    """내 기록(이 PC 의 개인 자료) — {code: {watch, hold, n_judge}}. 조회 전용이면 빈 dict."""
+    out = {}
+    if READONLY:
+        return out
+    try:
+        if WATCH is not None:
+            with WATCH_LOCK:
+                data = WATCH.load(WATCH.default_path())
+            for e in data.get("entries") or []:
+                if not e.get("closed") and e.get("code"):
+                    out.setdefault(e["code"], {})["watch"] = True
+    except Exception:
+        pass
+    try:
+        if TRD is not None:
+            with TRD_LOCK:
+                data = TRD.load(TRD.default_path())
+            bk = TRD.book(data.get("trades") or [], _trd_price, None)
+            for lot in bk.get("open") or []:
+                if lot.get("code"):
+                    out.setdefault(lot["code"], {})["hold"] = True
+    except Exception:
+        pass
+    try:
+        if SCR is not None:
+            n = {}
+            for s in SCR.load_forward(SCORE_FWD):
+                for r in s.get("rows") or []:
+                    if r.get("tier") == "저평가" and r.get("code"):
+                        n[r["code"]] = n.get(r["code"], 0) + 1
+            p = _score_journal_path()
+            if os.path.exists(p):
+                for r in SCR.load_journal(p):
+                    if r.get("rule"):
+                        n[r["code"]] = n.get(r["code"], 0) + 1
+            for cd, k in n.items():
+                out.setdefault(cd, {})["n_judge"] = k
+    except Exception:
+        pass
+    return out
+
+
+def _run_beads():
+    t0 = time.time()
+    try:
+        src = {}
+        vv = value_view(False)
+        vrows = {r["code"]: r for r in (vv.get("rows") or []) if r.get("code")}
+        src["value"] = vv.get("at")
+        syn, syn_src, syn_at = _beads_syn_rows()
+        src["synergy"] = {"src": syn_src, "at": syn_at}
+        try:
+            ex = exlead_view()
+            exl = {r["code"]: r for r in (ex.get("rows") or []) if r.get("code")}
+            src["exlead"] = ex.get("at")
+        except Exception:
+            exl = {}
+        try:
+            expo = {it["code"]: it for it in ((_ind_file("beads_export", os.path.join(CACHE_DIR, "수출추적", "result.json")) or {}).get("items") or []) if it.get("code")}
+        except Exception:
+            expo = {}
+        tp = _ind_file("toppick_latest", _toppick_path("latest.json")) or {}
+        judged = dict(tp.get("judged") or {})
+        for r in (tp.get("rows") or []) + (tp.get("near") or []) + (tp.get("risky") or []) + (tp.get("ref") or []):
+            j, m = r.get("j") or {}, r.get("m") or {}
+            judged.setdefault(r["code"], {"A": j.get("A"), "B": j.get("B"), "op_yoy": m.get("op_yoy"), "rev_yoy": m.get("rev_yoy"), "turn": m.get("turn"),
+                                           "ttm_g": m.get("ttm_g"), "label": m.get("label"), "known": m.get("known"), "fin": r.get("fin"), "hold": r.get("hold")})
+        src["toppick"] = tp.get("asof")
+        xs_d = _vcmap_xs_read() or {}
+        xs = xs_d.get("rows") or {}
+        src["xs"] = xs_d.get("date")
+        risk = _disc_risk() or {}
+        rcodes, s12 = risk.get("codes") or {}, risk.get("s12") or {}
+        src["risk"] = risk.get("기준일")
+        ks = ((_kis_snapshot() or {}).get("status")) or {}
+        src["kis"] = (_kis_meta() or {}).get("date")
+        chart_by, chart_last, chart_fresh = _beads_chart()
+        src["chart"] = chart_last
+        names = _listed_names()
+        univ, _snap = _universe_info()
+        smap = (sector_map() or {}).get("stocks") or {}
+        mine = _beads_mine()
+        since = (dt.date.today() - dt.timedelta(days=180)).isoformat()
+        try:
+            if REP is not None and not READONLY:
+                _rep_rows()                       # 리포트 모음을 데운다(리포트 탭 · 밸류체인 한 장과 같은 길 — 첫 번은 70초 안팎) — 리포트 구슬이 늘 빈 구슬이 되지 않게
+        except Exception:
+            pass
+        with REP_LOCK:
+            src["reports"] = "warm" if _REP.get("sig") else None
+        rows, flow = [], []
+        for c in INDEX["companies"]:
+            code = c["code"]
+            px = _px_file(code) or {}
+            xr = xs.get(code) or {}
+            price = xr.get("px") or (_beads_px_at(px, dt.date.today().strftime("%Y%m%d"), 30) if px else None)
+            v = vrows.get(code)
+            dip = {"tier": v.get("tier"), "score": v.get("score"), "dd": v.get("dd"), "ni_yoy": v.get("ni_yoy"), "red": v.get("red"), "tier_why": v.get("tier_why"),
+                   "lab": v.get("lab"), "fell": True} if v else None
+            land = (_land_read(code) or {})
+            dec = land.get("decide") or {}
+            val = None
+            if dec and dec.get("per") is not None:
+                nq = sum(1 for q in (land.get("quarters") or []) if isinstance(q, dict) and q.get("per") is not None)
+                val = {"per": dec.get("per"), "pct": dec.get("pct"), "n": nq, "date": dec.get("date"), "zone": dec.get("zone")}
+            e = exl.get(code)
+            item = expo.get(code)
+            if e:
+                exp = {"clue": bool((e.get("checks") or {}).get("clue")), "tier": e.get("tier"), "cur": e.get("cur"), "months_label": e.get("months_label"), "cur_q": e.get("cur_q"), "grade": e.get("grade")}
+            elif item and item.get("status") == "ok":
+                exp = {"clue": False, "grade": item.get("grade")}
+            else:
+                exp = None
+            u = univ.get(code) or {}
+            sc = smap.get(code.upper()) or smap.get(code) or {}
+            kis_bad, _tags = _kis_tags(ks.get(code))
+            rk = rcodes.get(code) or {}
+            inp = {"code": code, "name": c["name"], "cap_rank": u.get("rank"),
+                   "exp": exp, "syn": syn.get(code), "earn": judged.get(code), "text": _beads_text(c), "gap": _beads_gap(code, px), "val": val, "dip": dip,
+                   "chain": _beads_chain(code, names, xs), "chart": {"has_journal": chart_fresh, "rows": chart_by.get(code) or []} if chart_last else None,
+                   "rep": _beads_rep(code, price, since),
+                   "risk": {"level": rk.get("level"), "flags": SYN.risk_flags(s12.get(code) or {}) if SYN is not None else [], "kis": kis_bad},
+                   "mine": mine.get(code) or {}}
+            s = KM.string(inp)
+            inp["string"] = s
+            rows.append({"code": code, "name": c["name"], "market": u.get("market"), "cap_rank": u.get("rank"), "sector": sc.get("sector"), "industry": sc.get("industry"),
+                         "themes": (sc.get("themes") or [])[:6], "px": {k: xr.get(k) for k in ("d", "px", "dd", "r1", "r3", "r6", "p1", "p3")},
+                         "per": (val or {}).get("per"), "per_pct": (val or {}).get("pct"),
+                         "beads": s["beads"], "k": s["k"], "k_ref": s["k_ref"], "n_known": s["n_known"], "gates": s["gates"], "gated": s["gated"],
+                         "mine": mine.get(code) or {}, "why": KM.explain(inp), "_rk": list(s["rank_key"])})
+            flow.append({"code": code, "sector": sc.get("sector"), "industry": sc.get("industry"), "themes": sc.get("themes") or [], "elig": True,
+                         "cand": s["k"] >= 2 and not s["gated"], "earn": s["k"] >= 1, "mcap_g": xr.get("r6")})
+        rows.sort(key=lambda r: tuple(r["_rk"]))
+        for r in rows:
+            r.pop("_rk", None)
+        counts = KM.counts([{"string": {"beads": r["beads"], "gates": r["gates"], "k": r["k"]}} for r in rows])
+        groups = TOP.flow_groups(flow) if TOP is not None else None
+        out = {"v": KM.VERSION, "at": time.time(), "asof": xs_d.get("date"), "n": len(rows), "rows": rows, "counts": counts, "groups": groups, "src": src,
+               "chart_last": chart_last, "secs": round(time.time() - t0, 1)}
+        os.makedirs(BEADS_DIR, exist_ok=True)
+        _atomic_json(_beads_path("_result.json"), out)
+        with BEADS_LOCK:
+            BEADS.update(at=time.time(), secs=out["secs"], error=None)
+        print("꿰미 — %d곳 %.0f초" % (len(rows), out["secs"]), flush=True)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        with BEADS_LOCK:
+            BEADS.update(error=str(e))
+    finally:
+        with BEADS_LOCK:
+            BEADS["running"] = False
+
+
+def beads_kick():
+    """뒤에서 한 번 — 이미 돌면 그대로(False). 조회 전용은 안 돈다."""
+    if READONLY:
+        return False
+    with BEADS_LOCK:
+        if BEADS["running"]:
+            return False
+        BEADS["running"] = True
+    threading.Thread(target=_run_beads, daemon=True).start()
+    return True
+
+
+def beads_view(force=False):
+    """탭이 읽는 것 — 저장한 결과(_result.json) · 검증(bt.json) · 구슬 정의 · 실행 상태. 결과가 없거나 BEADS_MAX_AGE 넘게 묵었으면 뒤에서 다시(조회 전용은 저장분만)."""
+    res = _ind_file("beads_result", _beads_path("_result.json"))
+    if force or (not READONLY and (not res or _age_stale(res.get("at") or 0, BEADS_MAX_AGE))):
+        beads_kick()
+    with BEADS_LOCK:
+        run = dict(BEADS)
+    out = {"result": res, "bt": _ind_file("beads_bt", _beads_path("bt.json")), "run": run, "beads_def": KM.BEADS if KM is not None else [],
+           "gates_def": KM.GATES if KM is not None else [], "base_keys": KM.BASE_KEYS if KM is not None else [], "th": dict(KM.TH) if KM is not None else {},
+           "readonly": READONLY}
+    return out
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
 
@@ -13987,6 +14337,12 @@ class Handler(BaseHTTPRequestHandler):
                         return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
                     toppick_kick(q["run"])
                 return self._send(200, toppick_view())
+            if path == "/api/beads":            # 꿰미 — ?run=1 은 이 PC 의 이 화면에서만(같은 출처). 캐시만 읽어 다시 꿴다(1~3분)
+                if q.get("run") == "1":
+                    if not self._same_origin_get():
+                        return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
+                    return self._send(200, beads_view(True))
+                return self._send(200, beads_view())
             if path == "/api/value":
                 return self._send(200, value_view(q.get("force") == "1"))
             if path == "/api/score":
