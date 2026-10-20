@@ -2264,11 +2264,14 @@ tr.bdGated td{opacity:.6}
 .synexpg .k.head{color:var(--accent)}
 .invM li .n.lnk,.invSigList li .n.lnk,.invLensT .n.lnk{cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}
 .invM li .n.lnk:hover,.invSigList li .n.lnk:hover{filter:brightness(1.25)}
-.invDrv{width:100%;border-collapse:collapse;font-size:11.5px;margin:2px 0 6px}
+.invOneG{align-items:start}
+.invOneG .invDrvCard{grid-column:1 / -1}
+.invDrv{width:100%;border-collapse:collapse;font-size:11.5px;margin:2px 0 6px;table-layout:fixed}
+.invDrv th:nth-child(1){width:15%}.invDrv th:nth-child(2){width:25%}.invDrv th:nth-child(3),.invDrv th:nth-child(4){width:20%}.invDrv th:nth-child(5){width:20%}
 .invDrv th{text-align:left;font-weight:600;color:var(--faint);padding:2px 6px 4px 0;border-bottom:1px solid var(--line)}
 .invDrv td{padding:4px 6px 4px 0;vertical-align:top;border-bottom:1px dashed var(--line);line-height:1.4}
 .invDrv td.k a{color:var(--accent);text-decoration:none;white-space:nowrap}.invDrv td.k a:hover{text-decoration:underline}
-.invDrv td.v{color:var(--ink);white-space:nowrap}.invDrv td.v.dim{color:var(--faint)}
+.invDrv td.v{color:var(--ink)}.invDrv td.v.dim{color:var(--faint)}
 .invDrv td.g{color:var(--add)}.invDrv td.b{color:var(--del)}.invDrv td.e{color:var(--faint);font-size:11px}
 .invGrade{display:inline-block;padding:0 5px;border-radius:7px;font-size:10.5px;line-height:15px;border:1px solid var(--line);color:var(--dim)}
 .invGrade.ok{color:var(--add);border-color:var(--add)}.invGrade.weak{color:var(--warn);border-color:var(--warn)}
@@ -12819,9 +12822,10 @@ function invOnePager(d, sigs, fin, lead, pos, neg){
   if(!u3.children.length) li(u3,'크기를 잴 수 있는 새 위험 없음'+((DR.unanchored||DR.industry)?' — 금액 · 상대방이 없는 문장 '+((DR.unanchored||0)+(DR.industry||0))+'개는 원장에만':''),null,'small');
 
   // ④ 생각을 바꿀 조건 — 이 회사를 재는 지표(서버 drivers) + 앵커 있는 사건 줄
-  const u4=card('생각을 바꿀 조건','지표 · 지금 값 · 문턱 · 과거 검증');
+  const u4=card('생각을 바꿀 조건','사건 줄 · 지표 표는 아래');
   const DRV=d.drivers||[];
   if(DRV.length){
+    // 지표 표는 열이 다섯이라 좁은 카드 안에 못 선다 — 네 카드 아래 한 줄(전체 폭)로(2026-10-21 사용자: "디자인이 짤린 것 같고 공란이 너무 많다")
     const t=el('table','invDrv');
     const hr=el('tr'); ['지표','지금','더 믿게 될 때','접게 될 때','과거 검증'].forEach(h=>hr.appendChild(el('th',null,h))); t.appendChild(hr);
     DRV.forEach(x=>{ const tr=el('tr'); const k=el('td','k');
@@ -12830,13 +12834,16 @@ function invOnePager(d, sigs, fin, lead, pos, neg){
       tr.appendChild(el('td','g',x.better||'—')); tr.appendChild(el('td','b',x.worse||'—'));
       const e=el('td','e'); e.appendChild(el('span','invGrade '+(x.grade==='검증됨'?'ok':x.grade==='약함'?'weak':'na'),x.grade||'—')); e.title=x.ev||''; if(x.ev) e.appendChild(document.createTextNode(' '+cut(x.ev,52))); tr.appendChild(e);
       t.appendChild(tr); });
-    u4.parentNode.insertBefore(t,u4);
+    const dc=el('div','invM invDrvCard'); const dh=el('div','h'); dh.appendChild(el('b',null,'재는 지표 — 생각을 바꿀 조건')); dh.appendChild(el('small',null,'지금 값 · 더 믿게 될 때 · 접게 될 때 · 과거 검증 · 그 탭 ↗'));
+    dc.appendChild(dh); dc.appendChild(t); grid.appendChild(dc);
+    li(u4,'지표 '+DRV.length+'개는 아래 표 — '+DRV.map(x=>x.name+(x.state?'('+x.state.split('(')[0]+')':'')).join(' · '),null,'small');
   }
   const DIL=/유상증자|전환사채|신주인수권|교환사채|감자|물적\s*분할/;
   sigs.filter(s=>invCardOk(s)&&s.src==='new'&&(s.gov||/^(리스크|자금조달|특수관계)/.test(s.label)||DIL.test(s.raw||s.text))).slice(0,2)
     .forEach(s=>li(u4,'접게 될 때 — '+(s.gov?'특수관계 거래가 늘거나 조건이 회사에 불리하게 드러난다':DIL.test(s.raw||s.text)?'주식 수가 늘거나(희석) 조건이 기존 주주에게 불리해진다':'충당부채 · 판결 · 제재 범위가 커진다')+' ('+s.label+')',s));
   const mdp=fin['영업이익률']&&fin['영업이익률'].delta; if(mdp!=null&&mdp>0) li(u4,'접게 될 때 — 매출이 늘어도 영업이익률이 뒷걸음친다(이번 +'+mdp.toFixed(1)+'%p 가 되돌아간다)');
   if(!DRV.length&&!u4.children.length) li(u4,'재는 지표 자료가 없다(가속도 · 수주 · 풍경 캐시 없음) — 다음 보고서의 매출 · 영업이익률 방향.',null,'small');
+  else if(!DRV.length) li(u4,'재는 지표 자료가 없다(가속도 · 수주 · 풍경 캐시 없음).',null,'small');
   return box;
 }
 
