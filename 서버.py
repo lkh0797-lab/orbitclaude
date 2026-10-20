@@ -3907,7 +3907,7 @@ def traj_view(code, norm, labels=None):
 # ---------------------------------------------------------------- 투자 브리핑(테스트)
 # 보고서 한 건의 변화를 '신호'로 바꾼다. 신호 = 방향(기회 +1 … 위험 −1) · 시간 지평(0 지금 … 1 구조)
 # · 무게 · 근거 문장 · 그 신호를 가장 먼저 볼 구루. 화면이 지형도·원탁·메모로 엮는다.
-INV_V = 11         # 11: 단서 조항 · 회계 표시 · 다짐 문장 거름 · 9: 분기보고서도 전년 동기와 견준다(1Q↔작년 1Q) · 10: 신호 전용 분류(classify_sig) · 상용구 거름
+INV_V = 12         # 12: 앵커 관문 · 회사 사이 상용구 색인 · 그 사이 보고서 묵은 말 · 위치(loc) · 원문(raw) · 재무 위생 · 지표 표(drivers) (2026-10-21) · 11: 단서 조항 · 회계 표시 · 다짐 문장 거름 · 9: 분기보고서도 전년 동기와 견준다(1Q↔작년 1Q) · 10: 신호 전용 분류(classify_sig) · 상용구 거름
 INV_POS = re.compile(r"증가|확대|수주|성공|최초|1위|선도|신규|진출|체결|준공|양산|인수|개선|성장|호조|흑자|상승|확보|출시|수출|"
                      r"돌파|최대|강화|회복|인상|승소|해소|종결|무혐의|취하|완료|선정|승인|획득")
 INV_NEG = re.compile(r"감소|축소|중단|철수|손상|소송|제재|과징금|적자|부진|지연|취소|해지|하락|악화|분쟁|리콜|손실|위반|담합|"
@@ -3988,6 +3988,424 @@ INV_CODE = re.compile(r"(?<![A-Za-z0-9])(?:[A-Z]{1,5}-[A-Z]?\d{1,4}[A-Za-z]?|[A-
 INV_VERBISH = re.compile(r"(하거나|하며|하여|하고|하는|하기|되어|되는|된다|했다|한다|으로|에서|에게|이며|이고|거나|이다|하였|되었|위하여|통하여|함|"
                          r"였고|였으며|시키기|키기|되며|위해|위한|하게|되고|하면서|였음|하였음|부터|상기)$")
 
+# ---- v12 (2026-10-21, docs/superpowers/specs/2026-10-21-brief-cards-v12-design.md) — 상용구를 걷어내고 붙잡을 사실만 카드에.
+# 감사(10곳 × 상위 8): 글 신호 35개 중 새롭고 구체적인 회사 사실은 6개(17%) — 상용구 10 · 묵은 문장 13 · 잘못 분류 4 · 잡음 2.
+INV_STD = re.compile(r"기준서\s*(?:제\s*)?\d{3,4}\s*호|해석서|개정\s*사항|적용\s*범위|개념\s*체계|최초\s*적용|소급\s*적용|경과\s*규정|시행\s*일\s*(?:이후|부터)")
+INV_CAPTION = re.compile(r"^\s*(?:주\s*\d+\s*\)|\(\s*주\s*\d*\s*\)|[①-⑳※▶◆■]|\[\s*주\s*\d*\s*\])|(?:다음|아래|하기|상기)[과와]\s*같|현황은\s*(?:다음|아래)|(?:은|는)\s*(?:다음|아래)\s*표")
+INV_NONE = re.compile(r"(?:없음|없습니다|없다|해당\s*사항\s*없음|해당\s*없음|해당\s*사항이?\s*없)\.?\s*$")
+INV_INDUSTRY = re.compile(r"산업(?:은|이|의|에서|별|계)|시장\s*규모|CAGR|연평균\s*성장|전망(?:이|은|되|됩|임|이다)|글로벌\s*[^\s]{0,12}\s*시장|"
+                          r"시장(?:은|이)\s*[^.]{0,24}(?:성장|확대|증가|커지)|수요(?:가|는)\s*[^.]{0,16}(?:증가|확대|늘)|성장할\s*것|전\s*세계|"
+                          r"(?:국내|세계|글로벌|해외|북미|유럽|중국)\s*[^\s.]{0,8}\s*(?:시장|산업|매출액|수요|출하량|생산량|판매량)(?:은|는|이|가)\s|"
+                          r"해상\s*운임|운임\s*강세|운임(?:이|은)\s|유가(?:가|는|의)|환율(?:이|은|의)\s|금리(?:가|는|의)\s|분쟁|전쟁|종전|제재\s*완화|캐즘|업계(?:는|의|에서)|업체들")
+INV_SELF = re.compile(r"당사|회사는|회사의|회사가|연결실체|당\s*회사|우리\s*회사|자사|종속회사|지배회사")
+INV_AUTH = re.compile(r"증선위|증권선물위원회|금감원|금융감독원|금융위|공정위|공정거래위원회|법원|검찰|국세청|관세청|세무서|환경부|고용노동부|"
+                      r"과징금|과태료|제재|시정명령|고발|기소|판결|영업정지|감리")
+INV_PARTY = re.compile(r"주식회사|㈜|\(주\)|Inc\.?|Ltd\.?|Co\.,?\s*Ltd|Corp\.?|GmbH|\bAG\b|LLC|S\.A\.?|Pte|PLC|Limited|Company|"
+                       r"[가-힣A-Za-z]{2,12}\s*(?:공사|은행|대학교?|병원|그룹|홀딩스|전자|화학|건설|중공업|제약|바이오|에너지|반도체|디스플레이|자동차|모터스|조선|해양|항공|통신|카드|증권|보험|생명|물산|상사|테크|텍|소재|시스템즈?|산업|정유|제철|철강|전력|가스)(?![가-힣])")
+INV_PARTY2 = re.compile(r"([가-힣A-Za-z0-9&]{2,16})(?:와|과|에게|으로부터|로부터)[^\n]{0,40}?(?:계약|합작|제휴|공급|납품|거래|협약|양수도|양수|양도|MOU|인수|매각|투자|출자)")
+INV_PARTY_STOP = re.compile(r"(?:고객|거래처|소비자|수요처|수요|당사|회사|주주|임직원|직원|시장|업체|기업|협력사|협력업체|파트너|상대방|투자자|기관|정부|국가|수요고객|주요고객|고객사)$")
+
+
+def _inv_party(sent):
+    """상대방이 있나 — 회사 꼴 접미(주식회사 · Inc · …전자 …) 또는 'X와 … 계약' 꼴, 또는 상장사 이름(앞부분 맞춤)."""
+    if INV_PARTY.search(sent or ""):
+        return True
+    m2 = INV_PARTY2.search(sent or "")
+    if m2 and not INV_PARTY_STOP.search(m2.group(1)):
+        return True
+    try:
+        names = _listed_names()
+    except Exception:
+        return False
+    for m in re.finditer(r"([가-힣A-Za-z0-9&]{2,16})(?:와|과|에게|으로부터|로부터)", sent or ""):
+        if INV_PARTY_STOP.search(m.group(1)):
+            continue
+        n = _norm_corp(m.group(1))
+        for L in range(len(n), 3, -1):
+            if n[:L] in names:
+                return True
+    return False
+
+
+INV_EVENT_VERB = re.compile(r"체결|수주|인수|취득|매각|양수|양도|출시|착공|준공|승인|허가|인증|투자|출자|계약|공급|납품|설립|합작|제휴|선정|수상|진출|개시|완공|가동|상장|등록")
+INV_DATE2 = re.compile(r"(?<![\d.])(20\d\d)\s*[.\-/년]\s*(1[0-2]|0?[1-9])(?:\s*[.\-/월]|(?![\d]))")
+INV_SCOPE = re.compile(r"합병|(?:물적|인적|회사|사업)\s*분할|중단\s*영업|연결\s*범위|종속\s*(?:회사|기업)[^.]{0,12}(?:취득|처분|매각|편입|제외)")
+INV_SKIP_SEC = re.compile(r"임원|직원|정관|주석|감사(?!보고)")     # 섹션 이름(norm) — 보수 · 정관 · 주석 설명은 사실이 아니다
+INV_SUIT_SELF = re.compile(r"(?:당사|회사)(?:가|는|의|에서)\s*[^.]{0,30}(?:제기|청구|신청|승소|기각|각하|승리)")
+INV_SUIT_AGAINST = re.compile(r"(?:당사|회사)(?:를|을)\s*(?:상대로|피고로)|피고\s*(?:로|인|는|가)|피소|제소\s*당|청구\s*당|(?:당사|회사)(?:에게|에)\s*[^.]{0,12}(?:청구|제기)")
+INV_WIN = re.compile(r"승소|기각|각하|취하|무혐의|불기소|승리")
+INV_WON_BARE = re.compile(r"(?<![\d.,제])(\d[\d,]*(?:\.\d+)?)\s*(조|억)(?!\s*원)(?![가-힣\d])")      # '6,000억)' · '205억' — 원 없이 적은 금액
+INV_COMMON_MIN, INV_COMMON_PREFIX = 5, 3            # 회사 5곳↑ · 이름 머리(두 글자) 3가지↑ 이면 회사 사이 상용구
+INV_SKEL_DIR = os.path.join(CACHE_DIR, "invest", "_skel")
+INV_COMMON_PATH = os.path.join(CACHE_DIR, "invest", "_common.json")
+INV_COMMON_MAX_AGE = 30 * 86400
+_INV_COMMON = {"d": None, "mt": None, "state": None, "at": None, "n": None}
+_INV_COMMON_LOCK = threading.Lock()
+
+
+def _inv_skel_key(sent):
+    return _ask_skel(sent)[:40]
+
+
+def _inv_won2(s):
+    """금액 — _inv_won 에 더해 '원' 없이 적은 '6,000억' · '205억' 도 읽는다(1억 미만은 안 본다)."""
+    best = _inv_won(s)
+    for m in INV_WON_BARE.finditer(s or ""):
+        try:
+            v = float(m.group(1).replace(",", "")) * (1e12 if m.group(2) == "조" else 1e8)
+        except ValueError:
+            continue
+        if v >= 1e8 and (best is None or v > best):
+            best = v
+    return best
+
+
+def _inv_anchor(sent, ryear):
+    """붙잡을 사실 — 금액 1억↑ · 가까운 날짜([보고 해−1, 보고 해+1]) · 상대방+사건 동사 · 감독/법원 주체+금액. 없으면 None."""
+    out = {}
+    amt = _inv_won2(sent)
+    if amt:
+        out["amt"] = amt
+    ys = [int(y) for y, _m in INV_DATE2.findall(sent or "")]
+    if ys and any(ryear - 1 <= y <= ryear + 1 for y in ys):
+        out["date"] = True
+    if INV_EVENT_VERB.search(sent or "") and _inv_party(sent):
+        out["party"] = True
+    if amt and INV_AUTH.search(sent or ""):
+        out["auth"] = True
+    return out or None
+
+
+def _inv_is_industry(sent):
+    """산업 · 시장 전망 문장(주어가 당사 · 회사가 아님) — 원장에만."""
+    return bool(INV_INDUSTRY.search(sent or "")) and not INV_SELF.search(sent or "")
+
+
+def _inv_dir_role(sent, tags, d):
+    """주체를 보고 방향을 고친다 — 소송: 당사가 제기 · 승소 · 기각은 음이 아니다(항소 기각(회사 승소)이 리스크 −0.6 이던 것)."""
+    if "리스크·소송" in (tags or ()):
+        against = bool(INV_SUIT_AGAINST.search(sent or ""))
+        if INV_SUIT_SELF.search(sent or "") and not against:
+            return max(d, 0.0) if INV_WIN.search(sent or "") else 0.0
+        if INV_WIN.search(sent or "") and not against:
+            return abs(d) * 0.5
+    return d
+
+
+def _inv_order_ok(sent, tags):
+    """수주 꼬리표 자격 — (수주|계약|공급|납품) + (금액 또는 상대방). '정화명령 … 정화를 실시할 예정' 이 수주 +1 이 되지 않게."""
+    if "수주·계약" not in (tags or ()):
+        return True
+    return bool(re.search(r"수주|계약|공급|납품", sent or "")) and (bool(_inv_won2(sent)) or bool(INV_PARTY.search(sent or "")))
+
+
+def _inv_sents(text):
+    """섹션 본문 → [(문장, 문단 번호, 글자 자리)] — 뼈대 색인 · 위치(loc)용. 잡음 문단은 뺀다."""
+    out, pos = [], 0
+    for i, p in enumerate(blocks(text or "")):
+        start = text.find(p, pos)
+        if start < 0:
+            start = pos
+        pos = start + len(p)
+        if is_noise(p):
+            continue
+        for sent in SENT_SPLIT.split(p):
+            sent = (sent or "").strip()
+            if len(sent) < 18:
+                continue
+            o = text.find(sent, start, start + len(p) + 1)
+            out.append((sent, i, o if o >= 0 else start))
+    return out
+
+
+def _inv_loc(text, sent):
+    """문장이 섹션 본문 어디에 있나 → (문단 번호, 글자 자리, 길이). 못 찾으면 (None, None, len)."""
+    o = (text or "").find(sent)
+    if o < 0:
+        return None, None, len(sent)
+    pos, blk = 0, None
+    for i, p in enumerate(blocks(text)):
+        st = text.find(p, pos)
+        if st < 0:
+            st = pos
+        pos = st + len(p)
+        if st <= o < pos:
+            blk = i
+            break
+    return blk, o, len(sent)
+
+
+class _InvIndex:
+    """문장 뼈대의 3글자 조각 색인 — 기준 보고서 · 그 사이 보고서에 이미 있던 문장 찾기(_Lineage._match 와 같은 규칙:
+    자카드 ≥ 0.5 또는 포함 ≥ 0.75). 22자 머리/꼬리 부분 일치(옛 규칙)는 두 낱말만 고쳐도 '새 문장'이 됐다."""
+
+    def __init__(self):
+        self.grams, self.inv = [], {}
+
+    def add_skels(self, skels):
+        for sk in skels:
+            if len(sk) < 20:
+                continue
+            g = _ask_grams(sk)
+            i = len(self.grams)
+            self.grams.append(g)
+            for t in g:
+                self.inv.setdefault(t, []).append(i)
+
+    def has(self, sk):
+        from collections import Counter
+        if len(sk) < 20:
+            return False
+        g = _ask_grams(sk)
+        hit = Counter()
+        for t in g:
+            lst = self.inv.get(t)
+            if lst and len(lst) <= 400:
+                hit.update(lst)
+        for i, _ in hit.most_common(6):
+            o = self.grams[i]
+            k = len(g & o)
+            if k / (len(g) + len(o) - k) >= 0.5 or k / len(g) >= 0.75:
+                return True
+        return False
+
+
+def _inv_skels(c, r, norms):
+    """보고서 r 의 섹션(norms)별 문장 뼈대 — .cache/invest/_skel/{code}/{rcept}.json 에 한 번 만든다(그 사이 보고서 묵은 말 검사)."""
+    path = os.path.join(INV_SKEL_DIR, c["code"], r["rcept"] + ".json")
+    d = None
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+    except (OSError, ValueError):
+        d = None
+    if not isinstance(d, dict) or d.get("v") != 1:
+        d = {"v": 1, "secs": {}}
+    out, changed = {}, False
+    for norm in norms:
+        if norm in d["secs"]:
+            out[norm] = d["secs"][norm]
+            continue
+        x = next((y for y in r["sections"] if y["norm"] == norm), None)
+        sk = []
+        if x:
+            try:
+                text = read_section(c, r, x["file"])
+            except Exception:
+                text = ""
+            sk = [k for k in (_ask_skel(t) for t, _, _ in _inv_sents(text)) if len(k) >= 20]
+        d["secs"][norm] = sk
+        out[norm] = sk
+        changed = True
+    if changed:
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            _atomic_json(path, d)
+        except Exception:
+            pass
+    return out
+
+
+def _inv_between(c, base, rep):
+    """기준 보고서와 이번 보고서 사이의 정기보고서(정정 아님) 최대 3 — 거기 이미 적힌 말은 묵은 말."""
+    if not base or not rep:
+        return []
+    lo, hi = base["rcept"], rep["rcept"]
+    mid = [r for r in c["reports"] if not r["tag"] and r["label"] in REG_LABELS and lo < r["rcept"] < hi]
+    return mid[-3:]
+
+
+def _inv_common():
+    """회사 사이 상용구 색인(문장 뼈대 키 집합) — 없거나 30일 지났으면 뒤에서 만든다. 아직 없으면 None(그동안은 안 거른다)."""
+    with _INV_COMMON_LOCK:
+        try:
+            mt = os.path.getmtime(INV_COMMON_PATH)
+        except OSError:
+            mt = None
+        if mt and _INV_COMMON["mt"] != mt:
+            try:
+                with open(INV_COMMON_PATH, "r", encoding="utf-8") as fh:
+                    j = json.load(fh)
+                _INV_COMMON.update(d=set(j.get("keys") or []), mt=mt, at=j.get("at"), n=j.get("n_companies"))
+            except Exception:
+                pass
+        fresh = bool(mt) and (time.time() - mt < INV_COMMON_MAX_AGE)
+        if not fresh and _INV_COMMON["state"] != "building" and not READONLY and INDEX.get("companies"):
+            _INV_COMMON["state"] = "building"
+            threading.Thread(target=_inv_common_build, daemon=True).start()
+        return _INV_COMMON["d"]
+
+
+def _inv_common_build():
+    """전 종목 최신 사업보고서 상위 7 섹션의 문장 뼈대 키 → 회사 수 · 이름 머리 집합. 5곳↑ · 머리 3가지↑ 이면 상용구(계열사 공통 문장은 살린다).
+    실측 60곳 9.7초 → 988곳 약 160초. 결과 .cache/invest/_common.json."""
+    t0 = time.time()
+    try:
+        cnt, pref, n_co = {}, {}, 0
+        for c in list(INDEX.get("companies") or []):
+            ann = [r for r in c["reports"] if r["label"] == "사업보고서" and not r["tag"]]
+            if not ann:
+                continue
+            rep = ann[-1]
+            secs = sorted(rep["sections"], key=lambda x: -SECTION_WEIGHT.get(x["norm"], 0))
+            secs = [x for x in secs if SECTION_WEIGHT.get(x["norm"], 0) >= 0.3][:7]
+            seen = set()
+            for x in secs:
+                try:
+                    text = read_section(c, rep, x["file"])
+                except Exception:
+                    continue
+                for t, _, _ in _inv_sents(text):
+                    k = _inv_skel_key(t)
+                    if len(k) >= 20:
+                        seen.add(k)
+            n_co += 1
+            px = (c.get("name") or "")[:2]
+            for k in seen:
+                cnt[k] = cnt.get(k, 0) + 1
+                pref.setdefault(k, set()).add(px)
+        keys = sorted(k for k, n in cnt.items() if n >= INV_COMMON_MIN and len(pref[k]) >= INV_COMMON_PREFIX)
+        os.makedirs(os.path.dirname(INV_COMMON_PATH), exist_ok=True)
+        _atomic_json(INV_COMMON_PATH, {"v": 1, "at": time.time(), "n_companies": n_co, "min": INV_COMMON_MIN, "prefix": INV_COMMON_PREFIX,
+                                        "secs": round(time.time() - t0, 1), "keys": keys})
+        with _INV_COMMON_LOCK:
+            _INV_COMMON.update(d=set(keys), mt=os.path.getmtime(INV_COMMON_PATH), at=time.time(), n=n_co)
+        print("변화 브리핑 상용구 색인 — %d곳 · 키 %d개 · %.0f초" % (n_co, len(keys), time.time() - t0), flush=True)
+    except Exception as e:
+        print("변화 브리핑 상용구 색인 실패: %s" % e, flush=True)
+    finally:
+        with _INV_COMMON_LOCK:
+            _INV_COMMON["state"] = None
+
+
+def _inv_fin_co(c):
+    """금융업인가 — 부채비율 신호를 안 만든다(은행 1283% 가 1위 위험이던 것). 네이버 업종 이름 또는 KSIC 64~66."""
+    try:
+        sm = (sector_map() or {}).get("stocks") or {}
+        ind = (sm.get(c["code"].upper()) or sm.get(c["code"]) or {}).get("industry") or ""
+        if VAL_FIN.search(ind):
+            return True
+        corp = corp_code_of(c["code"])
+        k = str(_ksic_of(corp) or "") if corp else ""
+        return k[:2] in ("64", "65", "66")
+    except Exception:
+        return False
+
+
+def _inv_drivers(c, rep, out):
+    """카드 ④ '생각을 바꿀 조건' — 이 회사를 재는 지표마다 지금 값 · 더 믿게 될 때 · 접게 될 때 · 과거 검증(등급) · 그 탭.
+    근거 글귀 · 등급은 관심 장부 TEMPLATES(blog_gap · btb · per_zone · risk_none · phase_ok · export_up)와 gap_bt.json 에서 — 한 곳에서 관리.
+    옛 보고서에도 같은 글귀(예측이 아니라 규칙의 과거 성적, 2014~2025 표본). 자료 없는 지표는 뺀다."""
+    T = (getattr(WATCH, "TPL", None) or {}) if WATCH is not None else {}
+    ev = lambda k: ((T.get(k) or {}).get("ev"), (T.get(k) or {}).get("grade"))      # noqa: E731
+    D = []
+    ttm = out.get("ttm") or {}
+    code = c["code"]
+    latest = [r for r in c["reports"] if not r["tag"]]
+    is_latest = bool(latest) and latest[-1]["stamp"] == rep["stamp"]
+    # ① TTM 영업이익률 · 엇갈림(가속도 캐시 그 분기 점 — 신호판 _beads_gap 과 같은 정의, 분기 말 네이버 수정주가)
+    try:
+        d = _druck_read(code)
+        pts = sorted((p_ for p_ in (d or {}).get("points") or [] if p_.get("n") is not None and p_.get("label")), key=lambda p_: p_["n"])
+        by = {p_["n"]: p_ for p_ in pts}
+        p = next((p_ for p_ in pts if p_.get("label") == ttm.get("label")), None)
+        if p:
+            def m_of(x):
+                a, b_ = x.get("영업이익_TTM"), x.get("매출_TTM")
+                return a / b_ * 100 if (a is not None and b_) and b_ > 0 else None
+            m0, p4 = m_of(p), by.get(p["n"] - 4)
+            m4 = m_of(p4) if p4 else None
+            dm = (m0 - m4) if (m0 is not None and m4 is not None) else None
+            y, q = int(p["label"][:4]), int(p["label"][5:])
+            qe = "%04d%02d%02d" % (y, 3 * q, (31, 30, 30, 31)[q - 1])
+            px = _px_file(code) or {}
+            a_, b_ = _beads_px_at(px, (dt.datetime.strptime(qe, "%Y%m%d") - dt.timedelta(days=365)).strftime("%Y%m%d")), _beads_px_at(px, qe)
+            dp = (b_ / a_ - 1) * 100 if (a_ and b_) else None
+            gb = _ind_file("gap_bt", os.path.join(CACHE_DIR, "druck_bt", "gap_bt.json")) or {}
+            U, Dg = (gb.get("groups") or {}).get("U") or {}, (gb.get("groups") or {}).get("D") or {}
+            evs = ("엇갈림 백테스트(818곳 25,114분기, 12개월 초과수익): 파랑 %+.1f%%p %s · 자홍 %+.1f%%p %s" % (
+                U.get("med") or 0, ("[%+.1f, %+.1f]" % tuple(U["ci"])) if U.get("ci") else "", Dg.get("med") or 0, ("[%+.1f, %+.1f]" % tuple(Dg["ci"])) if Dg.get("ci") else "")
+                   ) if (U and Dg) else "엇갈림 백테스트: 파랑 +2.6 [+1.1, +4.7] · 자홍 −3.5 [−4.5, −2.3]"
+            state = KM.gap_of(dm, dp) if KM is not None else None
+            if m0 is not None:
+                D.append({"key": "margin", "name": "TTM 영업이익률", "now": "%.1f%%" % m0 + ((" (1년 %+.1f%%p)" % dm) if dm is not None else "") + ((" · 주가 1년 %+.0f%%" % dp) if dp is not None else ""),
+                          "val": m0, "chg": dm, "px1y": dp, "state": {"blue": "파랑(이익률↑ · 주가↓)", "magenta": "자홍(이익률↓ · 주가↑)"}.get(state),
+                          "better": "1년 +0.5%p↑ 인데 주가 1년 −5%↓ (파랑)", "worse": "1년 −0.5%p↓ 인데 주가 1년 +5%↑ (자홍)", "ev": evs, "grade": "검증됨", "tab": "druck"})
+            if p.get("국면"):
+                e_, g_ = ev("phase_ok")
+                D.append({"key": "phase", "name": "매출 국면 · 가속 B", "now": "%s" % p["국면"] + ((" · B %+.1f%%p" % p["가속B"]) if p.get("가속B") is not None else ""),
+                          "val": p.get("가속B"), "state": p["국면"], "better": None, "worse": "정체로 간다", "ev": e_, "grade": g_ or "약함", "tab": "druck"})
+    except Exception:
+        pass
+    # ② 수주잔고 − 매출 · 북투빌 — 수주 캐시, 이 보고서까지 접수된 점만(캐시만 읽는다 · 없는 보고서는 안 읽는다)
+    try:
+        if BACK is not None and WATCH is not None:
+            with open(BACK._cache_path(code), "r", encoding="utf-8") as fh:
+                cache = json.load(fh)
+            regs = [r for r in c["reports"] if not r["tag"] and r["label"] in REG_LABELS and r["rcept"] <= rep["rcept"]][-SYN_SURE_WIN:]
+            pts = []
+            for r in regs:
+                hit = cache.get(r["rcept"])
+                if hit and hit.get("v") == BACK.VERSION and hit.get("value"):
+                    pts.append({"stamp": r["stamp"], "label": r["label"], "rcept": r["rcept"], "value": hit["value"], "method": hit.get("method"),
+                                "verified": hit.get("verified"), "source": hit.get("source")})
+            if pts:
+                pts = BACK._drop_outliers(pts)
+                tr = BACK.trend(pts)
+                if tr:
+                    rv = None
+                    if ttm.get("g") is not None and ttm.get("label"):
+                        d2 = _druck_read(code) or {}
+                        pp = next((x for x in d2.get("points") or [] if x.get("label") == ttm["label"]), None)
+                        if pp and pp.get("매출_TTM"):
+                            rv = {"ok": True, "v": ttm["g"], "x": {"ttm": pp["매출_TTM"], "label": ttm["label"]}, "ver": "d", "as_of": ttm["label"], "fp": ""}
+                    f = WATCH.backlog_facts(tr, BACK.VERSION, rv, as_of=tr.get("to"))
+                    gap, btb = (f.get("blog_gap") or {}), (f.get("btb") or {})
+                    if gap.get("v") is not None or btb.get("v") is not None:
+                        e_, g_ = ev("blog_gap")
+                        e2, _g2 = ev("btb")
+                        D.append({"key": "backlog", "name": "수주잔고 − 매출 · 북투빌", "tab": "cat",
+                                  "now": ("잔고 1년 %+.0f%% · 잔고−매출 %+.0f%%p" % (((f.get("blog_yoy") or {}).get("v") or 0), gap["v"])) if gap.get("v") is not None else "잔고 1년 %+.0f%%" % (((f.get("blog_yoy") or {}).get("v") or 0))
+                                  + ((" · 북투빌 %.2f" % btb["v"]) if btb.get("v") is not None else "") + ((" (못 믿음: %s)" % (gap.get("why") or btb.get("why"))) if not (gap.get("ok") or btb.get("ok")) else ""),
+                                  "val": gap.get("v"), "val2": btb.get("v"), "ok": bool(gap.get("ok") or btb.get("ok")),
+                                  "better": "잔고 − 매출 ≥ +15%p · 북투빌 ≥ 1", "worse": "잔고 − 매출 ≤ −15%p · 북투빌 < 1",
+                                  "ev": " / ".join(x for x in (e_, e2) if x), "grade": g_ or "검증됨"})
+    except Exception:
+        pass
+    # ③ PER 자기 역사 자리(그 분기까지만)
+    if ttm.get("per_pct") is not None and (ttm.get("per") or 0) > 0:
+        e_, g_ = ev("per_zone")
+        q = ttm["per_pct"]
+        D.append({"key": "per", "name": "PER 자기 역사 자리", "now": "PER %.0f배 · %s" % (ttm["per"], ("상위 %d%%" % max(1, round(100 - q))) if q >= 50 else ("하위 %d%%" % round(q))),
+                  "val": q, "better": "하위 30% 에 머문다", "worse": "상위 25%(비싼 자리) 에 들어간다", "ev": e_, "grade": g_ or "검증됨", "tab": "land"})
+    if is_latest:
+        # ④ 컨센서스 진도(최신 보고서만 — 올해 숫자)
+        E = out.get("expect") or {}
+        if E and not E.get("none") and E.get("share_op") is not None:
+            par = E.get("par_hist") if E.get("par_hist") is not None else E.get("par")
+            D.append({"key": "cons", "name": "컨센서스 진도(영업이익)", "now": "%d분기까지 %d%% (평년 %s%%)" % (E.get("q") or 0, round(E["share_op"]), round(par) if par is not None else "—"),
+                      "val": E["share_op"], "better": "진도가 평년보다 8%p↑ 앞선다", "worse": "진도가 평년보다 8%p↓ 처진다", "ev": "검증 없음 — 올해 컨센서스(네이버) 대비 누적 실적", "grade": "검증 안 됨", "tab": "brief"})
+        # ⑤ 공시 위험(최신만)
+        try:
+            rk = ((_disc_risk() or {}).get("codes") or {}).get(code) or {}
+            e_, g_ = ev("risk_none")
+            D.append({"key": "risk", "name": "공시 위험", "now": rk.get("level") or "해당 없음", "val": rk.get("level"), "better": None,
+                      "worse": "작전주 꼴 · 상폐 절차 · 보고서 없음에 든다", "ev": e_, "grade": g_ or "검증됨", "tab": "val"})
+        except Exception:
+            pass
+        # ⑥ 수출 통관(최신 · 통로 있을 때)
+        try:
+            x = (_watch_export(code) or {}).get("export") or {}
+            if x.get("v") is not None:
+                e_, g_ = ev("export_up")
+                xx = x.get("x") or {}
+                D.append({"key": "export", "name": "수출 통관(분기 맞춤)", "now": "%+.0f%% (%s%s)" % (x["v"], xx.get("cur_q") or "", (" · " + xx["state"]) if xx.get("state") else ""),
+                          "val": x["v"], "better": "1년 전보다 늘어 있다", "worse": "꺾임 · 감소 전환", "ev": e_, "grade": g_ or "약함", "tab": "exp"})
+        except Exception:
+            pass
+    return D
+
+
 
 def _inv_info(sent):
     """문장에 붙잡을 것(금액 · 날짜 · 제품 코드 · 약어 · 고유명사)이 있나."""
@@ -4059,13 +4477,13 @@ def _inv_label(tags, raw):
     return (head + " · " + tok) if head and tok else (head or tok or raw[:10])
 
 
-def _inv_text(src, text, raw, section, v):
-    tags = classify_sig(raw)
+def _inv_text(src, text, raw, section, v, tags=None):
+    tags = classify_sig(raw) if tags is None else list(tags)
     pos, neg = len(INV_POS.findall(raw)), len(INV_NEG.findall(raw))
     senti = (pos - neg) / max(1, pos + neg)
     prior = sum(INV_TAG[t][0] for t in tags) / len(tags) if tags else 0.0
     holder = bool(INV_HOLDER.search(raw))
-    d = _clip(0.6 * senti + 0.4 * prior + (0.5 if holder else 0))
+    d = _inv_dir_role(raw, tags, _clip(0.6 * senti + 0.4 * prior + (0.5 if holder else 0)))      # v12 — 소송은 주체를 본다
     w = SECTION_WEIGHT.get(section, DEFAULT_WEIGHT)
     mag = _clip((0.3 + 0.07 * max(0.0, v)) * (0.5 + 0.5 * w), 0.15, 1.0)
     if src == "gone":          # 사라진 좋은 말은 약한 악재, 사라진 나쁜 말은 약한 호재. 끝난 일은 중립
@@ -4084,7 +4502,9 @@ def _inv_text(src, text, raw, section, v):
             "hz": round(hz, 2), "mag": round(mag, 2), "gurus": gurus or ["린치"]}
 
 
-def _inv_fin(rows):
+def _inv_fin(rows, fin_co=False):
+    """재무 신호 — v12 위생: 흐름 10% · 비율 2%p 미만은 신호로 안 만든다(원장 재무표엔 그대로) · 흑자 전환 크기는 이익률로 · 레버리지는 기준 이익이 있을 때만 ·
+    금융업은 부채비율 없음 · 영업외 주의는 영업이익 크기와 무관."""
     by = {r["key"]: r for r in rows or []}
     out = []
 
@@ -4101,29 +4521,29 @@ def _inv_fin(rows):
         r = by.get(k)
         return r.get(f) if r else None
     rev, op = pct("매출액"), pct("영업이익")
-    if rev is not None:
+    if rev is not None and abs(rev) >= 10:
         add("매출 %+.0f%%" % rev, rev / 40, .1, ["드러켄밀러", "린치"], "매출액이 비교 보고서(전년 동기)보다 %+.1f%%." % rev, "매출액", rev)
     opv, opp = g("영업이익"), g("영업이익", "prev")
     if opv is not None and opp is not None and (opv > 0) != (opp > 0):
-        add("흑자 전환" if opv > 0 else "적자 전환", .9 if opv > 0 else -.9, .15, ["드러켄밀러", "버핏"],
+        add("흑자 전환" if opv > 0 else "적자 전환", (.9 if opv > 0 else -.9) * max(0.3, min(1.0, abs(g("영업이익률") or 0) / 5)), .15, ["드러켄밀러", "버핏"],
             "영업이익이 %s로 돌아섰다." % ("흑자" if opv > 0 else "적자"), "영업이익", None)
-    elif op is not None:
+    elif op is not None and abs(op) >= 10:
         add("영업이익 %+.0f%%" % op, op / 50, .15, ["드러켄밀러", "버핏"], "영업이익이 %+.1f%%." % op, "영업이익", op)
-    if rev and op and rev > 0 and op > rev * 1.2:
+    if rev and op and rev > 0 and op > rev * 1.2 and (opp or 0) > 0 and (g("영업이익률", "prev") or 0) >= 3:
         add("레버리지 %.1f배" % (op / rev), .6, .3, ["드러켄밀러"],
             "이익이 매출보다 %.1f배 빨리 늘었다 — 고정비가 깔린 뒤의 매출이 이익으로 떨어지고 있다." % (op / rev), "레버리지", op / rev)
     md = g("영업이익률", "delta")
-    if md is not None:
+    if md is not None and abs(md) >= 2:
         add("이익률 %+.1f%%p" % md, md / 5, .35, ["버핏", "드러켄밀러"],
             "영업이익률 %.1f%% (%+.1f%%p)." % (g("영업이익률") or 0, md), "영업이익률", md)
     rd = g("ROE", "delta")
-    if rd is not None:
+    if rd is not None and abs(rd) >= 2:
         add("ROE %+.1f%%p" % rd, rd / 5, .75, ["버핏"], "ROE %.1f%% (%+.1f%%p)." % (g("ROE") or 0, rd), "ROE", rd)
     dd = g("부채비율", "delta")
-    if dd is not None and abs(dd) >= 5:
+    if dd is not None and abs(dd) >= 5 and not fin_co:
         add("부채비율 %+.0f%%p" % dd, -dd / 30, .6, ["멍거", "버핏"], "부채비율 %.0f%% (%+.0f%%p)." % (g("부채비율") or 0, dd), "부채비율", dd)
     rp = pct("유보금")
-    if rp is not None and abs(rp) >= 5:
+    if rp is not None and abs(rp) >= 10:
         add("유보금 %+.0f%%" % rp, rp / 40 * .6, .85, ["버핏"], "쌓인 이익(유보금) %+.1f%%." % rp, "유보금", rp)
     ep, per = pct("EPS"), g("PER")
     if ep is not None and ep > 0 and per and per > 0:
@@ -4136,32 +4556,44 @@ def _inv_fin(rows):
             ("주가가 장부가치보다 빨리 올라 PBR이 %+.0f%% 재평가됐다 — 기대가 값에 들어가는 중." if pb > 0
              else "PBR이 %+.0f%% 낮아졌다 — 장부가치 대비 싸졌다.") % pb, "PBR", pb)
     ni = pct("당기순이익")
-    if ni is not None and op is not None and ni - op > 40 and op < 30:
+    if ni is not None and op is not None and ni - op > 40:
         add("영업외 이익", -.35, .2, ["멍거"], "순이익(%+.0f%%)이 영업이익(%+.0f%%)보다 훨씬 빨리 늘었다 — 본업 밖의 이익." % (ni, op), "순이익", ni)
     return out
 
 
-def _inv_nums(b):
+def _inv_nums(b, rcept=None):
+    """숫자 문장 — v12: 낱말(수주잔고 · 소송가액 …)이 바뀐 숫자 앞 12자 안에 있어야(건수 변화를 소송가액으로 적던 것). 위치(loc) · 원문(raw)을 단다."""
     out, seen = [], set()
-    for s in b.get("sections", [])[:8]:
-        for nn in s.get("numbers", []):
+    for s_ in b.get("sections", [])[:8]:
+        for nn in s_.get("numbers", []):
             after = nn.get("after", "")
-            hit = next((x for x in INV_NUM if x[0] in after), None)
-            if not hit or BOILER.search(after):
+            if BOILER.search(after) or INV_STD.search(after) or INV_CAPTION.search(after) or INV_NONE.search(after):
                 continue
             k = SKEL_RE.sub("", after)[:30]     # 같은 문장이 재무·재무제표 섹션에 두 번 실린다
             if k in seen:
                 continue
-            seen.add(k)
             dfs = [x for x in (nn.get("diff") or []) if x.get("pct") is not None and abs(x["pct"]) >= 10]
-            if not dfs:
+            hit, x = None, None
+            for x_ in dfs:
+                to_ = str(x_.get("to") or "")
+                pos_n = after.find(to_)
+                nx = after[pos_n + len(to_):pos_n + len(to_) + 1] if pos_n >= 0 else ""
+                if pos_n >= 0 and nx and nx in "기건회차호명개년월일":      # 횟수 · 건수 · 기수 — 금액 · 수량이 아니다
+                    continue
+                win = after[max(0, pos_n - 12):pos_n] if pos_n >= 0 else ""
+                hit = next((w for w in INV_NUM if w[0] in win), None)
+                if hit:
+                    x = x_
+                    break
+            if not hit:
                 continue
-            x = dfs[0]
+            seen.add(k)
             d = _clip(hit[1] * (1 if x["pct"] > 0 else -1) * min(1, abs(x["pct"]) / 60))
-            out.append({"src": "num", "label": "%s %+.0f%%" % (hit[0], x["pct"]), "text": _short(after, 110),
-                        "section": s["section"], "sec": SEC_SHORT.get(s["section"], s["section"]), "tags": nn.get("tags") or [],
+            out.append({"src": "num", "label": "%s %+.0f%%" % (hit[0], x["pct"]), "text": _short(after, 110), "raw": after[:400],
+                        "loc": {"rcept": rcept, "file": s_.get("file"), "blk": None, "off": None, "len": len(after)},
+                        "section": s_["section"], "sec": SEC_SHORT.get(s_["section"], s_["section"]), "tags": nn.get("tags") or [],
                         "dir": round(d, 2), "hz": hit[2], "mag": round(max(.25, min(1, abs(d) + .15)), 2),
-                        "gurus": hit[3], "from": x["from"], "to": x["to"]})
+                        "gurus": hit[3], "from": x["from"], "to": x["to"], "anchor": True})
             if len(out) >= 6:
                 return out
     return out
@@ -4272,7 +4704,7 @@ def _inv_refine(sigs, scale):
     for s in sigs:
         s = dict(s)
         if s["src"] != "fin":
-            txt = s.get("text") or ""
+            txt = s.get("raw") or s.get("text") or ""        # v12 — 원문(raw)에서 금액을 읽는다(짧게 줄인 글은 금액이 잘릴 수 있다)
             perf = bool(INV_PERF.search(txt)) and not INV_EVENT.search(txt)
             amt = None if perf else _inv_won(txt)
             s["amt"] = amt
@@ -4295,21 +4727,43 @@ def _inv_refine(sigs, scale):
             if INV_ROUTINE.search(s.get("text", "")):
                 s["routine"] = True
             f = {"중요": 1.25, "보통": 0.85, "작음": 0.35, "금액 미상": 0.8, "실적 문장": 0.8}[s["size"]] * (0.3 if s.get("routine") else 1)
+            if s["src"] in ("new", "gone") and not s.get("anchor"):
+                f *= 0.5                         # v12 — 붙잡을 사실(금액 · 날짜 · 상대방)이 없는 문장은 원장에만, 순위에서도 가볍게
+            if s.get("anc") and s["anc"].get("party") and s["anc"].get("date"):
+                f *= 1.15
             s["mag"] = round(max(0.08, min(1.0, s["mag"] * f)), 2)
         out.append(s)
-    # 같은 사건 — 이름표의 고유 토막(170kV, 200MWh, 회사 이름 등)이 같은 새·사라진 문장은 한 줄로
+    # 같은 사건 — v12: 같은 문단(file · blk) · 같은 금액(±25%) · 같은 연-월 + 범주 머리면 한 줄로(영풍 감리 건이 여섯 신호이던 것)
+    import math as _math
+
+    def gkeys(s):
+        if s["src"] not in ("new", "gone", "num") or s.get("routine"):
+            return []
+        ks = []
+        L = s.get("loc") or {}
+        if L.get("file") is not None and L.get("blk") is not None:
+            ks.append(("blk", s["src"], L["file"], L["blk"]))
+        if s.get("amt"):
+            ks.append(("amt", s["src"], round(_math.log(s["amt"]) / _math.log(1.25))))
+        m = INV_DATE2.search(s.get("raw") or s.get("text") or "")
+        if m:
+            ks.append(("ym", s["src"], m.group(1), int(m.group(2)), s["label"].split(" · ")[0]))
+        return ks
     groups, merged = {}, []
     for s in out:
-        tok = s["label"].split(" · ")[-1] if s["src"] in ("new", "gone") else None
-        key = (tok, s["dir"] < -0.15) if tok and len(tok) >= 2 and not s.get("routine") else None
-        if key and key in groups:
-            g = groups[key]
+        ks = gkeys(s)
+        g = next((groups[k] for k in ks if k in groups), None)
+        if g is not None:
             g.setdefault("related", []).append(s["text"])
             if (s.get("amt") or 0) > (g.get("amt") or 0):
                 g.update({k: s.get(k) for k in ("amt", "p_op", "p_rev", "p_cap", "size")})
+            if abs(s.get("dir") or 0) > abs(g.get("dir") or 0):
+                g["dir"] = s["dir"]
+            for k in ks:
+                groups.setdefault(k, g)
             continue
-        if key:
-            groups[key] = s
+        for k in ks:
+            groups[k] = s
         merged.append(s)
     for s in merged:
         s["n_rel"] = len(s.get("related", []))
@@ -4384,40 +4838,86 @@ def _inv_expect(c, rep):
     return out
 
 
-def _inv_collect(c, base, rep, b, ryear, known=None, regular=None):
+def _inv_collect(c, base, rep, b, ryear, known=None, regular=None, stats=None):
     """b(build_brief 모양)의 섹션에서 새 문장 · 사라진 문장 신호를 뽑는다. (신호들, 새 낱말, 사라진 낱말)
-    known(보고서 목록)을 주면 새 문장은 그 보고서들에도 없던 것만 — 분기 변화에서 '지난 12개월 공시 어디에도 없던 말'.
-    regular(같은 종류 직전 보고서)를 주면 사라진 문장은 거기에도 있던 것(그 종류 보고서에 늘 쓰던 말)만 —
-    서식이 다른 두 보고서(사업보고서↔분기보고서)를 맞댈 때 사업보고서에만 있는 절이 '사라졌다'로 잡히지 않게."""
+    v12(2026-10-21): 원문 안에 있던 문장은 3글자 조각 자카드로 찾고(두 낱말 고친 문장은 새 문장이 아니다), known(그 사이 보고서 — 변화 브리핑은
+    기준과 이번 사이 정기보고서 ≤ 3, 분기 변화는 12개월 공시)에 이미 있던 말과 회사 사이 상용구(_inv_common)는 버리며, 붙잡을 사실(앵커: 금액 · 날짜 ·
+    상대방 · 감독/법원)이 없는 문장과 산업 전망 문장은 남기되 카드 밖(anchor/industry 표시). 신호마다 위치(loc)와 원문(raw)을 단다.
+    stats(dict)를 주면 걸러낸 수 {statute, common, stale, unanchored, industry} 를 채운다.
+    regular(같은 종류 직전 보고서)를 주면 사라진 문장은 거기에도 있던 것(그 종류 보고서에 늘 쓰던 말)만."""
     sigs, came, gone, seen, kept = [], [], [], set(), []
+    st = stats if stats is not None else {}
+    for k in ("statute", "common", "stale", "unanchored", "industry"):
+        st.setdefault(k, 0)
+    common = _inv_common()
+    secs = [x for x in b["sections"] if x.get("weight", 0) >= 0.3 and not INV_SKIP_SEC.search(x["section"] or "")][:7]
+    norms = [x["section"] for x in secs]
+    ki = _InvIndex()
+    for r in (known or []):
+        try:
+            for norm, sk in _inv_skels(c, r, norms).items():
+                ki.add_skels(sk)
+        except Exception:
+            pass
+
+    def sec_text(r, norm):
+        x = next((y for y in r["sections"] if y["norm"] == norm), None)
+        return (read_section(c, r, x["file"]), x["file"]) if x else ("", None)
 
     def sec_skel(r, norm):
-        x = next((y for y in r["sections"] if y["norm"] == norm), None)
-        return SKEL_RE.sub("", read_section(c, r, x["file"])) if x else ""
+        return SKEL_RE.sub("", sec_text(r, norm)[0])
 
     def hit(sent, texts):
         sk = SKEL_RE.sub("", sent)
         return len(sk) >= 20 and any(sk[:22] in t or sk[-22:] in t for t in texts)
-    for s in [x for x in b["sections"] if x.get("weight", 0) >= 0.3][:7]:
-        bf = s.get("base_file") or s["file"]
-        kn = [t for t in (sec_skel(r, s["section"]) for r in (known or [])) if t]
-        rg = sec_skel(regular, s["section"]) if regular is not None else None
-        nc = _novel_cands(c, base, rep, bf, s["file"], s["section"])
+
+    def killed(sent):
+        return bool(INV_GOV.search(sent) or INV_BOIL.search(sent) or INV_CAVEAT.search(sent) or INV_STD.search(sent) or INV_CAPTION.search(sent)
+                    or INV_NONE.search(sent) or ASK_STATUTE.search(sent) or ASK_BOILER.search(sent) or ASK_ACCT.search(sent)
+                    or (INV_HOLDER.search(sent) and INV_MAY.search(sent)))
+
+    def mk(src, sent, section, v, text, file, rcept, tags):
+        anc = _inv_anchor(sent, ryear)
+        ind = _inv_is_industry(sent)
+        sig = _inv_text(src, _short(sent, 110), sent, section, v, tags=tags)
+        blk, off, ln = _inv_loc(text, sent)
+        sig.update(raw=sent[:400], loc={"rcept": rcept, "file": file, "blk": blk, "off": off, "len": ln},
+                   anchor=bool(anc), anc=anc, industry=ind)
+        return sig
+    for sx in secs:
+        bf = sx.get("base_file") or sx["file"]
+        rg = sec_skel(regular, sx["section"]) if regular is not None else None
+        nc = _novel_cands(c, base, rep, bf, sx["file"], sx["section"])
+        rep_text, rep_file = sec_text(rep, sx["section"])
+        base_text, base_file = sec_text(base, sx["section"])
+        bi = _InvIndex()
+        bi.add_skels(k for k in (_ask_skel(t) for t, _, _ in _inv_sents(base_text)) if len(k) >= 20)
         k = 0
         for v, sent, j in nc["cands"]:
             if k >= 3:
                 break
-            if INV_GOV.search(sent) or _inv_dup(sent, kept) or _inv_old(sent, ryear):
+            if killed(sent) or _inv_dup(sent, kept) or _inv_old(sent, ryear):
+                st["statute"] += 1
                 continue
-            if INV_BOIL.search(sent) or INV_CAVEAT.search(sent) or (INV_HOLDER.search(sent) and INV_MAY.search(sent)):
-                continue          # 주석 안내 · 회계 설명 · 단서 조항 · 자사주 처리 방침('할 수 있음')
+            sk = _ask_skel(sent)
+            if len(sk) < 20 or bi.has(sk):
+                st["statute"] += 1
+                continue          # 원문에 있던 문장(고쳐 쓴 것 포함)
+            if ki.has(sk):
+                st["stale"] += 1
+                continue          # 그 사이 보고서에 이미 있던 말 — 시장이 읽은 것
+            if common is not None and _inv_skel_key(sent) in common:
+                st["common"] += 1
+                continue          # 회사 사이 상용구
             if INV_GENERIC.search(sent) and not _inv_info(sent):
+                st["statute"] += 1
                 continue          # 붙잡을 숫자도 이름도 없는 다짐 문장
-            if kn and hit(sent, kn):
-                continue          # 지난 공시(사업보고서 등)에 이미 있던 말 — 시장이 읽은 것
+            tags = classify_sig(sent)
+            if not _inv_order_ok(sent, tags):
+                tags = [t for t in tags if t != "수주·계약"]
             # 범주도 주주환원도 아닌 문장은 금액과 방향 낱말이 둘 다 있어야 신호로 친다
-            if not classify_sig(sent) and not INV_HOLDER.search(sent) and not (
-                    INV_UNIT.search(sent) and (INV_POS.search(sent) or INV_NEG.search(sent))):
+            if not tags and not INV_HOLDER.search(sent) and not (INV_UNIT.search(sent) and (INV_POS.search(sent) or INV_NEG.search(sent))):
+                st["unanchored"] += 1
                 continue
             t = _short(sent, 110)
             key = SKEL_RE.sub("", t)[:24]
@@ -4426,25 +4926,32 @@ def _inv_collect(c, base, rep, b, ryear, known=None, regular=None):
             seen.add(key)
             kept.append(_tokset(sent))
             k += 1
-            sigs.append(_inv_text("new", t, sent, s["section"], v))
+            sig = mk("new", sent, sx["section"], v, rep_text, rep_file or sx["file"], rep["rcept"], tags)
+            if sig["industry"]:
+                st["industry"] += 1
+            elif not sig["anchor"]:
+                st["unanchored"] += 1
+            sigs.append(sig)
         came += [t for t in nc["came"] if t not in came]
         gone += [t for t in nc["gone"] if t not in gone]
-        dc = _novel_cands(c, rep, base, s["file"], bf, s["section"])
+        dc = _novel_cands(c, rep, base, sx["file"], bf, sx["section"])
         took = 0
         for v, sent, j in dc["cands"][:(4 if rg is not None else 1)]:
             if took:
                 break
             t = _short(sent, 110)
             key = SKEL_RE.sub("", t)[:24]
-            if (key in seen or not classify_sig(sent) or INV_GOV.search(sent) or _inv_dup(sent, kept)
-                    or _inv_old(sent, ryear) or INV_BOIL.search(sent)):
+            tags = classify_sig(sent)
+            if (key in seen or not tags or killed(sent) or _inv_dup(sent, kept) or _inv_old(sent, ryear)):
                 continue      # 범주 없는 사라진 문장은 대개 서식 정리다
             if rg is not None and not hit(sent, [rg]):
                 continue      # 그 종류 보고서에 늘 쓰던 말이 아니면 서식 차이(사업보고서에만 있는 절)
+            if common is not None and _inv_skel_key(sent) in common:
+                continue
             seen.add(key)
             kept.append(_tokset(sent))
             took += 1
-            sigs.append(_inv_text("gone", t, sent, s["section"], v))
+            sigs.append(mk("gone", sent, sx["section"], v, base_text, base_file or bf, base["rcept"], tags))
     return sigs, came, gone
 
 
@@ -4469,11 +4976,22 @@ def invest_view(c, rep, lite=False):
             cached = None
     if cached is None:
         base = report_of(c, b["base"]["rcept"])
-        sigs, came, gone = _inv_collect(c, base, rep, b, int(rep["stamp"][:4]))
+        dropped = {}
+        sigs, came, gone = _inv_collect(c, base, rep, b, int(rep["stamp"][:4]), known=_inv_between(c, base, rep), stats=dropped)
         fin = financials(c, rep, (base, b["kind"]))
-        sigs += _inv_fin(fin.get("rows"))
-        sigs += _inv_nums(b)
-        cached = {"v": sig, "signals": sigs, "came": came[:8], "gone": gone[:6],
+        sigs += _inv_fin(fin.get("rows"), fin_co=_inv_fin_co(c))
+        sigs += _inv_nums(b, rep["rcept"])
+        # 범위 변화 주의 — 합병 · 분할 · 중단영업 · 연결범위 낱말이 새 문장에 있고 매출 변화가 40% 넘으면(HD현대중공업 합병 · 펄어비스 CCP 매각)
+        rv_ = next((r_.get("pct") for r_ in (fin.get("rows") or []) if r_.get("key") == "매출액"), None)
+        # 당사 · 연결실체 · 자기 이름이 주어인 문장만 — 계열사끼리의 합병 문장(HD현대건설기계 ↔ 인프라코어)을 이 회사 범위 변화로 읽지 않게
+        sc_all = [x for x in sigs if x.get("src") == "new" and INV_SCOPE.search(x.get("raw") or x.get("text") or "")
+                  and (INV_SELF.search(x.get("raw") or "") or (c.get("name") and c["name"] in (x.get("raw") or "")))]
+        sc_ = sc_all[0] if sc_all else None
+        if sc_ is not None and rv_ is not None and abs(rv_) > 40:
+            sigs.append({"src": "scope", "label": "범위 변화 · " + (INV_SCOPE.search(sc_.get("raw") or sc_.get("text") or "").group(0)), "text": sc_["text"], "raw": sc_.get("raw"),
+                         "loc": sc_.get("loc"), "section": sc_["section"], "sec": sc_["sec"], "tags": ["범위 변화"], "dir": 0.0, "hz": .2, "mag": .6, "gurus": [],
+                         "anchor": True, "industry": False, "note": "매출 %+.0f%% 는 합병 · 분할 · 중단영업 같은 범위 변화가 섞였을 수 있다 — 원문을 본다" % rv_})
+        cached = {"v": sig, "signals": sigs, "came": came[:8], "gone": gone[:6], "dropped": dropped,
                   "fin": fin.get("rows") or [], "price": (fin.get("now") or {}).get("price"),
                   "price_date": (fin.get("now") or {}).get("price_date")}
         try:
@@ -4500,13 +5018,18 @@ def invest_view(c, rep, lite=False):
         s["id"] = i
     out.update({"signals": sigs, "lead_sigs": lead, "scale": scale, "came": cached["came"], "gone": cached["gone"],
                 "fin": cached["fin"], "price": cached.get("price"), "price_date": cached.get("price_date"),
-                "ttm": _inv_ttm(c["code"], rep["stamp"])})
+                "ttm": _inv_ttm(c["code"], rep["stamp"]), "dropped": cached.get("dropped") or {}, "fin_co": _inv_fin_co(c),
+                "common": {"at": _INV_COMMON.get("at"), "n": _INV_COMMON.get("n"), "ready": _INV_COMMON.get("d") is not None, "building": _INV_COMMON.get("state") == "building"}})
     if lite:
         return out
     try:
         out["expect"] = _inv_expect(c, rep)
     except Exception:
         out["expect"] = None
+    try:
+        out["drivers"] = _inv_drivers(c, rep, out)      # 카드 ④ — 이 회사를 재는 지표 · 문턱 · 과거 검증(v12)
+    except Exception:
+        out["drivers"] = []
     # 값 — 가속도 캐시가 없어 PER 자기 역사가 없으면 풍경 탭의 계산(분할 보정)을 빌린다. 가장 최근 보고서에만 맞는 '지금' 값
     latest = [r for r in c["reports"] if not r["tag"]]
     if not (out.get("ttm") or {}).get("per_pct") and latest and latest[-1]["stamp"] == rep["stamp"]:
@@ -4567,7 +5090,7 @@ def matrix_cached(c, corp, stmt="IS", mode="q", n=4, force=False):
 # ---------------------------------------------------------------- 분기 변화 — 3개월마다 나오는 보고서를 직전 공시와 맞댄다
 # 변화 브리핑(전년 동기)과 짝. 보고서가 하나 나올 때마다 '직전 공시 대비 무엇이 바뀌었나'를 분기 단독 숫자와 함께
 # 최근 8번 이어 본다. 새 문장은 직전 공시에도, 같은 종류 직전 보고서에도 없던 것(사업보고서↔분기보고서 서식 차이 막기).
-QTR_V = 5          # 5: 이름표 동사 꼴 더 거름 · 4: 분류 다듬기 · 2: 새 문장 = 지난 12개월 공시 어디에도 없던 말 · 3: 신호 전용 분류
+QTR_V = 6          # 6: _inv_collect v12(앵커 · 상용구 · 조각 자카드 · 위치) 를 같이 쓴다(2026-10-21) · 5: 이름표 동사 꼴 더 거름 · 4: 분류 다듬기 · 2: 새 문장 = 지난 12개월 공시 어디에도 없던 말 · 3: 신호 전용 분류
 QTR_DIR = os.path.join(CACHE_DIR, "quarter")
 QTR_LOCK = threading.Lock()
 QTR_RUN = {}
