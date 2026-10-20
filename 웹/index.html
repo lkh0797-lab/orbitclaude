@@ -5330,7 +5330,9 @@ function tpFlags(r){
 function tpRow(r, cols){
   const m=r.m||{}, j=r.j||{}, tr=el('tr','dipRow');
   const nm=el('td'); if(r.rank) nm.appendChild(el('b',null,r.rank+' '));
-  const a=el('a',null,r.name); a.href='#'; a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); pick(r.code); }; a.title='이 회사 열기'; nm.appendChild(a);
+  // 회사 이름 — 그 회사의 풍경 탭을 새 탭으로(2026-10-20, 사용자: "종목을 누르면 풍경탭으로 새탭 열기"). 바로가기 주소 ?co=&tab= (startLink)
+  const a=el('a',null,r.name); a.href=location.pathname+'?co='+encodeURIComponent(r.code)+'&tab=land'; a.target='_blank'; a.rel='noopener';
+  a.onclick=e=>e.stopPropagation(); a.title='풍경 탭을 새 탭으로 열기'; nm.appendChild(a);
   nm.appendChild(el('small',null,' '+r.code+(r.market?' · '+r.market:'')+(r.cap_rank?' · 시총 '+r.cap_rank+'위':'')+(r.industry?' · '+r.industry:'')));
   nm.appendChild(tpFlags(r)); tr.appendChild(nm);
   cols.forEach(([k])=>{
@@ -5529,7 +5531,7 @@ async function viewTop(p, run){
   if(L.groups) body.appendChild(tpFlowBox(L, np=>{ S.tpPick=np; viewTop(p,false); }));
   const rowsF=(L.rows||[]).filter(r=>tpInGroup(r,pick));
   const blk=el('div','dipBlock'); const bh=el('div','dipBH'); bh.appendChild(el('b',null,'후보 '+rowsF.length+'곳'+(pick?' — '+pick.name:'')));
-  bh.appendChild(el('span',null,'점수 순 — 회사 이름을 누르면 그 회사를 연다(가속도 · 분기 변화 탭에서 숫자를 확인). 숫자에 마우스를 올리면 원 금액. 꼬리표는 빼지 않고 알리는 것.'));
+  bh.appendChild(el('span',null,'점수 순 — 회사 이름을 누르면 그 회사의 풍경 탭이 새 탭으로 열린다. 숫자에 마우스를 올리면 원 금액. 꼬리표는 빼지 않고 알리는 것.'));
   if(pick){ const x=el('button','ghost','전체 보기'); x.style.marginLeft='auto'; x.onclick=()=>{ S.tpPick=null; viewTop(p,false); }; bh.appendChild(x); }
   blk.appendChild(bh);
   if(rowsF.length) blk.appendChild(tpTable(rowsF,TP_COLS)); else blk.appendChild(el('div','empty',pick?'이 묶음에는 후보가 없다.':'지금은 네 관문을 모두 넘은 회사가 없다.'));
