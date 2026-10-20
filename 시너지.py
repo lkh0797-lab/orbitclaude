@@ -397,6 +397,8 @@ def score(rows):
         # −max(m4, 0) 은 적자를 전부 최상위 동률로 올렸다(상위 20 중 적자 10곳, 2026-10-14 감사) — 가산도 감점도 아닌 중앙 자리에 둔다.
         "low": _pct_rank([-_margin(r) for r in ok if _profit4(r)]),
     }
+    N = {"btb": sum(1 for r in ok if r.get("btb") is not None), "cov": sum(1 for r in ok if r.get("cover_chg") is not None),
+         "per": sum(1 for r in ok if r.get("per_pct") is not None), "low": sum(1 for r in ok if _profit4(r))}
 
     def blend(parts):
         tot = wsum = 0.0
@@ -410,12 +412,15 @@ def score(rows):
     wtot = sum(WEIGHTS.values())
     for r in rows:
         if not r["reliable"]:
-            r["score"], r["parts"] = None, {}
+            r["score"], r["parts"], r["pdet"] = None, {}, {}
             continue
         m = _margin(r)
         pp = R["per"](r.get("per_pct"))
+        pb, pc = R["btb"](r.get("btb")), R["cov"](r.get("cover_chg"))
+        # 해석(explain)이 '몇 곳 중 어느 자리라 이 점수'를 적을 재료 — 부분 점수 계산엔 안 쓴다
+        r["pdet"] = {"btb": pb, "cov": pc, "per": pp, "n_btb": N["btb"], "n_cov": N["cov"], "n_per": N["per"], "n_low": N["low"]}
         parts = {
-            "수주": blend([(R["btb"](r.get("btb")), 0.5), (R["cov"](r.get("cover_chg")), 0.5)]),
+            "수주": blend([(pb, 0.5), (pc, 0.5)]),
             "값": (100.0 - pp) if pp is not None else None,
             "여지": R["low"](-m) if _profit4(r) else None,
         }
@@ -435,12 +440,25 @@ def _half_up(x):
     return int(math.floor(x + 0.5))
 
 
+def _rank(pct, hi="큰 순", lo="작은 순"):
+    """백분위(0~100, 높을수록 위) → '큰 순 상위 n%'(위쪽 절반) 또는 '작은 순 상위 m%'(아래쪽 절반). n · m 은 1 이상."""
+    return ("%s 상위 %d%%" % (hi, max(1, _half_up(100 - pct)))) if pct >= 50 else ("%s 상위 %d%%" % (lo, max(1, _half_up(pct))))
+
+
+# 부분 점수가 높을 때 · 낮을 때 뜻(장점 · 약점 줄)
+_GOOD = {"수주": "수주가 매출보다 빨리 쌓인다", "값": "PER 이 자기 과거 대비 싼 편이다",
+         "여지": "흑자인데 이익률이 낮은 편(매출이 늘면 오를 수 있는 자리 — 과거 근거 약함)"}
+_BAD = {"수주": "수주가 매출보다 빨리 쌓이지 않는다", "값": "PER 이 자기 과거 대비 싸지 않다",
+        "여지": "이익률이 이미 높은 편 — 오를 자리가 적다"}
+
+
 def explain(r):
-    """점수 해석 1~2줄(종목명을 누르면 이름 아래 펼친다 — 스펙 3절). 그 회사의 실제 숫자로 무엇이 점수를 올렸고 내렸는지 적는다.
-    첫 줄 산수는 '≈' — 부분은 정수로 반올림해 보이고 점수는 반올림 전 부분으로 셈한다(차이 0.5 안)."""
+    """점수 해석(종목명을 누르면 이름 아래 펼친다 — 스펙 3절, 2026-10-20 사용자 요청으로 줄을 나눔).
+    [[이름, 내용], …] — 점수 · 수주 · 값 · 여지 · 위험 · 장점 · 약점 (+ 단계 주의). 각 부분은 '몇 곳 중 어느 자리라 몇 점'을 실제 숫자로 적는다.
+    점수 줄 산수는 '≈' — 부분은 정수로 반올림해 보이고 점수는 반올림 전 부분으로 셈한다(차이 0.5 안)."""
     if not r.get("reliable"):
-        return ["점수 없음 — " + (r.get("why_not") or "잔고 값을 믿기 어렵다") + ". 순위 밖이다."]
-    P = r.get("parts") or {}
+        return [["점수", "없음 — " + (r.get("why_not") or "잔고 값을 믿기 어렵다") + ". 순위 밖이다."]]
+    P, D = r.get("parts") or {}, r.get("pdet") or {}
     if r.get("score") is None:
         if r.get("backlog_yoy") is None:
             why = "1년 전 잔고가 없어 수주 속도(북투빌 · 배수 변화)를 셀 수 없다"
@@ -448,57 +466,77 @@ def explain(r):
             why = "최근 4분기 매출이 없어 북투빌 · 잔고/연매출 배수를 셀 수 없다"
         else:
             why = "북투빌 · 잔고/연매출 배수 1년 변화를 셀 수 없다"
-        return ["점수 없음 — " + why + "."]
+        return [["점수", "없음 — " + why + "."]]
     flags = r.get("flags") or []
 
     def f(x):
         return "—" if x is None else "%d" % _half_up(x)
-    fp = lambda k: "50" if P.get(k) is None else f(P[k])      # noqa: E731 — 빈 부분은 50 으로 센다(아래 둘째 줄이 까닭을 적는다)
-    head = "점수 %s ≈ (수주 %s + 값 %s + 여지 %s) ÷ 3" % (f(r["score"]), fp("수주"), fp("값"), fp("여지"))
+    fp = lambda k: "50" if P.get(k) is None else f(P[k])      # noqa: E731 — 빈 부분은 50 으로 센다
+    head = "%s ≈ (수주 %s + 값 %s + 여지 %s) ÷ 3" % (f(r["score"]), fp("수주"), fp("값"), fp("여지"))
     if flags:
         head += " − 위험 %d" % (RISK_PEN * len(flags))
         raw = sum(50.0 if P.get(k) is None else P[k] for k in ("수주", "값", "여지")) / 3 - RISK_PEN * len(flags)
         if raw < 0:
             head += "(0 아래는 0)"
+    head += " — 각 부분은 그날 잔고를 믿을 수 있는 회사끼리의 백분위(높을수록 좋다)"
+
+    # 수주 — 북투빌 · 배수 변화 각각의 자리, 그 평균
     btb, cov, cch = r.get("btb"), r.get("cover"), r.get("cover_chg")
-    s = []
+    sj = []
     if btb is not None:
-        s.append("들어온 수주가 매출의 %.1f배" % btb)
-    if cov is not None:
-        s.append("잔고 연매출 %.1f년치%s" % (cov, ("(1년 새 %+.1f년)" % cch) if cch is not None else ""))
-    pp, m4, pv = r.get("per_pct"), _margin(r), P.get("값")
-    # 값 — 강점 · 약점은 목록 안 백분위(부분 값)로 고르므로 말도 목록 안 자리로. 자기 과거 대비 말은 30% 이하 · 70% 이상일 때만 덧붙인다
-    rel = "" if pv is None else (" — 목록 안에서 싼 편" if pv >= 60 else (" — 목록 안에서 비싼 편" if pv <= 40 else " — 목록 안 중간"))
-    ab = "" if pp is None else ("(자기 과거보다 싸다)" if pp <= 30 else ("(자기 과거보다 비싸다)" if pp >= 70 else ""))
-    desc = {
-        "수주": " · ".join(s) or "수주 속도",
-        "값": ("PER 이 자기 과거 %d%% 자리%s%s" % (_half_up(pp), rel, ab)) if pp is not None
-              else "PER 자기 역사 없음(순손실 · 이력 짧음) — 50 으로 셈",
-        # 여지 — 잰 것은 '흑자 회사 중 이익률이 낮은 쪽'이다. 오를지는 재지 않았다(과거 낮은 쪽이 조금 나았을 뿐 — 약함). 건설처럼 원래 낮은 업종도 높게 나온다
-        "여지": ("4분기 적자 — 50 으로 셈(흑자 전환 베팅)" if r.get("loss4") else
-                ("4분기 영업이익률 %.1f%%%s" % (m4, " — 흑자 회사 중 낮은 편" if (P.get("여지") or 0) >= 60 else
-                                          (" — 흑자 회사 중 높은 편" if P.get("여지") is not None and P["여지"] <= 40 else "")))
-                if m4 is not None else "이익률 모름 — 50 으로 셈"),
-    }
-    have = [(k, P[k]) for k in ("수주", "값", "여지") if P.get(k) is not None]
-    top = max(have, key=lambda kv: kv[1]) if have else None
-    low = min(have, key=lambda kv: kv[1]) if have else None
-    l1 = head + " — " + ("강점: %s %s(%s)" % (top[0], f(top[1]), desc[top[0]]) if top and top[1] >= 60 else "두드러진 강점 없음")
-    l2 = []
-    if low and low[1] <= 40 and (low is not top or top[1] < 60):
-        l2.append("약점: %s %s(%s)" % (low[0], f(low[1]), desc[low[0]]))
-    for k in ("값", "여지"):            # 50 으로 센 부분은 왜 비었는지 적는다
-        if P.get(k) is None:
-            l2.append(desc[k])
-    # 위험 표지는 짧게 — '희석 −10(CB 발행 · 유상증자)'. 날짜까지 든 긴 문장은 '위험' 꼬리표 · 펼친 행 근거에 있다
-    l2 += ["위험 %s −%d(%s)" % (x[:2], RISK_PEN, x.split(" — ", 1)[-1].split(" (", 1)[0]) for x in flags]
+        sj.append("1년간 들어온 수주가 매출로 나간 것의 %.1f배(북투빌)%s" % (
+            btb, (": %d곳 중 %s" % (D["n_btb"], _rank(D["btb"]))) if D.get("btb") is not None else ""))
+    if cch is not None:
+        sj.append("잔고가 연매출의 %s, 1년 새 %+.1f년%s" % (
+            ("%.1f년치" % cov) if cov is not None else "몇 년치(모름)", cch,
+            (": %d곳 중 %s" % (D["n_cov"], _rank(D["cov"], "많이 는 순", "적게 는 순"))) if D.get("cov") is not None else ""))
+    l_su = "%s점 — %s" % (f(P.get("수주")), " · ".join(sj) or "수주 속도")
+    if D.get("btb") is not None and D.get("cov") is not None:
+        l_su += " → 두 자리(백분위 %d · %d)의 평균" % (_half_up(D["btb"]), _half_up(D["cov"]))
+    elif sj:
+        l_su += " → 한쪽만 있어 그 자리 그대로"
+
+    # 값 — 자기 과거 PER 가운데 지금 자리, 목록 안에서 그 자리를 다시 줄 세움
+    pp, per, pmed = r.get("per_pct"), r.get("per"), r.get("per_med")
+    if pp is None:
+        l_val = "50점(빈칸) — PER 자기 역사가 없다(순손실 · 이력 짧음 · 풍경 없음) — 중간으로 셈"
+    else:
+        now = ("지금 PER %.1f배%s — " % (per, ("(자기 과거 중앙 %.1f배)" % pmed) if pmed else "")) if per and per > 0 else ""
+        ab = ", 자기 과거보다 싸다" if pp <= 30 else (", 자기 과거보다 비싸다" if pp >= 70 else "")
+        l_val = "%s점 — %s자기 과거 PER 가운데 %d%% 자리(낮을수록 쌈)%s" % (f(P.get("값")), now, _half_up(pp), ab)
+        if P.get("값") is not None:
+            l_val += " → PER 자기 역사가 있는 %d곳 중 '자기 과거 대비 싼 정도' %s" % (
+                D.get("n_per") or 0, _rank(P["값"], "싼 순", "비싼 순"))
+
+    # 여지 — 흑자 회사 중 이익률이 낮은 순
+    m4 = _margin(r)
+    if r.get("loss4"):
+        l_room = "50점(빈칸) — 4분기 합 영업이익 또는 순이익이 적자 — 중간으로 셈(흑자 전환 베팅)"
+    elif m4 is None:
+        l_room = "50점(빈칸) — 4분기 합 이익률을 모른다 — 중간으로 셈"
+    else:
+        l_room = "%s점 — 4분기 합 영업이익률 %.1f%%" % (f(P.get("여지")), m4)
+        if P.get("여지") is not None:
+            l_room += " → 흑자 %d곳 중 이익률 %s(낮을수록 높게 준다 — 과거 낮은 쪽이 조금 나았다, 약함)" % (
+                D.get("n_low") or 0, _rank(P["여지"], "낮은 순", "높은 순"))
+
+    l_risk = ("−%d — %s" % (RISK_PEN * len(flags), " / ".join(x.replace(" — ", ": ", 1) for x in flags))) if flags else "0 — 12개월 안 희석(CB · BW · 유상증자 …) · 부실(감사의견 · 관리종목 · 횡령 …) 공시 없음"
+
+    have = sorted(((k, P[k]) for k in ("수주", "값", "여지") if P.get(k) is not None), key=lambda kv: -kv[1])
+    good = [k for k, v in have if v >= 60]
+    bad = [k for k, v in reversed(have) if v <= 40]
+    l_good = " · ".join("%s %s — %s" % (k, f(P[k]), _GOOD[k]) for k in good) or "두드러진 것 없음(60점 넘는 부분 없음)"
+    l_bad = [("%s %s — %s" % (k, f(P[k]), _BAD[k])) for k in bad]
+    l_bad += ["%s 빈칸(50) — %s" % (k, "PER 자기 역사 없음" if k == "값" else ("4분기 적자" if r.get("loss4") else "이익률 모름"))
+              for k in ("값", "여지") if P.get(k) is None]
+    l_bad += ["위험 공시 −%d" % (RISK_PEN * len(flags))] if flags else []
+    out = [["점수", head], ["수주", l_su], ["값", l_val], ["여지", l_room], ["위험", l_risk],
+           ["장점", l_good], ["약점", " · ".join(l_bad) or "없음(40점 아래 부분 없음)"]]
     if r.get("stage") == "반영":
-        l2.append("반영 단계 — " + (r.get("stage_why") or "주가가 수주보다 앞서 갔다"))
+        out.append(["주의", "반영 단계 — " + (r.get("stage_why") or "주가가 수주보다 앞서 갔다")])
     elif r.get("stage") == "둔화":         # 점수는 단계를 안 본다 — 과거에 유일하게 뒤처진 무리라 따로 적는다
-        l2.append("둔화 단계 — 잔고가 줄거나 들어오는 수주가 매출보다 적다(과거에 유일하게 뒤처진 무리)")
-    if not l2:
-        l2.append("약점 없음 — 세 부분 모두 40 넘음" if have and low[1] > 40 else "나머지는 중간")
-    return [l1, " · ".join(l2)]
+        out.append(["주의", "둔화 단계 — 잔고가 줄거나 들어오는 수주가 매출보다 적다(과거에 유일하게 뒤처진 무리). 점수와 따로 본다"])
+    return out
 
 
 def stage(r):

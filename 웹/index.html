@@ -2082,10 +2082,13 @@ details.infclockwrap{margin-top:12px}details.infclockwrap>summary{cursor:pointer
 .synname1 .synnm:hover,.synname1 .synnm.on{color:var(--accent);border-bottom-color:var(--accent)}
 .synexprow td{border-top:0;padding-top:0}
 .synexp{font-size:12.5px;line-height:1.6;color:var(--ink);padding:2px 8px 9px 2px}
-.synexp .l1{font-weight:600}
-.synexp .l2{color:var(--dim)}
-.synexp .synexpev{margin-left:10px;font-size:11px;color:var(--faint);white-space:nowrap}
-.synexp .syngo{margin-left:10px;font-size:11.5px;white-space:nowrap}
+.synexpg{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 12px;max-width:860px;white-space:normal}
+.synexpg .k{font-weight:700;color:var(--ink);white-space:nowrap}
+.synexpg .k.good{color:var(--add)}.synexpg .k.bad{color:var(--del)}.synexpg .k.warn,.synexpg .k.risk{color:var(--warn)}
+.synexpg .v{color:var(--dim)}.synexpg .v.head{color:var(--ink);font-weight:600}
+.synexpft{margin-top:4px}
+.synexp .synexpev{font-size:11px;color:var(--faint);white-space:nowrap}
+.synexp .syngo{margin-left:12px;font-size:11.5px;white-space:nowrap}
 .synstar{border:0;background:none;cursor:pointer;color:var(--faint);font-size:15px;padding:0 2px}
 .synstar.on{color:var(--warn)}
 .synwide{font-size:12.5px;white-space:normal;min-width:150px}
@@ -9374,17 +9377,22 @@ function synTable(rows){
     const wr=el('tr','synexprow'); wr.hidden=!S.synOpen.has(r.code);
     wr.appendChild(el('td')); wr.appendChild(el('td'));
     const wc=el('td','synexp'); wc.colSpan=nCols-2;
+    // 2026-10-20 — 서버 시너지.explain 이 [이름, 내용] 줄들(점수 · 수주 · 값 · 여지 · 위험 · 장점 · 약점 · 주의)을 준다. 옛 응답(문자열)도 그대로 보인다
     const W_=r.why||[];
-    (W_.length?W_:['해석 없음 — 다시 계산하면 생긴다']).forEach((x,j,a)=>{ const ln=el('div',j?'l2':'l1',x);
-      if(j===a.length-1){
-        const ev=((S.synData||{}).bt||{}).v3, m1=ev&&ev.m1;
-        // 근거 꼬리표는 그 검증이 잰 행(점수 있음 · 둔화 아님)에만, 표본 안이라는 말을 보이게(2026-10-20 리뷰 — 점수 없는 행 · 둔화 행에도 초록으로 붙었다)
-        if(m1&&m1.label&&r.score!=null&&r.stage!=='둔화'){ const g=el('span','synexpev','점수 순위 과거 근거(표본 안 · forward 전): '+m1.label.replace('근거 ',''));
-          g.title='둔화 뺀 회사 안 점수 상⅓ − 하⅓, 12개월 초과수익 '+(m1.spread>=0?'+':'')+m1.spread.toFixed(1)+'%p (~2019 '+(m1.early!=null?m1.early.toFixed(1):'—')+' · 2020~ '+(m1.late!=null?m1.late.toFixed(1):'—')+
-            ') — 미리 정한 규칙(회사 · 해 재표본 90% 하한 > 0, 두 기간 > 0). 부품은 감사를 보고 골라 표본 안 확인이다. 위 "과거 검증" 상자'; ln.appendChild(g); }
-        const go=el('a','syngo','궤도 →'); go.href='#'; go.title=r.name+' 회사 화면(궤도 탭)으로'; go.onclick=e=>{ e.preventDefault(); synGo(r.code,r.name); }; ln.appendChild(go);
-      }
-      wc.appendChild(ln); });
+    const gd=el('div','synexpg');
+    (W_.length?W_:[['점수','해석 없음 — 다시 계산하면 생긴다']]).forEach(x=>{
+      const [k,v]=Array.isArray(x)?x:['',x];
+      gd.appendChild(el('b','k'+({'장점':' good','약점':' bad','주의':' warn','위험':' risk'}[k]||''),k));
+      gd.appendChild(el('span','v'+(k==='점수'?' head':''),v)); });
+    wc.appendChild(gd);
+    const ft=el('div','synexpft');
+    const ev=((S.synData||{}).bt||{}).v3, m1=ev&&ev.m1;
+    // 근거 꼬리표는 그 검증이 잰 행(점수 있음 · 둔화 아님)에만, 표본 안이라는 말을 보이게(2026-10-20 리뷰 — 점수 없는 행 · 둔화 행에도 초록으로 붙었다)
+    if(m1&&m1.label&&r.score!=null&&r.stage!=='둔화'){ const g=el('span','synexpev','점수 순위 과거 근거(표본 안 · forward 전): '+m1.label.replace('근거 ',''));
+      g.title='둔화 뺀 회사 안 점수 상⅓ − 하⅓, 12개월 초과수익 '+(m1.spread>=0?'+':'')+m1.spread.toFixed(1)+'%p (~2019 '+(m1.early!=null?m1.early.toFixed(1):'—')+' · 2020~ '+(m1.late!=null?m1.late.toFixed(1):'—')+
+        ') — 미리 정한 규칙(회사 · 해 재표본 90% 하한 > 0, 두 기간 > 0). 부품은 감사를 보고 골라 표본 안 확인이다. 위 "과거 검증" 상자'; ft.appendChild(g); }
+    const go=el('a','syngo','궤도 →'); go.href='#'; go.title=r.name+' 회사 화면(궤도 탭)으로'; go.onclick=e=>{ e.preventDefault(); synGo(r.code,r.name); }; ft.appendChild(go);
+    wc.appendChild(ft);
     wr.appendChild(wc); t.appendChild(wr);
     nb.onclick=e=>{ e.preventDefault(); const o=!S.synOpen.has(r.code); if(o) S.synOpen.add(r.code); else S.synOpen.delete(r.code);
       wr.hidden=!o; nb.classList.toggle('on',o); };
