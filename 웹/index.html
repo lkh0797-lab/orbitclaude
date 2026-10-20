@@ -919,6 +919,7 @@ button.vbCo small{font:500 10px var(--mono);color:var(--faint)}button.vbCo.on sm
 .drkOLab{font:700 12.5px var(--f-num);fill:var(--p-ink)}
 .drkOChk{fill:none;stroke:var(--p-hi);stroke-width:1.8}
 .drkSwRing{fill:none;stroke-width:1.8}
+.drkOChk.asf,.drkSwRing.asf{stroke-dasharray:3 2.5}
 .drkONote{font:400 11px var(--f-body);fill:var(--p-dim)}
 .drkSpan{margin-right:10px}
 .drkNA{font:500 12px var(--f-body);fill:var(--p-faint)}
@@ -10421,7 +10422,7 @@ function drkTipBody(r, K){
   if(r.pad) return f;
   if(kc){ const eok=v=>Math.round(v/1e8).toLocaleString('ko-KR')+'억';
     f.appendChild(el('p',null,'한투 분기 손익과 다름(2% · 1억 원 넘게) — '+[['rev','매출'],['op','영업이익']].filter(([k])=>kc[k]).map(([k,t])=>
-      t+' 한투 '+eok(kc[k].kis)+' vs DART '+eok(kc[k].dart)+(kc[k].src==='재작성'?'(다음 해 재작성 값)':'(그 분기 보고서)')+' '+(dNum(kc[k].pct)?dPct(kc[k].pct,1):'')).join(' · '))); }
+      t+' 한투 '+eok(kc[k].kis)+' vs DART '+eok(kc[k].dart)+(kc[k].src==='재작성'?'(다음 해 재작성 값)':'(그 분기 보고서 — 증권사 값은 재작성이라 재작성 차이일 수 있음)')+' '+(dNum(kc[k].pct)?dPct(kc[k].pct,1):'')).join(' · '))); }
   const g=el('div','spTipG');
   [['그 분기 '+M+' (1년 전 대비)',dPct(drkY(r),1)],['최근 반년 증가율',dPct(r.s,1)],
    ['반년 전보다',dNum(r.a)&&dNum(r.s)?dPp(r.a,1)+' ('+dPct(r.s-r.a,0)+' → '+dPct(r.s,0)+')':'—'],['1년 합계 증가율',dPct(r.g,1)],
@@ -10584,9 +10585,9 @@ function drkStack(R, K){
         : k==='dot' ? svgEl('circle',{cx:sx+7,cy:sy,r:3})
         : k==='up' ? svgEl('path',{d:'M'+(sx+7)+','+(sy-5)+'l-5.5,9.5h11z'})
         : k==='down' ? svgEl('path',{d:'M'+(sx+7)+','+(sy+5)+'l-5.5,-9.5h11z'})
-        : k==='ring' ? svgEl('circle',{cx:sx+7,cy:sy,r:5,class:'drkSwRing'})
+        : k==='ring'||k==='ringd' ? svgEl('circle',{cx:sx+7,cy:sy,r:5,class:'drkSwRing'+(k==='ringd'?' asf':'')})
         : svgEl('rect',{x:sx+(k==='bar'?4:0),y:sy-5,width:k==='bar'?6:14,height:10,rx:k==='bar'?1:2.5});
-      if(k==='line'||k==='dash'||k==='ring') sw.style.stroke=c; else sw.style.fill=c;
+      if(k==='line'||k==='dash'||k==='ring'||k==='ringd') sw.style.stroke=c; else sw.style.fill=c;
       svg.appendChild(sw); x=sx-16; }); };
   const grid=(top,h,lo,hi,fmtv,n)=>{ const Y=v=>top+h-(v-lo)/((hi-lo)||1)*h;
     const s=(hi-lo)/(n||3), p=Math.pow(10,Math.floor(Math.log10(s||1))), m=[1,2,2.5,5,10].find(k=>k*p>=s)*p;
@@ -10636,12 +10637,14 @@ function drkStack(R, K){
     cap(oT-30, (S.length?S:[{k:'g'},{k:'m'},{k:'p'}]).map(s=>ON[s.k]).join(' · '), '각자 이 기간의 최저(아래)~최고(위)에 맞춘 높이'+(S.some(s=>s.log)?' · 주가는 로그':''));
     // 대조 고리 — 매출 기준이면 매출 차이는 증가율 선 · 영업이익 차이는 이익률 선, 영업이익 기준(금융사)이면 영업이익 차이를 증가율 선에
     const chk=kis.chk||{}, ring=[];
+    // 실선 ○ = DART 재작성 비교값과도 다름(같은 기준끼리) · 점선 = 그 분기 보고서(공시 당시) 값과만 견줌 — 증권사 값은 재작성이라 재작성 차이일 수 있다
     Object.keys(chk).forEach(n=>{ const i=idx[n], r=R[i]; if(i===undefined) return;
-      const c=chk[n];
-      if(M==='매출'){ if(c.rev&&dNum(r.s)) ring.push([i,'g',r.s]); if(c.op&&dNum(r.m)) ring.push([i,'m',r.m]); }
-      else if(c.op&&dNum(r.s)) ring.push([i,'g',r.s]); });
+      const c=chk[n], asf=x=>x.src!=='재작성';
+      if(M==='매출'){ if(c.rev&&dNum(r.s)) ring.push([i,'g',r.s,asf(c.rev)]); if(c.op&&dNum(r.m)) ring.push([i,'m',r.m,asf(c.op)]); }
+      else if(c.op&&dNum(r.s)) ring.push([i,'g',r.s,asf(c.op)]); });
     const leg=S.map(s=>['line',s.lab+' '+s.rng(s.loV,s.hiV),OC[s.k]]);
-    if(ring.length) leg.push(['ring','한투와 다름',HI]);
+    if(ring.some(x=>!x[3])) leg.push(['ring','한투와 다름',HI]);
+    if(ring.some(x=>x[3])) leg.push(['ringd','공시 당시 값과 다름',HI]);
     if(S.length) legend(oT-10, leg);          // 범례는 제목 아래 줄(한 줄이면 겹친다)
     [0,.25,.5,.75,1].forEach(t=>put('line',{x1:L,x2:W-Rr,y1:YO(t),y2:YO(t),class:'drkGrid'}));
     put('text',{x:L-8,y:YO(1)+4,'text-anchor':'end',class:'orbTick'}).textContent='최고';
@@ -10671,8 +10674,8 @@ function drkStack(R, K){
       const i=lastOf(s.vals); if(i<0) return;
       const d=put('circle',{cx:X(i),cy:YO(ts[i]),r:5.5,class:'drkOEnd'}); d.style.fill=OC[s.k];
       ends.push({s,x:X(i),y:YO(ts[i]),v:s.vals[i]}); });
-    ring.forEach(([i,k,v])=>{ const s=S.find(z=>z.k===k); if(!s) return;
-      put('circle',{cx:X(i),cy:YO(s.t(v)),r:8,class:'drkOChk'}); });
+    ring.forEach(([i,k,v,asf])=>{ const s=S.find(z=>z.k===k); if(!s) return;
+      put('circle',{cx:X(i),cy:YO(s.t(v)),r:8,class:'drkOChk'+(asf?' asf':'')}); });
     // 끝 이름표 — 겹치면 위아래로 벌리고 가는 선으로 잇는다
     ends.sort((a,b)=>a.y-b.y);
     ends.forEach((e,j)=>{ e.ly=Math.max(e.y, j?ends[j-1].ly+17:oT+6); });
@@ -10685,7 +10688,7 @@ function drkStack(R, K){
     const nck=Object.keys(chk).length;
     const src=(wk.length>=2 ? '주가 = 한투 주간 수정주가(KRX+NXT 통합, '+dDate(wk[wk.length-1].t)+' 주까지)'
                : kis.pending ? '주가 = 공시일 종가 · 한투 주가 받는 중…' : '주가 = 공시일 종가'+(kis.why?' · 한투 자료 없음: '+kis.why:''))
-      + (kis.ncmp ? ' · '+(M==='매출'?'매출 · 영업이익':'영업이익')+' 선 = DART. 한투 분기 손익('+(kis.is_from?kis.is_from.slice(0,4)+'Q'+(+kis.is_from.slice(4)/3):'')+'~)과 2% 넘게 다른 분기 '+nck+'곳'+(ring.length?' — 이 기간 ○ '+ring.length+'개':'')
+      + (kis.ncmp ? ' · '+(M==='매출'?'매출 · 영업이익':'영업이익')+' 선 = DART. 한투 분기 손익('+(kis.is_from?kis.is_from.slice(0,4)+'Q'+(+kis.is_from.slice(4)/3):'')+'~)과 2% 넘게 다른 분기 '+nck+'곳'+(ring.length?' — 이 기간 ○ '+ring.filter(x=>!x[3]).length+' · 점선(공시 당시 값과만 견줌) '+ring.filter(x=>x[3]).length:'')
                    : '');
     put('text',{x:L,y:oT+HO+20,class:'drkONote'}).textContent=src; }
 
@@ -10854,15 +10857,17 @@ function drkPad(R){
   return out;
 }
 
-// 증권사 주간 주가 · 분기 손익 대조(/api/druck/kis) — 받는 중이면 3초마다 다시 묻고(최대 2분), 새 자료가 오면 판을 다시 그린다
+// 증권사 주간 주가 · 분기 손익 대조(/api/druck/kis) — 받는 중이면 3초마다 다시 묻고(최대 5분 — 서버 한 건 150초 + 차례 대기), 새 자료가 오면 판을 다시 그린다.
+// 첫 응답에서는 판 전체의 등장 효과(.anim)를 끄지 않는다 — 나중에 새 자료로 다시 그릴 때만 끈다(선 그리기 효과가 되풀이되지 않게)
 async function drkKisLoad(wrap, K, draw){
   const code=(K.d||{}).code; if(!code) return;
-  for(let k=0;k<40;k++){
+  for(let k=0;k<100;k++){
     let x; try{ x=await (await fetch('/api/druck/kis?code='+code)).json(); }catch(e){ return; }
     if(!wrap.isConnected) return;
     const prev=K.kis; K.kis=x;
-    if(!prev || prev.at!==x.at || !!prev.pending!==!!x.pending){
-      const pl=wrap.closest('.drkplate'); if(pl) pl.classList.remove('anim');      // 다시 그릴 때 선 그리기 효과를 되풀이하지 않는다
+    if(!prev) draw();
+    else if(prev.at!==x.at || !!prev.pending!==!!x.pending){
+      const pl=wrap.closest('.drkplate'); if(pl) pl.classList.remove('anim');
       draw(); }
     if(!x.pending) return;
     await new Promise(r=>setTimeout(r,3000));

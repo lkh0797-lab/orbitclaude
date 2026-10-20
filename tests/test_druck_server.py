@@ -660,12 +660,12 @@ def test_kfin_view_trims_prices_to_a_year_before_first_quarter_and_reports_pendi
     d = {"v": SRV.KFIN_V, "at": "x", "is_q": {"rows": [{"ym": "201903", "rev": 1, "op": 1}], "why": ""},
          "px": {"t": ["20090105", "20100104", "20110103", "20260119"], "c": [1, 2, 3, 4], "at": "a", "mkt": "UN"}}
     monkeypatch.setattr(SRV, "_kfin_read", lambda code: d)
-    monkeypatch.setattr(SRV, "_kfin_kick", lambda code: False)
+    monkeypatch.setattr(SRV, "_kfin_kick", lambda code, stale=False: False)
     v = SRV.kfin_view("005930", [_kp(2011 * 4, rev=1), _kp(2026 * 4, rev=1)])
     assert v["px"]["t"] == ["20100104", "20110103", "20260119"] and v["px"]["c"] == [2, 3, 4]
     assert v["pending"] is False and v["is_from"] == "201903"
     monkeypatch.setattr(SRV, "_kfin_read", lambda code: None)
-    monkeypatch.setattr(SRV, "_kfin_kick", lambda code: True)
+    monkeypatch.setattr(SRV, "_kfin_kick", lambda code, stale=False: True)
     v = SRV.kfin_view("005930", [])
     assert v["px"] is None and v["pending"] is True
 
@@ -686,3 +686,22 @@ def test_kfin_kick_respects_ttl_retry_and_readonly(monkeypatch, tmp_path):
     assert SRV._kfin_kick("../bad") is False
     monkeypatch.setattr(SRV, "READONLY", True)
     assert SRV._kfin_kick("035420") is False
+
+
+def test_kfin_kick_unwinds_when_thread_cannot_start_and_refetches_old_version(monkeypatch, tmp_path):
+    def boom(target, daemon):
+        class T:
+            def start(self):
+                raise RuntimeError("can't start new thread")
+        return T()
+    monkeypatch.setattr(SRV, "_kfin_ok", lambda: True)
+    monkeypatch.setattr(SRV, "_kfin_path", lambda code: str(tmp_path / (code + ".json")))
+    monkeypatch.setattr(SRV, "KFIN", {"running": False, "code": None, "queue": {}, "tried": {}, "sup": (0.0, False)})
+    monkeypatch.setattr(SRV.threading, "Thread", boom)
+    assert SRV._kfin_kick("005930") is False
+    assert SRV.KFIN["running"] is False and SRV.KFIN["queue"] == {}       # '받는 중'에 묶이지 않는다
+    (tmp_path / "000660.json").write_text('{"v": 1}', encoding="utf-8")  # 갓 받은 옛 판 파일
+    started = []
+    monkeypatch.setattr(SRV.threading, "Thread", lambda target, daemon: type("T", (), {"start": lambda self: started.append(1)})())
+    assert SRV._kfin_kick("000660") is False                            # 판을 모르면 그대로 둔다
+    assert SRV._kfin_kick("000660", stale=True) is True and started == [1]   # 판이 달라 못 읽으면 묵지 않았어도 다시 받는다

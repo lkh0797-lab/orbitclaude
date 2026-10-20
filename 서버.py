@@ -9757,7 +9757,7 @@ def _kis_tags(st):
 # Tech 하위 프로세스(64비트 · KIS 토큰 하나)가 cache/kis/fin/<code>.json 에 받아 두면 읽는다(이 서버는 KIS 를 직접 부르지 않는다).
 # 사용자 선택: 주가 선 = 증권사 주간 수정주가(통합 시세), 매출 · 영업이익 선 = DART 그대로 + 증권사 값과 다르면 그 분기에 표시만.
 # 국면 · 변곡 · 기저율 계산에는 넣지 않는다. 증권사 시세 · 재무는 본인 용도 — 유료 배포물에 넣지 않는다.
-KFIN_V = 1
+KFIN_V = 2                   # Tech kis_fin.V — v1 은 누적 기준이 바뀐 해의 가짜 분기 · 끊긴 주봉을 둘 수 있어 다시 받는다
 KFIN = {"running": False, "code": None, "queue": {}, "tried": {}, "sup": (0.0, False)}   # queue = {code: 마지막으로 물은 때}
 KFIN_LOCK = threading.Lock()
 KFIN_TTL = 6 * 3600          # 파일이 이보다 묵으면 다시 받는다(두 번째부터는 손익 1회 + 주봉 최신 1쪽)
@@ -9789,8 +9789,8 @@ def _kfin_ok():
     return ok
 
 
-def _kfin_kick(code):
-    """파일이 없거나 KFIN_TTL 보다 묵었으면 뒤에서 받는다. 반환: 이 회사를 받는 중(또는 차례 대기)인가.
+def _kfin_kick(code, stale=False):
+    """파일이 없거나 KFIN_TTL 보다 묵었으면(또는 stale — 판이 달라 못 읽음) 뒤에서 받는다. 반환: 이 회사를 받는 중(또는 차례 대기)인가.
     조회 전용 서버면 띄우지 않는다(Tech 하위 프로세스 · 증권사 호출)."""
     if READONLY or not re.fullmatch(r"[0-9A-Z]{6}", code or "") or not _kfin_ok():
         return False
@@ -9805,12 +9805,17 @@ def _kfin_kick(code):
         except OSError:
             age = None
         last = KFIN["tried"].get(code)
-        if (age is not None and age < KFIN_TTL) or (last and time.time() - last[0] < KFIN_RETRY):
+        if (age is not None and age < KFIN_TTL and not stale) or (last and time.time() - last[0] < KFIN_RETRY):
             return False
         KFIN["queue"][code] = time.time()
         if not KFIN["running"]:
             KFIN["running"] = True
-            threading.Thread(target=_kfin_loop, daemon=True).start()
+            try:
+                threading.Thread(target=_kfin_loop, daemon=True).start()
+            except RuntimeError:          # 32비트 — 스레드를 못 띄우면 '받는 중'에 묶이지 않게 되돌린다
+                KFIN.update(running=False, code=None)
+                KFIN["queue"].pop(code, None)
+                return False
     return True
 
 
@@ -9880,8 +9885,9 @@ def kfin_check(pts, rows, tol=KFIN_TOL):
 
 def kfin_view(code, pts):
     """/api/druck/kis — {px:{t,c,at,mkt}|None, chk, ncmp, at, pending, why}. 파일이 없거나 묵었으면 뒤에서 받기를 띄운다."""
+    # 받기 상태를 먼저 보고 파일을 읽는다 — 거꾸로면 그 사이 끝난 받기의 새 파일을 놓치고 pending 없이 옛 값을 준다
+    pending = _kfin_kick(code, stale=_kfin_read(code) is None)
     d = _kfin_read(code)
-    pending = _kfin_kick(code)
     last = KFIN["tried"].get(code)
     why = last[2] if last and last[1] not in (0, None) else ""
     if not d:
