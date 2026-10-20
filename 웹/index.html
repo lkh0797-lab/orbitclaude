@@ -115,8 +115,10 @@ main{flex:1;overflow:auto;padding:18px 22px;min-width:0}
 .slist .n{font:11px/1.6 var(--mono);opacity:.65}
 
 /* ---------- 탭 ---------- */
-.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:18px;
-  overflow-x:auto}
+.tabs{display:flex;flex-wrap:wrap;align-items:center;gap:2px;border-bottom:1px solid var(--line);margin-bottom:18px}
+/* 두 줄(2026-10-20) — 윗줄 '전체'(전 종목 · 내 기록), 아랫줄 '이 회사'. 줄 나눔은 빈 칸(tabBr), 줄 머리는 tabLab — 둘 다 단추가 아니라 클릭 처리에서 빠진다 */
+.tabs .tabBr{flex-basis:100%;height:0;margin:2px 0;border-top:1px dashed var(--line2)}
+.tabs .tabLab{min-width:46px;padding:0 6px 0 2px;font:600 10.5px var(--mono);color:var(--faint);white-space:nowrap;user-select:none}
 .tabs button{padding:8px 14px;border:none;background:none;cursor:pointer;
   border-bottom:2px solid transparent;color:var(--dim);white-space:nowrap}
 .tabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
@@ -3400,13 +3402,19 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
     <aside id="side"><div class="empty">기업명을 입력하세요</div></aside>
     <main>
       <div class="tabs" id="tabs" hidden>
+        <span class="tabLab" title="전 종목을 보는 탭 · 내 기록">전체</span>
         <button data-t="val">저평가</button>
         <button data-t="top">탑픽</button>
         <button data-t="qd">우량 급락</button>
         <button data-t="tech">차트 발굴</button>
+        <button data-t="cat">호재기업</button>
+        <button data-t="exp">수출 추적</button>
+        <button data-t="grow">산업 성장률</button>
         <button data-t="score">기록 채점</button>
         <button data-t="trd">매매 일지</button>
         <button data-t="watch">관심 장부</button>
+        <i class="tabBr" aria-hidden="true"></i>
+        <span class="tabLab" title="고른 회사 한 곳을 보는 탭">이 회사</span>
         <button data-t="orbit" class="on">궤도</button>
         <button data-t="land">풍경</button>
         <button data-t="story">내러티브</button>
@@ -3421,9 +3429,6 @@ table.grTrend td.num.pos{color:var(--add)}table.grTrend td.num.neg{color:var(--d
         <button data-t="diff">변경점 비교</button>
         <button data-t="find">전문검색</button>
         <button data-t="trend">키워드 추이</button>
-        <button data-t="cat">호재기업</button>
-        <button data-t="exp">수출 추적</button>
-        <button data-t="grow">산업 성장률</button>
       </div>
       <div id="panes">
         <div class="empty" id="welcome">
