@@ -624,3 +624,65 @@ def test_druck_events_returns_that_company_or_empty_lists(monkeypatch, tmp_path)
     assert SRV.druck_events("000660") == {"turns": [], "periods": ev["000660"]["periods"]}
     assert SRV.druck_events("999999") == {"turns": [], "periods": []}
     assert SRV.druck_events("") == {"turns": [], "periods": []}
+
+
+# ---------------------------------------------------------------- 증권사 분기 손익 대조 · 주간 주가(가속도 '한눈에' 판)
+def _kp(n, rev=None, op=None, rev_p=None, op_p=None, year=None):
+    p = {"n": n, "year": year or n // 4}
+    if rev is not None: p["매출액"] = rev
+    if op is not None: p["영업이익"] = op
+    if rev_p is not None: p["매출액_전"] = rev_p
+    if op_p is not None: p["영업이익_전"] = op_p
+    return p
+
+
+def test_kfin_check_prefers_restated_comparative_and_flags_over_2pct_and_1eok():
+    n = 2024 * 4 + 2                                   # 2024Q3
+    pts = [_kp(n, rev=100e9, op=10e9), _kp(n + 4, rev_p=103e9, op_p=10e9)]
+    rows = [{"ym": "202409", "rev": 103e9, "op": 11e9}]
+    chk, ncmp = SRV.kfin_check(pts, rows)
+    assert ncmp == 2
+    assert "rev" not in chk[str(n)]                    # 재작성 비교값(103e9)과 같다 — 그 분기 보고서 값(100e9)과는 3% 다르지만
+    assert chk[str(n)]["op"] == {"dart": 10e9, "kis": 11e9, "pct": 10.0, "src": "재작성"}
+
+
+def test_kfin_check_falls_back_to_filed_value_and_ignores_small_or_missing():
+    n = 2025 * 4                                       # 2025Q1 — 다음 해 보고서 없음
+    pts = [_kp(n, rev=1e9, op=None)]
+    chk, ncmp = SRV.kfin_check(pts, [{"ym": "202503", "rev": 1.05e9, "op": 5e8}])
+    assert ncmp == 1 and chk == {}                     # 5% 차이지만 1억 원 이하 · 영업이익은 DART 쪽 없음
+    chk, _ = SRV.kfin_check(pts, [{"ym": "202503", "rev": 2e9, "op": None}])
+    assert chk[str(n)]["rev"]["src"] == "공시" and chk[str(n)]["rev"]["pct"] == 100.0
+    assert SRV.kfin_check(pts, [{"ym": "bad"}, {"ym": "202503"}]) == ({}, 0)
+
+
+def test_kfin_view_trims_prices_to_a_year_before_first_quarter_and_reports_pending(monkeypatch):
+    d = {"v": SRV.KFIN_V, "at": "x", "is_q": {"rows": [{"ym": "201903", "rev": 1, "op": 1}], "why": ""},
+         "px": {"t": ["20090105", "20100104", "20110103", "20260119"], "c": [1, 2, 3, 4], "at": "a", "mkt": "UN"}}
+    monkeypatch.setattr(SRV, "_kfin_read", lambda code: d)
+    monkeypatch.setattr(SRV, "_kfin_kick", lambda code: False)
+    v = SRV.kfin_view("005930", [_kp(2011 * 4, rev=1), _kp(2026 * 4, rev=1)])
+    assert v["px"]["t"] == ["20100104", "20110103", "20260119"] and v["px"]["c"] == [2, 3, 4]
+    assert v["pending"] is False and v["is_from"] == "201903"
+    monkeypatch.setattr(SRV, "_kfin_read", lambda code: None)
+    monkeypatch.setattr(SRV, "_kfin_kick", lambda code: True)
+    v = SRV.kfin_view("005930", [])
+    assert v["px"] is None and v["pending"] is True
+
+
+def test_kfin_kick_respects_ttl_retry_and_readonly(monkeypatch, tmp_path):
+    started = []
+    monkeypatch.setattr(SRV, "_kfin_ok", lambda: True)
+    monkeypatch.setattr(SRV, "_kfin_path", lambda code: str(tmp_path / (code + ".json")))
+    monkeypatch.setattr(SRV.threading, "Thread", lambda target, daemon: type("T", (), {"start": lambda self: started.append(1)})())
+    monkeypatch.setattr(SRV, "KFIN", {"running": False, "code": None, "queue": {}, "tried": {}, "sup": (0.0, False)})
+    assert SRV._kfin_kick("005930") is True and started == [1]          # 파일 없음 → 받는다
+    assert SRV._kfin_kick("005930") is True and started == [1]          # 이미 차례 — 다시 띄우지 않는다
+    SRV.KFIN["queue"].clear(); SRV.KFIN["running"] = False
+    (tmp_path / "000660.json").write_text("{}", encoding="utf-8")
+    assert SRV._kfin_kick("000660") is False                            # 갓 받은 파일
+    SRV.KFIN["tried"]["000270"] = (time.time(), 1, "실패")
+    assert SRV._kfin_kick("000270") is False                            # 방금 실패 — 30분 쉼
+    assert SRV._kfin_kick("../bad") is False
+    monkeypatch.setattr(SRV, "READONLY", True)
+    assert SRV._kfin_kick("035420") is False

@@ -9753,6 +9753,153 @@ def _kis_tags(st):
     return bad, list(dict.fromkeys(bad + tags))
 
 
+# 증권사 분기 손익 · 주간 수정주가 — 가속도 탭 '한눈에' 판(2026-10-20, 사용자: "주가랑 데이터 가져올 때 증권사 api 따서 적용").
+# Tech 하위 프로세스(64비트 · KIS 토큰 하나)가 cache/kis/fin/<code>.json 에 받아 두면 읽는다(이 서버는 KIS 를 직접 부르지 않는다).
+# 사용자 선택: 주가 선 = 증권사 주간 수정주가(통합 시세), 매출 · 영업이익 선 = DART 그대로 + 증권사 값과 다르면 그 분기에 표시만.
+# 국면 · 변곡 · 기저율 계산에는 넣지 않는다. 증권사 시세 · 재무는 본인 용도 — 유료 배포물에 넣지 않는다.
+KFIN_V = 1
+KFIN = {"running": False, "code": None, "queue": {}, "tried": {}, "sup": (0.0, False)}   # queue = {code: 마지막으로 물은 때}
+KFIN_LOCK = threading.Lock()
+KFIN_TTL = 6 * 3600          # 파일이 이보다 묵으면 다시 받는다(두 번째부터는 손익 1회 + 주봉 최신 1쪽)
+KFIN_RETRY = 1800            # 실패하면 이 동안 다시 안 띄운다(폴링이 실패를 되풀이하지 않게)
+KFIN_WANT_TTL = 120          # 이만큼 다시 안 물은 회사는 차례에서 뺀다(화면을 떠났다)
+KFIN_TIMEOUT = 150
+KFIN_TOL = 0.02              # DART 와 2% 넘게(그리고 1억 원 넘게) 다르면 표시
+
+
+def _kfin_path(code):
+    return os.path.join(TECH_DIR, "cache", "kis", "fin", code + ".json")
+
+
+def _kfin_read(code):
+    try:
+        with open(_kfin_path(code), "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    return d if isinstance(d, dict) and d.get("v") == KFIN_V else None
+
+
+def _kfin_ok():
+    """받을 수 있나 — Tech 파이썬이 있고 Tech CLI 가 fin 하위 명령을 안다. 1분 기억."""
+    t, ok = KFIN["sup"]
+    if time.time() - t > 60:
+        ok = os.path.exists(TECH_PY) and _tech_supports('add_parser("fin"')
+        KFIN["sup"] = (time.time(), ok)
+    return ok
+
+
+def _kfin_kick(code):
+    """파일이 없거나 KFIN_TTL 보다 묵었으면 뒤에서 받는다. 반환: 이 회사를 받는 중(또는 차례 대기)인가.
+    조회 전용 서버면 띄우지 않는다(Tech 하위 프로세스 · 증권사 호출)."""
+    if READONLY or not re.fullmatch(r"[0-9A-Z]{6}", code or "") or not _kfin_ok():
+        return False
+    with KFIN_LOCK:
+        if code == KFIN["code"]:
+            return True
+        if code in KFIN["queue"]:
+            KFIN["queue"][code] = time.time()
+            return True
+        try:
+            age = time.time() - os.path.getmtime(_kfin_path(code))
+        except OSError:
+            age = None
+        last = KFIN["tried"].get(code)
+        if (age is not None and age < KFIN_TTL) or (last and time.time() - last[0] < KFIN_RETRY):
+            return False
+        KFIN["queue"][code] = time.time()
+        if not KFIN["running"]:
+            KFIN["running"] = True
+            threading.Thread(target=_kfin_loop, daemon=True).start()
+    return True
+
+
+def _kfin_loop():
+    while True:
+        with KFIN_LOCK:
+            now = time.time()
+            for k in [k for k, t in KFIN["queue"].items() if now - t > KFIN_WANT_TTL]:
+                KFIN["queue"].pop(k, None)
+            if not KFIN["queue"]:
+                KFIN.update(running=False, code=None)
+                return
+            code = max(KFIN["queue"], key=KFIN["queue"].get)     # 가장 최근에 물은 회사부터
+            KFIN["queue"].pop(code, None)
+            KFIN["code"] = code
+        cmd = [TECH_PY, "-m", "chart_screener", "fin", "--codes", code, "--budget", "90"]
+        rc, note = None, ""
+        try:
+            si = None
+            if os.name == "nt":
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                si.wShowWindow = 0          # SW_HIDE
+            r = subprocess.run(cmd, cwd=TECH_DIR, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               timeout=KFIN_TIMEOUT, env=dict(os.environ, PYTHONIOENCODING="utf-8"), startupinfo=si,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            rc = r.returncode
+            lines = [ln.split("\r")[-1].strip() for ln in (r.stdout or b"").decode("utf-8", "replace").splitlines()]
+            lines = [ln for ln in lines if ln]
+            if rc != 0:
+                note = (lines[-1] if lines else "종료 코드 %s" % rc)[:160]
+        except subprocess.TimeoutExpired:
+            rc, note = -1, "증권사 자료 받기가 %d초를 넘었습니다" % KFIN_TIMEOUT
+        except Exception as e:
+            rc, note = -2, "증권사 자료 받기를 띄우지 못했습니다: %s" % type(e).__name__
+        with KFIN_LOCK:
+            KFIN["tried"][code] = (time.time(), rc, note)
+            KFIN["code"] = None
+
+
+def kfin_check(pts, rows, tol=KFIN_TOL):
+    """증권사 분기 단독(원) vs DART — {n(str): {rev|op: {dart, kis, pct, src}}}, 견준 칸 수.
+    DART 쪽은 다음 해 같은 분기 보고서의 비교값(…_전 = 재작성)이 있으면 그것, 없으면 그 분기 보고서 값(증권사 값은 재작성)."""
+    by = {p.get("n"): p for p in pts or [] if p.get("n") is not None}
+    out, ncmp = {}, 0
+    for r in rows or []:
+        ym = str(r.get("ym") or "")
+        try:
+            n = int(ym[:4]) * 4 + int(ym[4:]) // 3 - 1
+        except ValueError:
+            continue
+        row = {}
+        for k, f in (("rev", "매출액"), ("op", "영업이익")):
+            kv = r.get(k)
+            dv, src = (by.get(n + 4) or {}).get(f + "_전"), "재작성"
+            if not isinstance(dv, (int, float)) or isinstance(dv, bool):
+                dv, src = (by.get(n) or {}).get(f), "공시"
+            if not isinstance(kv, (int, float)) or not isinstance(dv, (int, float)) or isinstance(dv, bool):
+                continue
+            ncmp += 1
+            if abs(kv - dv) > max(tol * abs(dv), 1e8):
+                row[k] = {"dart": dv, "kis": kv, "pct": round((kv - dv) / abs(dv) * 100, 1) if dv else None, "src": src}
+        if row:
+            out[str(n)] = row
+    return out, ncmp
+
+
+def kfin_view(code, pts):
+    """/api/druck/kis — {px:{t,c,at,mkt}|None, chk, ncmp, at, pending, why}. 파일이 없거나 묵었으면 뒤에서 받기를 띄운다."""
+    d = _kfin_read(code)
+    pending = _kfin_kick(code)
+    last = KFIN["tried"].get(code)
+    why = last[2] if last and last[1] not in (0, None) else ""
+    if not d:
+        if not pending and not why:
+            why = "증권사 자료 없음 — 차트 발굴(Tech) 파이썬 · 한국투자증권 설정을 확인" if not _kfin_ok() else ""
+        return {"px": None, "chk": {}, "ncmp": 0, "at": None, "pending": pending, "why": why}
+    px = d.get("px") or None
+    if px and pts:
+        y0 = str(min(p.get("year") or 9999 for p in pts) - 1) + "0101"     # 첫 분기 한 해 앞부터만 보낸다
+        t, c = px.get("t") or [], px.get("c") or []
+        i = next((k for k, x in enumerate(t) if x >= y0), len(t))
+        px = {"t": t[i:], "c": c[i:], "at": px.get("at"), "mkt": px.get("mkt")}
+    isq = d.get("is_q") or {}
+    chk, ncmp = kfin_check(pts, isq.get("rows"))
+    return {"px": px, "chk": chk, "ncmp": ncmp, "at": d.get("at"), "pending": pending,
+            "why": why or (isq.get("why") or ""), "is_from": ((isq.get("rows") or [{}])[0] or {}).get("ym")}
+
+
 def _val_apply_risk(rows):
     """행 복사본에 공시 위험 · 증권사 상태를 붙이고, 빨강 · 주황(공시)이거나 관리종목 · 거래정지 · 정리매매 · 투자위험(증권사)이면 저평가 → 관찰.
     보는 때마다 최신 공시위험.json · kis 스냅샷으로(계산 결과는 그대로 둔다)."""
@@ -13491,6 +13638,13 @@ class Handler(BaseHTTPRequestHandler):
                     if now_ and now_.get("stale"):
                         _druck_kick_stale(code_)                    # k 가 범위 밖(주가 자료가 다시 보정됨) — 뒤에서 한 번만 force 로 다시 쌓는다
                 return self._send(200, res)
+            if path == "/api/druck/kis":
+                # 가속도 '한눈에' 판 — 증권사 주간 주가 · DART 대조. 없거나 묵었으면 뒤에서 받고 pending 을 준다(화면이 몇 초마다 다시 묻는다)
+                code_ = q.get("code", "")
+                if not company_by_code(code_):
+                    return self._send(404, {"error": "회사 없음"})
+                res = druck(code_, wait=False) or {}
+                return self._send(200, kfin_view(code_, res.get("points") or []))
             if path == "/api/orbit":
                 res = orbit(q.get("code", ""))
                 if res is None:
