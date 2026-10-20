@@ -207,3 +207,36 @@ def test_synergy_view_old_report_without_overall_does_not_crash(monkeypatch):
     assert out["bt"]["loss4"] is None                                              # 옛 보고엔 없다 — 화면은 빈 객체로 받아 표를 안 그린다
     out = _view_with_bt(monkeypatch, None)
     assert "bt" not in out
+
+
+# ---------------------------------------------------------------- 2026-10-20 v3 — 위험 표지 · 점수 부분 정의 · v3 검증 표
+def test_risk_flags_read_s12_from_disclosure_risk(monkeypatch):
+    d = {"codes": {"A": {"name": "에이", "s12": {"CB발행": {"n": 1, "last": "20260901"}, "횡령배임": {"n": 2, "last": "20260310"}}},
+                   "B": {"name": "비", "level": None}}}
+    monkeypatch.setattr(SRV, "_disc_risk", lambda: d)
+    assert SRV._syn_risk_flags("A") == ["희석 — CB 발행 (12개월, 마지막 2026-09-01)", "부실 — 횡령·배임 (12개월, 마지막 2026-03-10)"]
+    assert SRV._syn_risk_flags("B") == [] and SRV._syn_risk_flags("Z") == []      # s12 없음 · 목록 밖 = 표지 없음
+    monkeypatch.setattr(SRV, "_disc_risk", lambda: None)                          # 공시위험.json 이 없을 때
+    assert SRV._syn_risk_flags("A") == []
+
+
+def test_disclosure_risk_tool_counts_the_same_categories():
+    """도구/공시위험.py 의 s12 범주 = 시너지.RISK_DIL + RISK_BAD — 서버 표지와 백테스트 표지가 같은 범주를 센다."""
+    src = open(os.path.join(BASE, "도구", "공시위험.py"), encoding="utf-8").read()
+    i = src.index("S12_CATS = (")
+    cats = eval(src[i + len("S12_CATS = "):src.index(")", i) + 1])
+    assert tuple(cats) == SRV.SYN.RISK_DIL + SRV.SYN.RISK_BAD
+
+
+def test_synergy_view_passes_parts_def_and_v3(monkeypatch):
+    bt = {"dates": 150, "stages": {}, "n": 8662, "firms": 169, "median": 2.5, "at": "20261020", "rec": {},
+          "v3": {"m1": {"spread": 10.7, "label": "근거 있음"}, "paired": {"diff": 4.1, "verdict": "차이를 확신할 수 없다"}}}
+    out = _view_with_bt(monkeypatch, bt)
+    assert [p["key"] for p in out["parts_def"]] == ["수주", "값", "여지"] and out["risk_pen"] == 10
+    assert out["bt"]["v3"]["m1"]["label"] == "근거 있음"
+    out = _view_with_bt(monkeypatch, {"dates": 150, "stages": {}, "n": 1, "firms": 1, "median": 0, "at": "x", "rec": {}})
+    assert out["bt"]["v3"] is None                                                 # 옛 보고 — 화면은 v3 표를 안 그린다
+
+
+def test_spec_names_v3():
+    assert SRV.SYN_SPEC.startswith("2026-10-20 v3") and "loss4" in SRV.SYN_SPEC

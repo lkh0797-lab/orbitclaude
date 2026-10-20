@@ -73,6 +73,25 @@ def hit_rows(f, cats, lo, D):
     return out
 
 
+# 호재기업 점수 v3 의 희석 · 부실 범주(시너지.RISK_DIL · RISK_BAD 와 같다 — tests/test_시너지_서버.py 가 맞춰 본다)
+S12_CATS = ("CB발행", "BW발행", "EB발행", "유상증자", "제3자배정",
+            "회생절차", "파산신청", "감사의견비적정", "관리종목_사유", "관리종목_우려", "실질심사", "상폐우려", "횡령배임",
+            "불성실_지정", "자본잠식", "보고서지연", "투자주의환기")
+
+
+def last_signals(f, lo_date, D, cats):
+    """(lo_date, D] 안 원본 공시의 범주별 {"n": 서로 다른 날 수, "last": 마지막 날} — cats 만(S.count_signals 와 같은 창 · 같은 셈)."""
+    lo = bisect.bisect_right(f["evd"], lo_date)
+    hi = bisect.bisect_right(f["evd"], D)
+    days = collections.defaultdict(set)
+    for i in range(lo, hi):
+        dte, s = f["ev"][i]
+        for c in s:
+            if c in cats:
+                days[c].add(dte)
+    return {c: {"n": len(v), "last": max(v)} for c, v in days.items()}
+
+
 def main():
     t0 = time.time()
     rows = K.load_rows()
@@ -102,6 +121,11 @@ def main():
             rec.update(level=level, proc=proc, last_a=last_a, div=div,
                        hits=[{"cat": c, "name": NAME[c], "days": n, "need": t, "rows": rows_.get(c, [])[:8]} for c, n, t in hits],
                        ref=[{"cat": c, "days": n, "rows": rows_.get(c, [])[:4]} for c, n in ref])
+        # 2026-10-20 — 호재기업 점수 v3 위험 표지(시너지.risk_flags)용 12개월 셈: 희석 · 부실 범주의 서로 다른 날 수와 마지막 날.
+        # 묶음과 상관없이 센다(표지를 붙일지는 시너지가 정한다). 도구/시너지_백테스트.risk_s12 와 같은 창 (D−12개월, D]
+        s12 = last_signals(f, S.shift(D, -12), D, S12_CATS)
+        if s12:
+            rec["s12"] = s12
         cnt[rec["level"] or (grp if grp != "본표본" else "해당 없음")] += 1
         codes[code] = rec
     res = {"기준일": D, "만든때": time.strftime("%Y-%m-%d %H:%M"), "규칙": [[c, NAME[c], t] for c, t in RULE],

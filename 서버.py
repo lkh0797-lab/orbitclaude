@@ -2643,14 +2643,11 @@ def screen(force=False):
 
 
 # ---------------------------------------------------------------- 시너지 발굴
-# 수주잔고(선행) · 매출 가속(전환) · 최근 수주 공시(확인) · 주가 반영도(가격)를
-# 한 줄에 세운다. 시너지.py 참조.
+# 점수 v3(2026-10-20) = (수주 + 값 + 여지) ÷ 3 − 위험 표지 10 — 시너지.py 참조. 최근 수주 공시 · 반영 갭은 정보로만 보인다.
 SYNERGY = {"running": False, "done": 0, "total": 0, "rows": [], "at": 0,
            "phase": "", "window": 0}
 SYNERGY_LOCK = threading.Lock()
 SYN_WINDOW = 40           # 최근 수주 공시를 훑는 기간(일). 전 종목 공시라 더 길면 느리다.
-BAD_FLAG = {"희석": "전환사채·신주인수권부사채 발행", "유동성 위험": "유동성 위험 공시",
-            "감사 문제": "감사의견 문제", "상장 위험": "상장 관련 위험", "소송·제재": "소송·제재"}
 
 
 _UNIV = {}
@@ -2727,7 +2724,8 @@ def _won_txt(v):
 # 접수일이 SYN_FRESH_DAYS 안, 검산 창은 최근 SYN_SURE_WIN 개(예전 서버는 신선도 조건 없이 창 8 — 2025-12 보고서가 reliable 이었다, 감사 ⑨).
 SYN_FRESH_DAYS = 200
 SYN_SURE_WIN = 12
-SYN_SPEC = "2026-10-15 v2a(전환 해당 없음 = loss4(영업 또는 순손실) · 결측 50 · 확인 0 · 싼 수주)"      # forward 기록에 적는 점수 식 판
+# forward 기록에 적는 점수 식 판 — 2026-10-20 v3(docs/superpowers/specs/2026-10-20-synergy-score-v3-design.md). 그 전 판은 v2a
+SYN_SPEC = "2026-10-20 v3(수주 · 값(PER 자기 역사) · 여지(흑자 이익률, loss4 = 50) ⅓씩 − 위험 표지(12개월 희석 · 부실) 10 · 가격 · 확인 뺌)"
 
 
 def _syn_fresh_days(*dates, today=None):
@@ -2837,7 +2835,13 @@ def _syn_forward(rows, day=None):
     return path
 
 
-def _syn_row(b, good_by, bad_by, twins):
+def _syn_risk_flags(code):
+    """종목 하나의 위험 표지(시너지.risk_flags) — 공시위험.json 이 없거나 s12 가 없으면(옛 파일 · 12개월 안 해당 공시 없음) []."""
+    d = _disc_risk() or {}
+    return SYN.risk_flags(((d.get("codes") or {}).get(code) or {}).get("s12") or {})
+
+
+def _syn_row(b, good_by, bad_by, twins):      # bad_by — 2026-10-20 v3 부터 안 쓴다(위험 표지는 _syn_risk_flags). 부르는 모양만 그대로
     c = company_by_code(b["code"])
     if not c:
         return None
@@ -2879,11 +2883,9 @@ def _syn_row(b, good_by, bad_by, twins):
     new_pct = (new_amt / rev * 100) if (rev and new_amt) else \
         (sum(z.get("pct") or 0 for z in own) or None)
 
-    flags = []
-    for x in bad_by.get(b["code"], []):
-        f = BAD_FLAG.get(x["category"])
-        if f and f not in [g.split(" (")[0] for g in flags]:
-            flags.append("%s (%s-%s-%s)" % (f, x["date"][:4], x["date"][4:6], x["date"][6:]))
+    # 위험 표지(2026-10-20 v3) — 공시위험.json 의 12개월 셈(s12, 도구/공시위험.py 가 매일 공시 목록으로 센다) → 시너지.risk_flags.
+    # 예전 40일 호재.BAD 정규식 감점은 기술적 매매정지(대형 수주 공시로 인한 정지까지)에도 −10 을 붙였다(2026-10-20 감사) — 쓰지 않는다
+    flags = _syn_risk_flags(b["code"])
 
     # 검산 창 — 최근 SYN_SURE_WIN(12)개 점(백테스트 row_at 와 같다). 검산 일치 또는 회사가 문장으로 직접 밝힌 값을 한 점당 한 번만 센다
     win = b["points"][-SYN_SURE_WIN:]
@@ -2961,17 +2963,14 @@ def _run_synergy():
             with SYNERGY_LOCK:
                 SYNERGY["phase"] = "수주잔고 읽는 중 %d/%d" % (d, t)
             time.sleep(3)
-        # 2) 최근 수주·악재 공시
+        # 2) 최근 수주 공시(악재는 2026-10-20 v3 부터 공시위험.json 12개월 셈 — _syn_risk_flags)
         with SYNERGY_LOCK:
             SYNERGY["phase"] = "최근 %d일 공시 훑는 중" % SYN_WINDOW
         raw = GOOD.scan(FIN.API_KEY, SYN_WINDOW, False, 3600) if GOOD else {}
-        good_by, bad_by = {}, {}
+        good_by = {}
         for x in raw.get("good", []):
             if x.get("category") == "대형수주" and x.get("code"):
                 good_by.setdefault(x["code"], []).append(x)
-        for x in raw.get("bad", []):
-            if x.get("code"):
-                bad_by.setdefault(x["code"], []).append(x)
         # 지주사·자회사가 같은 잔고를 적은 쌍 (원 단위까지 같을 때만)
         twins = {}
         for b in bl:
@@ -2984,7 +2983,7 @@ def _run_synergy():
         rows = []
         for i, b in enumerate(bl, 1):
             try:
-                r = _syn_row(b, good_by, bad_by, twins)
+                r = _syn_row(b, good_by, {}, twins)
                 if r:
                     rows.append(r)
             except Exception as e:
@@ -3027,6 +3026,7 @@ def _run_synergy():
                            "gap": p["gap"], "score": p["score"]} for p in peers[:5]]
             r["questions"] = SYN.questions(r, peers)
             r["reasons"] = SYN.reasons(r)
+            r["why"] = SYN.explain(r)          # 종목명을 누르면 이름 아래 펼치는 점수 해석 1~2줄(2026-10-20 v3)
         rows.sort(key=lambda r: (r["reliable"], r["score"] if r["score"] is not None else -1),
                   reverse=True)
         with SYNERGY_LOCK:
@@ -3057,12 +3057,15 @@ def synergy_view(force=False):
             stages[r["stage"]] = stages.get(r["stage"], 0) + 1
     out.update(rows=rows, stages=stages,
                reliable=sum(1 for r in rows if r["reliable"]),
-               rec=getattr(SYN, "SYN_REC", []))       # 추천필터 — 정의는 시너지.py 한 곳
+               rec=getattr(SYN, "SYN_REC", []),       # 추천필터 — 정의는 시너지.py 한 곳
+               parts_def=getattr(SYN, "PARTS", []),   # 점수 부분 이름 · 뜻(2026-10-20 v3 — 화면에 식을 따로 적지 않는다)
+               risk_pen=getattr(SYN, "RISK_PEN", 10))
     bt = _syn_bt()
     if bt:          # 화면의 '과거 검증' 상자 — 도구/시너지_백테스트.py 결과
         # overall(전체 중앙 · 90%) · no_slow(둔화 뺀 중앙 · 90% + 예전 score/score_old) · coverage 는 2026-10-14 v2 보고부터 — 옛 형식이면 None
         # loss4(4분기 합 적자 vs 흑자 표)는 2026-10-15 부터 넘긴다 — 화면 코드는 있었는데 키가 빠져 표가 안 떴다(리뷰 A-F4)
-        out["bt"] = {k: bt.get(k) for k in ("dates", "stages", "overall", "no_slow", "coverage", "n", "firms", "median", "at", "rec", "loss4")}
+        # v3(2026-10-20) — 스펙 2절 주 지표 · 믿음 표지 · v3 − v2 짝 차 · 위험 표지 표. 옛 보고엔 없다(None)
+        out["bt"] = {k: bt.get(k) for k in ("dates", "stages", "overall", "no_slow", "coverage", "n", "firms", "median", "at", "rec", "loss4", "v3")}
         out["bt"]["factors"] = {k: v for k, v in (bt.get("terciles") or {}).items()}
     return out
 

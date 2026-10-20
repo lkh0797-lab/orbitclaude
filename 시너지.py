@@ -2,15 +2,16 @@
 """
 시너지 발굴 — 수주가 실적과 주가로 넘어가는 길목을 잡는다.
 
-따로 놓고 보면 흔한 신호 넷을 한 줄에 세운다.
+점수(2026-10-20 v3 — docs/superpowers/specs/2026-10-20-synergy-score-v3-design.md) = 부분 셋 ⅓씩 − 위험 표지 하나당 10.
 
-  선행   매출로 빠져나가는 속도보다 빨리 쌓이나(북투빌), 잔고가 연매출의 몇 배인지가 1년 새 늘었나(배수 변화)
-  전환   4분기 합 영업이익률이 아직 낮아 늘어날 여지가 있나
-  확인   마지막 정기보고서 이후 새로 공시된 수주 계약(단일판매·공급계약)이 있나
-  가격   주가가 1년 동안 수주 증가만큼 올랐나 — 덜 올랐으면 '반영 갭'
+  수주   매출로 빠져나가는 속도보다 빨리 쌓이나(북투빌), 잔고가 연매출의 몇 배인지가 1년 새 늘었나(배수 변화)
+  값     PER 이 자기 과거보다 싼가(PER 자기 역사 % 가 낮을수록)
+  여지   흑자 회사의 4분기 합 영업이익률이 아직 낮아 오를 여지가 있나
+  위험   12개월 안 희석(CB · BW · EB · 유상증자 · 제3자배정) · 부실(회생 · 감사의견 · 관리종목 · 실질심사 · 횡령 …) 공시
 
-선행 · 전환 · 가격 세 부분만 과거 검증(도구/시너지_백테스트.py, 2013~2025 매달)으로 골랐다. 확인은 검증된 적 없어
-점수 밖(표시만, 가중 0)이고, 전환은 약하다. 다시 돌린 검증 값(표본 수 · 중앙 · 90% 구간)은 README '시너지 발굴' 절을 본다.
+2026-10-20 재검토: v2(선행 .35 · 전환 .25 · 가격 .25 · 확인 0)는 둔화를 뺀 회사 안에서 2020년 뒤 순위 힘이 없었다(상⅓ − 하⅓ −0.6).
+그 순위를 가장 많이 움직이던 가격(반영 갭)은 2020년 뒤 부호가 뒤집혔다 — 뺐다. 확인(수주 공시)도 기간마다 부호가 바뀌어 뺐다(정보로만).
+v3 부품은 그 감사를 보고 골랐다 — 백테스트는 표본 안 확인, 진짜 시험은 forward 기록이다. 아래 줄들은 v2 때 적은 검증 기록이다.
   - 매출 가속은 12개월 초과수익과 관계가 없었다. 전환 부분에서 뺐다.
   - 영업이익률은 낮을수록 뒤 수익률이 좋았다. 한 분기 값보다 4분기 합이 더 강하고 고르다.
     전환 부분은 4분기 합 이익률 하나만 쓴다 — 다만 부분 IC 는 작다(약하다). 직전 분기 대비 변화는 큰 적자 분기 뒤
@@ -265,10 +266,47 @@ def gap_of(backlog_yoy, price_1y, cap=300.0):
     return min(backlog_yoy, cap) - min(price_1y, cap)
 
 
-# 가중치. 수주가 먼저 움직이고(선행) 매출이 따라오며(전환) 주가가 마지막에 반영된다.
-# 확인(최근 계약 공시)은 검증된 적이 없어 가중 0 — parts 에 계산해 보여 주기만 한다(2026-10-14 v2).
-# 점수 = Σ(부분 × 가중) ÷ Σ가중 — 선행 .35 · 전환 .25 · 가격 .25 (백테스트 PARTS 와 같다).
-WEIGHTS = {"선행": 0.35, "전환": 0.25, "확인": 0.0, "가격": 0.25}
+# 가중치(2026-10-20 v3 — docs/superpowers/specs/2026-10-20-synergy-score-v3-design.md 1절). 부분 셋을 같은 무게로 — 가중을 고르지 않는다.
+#   수주  북투빌 · 잔고/연매출 배수 1년 변화(예전 '선행')
+#   값    PER 자기 역사 % 가 낮을수록(자기 과거보다 쌀수록) — 두 기간 · 모든 표본에서 같은 부호였던 유일한 가치 항목
+#   여지  흑자 회사끼리 4분기 합 영업이익률이 낮을수록(예전 '전환') — 약하지만 두 기간 같은 부호
+# 뺀 것: 가격(반영 갭 — 2020년 뒤 부호가 뒤집혔는데 둔화 뺀 순위의 46% 를 만들었다) · 확인(수주 공시 — 기간마다 부호가 바뀜, 금액 이력 없음).
+WEIGHTS = {"수주": 1 / 3, "값": 1 / 3, "여지": 1 / 3}
+# 화면 막대 · 머리말 · 해석이 같이 쓰는 부분 정의(서버가 synergy_view 로 넘긴다 — 화면에 식을 따로 적지 않는다)
+PARTS = [
+    {"key": "수주", "abbr": "수", "desc": "들어온 수주가 매출보다 빨리 쌓이나 — 북투빌 · 잔고/연매출 배수 1년 변화의 백분위 평균. 없으면 점수 없음"},
+    {"key": "값", "abbr": "값", "desc": "PER 이 자기 과거보다 싼가 — PER 자기 역사 % 가 낮을수록 높다. 적자 · 이력 짧음은 50"},
+    {"key": "여지", "abbr": "여", "desc": "이익률이 오를 여지 — 흑자 회사끼리 4분기 합 영업이익률이 낮을수록 높다. 4분기 적자는 50"},
+]
+RISK_PEN = 10           # 위험 표지 하나당 감점
+# 위험 표지(12개월, 원본 공시 · 서로 다른 날 수 — 도구/공시분류.py classify 범주). 서버는 공시위험.json 의 s12, 백테스트는 시점마다 다시 센다.
+RISK_DIL = ("CB발행", "BW발행", "EB발행", "유상증자", "제3자배정")
+RISK_BAD = ("회생절차", "파산신청", "감사의견비적정", "관리종목_사유", "관리종목_우려", "실질심사", "상폐우려", "횡령배임",
+            "불성실_지정", "자본잠식", "보고서지연", "투자주의환기")
+RISK_NAME = {"CB발행": "CB 발행", "BW발행": "BW 발행", "EB발행": "EB 발행", "유상증자": "유상증자", "제3자배정": "제3자배정",
+             "회생절차": "회생절차", "파산신청": "파산신청", "감사의견비적정": "감사의견 비적정", "관리종목_사유": "관리종목 사유",
+             "관리종목_우려": "관리종목 우려", "실질심사": "실질심사", "상폐우려": "상폐 우려", "횡령배임": "횡령·배임",
+             "불성실_지정": "불성실공시 지정", "자본잠식": "자본잠식", "보고서지연": "보고서 지연", "투자주의환기": "투자주의환기"}
+
+
+def risk_flags(s12):
+    """12개월 위험 공시 셈 → 위험 표지 문자열 목록(희석 · 부실, 각 하나). s12 = {범주: 날 수 | {"n": 날 수, "last": 'YYYYMMDD'}}.
+    문자열은 '희석 — CB 발행 · 유상증자 (12개월, 마지막 2026-08-12)' 꼴 — 앞 두 글자(희석 · 부실)가 종류다."""
+    def n_of(v):
+        return (v.get("n") or 0) if isinstance(v, dict) else (v or 0)
+
+    def last_of(cats):
+        ds = [v.get("last") for c, v in (s12 or {}).items() if c in cats and isinstance(v, dict) and v.get("last") and n_of(v) > 0]
+        return max(ds) if ds else None
+    out = []
+    for kind, cats in (("희석", RISK_DIL), ("부실", RISK_BAD)):
+        hit = [c for c in cats if n_of((s12 or {}).get(c)) > 0]
+        if not hit:
+            continue
+        d = last_of(hit)
+        out.append("%s — %s (12개월%s)" % (kind, " · ".join(RISK_NAME.get(c, c) for c in hit),
+                                          (", 마지막 %s-%s-%s" % (d[:4], d[4:6], d[6:8])) if d else ""))
+    return out
 
 
 # ---------------------------------------------------------------- 추천필터
@@ -294,7 +332,7 @@ SYN_REC = [      # 순서: '싼 수주'(가치 대비 가격을 재는 유일한
      "desc": "잔고 증가가 주가 상승을 50%p 넘게 앞선다 — 수주는 쌓였는데 주가는 아직",
      "f": {"stages": _NOT_SLOW, "btbMin": 1.1, "gapMin": 50}},
     {"id": "safe", "name": "흑자·무사고",
-     "desc": "4분기 흑자, 최근 악재 공시 없음, 잔고 소진 아님 — 턴어라운드 베팅을 뺀 보수적 목록",
+     "desc": "4분기 흑자, 12개월 안 희석 · 부실 공시 없음, 잔고 소진 아님 — 턴어라운드 베팅을 뺀 보수적 목록",
      "f": {"stages": _NOT_SLOW, "btbMin": 1.0, "noLoss": True, "noFlags": True}},
     {"id": "turn", "name": "턴어라운드 베팅",
      "desc": "4분기 적자인데 수주가 빠르게 쌓인다 — 과거 수익률은 높았지만 크게 잃은 경우도 많다",
@@ -307,7 +345,8 @@ SYN_REC = [      # 순서: '싼 수주'(가치 대비 가격을 재는 유일한
 
 
 def rec_pass(r, f):
-    """추천필터 거름 — 화면 synPass 의 같은 키만 옮겼다(백테스트용). 악재 공시(noFlags)는 과거 자료가 없어 보지 않는다."""
+    """추천필터 거름 — 화면 synPass 의 같은 키만 옮겼다(백테스트용). noFlags 는 위험 표지(risk_flags) — 2026-10-20 v3 부터 백테스트도
+    시점마다 공시 목록으로 센다(그 전엔 과거 자료가 없어 보지 않았다)."""
     def num(v):
         return None if v in (None, "") else float(v)
 
@@ -324,7 +363,8 @@ def rec_pass(r, f):
             # 2026-10-14 v2: 잔고 − 매출 선행(%p) 하한, PER 자기 역사 백분위 상한. per_pct 가 None(적자 · 이력 부족 ·
             # 풍경 없음)이면 '해당 없음' — perPctMax 가 있는 필터는 통과 못 한다(감점은 아니다)
             and ge(r.get("lead"), f.get("leadMin")) and le(r.get("per_pct"), f.get("perPctMax"))
-            and not (f.get("noLoss") and r.get("loss4")) and not (f.get("onlyLoss") and not r.get("loss4")))
+            and not (f.get("noLoss") and r.get("loss4")) and not (f.get("onlyLoss") and not r.get("loss4"))
+            and not (f.get("noFlags") and r.get("flags")))
 
 
 def _margin(r):
@@ -343,17 +383,18 @@ def _profit4(r):
 
 
 def score(rows):
-    """rows 는 build_row 결과. 신뢰할 수 있는 행끼리 백분위를 매긴다."""
+    """rows 는 build_row 결과. 신뢰할 수 있는 행끼리 백분위를 매긴다(2026-10-20 v3 — 수주 · 값 · 여지 ⅓씩 − 위험 표지 10).
+    r["flags"] 는 위험 표지(risk_flags) — 서버 · 백테스트가 채운다."""
     ok = [r for r in rows if r["reliable"]]
     R = {
         "btb": _pct_rank([r.get("btb") for r in ok]),
         "cov": _pct_rank([r.get("cover_chg") for r in ok]),
+        # PER 자기 역사 % — 낮을수록 싸다. 백분위를 뒤집어 '쌀수록 높게'
+        "per": _pct_rank([r.get("per_pct") for r in ok]),
         # 이익률은 낮을수록 좋다 — 늘어날 여지(수주 산업의 영업 레버리지). 지주사처럼 발산한 값은 뺀다.
         # 흑자(영업이익 · 순이익 4분기 합 둘 다 > 0, _profit4)만 백분위. 적자는 '해당 없음'(None → 아래서 50 대입): 예전 식
         # −max(m4, 0) 은 적자를 전부 최상위 동률로 올렸다(상위 20 중 적자 10곳, 2026-10-14 감사) — 가산도 감점도 아닌 중앙 자리에 둔다.
         "low": _pct_rank([-_margin(r) for r in ok if _profit4(r)]),
-        "new": _pct_rank([r.get("new_pct") for r in ok]),
-        "gap": _pct_rank([r.get("gap") for r in ok]),
     }
 
     def blend(parts):
@@ -371,23 +412,73 @@ def score(rows):
             r["score"], r["parts"] = None, {}
             continue
         m = _margin(r)
+        pp = R["per"](r.get("per_pct"))
         parts = {
-            "선행": blend([(R["btb"](r.get("btb")), 0.5), (R["cov"](r.get("cover_chg")), 0.5)]),
-            "전환": R["low"](-m) if _profit4(r) else None,
-            # 표시만 — 가중 0(검증 전). 공시 없음은 '해당 없음'(None)
-            "확인": R["new"](r.get("new_pct")) if r.get("new_pct") else None,
-            "가격": R["gap"](r.get("gap")),
+            "수주": blend([(R["btb"](r.get("btb")), 0.5), (R["cov"](r.get("cover_chg")), 0.5)]),
+            "값": (100.0 - pp) if pp is not None else None,
+            "여지": R["low"](-m) if _profit4(r) else None,
         }
         r["parts"] = {k: (round(v) if v is not None else None) for k, v in parts.items()}
-        # 선행이 없으면 점수 없음. 나머지 부분의 결측은 50(중앙) 대입 — 재정규화하지 않는다(한 항목만으로 점수가 서지 않게)
-        if parts["선행"] is None:
+        # 수주가 없으면 점수 없음. 나머지 부분의 결측은 50(중앙) 대입 — 재정규화하지 않는다(한 항목만으로 점수가 서지 않게)
+        if parts["수주"] is None:
             r["score"] = None
             continue
         s = sum((50.0 if parts[k] is None else parts[k]) * WEIGHTS[k] for k in WEIGHTS) / wtot
-        if r.get("flags"):
-            s -= 10 * len(r["flags"])          # 희석·소송 같은 최근 악재 공시(검증 전 — 그대로 둔다)
+        s -= RISK_PEN * len(r.get("flags") or [])
         r["score"] = round(max(s, 0), 1)
     return rows
+
+
+def explain(r):
+    """점수 해석 1~2줄(종목명을 누르면 이름 아래 펼친다 — 스펙 3절). 그 회사의 실제 숫자로 무엇이 점수를 올렸고 내렸는지 적는다."""
+    if not r.get("reliable"):
+        return ["점수 없음 — " + (r.get("why_not") or "잔고 값을 믿기 어렵다") + ". 순위 밖이다."]
+    P = r.get("parts") or {}
+    if r.get("score") is None:
+        return ["점수 없음 — 1년 전 잔고가 없어 수주 속도(북투빌 · 배수 변화)를 셀 수 없다."]
+    flags = r.get("flags") or []
+
+    def f(x):
+        return "—" if x is None else "%d" % round(x)
+    fp = lambda k: "50" if P.get(k) is None else f(P[k])      # noqa: E731 — 빈 부분은 50 으로 센다(아래 둘째 줄이 까닭을 적는다)
+    head = "점수 %s = (수주 %s · 값 %s · 여지 %s) ÷ 3" % (f(r["score"]), fp("수주"), fp("값"), fp("여지"))
+    if flags:
+        head += " − 위험 %d" % (RISK_PEN * len(flags))
+    btb, cov, cch = r.get("btb"), r.get("cover"), r.get("cover_chg")
+    s = []
+    if btb is not None:
+        s.append("들어온 수주가 매출의 %.1f배" % btb)
+    if cov is not None:
+        s.append("잔고 연매출 %.1f년치%s" % (cov, ("(1년 새 %+.1f년)" % cch) if cch is not None else ""))
+    pp, m4 = r.get("per_pct"), _margin(r)
+    desc = {
+        "수주": " · ".join(s) or "수주 속도",
+        "값": ("PER 이 자기 과거 %d%% 자리%s" % (round(pp), " — 과거보다 싸다" if pp <= 30 else (" — 과거보다 비싸다" if pp >= 70 else " — 보통")))
+              if pp is not None else "PER 자기 역사 없음(적자 · 이력 짧음) — 50 으로 셈",
+        "여지": ("4분기 적자 — 50 으로 셈(흑자 전환 베팅)" if r.get("loss4") else
+                ("4분기 영업이익률 %.1f%%%s" % (m4, " — 낮은 편(오를 여지)" if (P.get("여지") or 0) >= 70 else
+                                          (" — 이미 높은 편" if P.get("여지") is not None and P["여지"] <= 30 else "")))
+                if m4 is not None else "이익률 모름 — 50 으로 셈"),
+    }
+    have = [(k, P[k]) for k in ("수주", "값", "여지") if P.get(k) is not None]
+    top = max(have, key=lambda kv: kv[1]) if have else None
+    low = min(have, key=lambda kv: kv[1]) if have else None
+    l1 = head + " — " + ("강점: %s %s(%s)" % (top[0], f(top[1]), desc[top[0]]) if top and top[1] >= 60 else "두드러진 강점 없음")
+    l2 = []
+    if low and low[1] <= 40 and (low is not top or top[1] < 60):
+        l2.append("약점: %s %s(%s)" % (low[0], f(low[1]), desc[low[0]]))
+    for k in ("값", "여지"):            # 50 으로 센 부분은 왜 비었는지 적는다
+        if P.get(k) is None:
+            l2.append(desc[k])
+    # 위험 표지는 짧게 — '희석 −10(CB 발행 · 유상증자)'. 날짜까지 든 긴 문장은 '주의' 꼬리표 · 펼친 행 근거에 있다
+    l2 += ["위험 %s −%d(%s)" % (x[:2], RISK_PEN, x.split(" — ", 1)[-1].split(" (", 1)[0]) for x in flags]
+    if r.get("stage") == "반영":
+        l2.append("반영 단계 — " + (r.get("stage_why") or "주가가 수주보다 앞서 갔다"))
+    elif r.get("stage") == "둔화":         # 점수는 단계를 안 본다 — 과거에 유일하게 뒤처진 무리라 따로 적는다
+        l2.append("둔화 단계 — 잔고가 줄거나 들어오는 수주가 매출보다 적다(과거에 유일하게 뒤처진 무리)")
+    if not l2:
+        l2.append("약점 없음 — 세 부분 모두 40 넘음" if have and low[1] > 40 else "나머지는 중간")
+    return [l1, " · ".join(l2)]
 
 
 def stage(r):

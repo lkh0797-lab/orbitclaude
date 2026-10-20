@@ -3,11 +3,13 @@
 '시너지 발굴' 점수와 단계(잠복·점화·반영·둔화·관찰)가 실제로 맞았나.
 
 매달 말(2013.06~2025.09) 그때 이미 공시된 보고서만으로 시너지 발굴 행을 다시 만든다.
-  선행   북투빌 · 잔고/연매출 배수 1년 변화
-  전환   4분기 합 영업이익률(흑자만 백분위, 적자는 해당 없음 → 50 대입)
-  가격   min(잔고 1년, 300) − min(주가 1년, 300)(반영 갭, 양쪽 자름)
-  확인   보고서 뒤 수주 공시 — 과거 공시 목록이 캐시에 없어 전부 없음(2026-10-14 v2 부터 가중 0 이라 점수에 영향 없음)
-점수는 시너지.py score() 를 그대로 부르고(그 날 신뢰할 수 있는 회사끼리 백분위 → 가중평균), 단계는 stage() 를 그대로 부른다.
+2026-10-20 v3(docs/superpowers/specs/2026-10-20-synergy-score-v3-design.md) — 점수 = (수주 + 값 + 여지) ÷ 3 − 위험 표지 10.
+  수주   북투빌 · 잔고/연매출 배수 1년 변화(v2 '선행')
+  값     PER 자기 역사 % 가 낮을수록(분기 패널 per_pct, 접수일 ≤ t)
+  여지   4분기 합 영업이익률(흑자만 백분위, 적자는 해당 없음 → 50 대입 — v2 '전환')
+  위험   12개월 안 희석 · 부실 공시(.cache/공시목록 I · B · A001 을 시점마다 다시 셈 — 시너지.risk_flags)
+v2(선행 .35 · 전환 .25 · 가격 = 반영 갭 .25)는 score_v2 로 같은 행에 함께 매기고, 미리 적은 주 지표(둔화 뺀 상⅓ − 하⅓, 회사 · 해 재표본)와
+v3 − v2 짝 차를 보고의 'v3' 칸에 적는다. 점수는 시너지.py score() 를 그대로 부르고, 단계는 stage() 를 그대로 부른다.
 2026-10-14 v2 — 행에 per_pct(분기 패널 .cache/quarter/bt_panel.json 의 같은 code · 같은 분기 lab 줄, 접수일 ≤ t 인 것만 —
 미래 분기 금지) · lead(잔고 1년 증가율 − 4분기 합 매출 1년 변화, %p)를 더해 추천필터 '싼 수주'(SYN_REC cheap)를 같은 정의로 잰다.
 보고에 overall(전체 중앙 · 90%) · no_slow(둔화 뺀 중앙 · 90% + 점수 상⅓−하⅓) · 요인 per_pct · lead(둔화 뺀 IC 도) 가 더 들어간다.
@@ -64,6 +66,54 @@ def _load_qpanel(path=QTR_PANEL):
 
 QP = _load_qpanel()
 
+# 위험 표지(2026-10-20 v3) — 공시 목록(.cache/공시목록 I · B · A001)을 회사별로 한 번 읽고, 시점 t 까지 12개월(t−12개월, t] 의 범주별 서로 다른
+# 날 수를 센다. 정정 · 첨부 재제출은 세지 않고, '자회사사항'만인 공시는 뺀다(도구/작전주_사망_검증.prepare 와 같은 규칙).
+# 서버는 같은 셈을 도구/공시위험.py 가 s12 로 적어 주고, 둘 다 시너지.risk_flags 로 표지를 만든다.
+sys.path.insert(0, HERE)
+import 공시분류 as K            # noqa: E402
+import 작전주_사망_검증 as DTH   # noqa: E402
+_RISK = {"d": None}
+_RISK_LOCK = __import__("threading").Lock()
+assert all(c in {x["id"] for x in K.CATEGORIES} for c in SYN.RISK_DIL + SYN.RISK_BAD), "위험 범주 이름이 공시분류와 다르다"
+
+
+def _risk_info():
+    """{종목코드: {"ev": [(날짜, frozenset(범주)) …], "evd": [날짜 …]}} — 처음 부를 때 한 번 읽는다(스레드 안전)."""
+    with _RISK_LOCK:
+        if _RISK["d"] is not None:
+            return _RISK["d"]
+        import glob
+        want = {c.get("code") for c in S.INDEX.get("companies", []) if c.get("code")}
+        seen, ev = set(), {}
+        for kd in K.KINDS:
+            for fp in sorted(glob.glob(os.path.join(K.DIR, "%s_*.jsonl" % kd))):
+                with open(fp, encoding="utf-8") as fh:
+                    for ln in fh:
+                        x = json.loads(ln)
+                        sc = (x.get("stock_code") or "").strip()
+                        if sc not in want or x.get("rcept_no") in seen:
+                            continue
+                        seen.add(x.get("rcept_no"))
+                        if K.norm(x["report_nm"])[1]:          # 정정 · 첨부 재제출
+                            continue
+                        cs = K.classify(x["report_nm"], x.get("flr_nm"))
+                        if not cs or cs == ("자회사사항",):
+                            continue
+                        ev.setdefault(sc, []).append((x["rcept_dt"], frozenset(cs)))
+        d = {}
+        for sc, v in ev.items():
+            v.sort(key=lambda e: e[0])
+            d[sc] = {"ev": v, "evd": [e[0] for e in v]}
+        _RISK["d"] = d
+        print("  위험 공시 — %d곳 · %d건(원본, 분류됨)" % (len(d), sum(len(v["ev"]) for v in d.values())), flush=True)
+        return d
+
+
+def risk_s12(code, t):
+    """시점 t 까지 12개월의 범주별 서로 다른 날 수({범주: n}) — 접수일 ≤ t 만(미래 공시 안 봄)."""
+    f = _risk_info().get(code)
+    return DTH.count_signals(f, DTH.shift(t, -12), t) if f else {}
+
 
 def qpanel_per_pct(code, year, q, t, qp=None):
     """시점 t 의 PER 자기 역사 백분위 — 분기 패널의 같은 code · 같은 분기(year, q) 줄, 접수일 ≤ t 일 때만(시너지.per_pct_at).
@@ -78,6 +128,7 @@ def derive(r):
     r["lead"] = SYN.lead_of(r.get("backlog_yoy"), r.get("rev4_yoy"))
     lab = r.get("lab")
     r["per_pct"] = SYN.per_pct_at(QP.get((r["code"], lab)), r["t"]) if lab else None
+    r["flags"] = SYN.risk_flags(risk_s12(r["code"], r["t"]))      # 2026-10-20 v3 — 12개월 희석 · 부실(시점 t 까지)
     return r
 
 
@@ -201,14 +252,30 @@ def row_at(P, t):
     return r
 
 
-def score_date(rows):
-    """지금 화면 식(SYN.score)과 예전 식을 함께 매긴다. 확인(수주 공시)은 과거 자료가 없어 모두 0 — 같은 날 순서는 바뀌지 않는다."""
+def score_v2(rows):
+    """2026-10-14 v2 점수(2026-10-20 까지 화면 식) — 선행 .35 · 전환 .25 · 가격(반영 갭) .25, 확인 0(백테스트엔 공시 금액이 없다), 결측 50,
+    선행 없으면 None. 감점은 없다(v2 백테스트는 악재 자료가 없었다). v3 와 같은 행에서 견주려고 얼려 둔다."""
+    ok = rows
+    R = {"btb": SYN._pct_rank([r.get("btb") for r in ok]), "cov": SYN._pct_rank([r.get("cover_chg") for r in ok]),
+         "low": SYN._pct_rank([-SYN._margin(r) for r in ok if SYN._profit4(r)]), "gap": SYN._pct_rank([r.get("gap") for r in ok])}
+    W2 = {"선행": .35, "전환": .25, "가격": .25}
     for r in rows:
-        r.update(reliable=True, new_pct=None, flags=[])
+        a, b = R["btb"](r.get("btb")), R["cov"](r.get("cover_chg"))
+        lead = ((a or 0) * .5 + (b or 0) * .5) / ((.5 if a is not None else 0) + (.5 if b is not None else 0)) if (a is not None or b is not None) else None
+        p = {"선행": lead, "전환": R["low"](-SYN._margin(r)) if SYN._profit4(r) else None, "가격": R["gap"](r.get("gap"))}
+        r["p_선행"], r["p_전환"], r["p_가격"] = (round(p[k]) if p[k] is not None else None for k in ("선행", "전환", "가격"))
+        r["score_v2"] = None if lead is None else round(sum((50.0 if p[k] is None else p[k]) * w for k, w in W2.items()) / sum(W2.values()), 1)
+
+
+def score_date(rows):
+    """지금 화면 식(SYN.score — v3)과 v2 · 예전 식을 함께 매긴다. 위험 표지(flags)는 derive 가 시점마다 센 값 — 없으면 []."""
+    for r in rows:
+        r.update(reliable=True, new_pct=None, flags=r.get("flags") or [])
     SYN.score(rows)
     for r in rows:
-        r["p_선행"], r["p_전환"], r["p_가격"] = (r["parts"].get(k) for k in ("선행", "전환", "가격"))
+        r["p_수주"], r["p_값"], r["p_여지"] = (r["parts"].get(k) for k in ("수주", "값", "여지"))
         del r["parts"]
+    score_v2(rows)
     R = {k: SYN._pct_rank([r[f] for r in rows]) for k, f in
          (("yoy", "backlog_yoy"), ("btb", "btb"), ("acc", "rev_accel"), ("mgn", "margin_delta"), ("gap", "gap"))}
     R["per"] = SYN._pct_rank([-r["per"] if r["per"] else None for r in rows])
@@ -227,12 +294,115 @@ def score_date(rows):
         r["score_old"] = blend([(old[k], w) for k, w in PARTS.items()])
 
 
+def boot_year(rows, fn, n=800, seed=11):
+    """해(年) 단위 재표본 90% 구간 — 같은 해의 시장 충격을 한 덩어리로(회사 재표본만 하면 구간이 좁게 나온다, 2026-10-20 감사)."""
+    import random
+    by = {}
+    for r in rows:
+        by.setdefault(r["t"][:4], []).append(r)
+    yrs = sorted(by)
+    rnd = random.Random(seed)
+    vals = sorted(v for v in (fn([x for y in (rnd.choice(yrs) for _ in yrs) for x in by[y]]) for _ in range(n)) if v is not None)
+    return (vals[int(len(vals) * .05)], vals[int(len(vals) * .95)]) if vals else (None, None)
+
+
+def _tspread(key, Y):
+    """날짜 안 분위(key) 상⅓ 중앙 − 하⅓ 중앙. 양쪽 6행↑일 때만."""
+    def f(sub):
+        lo = [r[Y] for r in sub if r[key] < 100.0 / 3]
+        hi = [r[Y] for r in sub if r[key] >= 200.0 / 3]
+        return st.median(hi) - st.median(lo) if len(lo) > 5 and len(hi) > 5 else None
+    return f
+
+
+def m1_test(rows, key, Y="ex12m"):
+    """스펙 2절 주 지표 — rows(보통 둔화 뺀) 안 key 의 날짜 안 분위 상⅓ − 하⅓. 회사 · 해 재표본 90% · ~2019 / 2020~ ·
+    믿음 표지(회사 하한 > 0 · 해 하한 > 0 · 앞 > 0 · 뒤 > 0 이면 '근거 있음')."""
+    rs = [dict(r, _p=r.get(key)) for r in rows if r.get(Y) is not None and r.get(key) is not None]
+    rs = SYN.date_pct(rs, "_p", "t")
+    if len(rs) < 30:
+        return None
+    sp = _tspread("_p", Y)
+    c, yr = W.boot(rs, sp), boot_year(rs, sp)
+    e, l = sp([r for r in rs if r["t"] < W.SPLIT]), sp([r for r in rs if r["t"] >= W.SPLIT])
+    ok = all(x is not None and x > 0 for x in (c[0], yr[0], e, l))
+    return {"spread": sp(rs), "ci": list(c), "ci_year": list(yr), "early": e, "late": l, "n": len(rs),
+            "firms": len({r["code"] for r in rs}), "label": "근거 있음" if ok else "근거 약함"}
+
+
+def paired_test(rows, ka, kb, Y="ex12m"):
+    """같은 행에서 ka 의 상⅓−하⅓ − kb 의 상⅓−하⅓(둘 다 날짜 안 분위). 회사 재표본 90% · ~2019 / 2020~."""
+    rs = [dict(r, _a=r.get(ka), _b=r.get(kb)) for r in rows if r.get(Y) is not None and r.get(ka) is not None and r.get(kb) is not None]
+    rs = SYN.date_pct(SYN.date_pct(rs, "_a", "t"), "_b", "t")
+    if len(rs) < 30:
+        return None
+    sa, sb = _tspread("_a", Y), _tspread("_b", Y)
+
+    def d(sub):
+        x, y = sa(sub), sb(sub)
+        return (x - y) if (x is not None and y is not None) else None
+    c = W.boot(rs, d)
+    return {"diff": d(rs), "ci": list(c), "a": sa(rs), "b": sb(rs), "early": d([r for r in rs if r["t"] < W.SPLIT]),
+            "late": d([r for r in rs if r["t"] >= W.SPLIT]), "n": len(rs),
+            "verdict": "나았다" if (c[0] is not None and c[0] > 0) else ("못했다" if (c[1] is not None and c[1] < 0) else "차이를 확신할 수 없다")}
+
+
+def v3_report(rows, nd, Y="ex12m"):
+    """2026-10-20 v3 — 스펙 2절에 미리 적은 표. 화면 '과거 검증' 상자와 종목 해석이 label 을 읽는다."""
+    out = {"spec": "docs/superpowers/specs/2026-10-20-synergy-score-v3-design.md"}
+    out["m1"] = m1_test(nd, "score", Y)                       # 주 지표 — 둔화 뺀 안 v3
+    out["m1_v2"] = m1_test(nd, "score_v2", Y)                 # 같은 잣대로 v2
+    out["m1_all"] = m1_test(rows, "score", Y)                 # 전체 행(둔화 포함)
+    out["paired"] = paired_test(nd, "score", "score_v2", Y)   # v3 − v2, 둔화 뺀 같은 행
+    lat = [r for r in nd if r["stage"] == "잠복" and r["t"] >= W.SPLIT]
+    out["latent_late"] = m1_test(lat, "score", Y)             # 잠복만 2020~ (앞 기간은 날짜당 행이 적다)
+    out["ic"] = W.ic_stats(nd, lambda r: r.get("score"), Y, overlap=12)
+    out["ic_v2"] = W.ic_stats(nd, lambda r: r.get("score_v2"), Y, overlap=12)
+    # 위험 표지 — 둔화 뺀 안에서 있음 vs 없음
+    out["risk"] = {}
+    for nm, f in (("없음", lambda r: not r.get("flags")), ("희석", lambda r: any(x.startswith("희석") for x in r.get("flags") or [])),
+                  ("부실", lambda r: any(x.startswith("부실") for x in r.get("flags") or []))):
+        sub = [r for r in nd if f(r)]
+        s = W.summ(sub, Y) if sub else None
+        if not s:
+            continue
+        lo, hi = W.boot(sub, lambda x: st.median([r[Y] for r in x]) if x else None)
+        e = [r[Y] for r in sub if r["t"] < W.SPLIT]
+        l = [r[Y] for r in sub if r["t"] >= W.SPLIT]
+        out["risk"][nm] = dict(s, ci=[lo, hi], early=st.median(e) if e else None, late=st.median(l) if l else None,
+                               worst=sum(1 for r in sub if r[Y] < -30) / len(sub) * 100)
+    out["coverage"] = {"per_pct": sum(1 for r in nd if r.get("per_pct") is not None), "loss4": sum(1 for r in nd if r.get("loss4")),
+                       "flags": sum(1 for r in nd if r.get("flags")), "n": len(nd)}
+
+    def fm(x):
+        return "—" if x is None else "%+.1f" % x
+    print("\n== v3 (스펙 2026-10-20) — 둔화 뺀 안 상⅓ − 하⅓")
+    for k in ("m1", "m1_v2", "m1_all", "latent_late"):
+        x = out[k]
+        if x:
+            print("  %-12s 차 %s 회사 %s~%s 해 %s~%s | ~2019 %s 2020~ %s | n %d (%d곳) → %s" % (
+                k, fm(x["spread"]), fm(x["ci"][0]), fm(x["ci"][1]), fm(x["ci_year"][0]), fm(x["ci_year"][1]),
+                fm(x["early"]), fm(x["late"]), x["n"], x["firms"], x["label"]))
+    pt = out["paired"]
+    if pt:
+        print("  v3 − v2 짝 차 %s [%s, %s] (v3 %s · v2 %s) ~2019 %s 2020~ %s → %s" % (
+            fm(pt["diff"]), fm(pt["ci"][0]), fm(pt["ci"][1]), fm(pt["a"]), fm(pt["b"]), fm(pt["early"]), fm(pt["late"]), pt["verdict"]))
+    for nm, x in out["risk"].items():
+        print("  위험 %-4s 표본 %5d (%3d곳) 중앙 %s [%s, %s] −30%%↓ %2.0f%% | ~2019 %s 2020~ %s" % (
+            nm, x["n"], x["firms"], fm(x["median"]), fm(x["ci"][0]), fm(x["ci"][1]), x["worst"], fm(x["early"]), fm(x["late"])))
+    return out
+
+
 FACTORS = [
     ("score_old", "예전 점수(확인 뺌)", lambda r: r["score_old"]),
-    ("score", "지금 점수(확인 뺌)", lambda r: r["score"]),
-    ("p_선행", "  선행 부분", lambda r: r["p_선행"]),
-    ("p_전환", "  전환 부분", lambda r: r["p_전환"]),
-    ("p_가격", "  가격 부분", lambda r: r["p_가격"]),
+    ("score", "지금 점수 v3(수주 · 값 · 여지 − 위험)", lambda r: r["score"]),
+    ("p_수주", "  수주 부분", lambda r: r.get("p_수주")),
+    ("p_값", "  값 부분", lambda r: r.get("p_값")),
+    ("p_여지", "  여지 부분", lambda r: r.get("p_여지")),
+    ("score_v2", "v2 점수(선행 · 전환 · 가격)", lambda r: r.get("score_v2")),
+    ("p_선행", "  v2 선행 부분", lambda r: r.get("p_선행")),
+    ("p_전환", "  v2 전환 부분", lambda r: r.get("p_전환")),
+    ("p_가격", "  v2 가격 부분", lambda r: r.get("p_가격")),
     ("backlog_yoy", "잔고 1년 증가율", lambda r: min(r["backlog_yoy"], 300) if r["backlog_yoy"] is not None else None),
     ("btb", "북투빌", lambda r: min(r["btb"], 5) if r["btb"] is not None else None),
     ("cover", "잔고/연매출", lambda r: min(r["cover"], 10) if r["cover"] is not None else None),
@@ -439,12 +609,13 @@ def report(panel):
                 "%+.1f" % st.median(e) if e else "—", "%+.1f" % st.median(l) if l else "—"))
     # no_slow — 둔화 뺀 나머지의 중앙 · 90% 구간(화면 요약줄 "둔화 −y vs 나머지 +z") 위에 점수 상⅓−하⅓(score · score_old,
     # 예전 키 그대로 — 화면 NS.score 가 읽는다)을 얹는다
-    out["no_slow"] = dict(ns or {}, **{k: W.tercile_test(nd, (lambda r, k=k: r[k]), Y, by_date=True) for k in ("score", "score_old")})
+    out["no_slow"] = dict(ns or {}, **{k: W.tercile_test(nd, (lambda r, k=k: r.get(k)), Y, by_date=True) for k in ("score", "score_v2", "score_old")})
     print("\n== 둔화를 뺀 나머지 안에서 점수 상위⅓−하위⅓ (날짜 안 분위)")
-    for k in ("score_old", "score"):
+    for k in ("score_old", "score_v2", "score"):
         x = out["no_slow"][k]
         if x:
             print("  %-10s 하 %+5.1f 상 %+5.1f 차 %+5.1f 90%% %+5.1f~%+5.1f" % (k, x["bot"], x["top"], x["spread"], x["ci"][0], x["ci"][1]))
+    out["v3"] = v3_report(rows, nd, Y)
     out["n"], out["firms"], out["median"] = len(rows), len({r["code"] for r in rows}), st.median(allv)
     out["at"] = W.ds(W.dt.date.today())
     json.dump(out, open(os.path.join(OUT, "bt_report.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
