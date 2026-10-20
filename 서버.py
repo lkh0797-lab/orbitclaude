@@ -1939,6 +1939,10 @@ def _druck_auto_loop():
             _qualdip_nightly()                      # 우량 급락 — 같은 때(검증이 묵었으면 전체)
         except Exception as e:
             print("우량 급락 밤 갱신: %s" % e, flush=True)
+        try:
+            _orb2_nightly()                         # 궤도 v2 — 9칸 기저율(7일 넘게 묵었으면)
+        except Exception as e:
+            print("궤도 v2 밤 갱신: %s" % e, flush=True)
 
 
 # ---------------------------------------------------------------- 전 종목 미리 계산 — 풍경 · 궤도(2026-10-11)
@@ -14562,6 +14566,380 @@ def beads_view(force=False):
     return out
 
 
+
+# ---------------------------------------------------------------- 궤도 v2 — 한 회사의 사업 궤도와 주가 궤도를 한 장에 (2026-10-21, docs/superpowers/specs/2026-10-21-orbit-v2-design.md)
+# 계산은 궤도v2.py(순수) — 국면 7 → 셋 · PER 자기 역사 자리 → 셋 · 9칸 고정 문장 · 다음 보고서 예상 · 사건 모으기 · 분기 표. 서버는 캐시에서 재료를 모아 넘기기만 한다.
+# 캐시만: 가속도 · 풍경 · 궤도 요약(brief 빌드 안 띄움) · 수주 · 수주공시(net=False) · 공시 위험 · 신호판 결과 · 내러티브 · 변화 브리핑 lite(+컨센서스 진도 · 지표 표) · 관심 장부 · 매매 일지(이 PC 만).
+# 9칸 기저율은 도구/궤도v2_기저율.py 가 미리 센 .cache/궤도v2/cells.json — 밤 가속도 계산 뒤(_druck_auto_loop) 7일 넘게 묵었으면 다시. 옛 궤도 탭(/api/orbit)은 그대로.
+O2 = _load_mod("궤도v2")
+ORB2_DIR = os.path.join(CACHE_DIR, "궤도v2")
+ORB2_EVENT_DAYS = 730          # 사건 원장 — 최근 24개월
+ORB2_LEDGER_MAX = 80
+ORB2_CELLS_MAX_AGE = 7 * 86400
+ORB2 = {"running": None, "at": None, "rc": None, "py": None, "secs": None, "error": None}
+ORB2_LOCK = threading.Lock()
+
+
+def _orb2_path(name):
+    return os.path.join(ORB2_DIR, name)
+
+
+def _orb2_cells():
+    return _ind_file("orb2_cells", _orb2_path("cells.json"))
+
+
+def _orb2_run():
+    return _tool_run(ORB2, ORB2_LOCK, os.path.join(BASE, "도구", "궤도v2_기저율.py"), _orb2_path("run.log"), ["orbit2", "cells"])
+
+
+def orb2_kick():
+    if READONLY or ORB2["running"]:
+        return False
+    threading.Thread(target=_orb2_run, daemon=True).start()
+    return True
+
+
+def _orb2_nightly():
+    """밤 가속도 계산 뒤 — 9칸 기저율이 7일 넘게 묵었거나 없으면 다시 센다(30초 안팎)."""
+    try:
+        old = (time.time() - os.path.getmtime(_orb2_path("cells.json"))) > ORB2_CELLS_MAX_AGE
+    except OSError:
+        old = True
+    return _orb2_run() if old else False
+
+
+def _orb2_px(px):
+    """주가 캐시 {YYYYMMDD: 종가} → {d, px, r1, r3, r6, r12, hi, hi_d, dd} (수익률은 그 날짜 열흘 안 마지막 봉 기준)."""
+    ks = sorted(k for k in (px or {}) if k[:1].isdigit())
+    if not ks:
+        return None
+    d = ks[-1]
+    p = px[d]
+    dd0 = dt.datetime.strptime(d, "%Y%m%d")
+
+    def r(days):
+        a = _beads_px_at(px, (dd0 - dt.timedelta(days=days)).strftime("%Y%m%d"))
+        return (p / a - 1) * 100 if (a and p) else None
+    cut = (dd0 - dt.timedelta(days=365)).strftime("%Y%m%d")
+    win = [(px[k], k) for k in ks if k >= cut and px.get(k)]
+    hi, hi_d = max(win) if win else (None, None)
+    return {"d": d, "px": p, "r1": r(30), "r3": r(91), "r6": r(182), "r12": r(365), "hi": hi, "hi_d": hi_d, "dd": ((p / hi - 1) * 100) if (hi and p) else None}
+
+
+def _orb2_monthly(px):
+    """월말 종가 [{d, p}] — 주가 캐시 전체(네이버 수정주가)."""
+    out, last = [], None
+    for k in sorted(k for k in (px or {}) if k[:1].isdigit()):
+        if last and last[:6] != k[:6]:
+            out.append({"d": last, "p": px[last]})
+        last = k
+    if last:
+        out.append({"d": last, "p": px[last]})
+    return out
+
+
+def _orb2_backlog(c):
+    """수주 캐시 → 분기 라벨별 잔고 {label: value} + 시계열 [{label, d, v, verified}] (읽기만 — 없는 보고서는 안 읽는다)."""
+    if BACK is None:
+        return {}, []
+    try:
+        with open(BACK._cache_path(c["code"]), "r", encoding="utf-8") as fh:
+            cache = json.load(fh)
+    except (OSError, ValueError):
+        return {}, []
+    by, ser = {}, []
+    for r in c["reports"]:
+        if r["tag"] or r["label"] not in REG_LABELS:
+            continue
+        hit = cache.get(r["rcept"])
+        if not hit or hit.get("v") != BACK.VERSION or not hit.get("value"):
+            continue
+        q = Q_OF_MONTH.get(r["stamp"][5:7])
+        if not q:
+            continue
+        lab = "%sQ%d" % (r["stamp"][:4], q)
+        by[lab] = hit["value"]
+        ser.append({"label": lab, "d": r["rcept"][:8], "v": hit["value"], "verified": bool(hit.get("verified")) or "검산 일치" in (hit.get("source") or "")})
+    return by, ser
+
+
+def _orb2_mine(code):
+    """내 기록 — 관심 장부 항목(열린 것) · 매매 일지 거래 수 · 보유. 개인 자료라 조회 전용이면 비운다."""
+    out = {}
+    if READONLY:
+        return out
+    try:
+        if WATCH is not None:
+            with WATCH_LOCK:
+                data = WATCH.load(WATCH.default_path())
+            e = next((e for e in data.get("entries") or [] if e.get("code") == code and not e.get("closed")), None)
+            if e:
+                st = (data.get("state") or {}).get(code) or {}
+                hy = st.get("hyp") or {}
+                out["watch"] = {"added": e.get("added"), "why": e.get("why"), "n_hyp": len(e.get("hyps") or []),
+                                "n_ok": sum(1 for v in hy.values() if v in ("ok", "유지", True)), "hyp": {k: v for k, v in hy.items()} if len(hy) <= 12 else None}
+    except Exception:
+        pass
+    try:
+        if TRD is not None:
+            with TRD_LOCK:
+                data = TRD.load(TRD.default_path())
+            mine = [t for t in data.get("trades") or [] if t.get("code") == code]
+            if mine:
+                bk = TRD.book(mine, _trd_price, None)
+                lots = [l for l in bk.get("open") or [] if l.get("code") == code]
+                out["trades"] = {"n": len(mine), "hold": bool(lots), "last": max((str(t.get("date") or "") for t in mine), default=None)}
+    except Exception:
+        pass
+    return out
+
+
+def _orb2_story_items(code):
+    try:
+        with open(_story_path(code), "r", encoding="utf-8") as fh:
+            return (json.load(fh).get("items") or [])
+    except (OSError, ValueError):
+        return []
+
+
+def _orb2_expect(c, rep, pts):
+    """컨센서스 진도 — 캐시만(네이버 안 부름): .cache/consensus/{code}_annual.json 이 있으면 그 해 컨센서스 대비 누적 실적(가속도 캐시 분기 점) · 선행 PER(주가 캐시).
+    _inv_expect 와 같은 모양(year · q · rev_e · op_e · share_op · par · par_hist · fwd_per · g_rev · g_op). 파일이 없으면 None(브리핑 탭을 한 번 열면 생긴다)."""
+    if FIN is None:
+        return None
+    try:
+        with open(os.path.join(FIN.CONSENSUS_DIR, "%s_annual.json" % c["code"]), "r", encoding="utf-8") as fh:
+            ann = json.load(fh) or {}
+    except (OSError, ValueError, AttributeError):
+        return None
+    y, mth = rep["stamp"].split("-")
+    key = y + "12"
+    col = next((x for x in ann.get("cols", []) if x.get("key") == key), None)
+    rows = ann.get("rows") or {}
+    if not col or not col.get("consensus") or not rows.get("영업이익", {}).get(key):
+        return {"none": True, "why": "이 보고서 해(%s년)의 컨센서스가 없다" % y}
+    rq = Q_OF_MONTH.get(mth)
+    out = {"year": int(y), "q": rq, "rev_e": rows.get("매출액", {}).get(key), "op_e": rows.get("영업이익", {}).get(key),
+           "ni_e": rows.get("당기순이익", {}).get(key), "eps_e": rows.get("EPS", {}).get(key), "src": "캐시"}
+    by = {(p_.get("year"), p_.get("q")): p_ for p_ in pts if p_.get("year") is not None}
+    cur = [by.get((int(y), q_)) for q_ in range(1, (rq or 0) + 1)]
+    if rq and all(p_ and p_.get("영업이익") is not None and p_.get("매출액") for p_ in cur):
+        out["ytd_rev"] = sum(p_["매출액"] for p_ in cur)
+        out["ytd_op"] = sum(p_["영업이익"] for p_ in cur)
+        out["share_rev"] = out["ytd_rev"] / out["rev_e"] * 100 if out.get("rev_e") else None
+        out["share_op"] = out["ytd_op"] / out["op_e"] * 100 if out.get("op_e") else None
+        out["par"] = rq / 4 * 100
+        shares = []
+        for yy in range(int(y) - 3, int(y)):
+            qs = [by.get((yy, q_)) for q_ in range(1, 5)]
+            if all(p_ and p_.get("영업이익") is not None for p_ in qs):
+                tot = sum(p_["영업이익"] for p_ in qs)
+                part = sum(p_["영업이익"] for p_ in qs[:rq])
+                if tot > 0 and part >= 0:
+                    shares.append(part / tot * 100)
+        if len(shares) >= 2:
+            out["par_hist"] = sum(shares) / len(shares)
+            out["par_n"] = len(shares)
+    px = _px_file(c["code"]) or {}
+    if px and out.get("eps_e") and out["eps_e"] > 0:
+        last = max(k for k in px if k[:1].isdigit())
+        out.update(fwd_per=px[last] / out["eps_e"], price_date=last)
+    prev = str(int(y) - 1) + "12"
+    for k, nm in (("매출액", "g_rev"), ("영업이익", "g_op")):
+        a, e = rows.get(k, {}).get(prev), rows.get(k, {}).get(key)
+        if a and e and a > 0:
+            out[nm] = (e / a - 1) * 100
+    return out
+
+
+def _orb2_ind_per(rows, me):
+    """업종 PER 중앙 — 신호판 결과(988곳)에서 같은 industry 의 PER(0 < PER < 300) 중앙 · 곳수."""
+    ind = (me or {}).get("industry")
+    if not ind:
+        return None
+    v = sorted(r["per"] for r in rows if r.get("industry") == ind and (r.get("per") or 0) > 0 and r["per"] < 300)
+    if len(v) < 3:
+        return None
+    m = len(v) // 2
+    return {"name": ind, "n": len(v), "med": v[m] if len(v) % 2 else (v[m - 1] + v[m]) / 2}
+
+
+def orbit2_view(code):
+    """GET /api/orbit2?code= — 한 장. 모든 재료가 캐시라 저장하지 않는다(실측 1초 안). 회사 없으면 None."""
+    c = company_by_code(code)
+    if not c:
+        return None
+    if O2 is None:
+        return {"error": "궤도v2.py 를 읽지 못했다 — 서버 콘솔을 본다", "module": True}
+    t0 = time.time()
+    today = dt.date.today()
+    out = {"code": code, "name": c["name"], "at": time.time(), "src": {}, "notes": []}
+    # 가속도 — 분기 점(국면 · TTM · 주가 · PER)
+    d = _druck_read(code) or {}
+    pts = sorted((p for p in d.get("points") or [] if p.get("n") is not None and p.get("label")), key=lambda p: p["n"])
+    cur = next((p for p in reversed(pts) if p.get("국면")), None) or (pts[-1] if pts else None)
+    out["src"]["druck"] = str((pts[-1].get("기준일") if pts else "") or "")
+    out["basis"] = d.get("basis")
+    out["splits"] = d.get("split_after") or []
+    # 그림 위 칸 — 전 분기 TTM 매출 · 영업이익률 · 가속 B · 국면 · 변곡(기준일 = 공시일)
+    ser = []
+    for p_ in pts:
+        if p_.get("매출_TTM") is None or not p_.get("기준일"):
+            continue
+        m_ = (p_["영업이익_TTM"] / p_["매출_TTM"] * 100) if (p_.get("영업이익_TTM") is not None and p_["매출_TTM"] > 0) else None
+        ser.append({"label": p_["label"], "d": str(p_["기준일"]), "rev_ttm": p_["매출_TTM"], "op_ttm": p_.get("영업이익_TTM"), "m": m_,
+                    "b": p_.get("가속B"), "phase": p_.get("국면"), "turn": p_.get("변곡")})
+    out["series"] = ser
+    # 주가
+    px = _px_file(code) or {}
+    P = _orb2_px(px)
+    out["px"] = P
+    out["monthly"] = _orb2_monthly(px)
+    out["src"]["px"] = P["d"] if P else None
+    # 풍경 — 이익선 띠 · 지금 PER 자리
+    L = _land_read(code) or {}
+    dc = L.get("decide") or {}
+    out["line"] = L.get("line") or []
+    out["src"]["land"] = dc.get("date") or L.get("price_date")
+    # 궤도 요약(글) — brief 빌드를 띄우지 않는다
+    orows = _orbit_sum_rows(c) or []
+    if orows:
+        orbit_scale(orows)
+    text_by = {}
+    for r in orows:
+        q = Q_OF_MONTH.get((r.get("stamp") or "")[5:7])
+        if q and not r.get("tag") and r.get("x") is not None:
+            text_by["%sQ%d" % (r["stamp"][:4], q)] = r["x"]
+    # 수주잔고 · 수주 공시
+    bl_by, bl_ser = _orb2_backlog(c)
+    out["backlog"] = bl_ser
+    facts = {}
+    try:
+        rv = None
+        if cur and cur.get("매출_TTM"):
+            p4 = next((x for x in pts if x["n"] == cur["n"] - 4), None)
+            g = ((cur["매출_TTM"] / p4["매출_TTM"] - 1) * 100) if (p4 and (p4.get("매출_TTM") or 0) > 0) else None
+            rv = {"ok": g is not None, "v": g, "x": {"ttm": cur["매출_TTM"], "label": cur["label"]}, "ver": "d", "as_of": cur["label"], "fp": ""}
+        bf = _watch_backlog(c, rv, (cur or {}).get("B기준일"))
+        facts = {k: (bf.get(k) or {}).get("v") for k in ("blog_yoy", "btb", "blog_gap")}
+        facts["ok"] = bool((bf.get("blog_yoy") or {}).get("ok"))
+        facts["why"] = next(((bf.get(k) or {}).get("why") for k in ("blog_yoy", "blog_gap", "btb") if (bf.get(k) or {}).get("why")), None)
+    except Exception:
+        facts = {}
+    out["backlog_facts"] = facts
+    try:
+        orders = _ord_series(c, net=False)
+    except Exception:
+        orders = []
+    rev_ttm = (cur or {}).get("매출_TTM")
+    _rev_pts = [(str(p_["기준일"]), p_["매출_TTM"]) for p_ in pts if p_.get("기준일") and p_.get("매출_TTM")]
+
+    def rev_at(d_):
+        """공시일 d_ 전 마지막 분기 점의 TTM 매출 — 2016년 계약을 2026년 매출로 재지 않게. 앞선 점이 없으면 첫 점."""
+        if not _rev_pts:
+            return rev_ttm
+        v_ = next((v for k_, v in reversed(_rev_pts) if k_ <= str(d_ or "")), None)
+        return v_ if v_ is not None else _rev_pts[0][1]
+    # 공시 위험 · 신호판 행
+    rk = _disc_risk() or {}
+    risk_row = (rk.get("codes") or {}).get(code) or {}
+    s12_row = (rk.get("s12") or {}).get(code) or {}
+    out["risk"] = {"level": risk_row.get("level"), "proc": risk_row.get("proc"), "div": risk_row.get("div"), "base": rk.get("기준일"), "s12": s12_row}
+    out["src"]["risk"] = rk.get("기준일")
+    bres = _ind_file("beads_result", _beads_path("_result.json")) or {}
+    brows = bres.get("rows") or []
+    me = next((r for r in brows if r.get("code") == code), None)
+    out["beads"] = me
+    out["beads_def"] = KM.BEADS if KM is not None else []
+    out["src"]["beads"] = bres.get("asof")
+    out["ind_per"] = _orb2_ind_per(brows, me)
+    out["meta"] = {k: (me or {}).get(k) for k in ("market", "cap_rank", "sector", "industry", "themes")}
+    # 변화 브리핑 lite — 최신 정기보고서의 컨센서스 진도 · 지표 표(drivers) · TTM PER 자리
+    regs = [r for r in c["reports"] if not r["tag"] and r["label"] in REG_LABELS]
+    rep = regs[-1] if regs else None
+    inv, drivers, expect = None, [], None
+    if rep is not None:
+        try:
+            # 캐시만 — invest_view(lite) 는 캐시가 없으면 DART · 네이버를 부르고 파일을 쓴다(리뷰 2026-10-21). ttm 은 가속도 캐시, 진도는 컨센서스 캐시 파일
+            expect = _orb2_expect(c, rep, pts)
+            inv = {"ttm": _inv_ttm(code, rep["stamp"]), "expect": expect}
+            drivers = _inv_drivers(c, rep, inv)
+        except Exception as e:
+            out["notes"].append("지표 표 재료 실패: %s" % _no_secret(str(e)))
+    out["drivers"] = drivers
+    out["expect"] = expect
+    out["report"] = {k: rep[k] for k in ("stamp", "label", "rcept")} if rep else None
+    # 값 자리 — 칸(기저율)과 같은 정의: 마지막 분기 공시일 PER 의 그때까지 자기 역사 자리(per_pct_to, 8분기↑ · cut 제외).
+    # 풍경 decide(지금 주가 vs 자기 역사)는 '지금' 값으로 따로 보인다 — 둘이 24% 회사에서 다른 칸을 가리킨다(리뷰 2026-10-21)
+    val = None
+    iv = next((i_ for i_ in range(len(pts) - 1, -1, -1) if O2.per_pct_to(pts, i_) is not None), None)
+    if iv is not None:
+        val = {"per": pts[iv].get("PER_TTM"), "pct": O2.per_pct_to(pts, iv), "src": "가속도(분기 공시일)", "date": str(pts[iv].get("기준일") or ""), "label": pts[iv].get("label")}
+    out["val"] = val
+    out["val_now"] = {"per": dc.get("per"), "pct": dc.get("pct"), "date": dc.get("date"), "zone": dc.get("zone")} if dc.get("pct") is not None else None
+    # 엇갈림 · 빨간불
+    gp = _beads_gap(code, px) if pts else None
+    gap = KM.gap_of(gp.get("dm"), gp.get("dp")) if (gp and KM is not None) else None
+    out["gap"] = dict(gp or {}, color=gap)
+    gates = (me or {}).get("gates") or []
+    # 결론
+    biz = O2.biz_group((cur or {}).get("국면"))
+    zone = O2.val_zone((val or {}).get("pct"))
+    cells = _orb2_cells()
+    vd = O2.verdict(biz, zone, gap, gates)
+    vd["biz"], vd["zone"] = biz, zone
+    vd["base"] = O2.base_line(cells, vd["cell"])
+    qt = O2.quarters_table(pts, bl_by, text_by, n=8)
+    curq = next((q for q in reversed(qt) if q.get("phase")), qt[-1] if qt else None)
+    vd["biz_line"] = O2.biz_line(curq, facts)
+    vd["px_line"] = O2.px_line(P, val, dc.get("line_now"), out["ind_per"], out["val_now"])
+    out["verdict"] = vd
+    out["quarters"] = qt
+    out["cells"] = {"at": cells.get("at"), "primary": cells.get("primary"), "n": cells.get("n"), "firms": cells.get("firms"), "dates": cells.get("dates"),
+                    "cells": cells.get("cells"), "biz": cells.get("biz"), "val": cells.get("val"), "limits": cells.get("limits"), "primary_def": cells.get("primary_def")} if cells else None
+    out["run"] = dict(ORB2)
+    # 다음 보고서 예상
+    lom = {}
+    for r in regs:
+        m = r["stamp"][5:7]
+        lom.setdefault(m, {}).setdefault(r["label"], 0)
+        lom[m][r["label"]] += 1
+    lom = {m: max(v, key=v.get) for m, v in lom.items()}
+    out["next"] = O2.next_filing(rep["stamp"], today, lom) if rep else None
+    # 사건 — 띠(전 기간 · strip 만) · 원장(최근 24개월 · 전부)
+    since = (today - dt.timedelta(days=ORB2_EVENT_DAYS)).strftime("%Y%m%d")
+    items = _orb2_story_items(code)
+    fe = O2.filing_events(orows)
+    oe = O2.order_events(orders, rev_at)
+    re_ = O2.risk_events(risk_row, s12_row)
+    fl = O2.flag_events(pts)
+    rp = O2.report_events(items, since=since)[:20]          # 리포트가 많은 대형주 — 원장이 리포트로만 차지 않게
+    seen = {e.get("rcept") for e in oe + re_ if e.get("rcept")}
+    de = []
+    for it in items:
+        if it.get("type") != "disc" or it.get("hide") or it.get("rcept") in seen:
+            continue
+        cl = it.get("cls") or {}
+        if (cl.get("w") or 0) < 3 or not cl.get("cat"):
+            continue
+        ct = it.get("contract") or {}
+        de.append({"d": str(it.get("d") or ""), "kind": "공시", "rcept": it.get("rcept"), "title": it.get("title") or "", "sub": cl.get("cat"),
+                   "amt": ct.get("amount"), "pct": ct.get("pct"), "tone": 1 if cl.get("g") == "good" else -1 if cl.get("g") == "bad" else 0,
+                   "strip": False, "re": (it.get("re") or {}).get("chg"), "link": "dart"})
+    out["strip"] = O2.merge_events([e for e in fe + oe + re_ + fl if e.get("strip")])
+    out["ledger"] = O2.merge_events(fe, oe, re_, fl, rp, de, since=since, limit=ORB2_LEDGER_MAX)
+    out["src"]["orders"] = None
+    try:
+        with open(os.path.join(ORD_DIR, code + ".json"), "r", encoding="utf-8") as fh:
+            out["src"]["orders"] = (json.load(fh) or {}).get("fetched")
+    except (OSError, ValueError):
+        pass
+    out["mine"] = _orb2_mine(code)
+    out["readonly"] = READONLY
+    out["secs"] = round(time.time() - t0, 2)
+    return out
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
 
@@ -14898,6 +15276,17 @@ class Handler(BaseHTTPRequestHandler):
                         return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
                     return self._send(200, beads_view(True))
                 return self._send(200, beads_view())
+            if path == "/api/orbit2":           # 궤도 v2 — 한 회사 한 장(캐시만). ?run=1 은 9칸 기저율 다시 세기(같은 출처)
+                if q.get("run") == "1":
+                    if not self._same_origin_get():
+                        return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
+                    return self._send(200, {"kicked": orb2_kick(), "run": dict(ORB2)})
+                res = orbit2_view(q.get("code", ""))
+                if res is None:
+                    return self._send(404, {"error": "회사 없음"})
+                if res.get("module"):
+                    return self._send(500, res)
+                return self._send(200, res)
             if path == "/api/value":
                 return self._send(200, value_view(q.get("force") == "1"))
             if path == "/api/score":
