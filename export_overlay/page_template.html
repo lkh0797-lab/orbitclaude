@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --ctx: #898781; --wash: rgba(11,11,11,0.05); --break: rgba(11,11,11,0.09);
+  --up: #006300; --down: #b42318;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --ctx: #898781; --wash: rgba(240,239,236,0.08); --break: rgba(240,239,236,0.13);
+    --up: #0ca30c; --down: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --ctx: #898781; --wash: rgba(240,239,236,0.08); --break: rgba(240,239,236,0.13);
+  --up: #0ca30c; --down: #e66767;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+h1, h2, .tile, .mini .t { word-break: keep-all; }
+h1 { font-size: 20px; margin: 0 0 2px; font-weight: 650; }
+h2 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
+h3 { font-size: 13px; margin: 0 0 6px; font-weight: 600; color: var(--ink-2); }
+.sub, .note { color: var(--ink-2); margin: 0; }
+.note { font-size: 12.5px; margin-top: 4px; }
+.topnav { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin: 0 0 10px; font-size: 13px; color: var(--ink-2); }
+.topnav a { color: var(--s1); text-decoration: none; }
+.topnav a:hover { text-decoration: underline; }
+.topnav label { display: flex; gap: 6px; align-items: center; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 16px 0; }
+.controls label { color: var(--ink-2); font-size: 13px; display: flex; gap: 6px; align-items: center; }
+select, .seg button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 8px; }
+select { max-width: min(88vw, 420px); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg button:disabled { color: var(--muted); cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 600px) { .tiles { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 420px) { .tiles { grid-template-columns: 1fr; } }
+.tile, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.tile { padding: 12px 14px; }
+.tile .label { color: var(--ink-2); font-size: 12.5px; }
+.tile .value { font-size: 28px; font-weight: 650; margin: 2px 0; line-height: 1.2; }
+.tile.hero .value { font-size: 40px; }
+.tile .delta { font-size: 12.5px; color: var(--ink-2); }
+.tile .ref { font-size: 12px; color: var(--ink-2); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--grid); }
+.lagstrip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 6px; }
+.lagstrip div { text-align: center; padding: 4px 0; border-radius: 6px; background: var(--wash); }
+.lagstrip b { display: block; font-size: 17px; font-weight: 650; }
+.lagstrip span { display: block; font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.lagstrip .weak b { color: var(--muted); font-weight: 500; }
+.card { padding: 14px 16px 12px; margin-bottom: 16px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 4px; color: var(--ink-2); font-size: 12.5px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.key { display: inline-block; width: 18px; height: 0; border-top: 2px solid; position: relative; vertical-align: middle; }
+.key.thin { border-top-width: 1.5px; }
+.key.dash { border-top-style: dashed; }
+.key.box { width: 12px; height: 10px; border: 0; background: var(--wash); outline: 1px solid var(--axis); }
+.key.brk { width: 12px; height: 10px; border: 0; background: var(--break); }
+.chart { width: 100%; position: relative; }
+.chart svg { display: block; width: 100%; overflow: visible;
+  font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+.chart svg:focus { outline: none; }
+.chart svg:focus-visible { outline: 2px solid var(--s1); outline-offset: 4px; border-radius: 4px; }
+svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+svg text.end, svg text.val { fill: var(--ink-2); font-size: 11.5px; }
+svg text.band { fill: var(--ink-2); font-size: 11px; }
+.stack .chart + .chart { margin-top: 6px; }
+.subtitle { color: var(--ink-2); font-size: 12.5px; margin: 10px 0 0; }
+.cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.bars { list-style: none; margin: 0; padding: 0; }
+.bars li { display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 2px 8px; align-items: center; margin: 5px 0; font-size: 12.5px; }
+.bars .name { color: var(--ink); overflow-wrap: anywhere; }
+.bars .pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.bars .track { grid-column: 1 / -1; height: 8px; }
+.bars .fill { height: 8px; background: var(--s1); border-radius: 0 4px 4px 0; min-width: 2px; }
+.bars li.sel .name { font-weight: 650; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 8px; }
+.mini { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px 4px; cursor: pointer; background: var(--surface);
+  text-align: left; font: inherit; color: inherit; }
+.mini[aria-pressed="true"] { border-color: var(--s2); box-shadow: 0 0 0 1px var(--s2) inset; }
+.mini .t { font-weight: 600; font-size: 13.5px; }
+.mini .s { color: var(--ink-2); font-size: 12px; min-height: 18px; }
+.tablewrap { overflow-x: auto; max-height: 560px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+th { color: var(--ink-2); font-weight: 600; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+th:first-child { z-index: 2; }
+tr.pending td { background: var(--wash); }
+tr.pending td:first-child { background: linear-gradient(var(--wash), var(--wash)), var(--surface); }   /* sticky cell stays opaque */
+td.weak { color: var(--muted); }
+.pos { color: var(--up); } .neg { color: var(--down); }
+details { margin-top: 10px; }
+details summary { cursor: pointer; color: var(--ink-2); margin: 4px 0; font-size: 13px; }
+.notes { color: var(--ink-2); font-size: 12.5px; }
+.notes li { margin: 3px 0; }
+#tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.14); display: none; z-index: 10;
+  min-width: 200px; max-width: min(92vw, 340px); }
+#tip .h { color: var(--ink-2); margin: 0 0 4px; font-weight: 600; }
+#tip .h + .row, #tip .sep { margin-top: 2px; }
+#tip .sep { border-top: 1px solid var(--grid); margin: 6px 0 4px; }
+#tip .row { display: flex; align-items: center; gap: 8px; }
+#tip .row b { font-weight: 650; min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+#tip .row span { color: var(--ink-2); }
+#tip .row .key { flex: none; }
+#tip .row .nokey { width: 18px; flex: none; }
+@media (max-width: 600px) { .tile.hero .value { font-size: 32px; } h1 { font-size: 18px; } }
+</style>
+</head>
+<body>
+<main>
+  <nav class="topnav" aria-label="섹터 이동">
+    <a href="수출겹쳐보기.html">← 섹터 개요</a>
+    <label>섹터 <select id="sector-nav"></select></label>
+    <a href="변곡점레이더.html">변곡점 레이더 →</a>
+  </nav>
+  <h1 id="title"></h1>
+  <p class="sub" id="subtitle"></p>
+
+  <div class="controls" role="group" aria-label="보기 조절">
+    <label>품목 <select id="code"></select></label>
+    <label>통화 <span class="seg" id="cur"></span></label>
+    <label>기간 <span class="seg" id="period"></span></label>
+    <label>매출 선 <select id="focus"></select></label>
+  </div>
+
+  <section class="tiles" id="tiles" aria-label="요약"></section>
+
+  <section class="card stack">
+    <h2>통관 수출 증감과 매출 증감 (전년 같은 기간 대비)</h2>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="overlay"></div>
+    <p class="note" id="overlay-caveat"></p>
+    <p class="subtitle" id="amount-title"></p>
+    <div class="chart" id="amount"></div>
+    <p class="subtitle" id="margin-title"></p>
+    <div class="chart" id="margin"></div>
+    <p class="note" id="overlay-note"></p>
+    <details><summary>월별 표로 보기</summary><div class="tablewrap"><table id="mtable"></table></div></details>
+  </section>
+
+  <section class="card">
+    <h2>무엇이 수출됐나 (최근 12개월)</h2>
+    <p class="note" id="mix-note"></p>
+    <div class="cols2" style="margin-top:8px">
+      <div><h3 id="mix-title">하위 품목 비중</h3><ul class="bars" id="mix"></ul></div>
+      <div><h3 id="dest-title">수출국 상위 5</h3><ul class="bars" id="dest"></ul></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>회사별 — 매출 증감과 통관 수출 증감</h2>
+    <p class="note">칸을 누르면 위 겹쳐보기의 매출 선이 그 회사로 바뀝니다. 열 칸은 같은 세로축(로그 눈금, 회사 변동을 담느라 합계 화면보다 넓음 — 회사를 고르면 위 차트도 이 축)과 같은 기간을 씁니다. 축 밖 값은 ▲▼, 회색 띠 = 분할 등으로 비교에서 뺀 구간.</p>
+    <div class="grid" id="multiples"></div>
+    <details><summary>회사 × 분기 매출 증감 표로 보기</summary><div class="tablewrap"><table id="cqtable"></table></div></details>
+  </section>
+
+  <section class="card">
+    <h2>분기 표</h2>
+    <div class="tablewrap"><table id="qtable"></table></div>
+  </section>
+
+  <section class="card">
+    <h2>회사 표</h2>
+    <p class="note" id="ctable-note"></p>
+    <div class="tablewrap"><table id="ctable"></table></div>
+  </section>
+
+  <section class="card notes">
+    <h2>읽을 때 주의</h2>
+    <ul id="notes"></ul>
+  </section>
+</main>
+<div id="tip" role="tooltip"></div>
+<script type="application/json" id="data">{{DATA}}</script>
+<script>
+"use strict";
+const D = JSON.parse(document.getElementById("data").textContent);
+const NS = "http://www.w3.org/2000/svg";
+const state = { code: D.codes[0].key, cur: D.currencies[0], period: 5, focus: "basket" };
+const LO_MIN = -75, HI_MAX = 300;                     // clamp of the YoY axis
+const TICKS = [-75, -50, -25, 0, 25, 50, 100, 200, 300];
+const MARGIN = { l: 56, r: 100, t: 16, b: 24 };        // shared by the stacked charts so x lines up
+
+// ---------------------------------------------------------------- helpers
+function el(tag, attrs, parent, text) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, v);
+  if (text != null) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function sv(tag, attrs, parent, text) {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, v);
+  if (text != null) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const ymLabel = ym => ym.slice(0, 4) + "-" + ym.slice(4);
+const monthWord = ym => (+ym.slice(4)) + "월";
+const qLabel = q => q.slice(5) + "Q" + q.slice(2, 4);
+const quarterOf = ym => ym.slice(0, 4) + "Q" + (Math.floor((+ym.slice(4) - 1) / 3) + 1);
+const isQuarterEnd = ym => +ym.slice(4) % 3 === 0;
+function pct(v, nd = 1) { return v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(nd) + "%"; }
+function signCls(v) { return v == null ? "" : v > 0 ? "pos" : v < 0 ? "neg" : ""; }
+function fmtNum(v, nd = 0) { return v == null ? "–" : v.toLocaleString("ko-KR", { minimumFractionDigits: nd, maximumFractionDigits: nd }); }
+function exportsNow() { return D.exports[state.code + "|" + state.cur]; }
+function codeInfo() { return D.codes.find(c => c.key === state.code); }
+function curWord() { return state.cur === "KRW" ? "원화 환산" : "달러"; }
+function companyByCode(code) { return D.companies.find(c => c.code === code); }
+function okCompanies() { return D.companies.filter(c => !c.error); }
+function basketName() { return D.sector.noun + " " + okCompanies().length + "곳 합계"; }
+function focusName() { return state.focus === "basket" ? basketName() : companyByCode(state.focus).name; }
+function money(v) {
+  if (v == null) return "–";
+  return state.cur === "KRW" ? (v / 1e12).toFixed(2) + "조 원" : (v / 1e8).toFixed(1) + "억 달러";
+}
+function revSeries(focus) {
+  const out = {};
+  if (focus === "basket") for (const [q, b] of Object.entries(D.basket)) out[q] = b.revenue_yoy;
+  else for (const [q, c] of Object.entries(companyByCode(focus).quarters)) out[q] = c.revenue_yoy;
+  return out;
+}
+function marginSeries(focus) {
+  const out = {};
+  if (focus === "basket") for (const [q, b] of Object.entries(D.basket)) out[q] = b.margin;
+  else for (const [q, c] of Object.entries(companyByCode(focus).quarters))
+    out[q] = c.revenue && c.operating != null ? c.operating / c.revenue * 100 : null;
+  return out;
+}
+function pendingOf(q) { return D.pending.find(p => p.q === q); }
+function daysUntil(iso) { const d = new Date(iso + "T00:00:00"); return Math.round((d - new Date(new Date().toDateString())) / 864e5); }
+function statsFor(key) { return (exportsNow().lags[key] || []); }
+function lagCell(d) { return d && d.r != null ? d.r.toFixed(2) : "–"; }
+function ciText(d) { return d && d.lo != null && d.hi != null ? `${d.lo.toFixed(2)}~${d.hi.toFixed(2)}` : "구간 없음"; }
+function noRReason(d) { return !d || d.n < 12 ? `표본 적음 (n ${d ? d.n : 0} < 12)` : "유효 표본 3 이하"; }
+function weakStat(d) { return !d || d.r == null || d.lo == null || (d.lo <= 0 && d.hi >= 0); }
+
+// ---------------------------------------------------------------- window & scales
+function windowOf() {
+  const n = D.months.length;
+  const N = state.period === "all" ? n : Math.min(n, state.period * 12);
+  return { start: n - N, N, months: D.months.slice(n - N) };
+}
+const L = v => Math.log1p(v / 100);
+function yoyDomain(values) {
+  const vs = values.filter(v => v != null);
+  let lo = Math.min(0, ...vs), hi = Math.max(0, ...vs);
+  lo = Math.max(LO_MIN, Math.min(-50, lo)); hi = Math.min(HI_MAX, Math.max(100, hi));
+  lo = [...TICKS].reverse().find(t => t <= lo) ?? LO_MIN;
+  hi = TICKS.find(t => t >= hi) ?? HI_MAX;
+  return [lo, hi];
+}
+function frame(host, height, w) {
+  host.replaceChildren();
+  const W = Math.max(280, host.clientWidth), H = height;
+  // Narrow screens drop the end-label gutter; the legend and tooltip carry identity there.
+  const m = W < 480 ? { l: 44, r: 10, t: MARGIN.t, b: MARGIN.b } : MARGIN;
+  const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" }, host);
+  const slot = (W - m.l - m.r) / w.N;
+  return { svg, W, H, m, w, slot, x: j => m.l + slot * (j + 0.5), left: j => m.l + slot * j,
+           plotH: H - m.t - m.b };
+}
+function yoyScale(f, lo, hi) {
+  const a = L(lo), b = L(hi), pad = (b - a) * 0.03, top = f.m.t, bot = f.H - f.m.b;
+  return v => bot - (L(v) - (a - pad)) / ((b + pad) - (a - pad)) * (bot - top);
+}
+function linScale(f, lo, hi) { const top = f.m.t, bot = f.H - f.m.b; return v => bot - (v - lo) / (hi - lo) * (bot - top); }
+function clip(f, id) {
+  const cp = sv("clipPath", { id }, sv("defs", {}, f.svg));
+  sv("rect", { x: f.m.l, y: f.m.t - 2, width: f.W - f.m.l - f.m.r, height: f.plotH + 4 }, cp);
+  return `url(#${id})`;
+}
+function yearTicks(f, g, labels, every) {
+  every = every || (f.slot * 12 < 40 ? 2 : 1);
+  f.w.months.forEach((ym, j) => {
+    if (ym.slice(4) !== "01") return;
+    sv("line", { x1: f.left(j), x2: f.left(j), y1: f.m.t, y2: f.H - f.m.b, stroke: "var(--grid)", "stroke-width": 1 }, g);
+    if (labels && +ym.slice(0, 4) % every === 0) sv("text", { x: f.left(j) + 3, y: f.H - f.m.b + 15 }, g, "'" + ym.slice(2, 4));
+  });
+}
+function yoyAxis(f, g, y, lo, hi, labels = true) {
+  for (const t of TICKS.filter(t => t >= lo && t <= hi)) {
+    sv("line", { x1: f.m.l, x2: f.W - f.m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, g);
+    if (labels) sv("text", { x: f.m.l - 6, y: y(t) + 4, "text-anchor": "end" }, g, (t > 0 ? "+" : t < 0 ? "−" : "") + Math.abs(t) + "%");
+  }
+}
+function shadePending(f, g, labels) {
+  const pend = new Set(D.pending.map(p => p.q));
+  const shown = [];
+  f.w.months.forEach((ym, j) => {
+    const q = quarterOf(ym);
+    if (!pend.has(q)) return;
+    sv("rect", { x: f.left(j), y: f.m.t, width: f.slot + 0.5, height: f.plotH, fill: "var(--wash)" }, g);
+    if (!shown.includes(q)) shown.push(q);
+  });
+  if (!labels || !shown.length) return;
+  // The shaded quarters sit at the right end and are only a few months wide: one combined label,
+  // right-aligned to the plot edge, so labels never overlap each other or run off the chart.
+  const text = shown.map(q => {
+    const p = pendingOf(q);
+    return p.kind === "disclosure" ? qLabel(q) + " 공시 전" + (p.filed ? ` ${p.filed}/${p.of}곳` : "")
+                                   : qLabel(q) + " 진행 중 " + p.months + "/3달";
+  }).join(" · ");
+  sv("text", { x: f.W - f.m.r, y: f.m.t - 4, class: "band", "text-anchor": "end" }, g, text);
+}
+function shadeBreaks(f, g, company) {
+  for (const b of company.breaks || []) f.w.months.forEach((ym, j) => {
+    const q = quarterOf(ym);
+    if (q >= b.from && q <= b.to) sv("rect", { x: f.left(j), y: f.m.t, width: f.slot + 0.5, height: f.plotH, fill: "var(--break)" }, g);
+  });
+}
+// Monthly line in window coordinates; breaks where a value is missing or outside [lo, hi].
+function monthPath(f, y, arr, lo, hi) {
+  let d = "", on = false;
+  f.w.months.forEach((ym, j) => {
+    const v = arr[f.w.start + j];
+    if (v == null || v < lo || v > hi) { on = false; return; }
+    d += (on ? "L" : "M") + f.x(j).toFixed(1) + " " + y(v).toFixed(1);
+    on = true;
+  });
+  return d;
+}
+function quarterSlots(f) {
+  const out = {};
+  f.w.months.forEach((ym, j) => { (out[quarterOf(ym)] = out[quarterOf(ym)] || []).push(j); });
+  return out;
+}
+// Quarterly step: each quarter spans its three month bands; the quarter-end dot carries the value.
+// A quarter outside [lo, hi] breaks the step (its chevron is drawn by dots()); no flat run along the edge.
+function stepPath(f, y, qvals, lo, hi, only) {
+  const slots = quarterSlots(f);
+  let d = "", prev = false;
+  for (const q of Object.keys(slots).sort()) {
+    const v = qvals[q];
+    if (v == null || v < lo || v > hi || (only && !only(q))) { prev = false; continue; }
+    const js = slots[q], x0 = f.left(js[0]), x1 = f.left(js[js.length - 1] + 1);
+    const yy = y(v).toFixed(1);
+    d += (prev ? "L" : "M") + x0.toFixed(1) + " " + yy + "L" + x1.toFixed(1) + " " + yy;
+    prev = true;
+  }
+  return d;
+}
+function quarterEnds(f) {
+  const out = {};
+  f.w.months.forEach((ym, j) => { if (isQuarterEnd(ym)) out[quarterOf(ym)] = j; });
+  return out;
+}
+function chevron(g, x, yEdge, up, color) {
+  const p = up ? `M${x - 4} ${yEdge + 6}L${x + 4} ${yEdge + 6}L${x} ${yEdge}Z` : `M${x - 4} ${yEdge - 6}L${x + 4} ${yEdge - 6}L${x} ${yEdge}Z`;
+  sv("path", { d: p, fill: color }, g);
+}
+function dots(f, g, y, qvals, lo, hi, color, hollow, labelClipped) {
+  for (const [q, j] of Object.entries(quarterEnds(f))) {
+    const v = qvals[q];
+    if (v == null) continue;
+    const x = f.x(j);
+    if (v > hi || v < lo) {
+      const up = v > hi, yy = y(up ? hi : lo);
+      chevron(g, x, yy, up, color);
+      if (labelClipped) sv("text", { x: x + 6, y: up ? yy + 10 : yy - 3, class: "val" }, g, pct(v, 0));
+      continue;
+    }
+    sv("circle", { cx: x, cy: y(v), r: 4, fill: hollow ? "var(--surface)" : color, stroke: hollow ? color : "var(--surface)",
+                   "stroke-width": 2 }, g);
+  }
+}
+function monthChevrons(f, g, y, arr, lo, hi, color) {
+  f.w.months.forEach((ym, j) => {
+    const v = arr[f.w.start + j];
+    if (v == null || (v <= hi && v >= lo)) return;
+    chevron(g, f.x(j), y(v > hi ? hi : lo), v > hi, color);
+  });
+}
+
+// ---------------------------------------------------------------- shared crosshair + tooltip
+const tip = document.getElementById("tip");
+let crossLines = [];
+function tipRow(parent, color, value, label, opts = {}) {
+  const row = el("div", { class: "row" }, parent);
+  if (color) el("i", { class: "key" + (opts.thin ? " thin" : "") + (opts.dash ? " dash" : "") }, row).style.borderTopColor = color;
+  else el("i", { class: "nokey" }, row);
+  el("b", {}, row, value);
+  el("span", {}, row, label);
+}
+function describeMonth(i) {
+  const ex = exportsNow(), ym = D.months[i], q = quarterOf(ym), p = pendingOf(q);
+  tip.replaceChildren();
+  el("div", { class: "h" }, tip, ymLabel(ym) + (p ? (p.kind === "disclosure" ? " · 실적 공시 전" : " · 분기 진행 중") : ""));
+  tipRow(tip, "var(--s1)", pct(ex.yoy3[i]), "통관 수출 3개월");
+  tipRow(tip, null, pct(ex.yoy[i]), "그 달");
+  tipRow(tip, null, money(ex.value[i]), "수출액" + (state.cur === "KRW" && D.fx[i] ? ` (환율 ${fmtNum(D.fx[i], 1)})` : ""));
+  el("div", { class: "sep" }, tip);
+  el("div", { class: "h" }, tip, qLabel(q));
+  const eq = ex.quarters[q];
+  if (eq) tipRow(tip, null, pct(eq.yoy), "분기 통관 (=분기 끝 달 3개월)");
+  else if (ex.qtd && ex.qtd.q === q) tipRow(tip, null, pct(ex.qtd.yoy), `분기 통관 ${ex.qtd.months}/3달까지`);
+  const b = D.basket[q];
+  if (state.focus !== "basket") {
+    const c = companyByCode(state.focus).quarters[q];
+    tipRow(tip, "var(--s2)", c && c.excluded ? "제외" : pct(c && c.revenue_yoy), companyByCode(state.focus).name + " 매출" +
+      (c ? ` · ${c.basis === "CFS" ? "연결" : "별도"}${c.restated ? " · 재작성 기준" : ""}${c.proforma ? " · 합병 전 두 회사 합산 기저" : ""}` : ""));
+    tipRow(tip, "var(--ctx)", pct(b && b.revenue_yoy), basketName() + " 매출", { thin: true });
+  } else {
+    tipRow(tip, "var(--s2)", pct(b && b.revenue_yoy), basketName() + " 매출" + (b ? ` · 비교 ${b.matched}/${b.reported}곳` : ""));
+    if (b && b.top) tipRow(tip, null, b.top.share + "%", "최대 비중 " + b.top.name);
+  }
+  const mg = marginSeries(state.focus)[q];
+  tipRow(tip, null, mg == null ? "–" : mg.toFixed(1) + "%", "영업이익률");
+  if (p && p.kind === "disclosure") tipRow(tip, null, p.due.slice(5).replace("-", "/"), "실적 공시 기한(≈)");
+}
+function placeTip(clientX, clientY, pointerType, anchor) {
+  tip.style.display = "block";
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x, y;
+  if (pointerType === "touch" || clientX == null) {          // pin above the chart, not under the finger
+    const r = anchor.getBoundingClientRect();
+    x = Math.min(window.innerWidth - w - 8, Math.max(8, r.left + 8));
+    y = Math.max(8, r.top - h - 8);
+  } else {
+    x = clientX + 16; y = clientY + 16;
+    if (x + w > window.innerWidth - 8) x = clientX - w - 16;
+    if (y + h > window.innerHeight - 8) y = clientY - h - 16;
+  }
+  tip.style.left = Math.max(8, x) + "px";
+  tip.style.top = Math.max(8, y) + "px";
+}
+function hideTip() { tip.style.display = "none"; for (const c of crossLines) c.line.setAttribute("visibility", "hidden"); }
+let cursor = null;
+function hover(j, clientX, clientY, pointerType, anchor) {
+  const w = windowOf();
+  j = Math.max(0, Math.min(w.N - 1, j));
+  cursor = j;
+  for (const c of crossLines) {
+    c.line.setAttribute("x1", c.f.x(j)); c.line.setAttribute("x2", c.f.x(j)); c.line.setAttribute("visibility", "visible");
+  }
+  describeMonth(w.start + j);
+  placeTip(clientX, clientY, pointerType, anchor);
+}
+function attachCrosshair(f) {
+  const line = sv("line", { y1: f.m.t, y2: f.H - f.m.b, stroke: "var(--ink-2)", "stroke-width": 1, visibility: "hidden" }, f.svg);
+  crossLines.push({ f, line });
+  const hit = sv("rect", { x: f.m.l, y: 0, width: f.W - f.m.l - f.m.r, height: f.H, fill: "transparent" }, f.svg);
+  const toJ = e => { const r = f.svg.getBoundingClientRect(); return Math.floor(((e.clientX - r.left) * f.W / r.width - f.m.l) / f.slot); };
+  hit.addEventListener("pointermove", e => hover(toJ(e), e.clientX, e.clientY, e.pointerType, f.svg));
+  hit.addEventListener("pointerdown", e => hover(toJ(e), e.clientX, e.clientY, e.pointerType, f.svg));
+  hit.addEventListener("pointerleave", e => { if (e.pointerType !== "touch") hideTip(); });
+  f.svg.setAttribute("tabindex", "0");
+  f.svg.addEventListener("keydown", e => {
+    const w = windowOf();
+    const map = { ArrowLeft: -1, ArrowRight: 1 };
+    let j;
+    if (e.key === "Home") j = 0;
+    else if (e.key === "End") j = w.N - 1;
+    else if (e.key in map) j = cursor == null ? w.N - 1 : cursor + map[e.key];   // first press shows the latest month
+    else if (e.key === "Escape") { hideTip(); return; }
+    else return;
+    e.preventDefault();
+    hover(j, null, null, "keyboard", f.svg);
+  });
+  f.svg.addEventListener("blur", hideTip);
+}
+
+// ---------------------------------------------------------------- overlay (one % axis, log scale)
+// Basket view: exports + basket. Company view: exports + every company — the same wide domain as the
+// small multiples, so switching between companies never rescales the axis.
+function overlayDomain(w, companies) {
+  const ex = exportsNow(), vals = [];
+  for (let j = 0; j < w.N; j++) vals.push(ex.yoy3[w.start + j]);
+  const qs = new Set(w.months.map(quarterOf));
+  if (companies) { for (const c of okCompanies()) for (const [q, v] of Object.entries(c.quarters)) if (qs.has(q)) vals.push(v.revenue_yoy); }
+  else for (const [q, b] of Object.entries(D.basket)) if (qs.has(q)) vals.push(b.revenue_yoy);
+  return yoyDomain(vals);
+}
+function drawOverlay() {
+  const w = windowOf(), ex = exportsNow();
+  const host = document.getElementById("overlay");
+  const f = frame(host, 330, w);
+  f.svg.setAttribute("aria-label", "통관 수출 3개월 증감과 " + focusName() + " 분기 매출 증감, 로그 눈금");
+  const [lo, hi] = overlayDomain(w, state.focus !== "basket");
+  const y = yoyScale(f, lo, hi);
+  const g = sv("g", {}, f.svg);
+  shadePending(f, g, true);
+  if (state.focus !== "basket") shadeBreaks(f, g, companyByCode(state.focus));
+  yearTicks(f, g, true);
+  yoyAxis(f, g, y, lo, hi);
+  const cp = clip(f, "clip-overlay");
+  const marks = sv("g", { "clip-path": cp }, f.svg);
+  const basket = revSeries("basket");
+  const partial = q => { const p = pendingOf(q); return p && p.kind === "disclosure" && p.filed > 0; };
+  const rev = revSeries(state.focus);
+  if (state.focus !== "basket")
+    sv("path", { d: stepPath(f, y, basket, lo, hi), fill: "none", stroke: "var(--ctx)", "stroke-width": 1.5 }, marks);
+  sv("path", { d: stepPath(f, y, rev, lo, hi, q => !partial(q)), fill: "none", stroke: "var(--s2)", "stroke-width": 2, "stroke-linejoin": "round" }, marks);
+  sv("path", { d: stepPath(f, y, rev, lo, hi, partial), fill: "none", stroke: "var(--s2)", "stroke-width": 2, "stroke-dasharray": "4 3" }, marks);
+  sv("path", { d: monthPath(f, y, ex.yoy3, lo, hi), fill: "none", stroke: "var(--s1)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, marks);
+  const top = sv("g", {}, f.svg);
+  monthChevrons(f, top, y, ex.yoy3, lo, hi, "var(--s1)");
+  const exQ = {};
+  for (const [q, v] of Object.entries(ex.quarters)) exQ[q] = v.yoy;
+  dots(f, top, y, exQ, lo, hi, "var(--s1)", true, false);
+  const qe0 = quarterEnds(f);
+  const clipped = Object.keys(qe0).filter(q => rev[q] != null && (rev[q] > hi || rev[q] < lo)).length;
+  dots(f, top, y, rev, lo, hi, "var(--s2)", false, clipped <= 3);      // more than three: tooltip and tables carry them
+  // direct end labels: export at its last month, revenue at its last quarter (skipped when they collide)
+  const ends = [];
+  let lastJ = null;
+  for (let j = w.N - 1; j >= 0; j--) if (ex.yoy3[w.start + j] != null) { lastJ = j; break; }
+  if (lastJ != null) {
+    const v = ex.yoy3[w.start + lastJ];
+    ends.push({ yy: y(Math.max(lo, Math.min(hi, v))), text: "수출 " + monthWord(w.months[lastJ]) + " " + pct(v, 0) });
+  }
+  const qe = quarterEnds(f);
+  const lastQ = Object.keys(qe).filter(q => rev[q] != null).sort().pop();
+  if (lastQ) ends.push({ yy: y(Math.max(lo, Math.min(hi, rev[lastQ]))), text: "매출 " + qLabel(lastQ) + " " + pct(rev[lastQ], 0) });
+  if (f.m.r >= 60 && (ends.length < 2 || Math.abs(ends[0].yy - ends[1].yy) >= 14))
+    for (const e of ends) sv("text", { x: f.W - f.m.r + 8, y: e.yy + 4, class: "end" }, f.svg, e.text);
+  attachCrosshair(f);
+
+  const legend = document.getElementById("legend");
+  legend.replaceChildren();
+  const key = (cls, color, text) => { const s = el("span", {}, legend); const k = el("i", { class: "key " + cls }, s); if (color) k.style.borderTopColor = color; s.append(text); };
+  key("", "var(--s1)", "통관 수출 3개월 합 증감 (○ = 분기 끝 달 = 분기 증감)");
+  key("", "var(--s2)", focusName() + " 분기 매출 증감 (● = 그 분기)");
+  if (state.focus !== "basket") key("thin", "var(--ctx)", basketName());
+  if (D.pending.some(p => p.kind === "disclosure" && p.filed > 0)) key("dash", "var(--s2)", "일부 회사만 공시한 분기");
+  key("box", null, "실적 공시 전 · 분기 진행 중");
+  if (state.focus !== "basket" && (companyByCode(state.focus).breaks || []).length) key("brk", null, "비교에서 뺀 구간");
+
+  const share = codeInfo().share;
+  document.getElementById("overlay-caveat").textContent =
+    D.sector.caveat +
+    (share != null && share < 5 ? ` 이 품목은 ${D.codes[0].label} 수출의 ${share}%뿐이라 증감이 크게 출렁입니다.` : "");
+}
+
+// ---------------------------------------------------------------- monthly amount (area, or columns for ≤ 36 months)
+function drawAmount() {
+  const w = windowOf(), ex = exportsNow();
+  document.getElementById("amount-title").textContent = "월 통관 수출액 — " + codeInfo().label + " (" + curWord() + ")";
+  const f = frame(document.getElementById("amount"), 150, w);
+  f.svg.setAttribute("aria-label", "월 통관 수출액");
+  const unit = state.cur === "KRW" ? { div: 1e12, fmt: v => v + "조" } : { div: 1e8, fmt: v => v + "억 $" };
+  const vals = w.months.map((_, j) => ex.value[w.start + j] == null ? null : ex.value[w.start + j] / unit.div);
+  const max = Math.max(...vals.filter(v => v != null), 0) || 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(max / 4)));          // nice step for any magnitude
+  const step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(s => max / s <= 4);
+  const hi = Math.ceil(max / step) * step;
+  const y = linScale(f, 0, hi);
+  const g = sv("g", {}, f.svg);
+  shadePending(f, g, false);
+  yearTicks(f, g, true);
+  for (let k = 0; k * step <= hi + 1e-9; k++) {
+    const t = k * step;
+    sv("line", { x1: f.m.l, x2: f.W - f.m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, g);
+    sv("text", { x: f.m.l - 6, y: y(t) + 4, "text-anchor": "end" }, g, unit.fmt(+t.toPrecision(6)));
+  }
+  if (w.N > 36) {
+    let line = "", area = "", start = null, lastX = null;
+    vals.forEach((v, j) => {
+      if (v == null) return;
+      const X = f.x(j).toFixed(1), Y = y(v).toFixed(1);
+      if (start == null) { start = X; line += "M" + X + " " + Y; area += "M" + X + " " + y(0) + "L" + X + " " + Y; }
+      else { line += "L" + X + " " + Y; area += "L" + X + " " + Y; }
+      lastX = X;
+    });
+    if (start != null) area += "L" + lastX + " " + y(0) + "Z";
+    sv("path", { d: area, fill: "var(--s1)", "fill-opacity": 0.1 }, f.svg);
+    sv("path", { d: line, fill: "none", stroke: "var(--s1)", "stroke-width": 2, "stroke-linejoin": "round" }, f.svg);
+  } else {
+    const bw = Math.min(24, Math.max(2, f.slot - 2));
+    vals.forEach((v, j) => {
+      if (v == null) return;
+      const x0 = f.x(j) - bw / 2, t = y(v), b = y(0), r = Math.min(4, bw / 2, b - t);
+      sv("path", { d: `M${x0} ${b}V${t + r}Q${x0} ${t} ${x0 + r} ${t}H${x0 + bw - r}Q${x0 + bw} ${t} ${x0 + bw} ${t + r}V${b}Z`, fill: "var(--s1)" }, f.svg);
+    });
+  }
+  attachCrosshair(f);
+}
+
+// ---------------------------------------------------------------- operating margin strip (its own axis: a level, not a change)
+function drawMargin() {
+  const w = windowOf();
+  document.getElementById("margin-title").textContent = focusName() + " 분기 영업이익률 (수준, 증감 아님)";
+  const f = frame(document.getElementById("margin"), 120, w);
+  f.svg.setAttribute("aria-label", focusName() + " 분기 영업이익률");
+  const mg = marginSeries(state.focus), bm = marginSeries("basket");
+  const qs = new Set(w.months.map(quarterOf));
+  const vals = Object.entries(mg).filter(([q]) => qs.has(q)).map(([, v]) => v).filter(v => v != null);
+  if (state.focus !== "basket") vals.push(...Object.entries(bm).filter(([q]) => qs.has(q)).map(([, v]) => v).filter(v => v != null));
+  const lo = Math.min(0, Math.floor(Math.min(...vals, 0) / 10) * 10), hi = Math.max(10, Math.ceil(Math.max(...vals, 10) / 10) * 10);
+  const y = linScale(f, lo, hi);
+  const g = sv("g", {}, f.svg);
+  shadePending(f, g, false);
+  yearTicks(f, g, true);
+  const stepT = hi - lo > 60 ? 20 : 10;
+  for (let t = Math.ceil(lo / stepT) * stepT; t <= hi; t += stepT) {
+    sv("line", { x1: f.m.l, x2: f.W - f.m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, g);
+    sv("text", { x: f.m.l - 6, y: y(t) + 4, "text-anchor": "end" }, g, t + "%");
+  }
+  const marks = sv("g", { "clip-path": clip(f, "clip-margin") }, f.svg);
+  if (state.focus !== "basket") sv("path", { d: stepPath(f, y, bm, lo, hi), fill: "none", stroke: "var(--ctx)", "stroke-width": 1.5 }, marks);
+  sv("path", { d: stepPath(f, y, mg, lo, hi), fill: "none", stroke: "var(--s2)", "stroke-width": 2 }, marks);
+  dots(f, f.svg, y, mg, lo, hi, "var(--s2)", false, false);
+  const qe = quarterEnds(f);
+  const lastQ = Object.keys(qe).filter(q => mg[q] != null).sort().pop();
+  if (lastQ && f.m.r >= 60) sv("text", { x: f.W - f.m.r + 8, y: y(mg[lastQ]) + 4, class: "end" }, f.svg, qLabel(lastQ) + " " + mg[lastQ].toFixed(1) + "%");
+  attachCrosshair(f);
+}
+
+// ---------------------------------------------------------------- composition
+function bars(host, rows, selKey) {
+  host.replaceChildren();
+  const max = Math.max(...rows.map(r => r.share || 0), 1);
+  for (const r of rows) {
+    const li = el("li", r.key && r.key === selKey ? { class: "sel" } : {}, host);
+    el("span", { class: "name" }, li, r.name);
+    el("span", { class: "pct" }, li, r.share == null ? "–" : r.share.toFixed(1) + "%");
+    const track = el("div", { class: "track" }, li);
+    el("div", { class: "fill" }, track).style.width = ((r.share || 0) / max * 100) + "%";
+  }
+}
+function drawMix() {
+  const subs = D.codes.slice(1).filter(c => c.mix);
+  document.getElementById("mix-title").textContent = `하위 품목 비중 (${D.codes[0].label} = 100)`;
+  bars(document.getElementById("mix"), subs.map(c => ({ key: c.key, name: c.label, share: c.share })), state.code);
+  const span = D.destinations_span;
+  document.getElementById("dest-title").textContent = "수출국 상위 5 — " + codeInfo().label;
+  bars(document.getElementById("dest"), (D.destinations[state.code] || []).map(d => ({ name: d.name, share: d.share })));
+  const big = [...subs].sort((a, b) => (b.share || 0) - (a.share || 0))[0];
+  document.getElementById("mix-note").textContent = (span ? ymLabel(span[0]) + " ~ " + ymLabel(span[1]) + " 달러 기준. " : "") +
+    (big && big.share != null ? `가장 큰 하위 품목은 ${big.label} (${big.share}%)입니다. ` : "") + (D.sector.mix_note || "");
+}
+
+// ---------------------------------------------------------------- small multiples
+function drawMultiples() {
+  const host = document.getElementById("multiples");
+  host.replaceChildren();
+  const w = windowOf(), ex = exportsNow();
+  // One domain shared by every panel (so panels compare with each other), wide enough for company swings.
+  const [lo, hi] = overlayDomain(w, true);
+  for (const c of D.companies) {
+    const card = el("button", { class: "mini", type: "button", "aria-pressed": String(state.focus === c.code) }, host);
+    el("div", { class: "t" }, card, c.name);
+    const st = (ex.lags[c.code] || []).find(d => d.lag === 0);
+    let sub;
+    if (c.error) sub = "자료 없음 — " + c.error;
+    else if (!st || st.r == null) sub = `상관 안 냄 — ${noRReason(st)}`;
+    else sub = `같은 분기 r = ${st.r.toFixed(2)} (${ciText(st)}) · n ${st.n}` + (weakStat(st) ? " · 구분 안 됨" : "");
+    el("div", { class: "s" }, card, sub);
+    const chart = el("div", { class: "chart" }, card);
+    if (c.error) { card.disabled = true; continue; }           // nothing to focus on
+    card.addEventListener("click", () => { state.focus = state.focus === c.code ? "basket" : c.code; syncControls(); renderAll(); });
+    requestAnimationFrame(() => drawMini(chart, c, ex, w, lo, hi));
+  }
+}
+function drawMini(host, c, ex, w, lo, hi) {
+  host.replaceChildren();
+  const W = Math.max(200, host.clientWidth), H = 124, m = { l: 34, r: 8, t: 8, b: 16 };
+  const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": c.name + " 매출 증감과 통관 수출 증감" }, host);
+  const slot = (W - m.l - m.r) / w.N;
+  const f = { svg, W, H, m, w, slot, x: j => m.l + slot * (j + 0.5), left: j => m.l + slot * j, plotH: H - m.t - m.b };
+  const y = yoyScale(f, lo, hi);
+  const g = sv("g", {}, svg);
+  shadePending(f, g, false);
+  shadeBreaks(f, g, c);
+  for (const t of [-50, 0, 100, 300].filter(t => t >= lo && t <= hi)) {
+    sv("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, g);
+    sv("text", { x: m.l - 4, y: y(t) + 4, "text-anchor": "end" }, g, (t > 0 ? "+" : t < 0 ? "−" : "") + Math.abs(t) + "%");
+  }
+  w.months.forEach((ym, j) => { if (ym.slice(4) === "01" && (w.N <= 72 || +ym.slice(0, 4) % 2 === 0)) sv("text", { x: f.left(j), y: H - 3 }, g, "'" + ym.slice(2, 4)); });
+  const rev = {};
+  for (const [q, v] of Object.entries(c.quarters)) rev[q] = v.revenue_yoy;
+  const marks = sv("g", { "clip-path": clip(f, "clip-mini-" + c.code) }, svg);
+  sv("path", { d: monthPath(f, y, ex.yoy3, lo, hi), fill: "none", stroke: "var(--s1)", "stroke-width": 1.5, "stroke-opacity": 0.75 }, marks);
+  sv("path", { d: stepPath(f, y, rev, lo, hi), fill: "none", stroke: "var(--s2)", "stroke-width": 2 }, marks);
+  if (w.N <= 72) dots(f, svg, y, rev, lo, hi, "var(--s2)", false, false);    // past 24 quarters the dots crowd the step
+  else for (const [q, j] of Object.entries(quarterEnds(f))) {
+    const v = rev[q];
+    if (v != null && (v > hi || v < lo)) chevron(svg, f.x(j), y(v > hi ? hi : lo), v > hi, "var(--s2)");
+  }
+  if (c.first_yoy && c.first_yoy > quarterOf(w.months[0]))
+    sv("text", { x: m.l + 4, y: m.t + 10 }, svg, "증감 자료 " + qLabel(c.first_yoy) + "~");
+}
+
+// ---------------------------------------------------------------- tiles
+function drawTiles() {
+  const host = document.getElementById("tiles");
+  host.replaceChildren();
+  const ex = exportsNow();
+  const tile = (cls, label, value, delta, ref) => {
+    const t = el("div", { class: "tile " + cls }, host);
+    el("div", { class: "label" }, t, label);
+    el("div", { class: "value" }, t, value);
+    if (delta) el("div", { class: "delta" }, t, delta);
+    if (ref) el("div", { class: "ref" }, t, ref);
+    return t;
+  };
+  const disc = [...D.pending].reverse().find(p => p.kind === "disclosure");
+  const prog = D.pending.find(p => p.kind === "progress");
+  const label = codeInfo().label.length > 24 ? state.code : codeInfo().label;
+  if (disc) {
+    const qv = ex.quarters[disc.q], dd = daysUntil(disc.due);
+    const months = disc.q.slice(5) === "1" ? "1~3월" : disc.q.slice(5) === "2" ? "4~6월" : disc.q.slice(5) === "3" ? "7~9월" : "10~12월";
+    const an = ex.analog;
+    const ref = an && an.quarters.length
+      ? `과거 통관 증감 ${an.band} 분기 ${an.quarters.length}개: ${D.sector.noun} 합계 매출 증감 중앙값 ${pct(an.median, 0)}, ${an.positive}개 증가 (` +
+        an.quarters.map(a => qLabel(a.q) + " " + pct(a.r, 0)).join(" · ") + "). 예측이 아니라 지난 분포입니다."
+      : null;
+    tile("hero", `${qLabel(disc.q)} 통관 수출 증감 · 실적 공시 전`, pct(qv && qv.yoy),
+      `${months} · ${label} · ${curWord()} · 실적 기한 ${disc.due.slice(5).replace("-", "/")} (${dd >= 0 ? "D-" + dd : "D+" + (-dd)})` +
+      (disc.filed ? ` · ${disc.filed}/${disc.of}곳 공시` : ""), ref);
+  }
+  if (prog) {
+    const qtd = ex.qtd;
+    tile(disc ? "" : "hero", `${qLabel(prog.q)} 진행 중 통관 증감 (${prog.months}/3달)`, pct(qtd && qtd.yoy),
+      `지난해 같은 달들 대비 · ${curWord()}`);
+  } else {
+    const i = D.months.length - 1;
+    tile("", `${ymLabel(D.months[i])} 한 달 통관 증감`, pct(ex.yoy[i]), `수출액 ${money(ex.value[i])} · ${curWord()}`);
+  }
+  if (D.reported) {
+    const rv = revSeries(state.focus)[D.reported];
+    const b = D.basket[D.reported];
+    const same = ex.quarters[D.reported];
+    tile("", `${qLabel(D.reported)} ${focusName()} 매출 증감 (마지막 공시 분기)`, pct(rv),
+      `같은 분기 통관 ${pct(same && same.yoy)}` + (state.focus === "basket" && b ? ` · 비교 ${b.matched}곳 · 영업이익률 ${b.margin == null ? "–" : b.margin.toFixed(1) + "%"}` : ""));
+  }
+  const stats = statsFor(state.focus === "basket" ? "basket" : state.focus);
+  const t = tile("", `통관 → ${focusName()} 매출 상관 (r, 95% 구간)`, "", null);
+  t.querySelector(".value").remove();
+  const strip = el("div", { class: "lagstrip" }, t);
+  const names = { "-1": "매출이 1분기 앞섬", "0": "같은 분기", "1": "수출이 1분기 앞섬", "2": "2분기 앞섬" };
+  for (const d of stats) {
+    const cell = el("div", weakStat(d) ? { class: "weak" } : {}, strip);
+    el("b", {}, cell, lagCell(d));
+    el("span", {}, cell, d.r == null ? noRReason(d) : ciText(d));
+    el("span", {}, cell, names[d.lag]);
+  }
+  const s0 = stats.find(d => d.lag === 0);
+  const span = s0 && s0.span ? `${qLabel(s0.span[0])}~${qLabel(s0.span[1])}` : "";
+  el("div", { class: "delta" }, t,
+    (s0 && s0.hit != null ? `같은 분기 방향 일치 ${s0.hit}% (우연이면 ${s0.chance}%, ±5% 미만 ${s0.flat}분기 제외) · ` : "") +
+    `${span} 전체 · 유효 표본 ${s0 && s0.n_eff != null ? "≈" + s0.n_eff : "–"} · 흐린 칸 = 0과 구분 안 됨`);
+}
+
+// ---------------------------------------------------------------- tables
+function cell(tr, text, cls) { return el("td", cls ? { class: cls } : {}, tr, text); }
+function drawMonthTable() {
+  const t = document.getElementById("mtable");
+  t.replaceChildren();
+  const w = windowOf(), ex = exportsNow();
+  const head = el("tr", {}, el("thead", {}, t));
+  for (const h of ["월", "수출액 (" + curWord() + ")", "원/달러", "그 달 증감", "3개월 증감"]) el("th", {}, head, h);
+  const body = el("tbody", {}, t);
+  for (let j = w.N - 1; j >= 0; j--) {
+    const i = w.start + j;
+    const tr = el("tr", {}, body);
+    cell(tr, ymLabel(D.months[i]));
+    cell(tr, money(ex.value[i]));
+    cell(tr, D.fx[i] == null ? "–" : fmtNum(D.fx[i], 1));
+    cell(tr, pct(ex.yoy[i]), signCls(ex.yoy[i]));
+    cell(tr, pct(ex.yoy3[i]), signCls(ex.yoy3[i]));
+  }
+}
+function drawQuarterTable() {
+  const t = document.getElementById("qtable");
+  t.replaceChildren();
+  const w = windowOf(), ex = exportsNow();
+  const head = el("tr", {}, el("thead", {}, t));
+  for (const h of ["분기", "통관 수출 (" + curWord() + ")", "증감", D.sector.noun + " 매출 (억원)", "증감", "비교/공시 회사", "회사별 증감 중앙값", "최대 비중", "영업이익 (억원)", "증감", "이익률"])
+    el("th", {}, head, h);
+  const body = el("tbody", {}, t);
+  const firstQ = quarterOf(w.months[0]);
+  const qs = new Set([...Object.keys(ex.quarters), ...Object.keys(D.basket), ...D.pending.map(p => p.q)]);
+  for (const q of [...qs].filter(q => q >= firstQ).sort().reverse()) {
+    const e = ex.quarters[q], b = D.basket[q], p = pendingOf(q);
+    const tr = el("tr", p ? { class: "pending" } : {}, body);
+    cell(tr, qLabel(q) + (p ? (p.kind === "disclosure" ? " · 공시 전" : " · 진행 중") : ""));
+    cell(tr, e ? money(e.value) : (ex.qtd && ex.qtd.q === q ? `${ex.qtd.months}/3달` : "–"));
+    const ey = e ? e.yoy : (ex.qtd && ex.qtd.q === q ? ex.qtd.yoy : null);
+    cell(tr, pct(ey), signCls(ey));
+    cell(tr, b ? fmtNum(b.revenue) : "–");
+    cell(tr, pct(b && b.revenue_yoy), signCls(b && b.revenue_yoy));
+    cell(tr, b ? b.matched + " / " + b.reported + (b.coverage != null && b.coverage < 50 ? ` (매출 ${b.coverage}%뿐 — 증감 안 냄)` : "") : "–",
+         b && b.coverage != null && b.coverage < 50 ? "weak" : "");
+    cell(tr, pct(b && b.median_yoy), signCls(b && b.median_yoy));
+    cell(tr, b && b.top ? b.top.name + " " + b.top.share + "%" : "–", b && b.top && b.top.share >= 40 ? "" : "weak");
+    cell(tr, b ? fmtNum(b.operating) : "–");
+    cell(tr, pct(b && b.operating_yoy), signCls(b && b.operating_yoy));
+    cell(tr, b && b.margin != null ? b.margin.toFixed(1) + "%" : "–");
+  }
+}
+function drawCompanyTable() {
+  const t = document.getElementById("ctable");
+  t.replaceChildren();
+  const ex = exportsNow();
+  document.getElementById("ctable-note").textContent =
+    `상관 r: 분기 통관 수출 증감(${codeInfo().label}, ${curWord()})과 매출 증감의 로그 변화율 상관, 괄호는 95% 구간(자기상관을 감안한 유효 표본). ` +
+    "흐린 값은 0과 구분되지 않습니다. 쌍이 12개 미만이면 내지 않습니다. 증감의 기준값은 그 보고서에 함께 적힌 전년 같은 분기(정정·분할로 다시 쓴 값)입니다.";
+  const head = el("tr", {}, el("thead", {}, t));
+  for (const h of ["회사", "최근 분기", "매출 (억원)", "증감", "영업이익 (억원)", "이익률", "r 매출 1분기 앞", "r 같은 분기", "r 수출 1분기 앞", "r 수출 2분기 앞", "n", "방향 일치 (우연)", "기준", "접수번호"])
+    el("th", {}, head, h);
+  const body = el("tbody", {}, t);
+  const rows = [{ code: "basket", name: basketName(), basket: true }].concat(D.companies);
+  for (const c of rows) {
+    const tr = el("tr", {}, body);
+    cell(tr, c.name);
+    const stats = ex.lags[c.code] || [];
+    let q = null, v = null;
+    if (c.basket) { q = D.reported; const b = q && D.basket[q]; v = b ? { revenue: b.revenue, operating: b.operating, revenue_yoy: b.revenue_yoy } : null; }
+    else if (!c.error) { q = c.last; v = q ? c.quarters[q] : null; }
+    cell(tr, q ? qLabel(q) : (c.error ? "자료 없음" : "–"));
+    cell(tr, v ? fmtNum(v.revenue) : "–");
+    cell(tr, pct(v && v.revenue_yoy), signCls(v && v.revenue_yoy));
+    cell(tr, v ? fmtNum(v.operating) : "–");
+    cell(tr, v && v.revenue && v.operating != null ? (v.operating / v.revenue * 100).toFixed(1) + "%" : "–");
+    for (const k of [-1, 0, 1, 2]) {
+      const d = stats.find(x => x.lag === k);
+      cell(tr, d && d.r != null ? `${d.r.toFixed(2)} (${ciText(d)})` : "–", weakStat(d) ? "weak" : "");
+    }
+    const s0 = stats.find(x => x.lag === 0);
+    cell(tr, s0 ? String(s0.n) : "–");
+    cell(tr, s0 && s0.hit != null ? `${s0.hit}% (${s0.chance}%)` : "–", s0 && s0.hit != null && s0.hit - s0.chance < 10 ? "weak" : "");
+    cell(tr, v && v.basis ? (v.basis === "CFS" ? "연결" : "별도") : "");
+    cell(tr, v && v.rcept_no ? v.rcept_no : "");
+  }
+}
+function drawCompanyQuarterTable() {
+  const t = document.getElementById("cqtable");
+  t.replaceChildren();
+  const w = windowOf(), firstQ = quarterOf(w.months[0]);
+  const qs = [...new Set(D.companies.flatMap(c => Object.keys(c.quarters)))].filter(q => q >= firstQ).sort().reverse();
+  const head = el("tr", {}, el("thead", {}, t));
+  el("th", {}, head, "분기");
+  for (const c of D.companies) el("th", {}, head, c.name);
+  const body = el("tbody", {}, t);
+  for (const q of qs) {
+    const tr = el("tr", {}, body);
+    cell(tr, qLabel(q));
+    for (const c of D.companies) {
+      const v = c.quarters[q];
+      if (!v) { cell(tr, ""); continue; }
+      if (v.excluded) { cell(tr, "분할 제외", "weak"); continue; }
+      cell(tr, pct(v.revenue_yoy) + (v.restated ? "*" : "") + (v.proforma ? "†" : "") + (v.basis === "OFS" ? " 별" : ""), signCls(v.revenue_yoy));
+    }
+  }
+  const foot = el("tr", {}, el("tfoot", {}, t));
+  el("td", { colspan: D.companies.length + 1 }, foot, "* 재작성 기준(정정·분할 뒤 전년 값이 원래 공시와 1% 넘게 다름) · † 흡수합병 뒤 — 합병 전 두 회사 매출을 합친 기저와 비교 · 별 = 별도 재무제표");
+}
+
+// ---------------------------------------------------------------- notes
+function drawNotes() {
+  const ul = document.getElementById("notes");
+  ul.replaceChildren();
+  const breaks = D.companies.flatMap(c => (c.breaks || []).map(b => `${c.name} ${qLabel(b.from)}~${qLabel(b.to)}(${b.reason})`));
+  const late = D.companies.filter(c => c.first_yoy && D.months.length && c.first_yoy > quarterOf(D.months[0]))
+    .map(c => `${c.name} ${qLabel(c.first_yoy)}`);
+  const notes = [
+    "통관 수출 = 관세청 품목별 수출(신고 FOB, 달러). " + D.sector.caveat,
+    "통관 증감 폭은 매출 증감 폭과 같지 않습니다. 둘의 방향과 시차를 보는 화면이지 매출을 예측하는 화면이 아닙니다.",
+    "회사 매출 증감의 기준값은 그 분기 보고서에 함께 적힌 전년 같은 분기(정정·분할로 다시 쓴 값)입니다. 4분기 = 사업보고서 연간 − 3분기 누적. " +
+      D.sector.noun + " 합계 증감은 두 값이 모두 있는 회사끼리 합산합니다(매출이 큰 회사의 비중이 큼 — 분기 표의 '최대 비중').",
+    ...(breaks.length ? ["비교에서 뺀 구간(증감·합계·상관 모두): " + breaks.join(" · ") + "."] : []),
+    ...(late.length ? ["증감이 늦게 시작하는 회사(상장·분할 신설 등): " + late.join(" · ") + "부터."] : []),
+    ...(D.sector.excluded_note ? ["넣지 않은 회사: " + D.sector.excluded_note] : []),
+    ...D.codes.filter(c => c.breaks && c.breaks.length).map(c =>
+      `통관 쪽 비교에서 뺀 구간(${c.label}): ` + c.breaks.map(b => `${qLabel(b.from)}~${qLabel(b.to)} ${b.reason}`).join(" · ") +
+      " — 차트에는 그대로 두고 상관·유사 분기에서만 뺍니다."),
+    "합계 매출 증감은 비교 가능한 회사들의 매출이 그 분기 합계 매출의 절반이 안 되면 내지 않습니다(큰 회사가 합병 등으로 비교에서 빠진 분기). 흡수합병 뒤에는 합병 전 두 회사 매출을 합친 기저와 비교합니다.",
+    "상관은 로그 변화율 ln(1+증감)로 계산합니다. 증감이 전년 같은 분기 대비라 이웃한 분기끼리 겹쳐 실제 정보량(유효 표본)은 분기 수보다 적습니다. 시차 넷을 나란히 보여 줄 뿐 가장 높은 것을 고르지 않습니다.",
+    "세로축은 로그 눈금이라 −50%와 +100%가 0에서 같은 거리입니다. " + LO_MIN + "% ~ +" + HI_MAX + "% 밖은 ▲▼로 표시하고 실제 값은 툴팁과 표에 있습니다.",
+    "관세청은 매월 15일 전후 지난달을 내고 그 전 달들(6개월 넘게 거슬러)도 조금씩 고칩니다. DART 분기 재무제표 API는 2016년부터 있습니다.",
+  ];
+  for (const n of notes) el("li", {}, ul, n);
+  const memo = D.companies.filter(c => c.note);
+  if (memo.length) {
+    const li = el("li", {}, ul, "회사 메모");
+    const sub = el("ul", {}, li);
+    for (const c of memo) el("li", {}, sub, c.name + " — " + c.note);
+  }
+  for (const w of D.warnings) el("li", {}, ul, "빠진 것 · 경고: " + w);
+}
+
+// ---------------------------------------------------------------- controls
+function syncControls() {
+  document.getElementById("code").value = state.code;
+  document.getElementById("focus").value = state.focus;
+  for (const b of document.querySelectorAll("#cur button")) b.setAttribute("aria-pressed", String(b.dataset.v === state.cur));
+  for (const b of document.querySelectorAll("#period button")) b.setAttribute("aria-pressed", String(b.dataset.v === String(state.period)));
+}
+function setupControls() {
+  const code = document.getElementById("code");
+  for (const c of D.codes) el("option", { value: c.key }, code, c.label +
+    (c.share == null || c.share >= 100 && c.inside ? "" : c.inside ? ` (${c.share}%)` : ` (기준 밖, 기준 대비 ${c.share}%)`));
+  code.addEventListener("change", () => { state.code = code.value; renderAll(); });
+  const cur = document.getElementById("cur");
+  for (const [k, t] of [["KRW", "원화 환산"], ["USD", "달러"]]) {
+    const b = el("button", { type: "button", "data-v": k }, cur, t);
+    if (!D.currencies.includes(k)) { b.disabled = true; b.title = "환율을 받지 못해 원화 환산을 끕니다"; }
+    b.addEventListener("click", () => { state.cur = k; syncControls(); renderAll(); });
+  }
+  const period = document.getElementById("period");
+  for (const [k, t] of [[3, "3년"], [5, "5년"], ["all", "전체"]]) {
+    const b = el("button", { type: "button", "data-v": String(k) }, period, t);
+    b.addEventListener("click", () => { state.period = k; syncControls(); renderAll(); });
+  }
+  const focus = document.getElementById("focus");
+  el("option", { value: "basket" }, focus, basketName());
+  for (const c of okCompanies()) el("option", { value: c.code }, focus, c.name);
+  focus.addEventListener("change", () => { state.focus = focus.value; renderAll(); });
+  syncControls();
+}
+
+function renderAll() {
+  hideTip();
+  crossLines = []; cursor = null;
+  drawTiles(); drawOverlay(); drawAmount(); drawMargin(); drawMix(); drawMultiples();
+  drawMonthTable(); drawQuarterTable(); drawCompanyTable(); drawCompanyQuarterTable();
+  const st = statsFor(state.focus === "basket" ? "basket" : state.focus).find(d => d.lag === 0);
+  document.getElementById("overlay-note").textContent =
+    (state.cur === "KRW" ? "수출은 그 달 평균 원/달러 환율로 원화 환산. " : "수출은 달러 기준(매출은 원화). ") +
+    "○와 ●는 같은 석 달을 비교합니다(분기 끝 달의 3개월 합 증감 = 그 분기 통관 증감). 십자선은 세 차트에 함께 움직이고, ←/→ · Home/End 로도 옮길 수 있습니다." +
+    (st && st.r != null ? ` 같은 분기 상관 r = ${st.r.toFixed(2)} (${ciText(st)}, n ${st.n}).` : "");
+}
+
+document.getElementById("title").textContent = D.sector.name + " (HS " + D.sector.hs.join("·") + ") 통관 수출 × " + D.sector.noun + " 실적";
+(function setupNav() {
+  const nav = document.getElementById("sector-nav");
+  for (const s of D.nav.length ? D.nav : [{ key: D.sector.key, name: D.sector.name }]) el("option", { value: s.key }, nav, s.name);
+  nav.value = D.sector.key;
+  nav.addEventListener("change", () => { location.href = encodeURIComponent(nav.value) + ".html"; });
+})();
+document.getElementById("subtitle").textContent =
+  "관세청 통관 " + (D.months.length ? ymLabel(D.months[D.months.length - 1]) : "–") + "까지 · DART 실적 " +
+  (D.reported ? qLabel(D.reported) : "–") + "까지 · 만든 시각 " + D.built_at;
+setupControls();
+drawNotes();
+renderAll();
+let resizeTimer = null;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderAll, 150); });
+document.addEventListener("pointerdown", e => { if (!e.target.closest(".chart")) hideTip(); });
+</script>
+</body>
+</html>

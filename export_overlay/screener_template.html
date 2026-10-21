@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --ctx: #898781; --wash: rgba(11,11,11,0.05); --band: rgba(42,120,214,0.14);
+  --up: #006300; --down: #b42318;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --ctx: #898781; --wash: rgba(240,239,236,0.08); --band: rgba(57,135,229,0.22);
+    --up: #0ca30c; --down: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --ctx: #898781; --wash: rgba(240,239,236,0.08); --band: rgba(57,135,229,0.22);
+  --up: #0ca30c; --down: #e66767;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+h1, h2, .tile { word-break: keep-all; }
+h1 { font-size: 20px; margin: 0 0 2px; font-weight: 650; }
+h2 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
+h3 { font-size: 13px; margin: 0 0 6px; font-weight: 600; color: var(--ink-2); }
+.sub, .note { color: var(--ink-2); margin: 0; }
+.note { font-size: 12.5px; margin-top: 4px; }
+.lead { margin: 10px 0 14px; max-width: 920px; }
+.verdict { font-size: 14px; margin: 0 0 12px; padding: 10px 14px; border-left: 3px solid var(--s2); background: var(--wash); border-radius: 0 8px 8px 0; max-width: 920px; }
+.topnav { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin: 0 0 10px; font-size: 13px; color: var(--ink-2); }
+.topnav a { color: var(--s1); text-decoration: none; }
+.topnav a:hover { text-decoration: underline; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 14px 0; }
+.controls label { color: var(--ink-2); font-size: 13px; display: flex; gap: 6px; align-items: center; }
+select, .seg button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 8px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 600px) { .tiles { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 420px) { .tiles { grid-template-columns: 1fr; } }
+.tile, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.tile { padding: 12px 14px; }
+.tile .label { color: var(--ink-2); font-size: 12.5px; }
+.tile .value { font-size: 26px; font-weight: 650; margin: 2px 0; line-height: 1.2; }
+.tile .delta, .tile .ref { font-size: 12.5px; color: var(--ink-2); }
+.tile .ref { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--grid); }
+.card { padding: 14px 16px 12px; margin-bottom: 16px; }
+.chart { width: 100%; position: relative; }
+.chart svg { display: block; width: 100%; overflow: visible;
+  font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+svg text.quad { fill: var(--ink-2); font-size: 11.5px; }
+svg text.lbl { fill: var(--ink); font-size: 11px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 4px; color: var(--ink-2); font-size: 12.5px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--s1); }
+.dot.hollow { background: transparent; border: 1.5px solid var(--s1); }
+.dot.sel { background: var(--s2); }
+.cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.tablewrap { overflow-x: auto; max-height: 640px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+th { color: var(--ink-2); font-weight: 600; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+th:first-child { z-index: 2; }
+th button { all: unset; cursor: pointer; }
+th button[aria-sort="descending"]::after { content: " ▼"; font-size: 9px; }
+tr.row { cursor: pointer; }
+tr.row:hover td { background: var(--wash); }
+tr.row:hover td:first-child { background: linear-gradient(var(--wash), var(--wash)), var(--surface); }
+tr.sel td { background: var(--wash); font-weight: 600; }
+tr.sel td:first-child { background: linear-gradient(var(--wash), var(--wash)), var(--surface); }
+td.weak, .weak { color: var(--muted); }
+.pos { color: var(--up); } .neg { color: var(--down); }
+.pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--wash); color: var(--ink-2); }
+.pill.up { color: var(--up); font-weight: 650; } .pill.down { color: var(--down); font-weight: 650; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 4px 16px; font-size: 12.5px; margin: 6px 0 10px; }
+.facts div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dotted var(--grid); padding: 2px 0; }
+.facts span { color: var(--ink-2); } .facts b { font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
+.strip { display: flex; align-items: flex-end; gap: 2px; height: 40px; margin: 4px 0; }
+.strip i { display: block; flex: 1; background: var(--s1); min-width: 3px; opacity: 0.8; }
+.strip i.neg { background: var(--down); }
+.evtable td:first-child, .evtable th:first-child { position: static; }
+details { margin-top: 10px; }
+details summary { cursor: pointer; color: var(--ink-2); margin: 4px 0; font-size: 13px; }
+.notes { color: var(--ink-2); font-size: 12.5px; }
+.notes li { margin: 3px 0; }
+#tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.14); display: none; z-index: 10;
+  min-width: 200px; max-width: min(92vw, 340px); }
+#tip .h { color: var(--ink-2); margin: 0 0 4px; font-weight: 600; }
+#tip .row { display: flex; justify-content: space-between; gap: 10px; }
+#tip .row span { color: var(--ink-2); }
+@media (max-width: 600px) { .tile .value { font-size: 22px; } h1 { font-size: 18px; } }
+</style>
+</head>
+<body>
+<main>
+  <nav class="topnav" aria-label="이동">
+    <a href="수출겹쳐보기.html">← 섹터 개요</a>
+  </nav>
+  <h1>변곡점 레이더 — 통관 수출이 먼저 말하는 실적</h1>
+  <p class="sub" id="subtitle"></p>
+  <p class="lead note" id="lead"></p>
+  <p class="verdict" id="verdict"></p>
+
+  <section class="tiles" id="evidence" aria-label="과거 검증"></section>
+
+  <section class="card">
+    <h2>신호가 돈이 됐나 — 분기마다 신호 상위 ⅓ 매수·하위 ⅓ 매도, 통관 확정에서 공시 5거래일 뒤까지 (KOSPI 대비)</h2>
+    <div class="tablewrap"><table id="spread" class="evtable"></table></div>
+    <p class="note" id="spread-note"></p>
+  </section>
+
+  <div class="controls" role="group" aria-label="보기 조절">
+    <label>섹터 <select id="sector"></select></label>
+    <label>관계 <span class="seg" id="credible"></span></label>
+    <label>정렬 <select id="sort"></select></label>
+    <span class="note" id="count"></span>
+  </div>
+
+  <section class="card">
+    <h2 id="scatter-title">수출이 말하는 매출 변화와, 마지막 공시 뒤 주가가 이미 움직였는지</h2>
+    <div class="legend" id="scatter-legend"></div>
+    <div class="chart" id="scatter"></div>
+    <p class="note" id="scatter-note"></p>
+  </section>
+
+  <section class="card">
+    <h2 id="table-title">회사별 — 공시 전 분기 추정</h2>
+    <p class="note" id="table-note"></p>
+    <div class="tablewrap"><table id="table"></table></div>
+  </section>
+
+  <section class="card" id="detail-card" hidden>
+    <h2 id="detail-title"></h2>
+    <p class="note" id="detail-note"></p>
+    <div class="facts" id="detail-facts"></div>
+    <div class="cols2">
+      <div><h3>과거 분기: 통관 수출 증감 → 매출 증감 (같은 분기)</h3><div class="chart" id="fit"></div><p class="note" id="fit-note"></p></div>
+      <div><h3>걸어가며 검증 — 그때까지의 분기만으로 맞춰 본 결과</h3><div class="tablewrap"><table id="events" class="evtable"></table></div><p class="note" id="events-note"></p></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>섹터 합계 — 같은 방식</h2>
+    <div class="tablewrap"><table id="stable"></table></div>
+  </section>
+
+  <section class="card notes">
+    <h2>어떻게 만든 숫자인가 · 읽을 때 주의</h2>
+    <ul id="notes"></ul>
+    <details><summary>섹터별 통관 수치의 한계 (섹터 화면과 같은 문장)</summary><ul id="caveats"></ul></details>
+  </section>
+</main>
+<div id="tip" role="tooltip"></div>
+<script type="application/json" id="data">{{DATA}}</script>
+<script>
+"use strict";
+const D = JSON.parse(document.getElementById("data").textContent);
+const NS = "http://www.w3.org/2000/svg";
+const state = { sector: "all", credible: true, sort: "t", sel: null };
+const TICKS = [-75, -50, -25, 0, 25, 50, 100, 200, 300];
+const L = v => Math.log1p(v / 100);
+
+// ---------------------------------------------------------------- helpers
+function el(tag, attrs, parent, text) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, v);
+  if (text != null) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function sv(tag, attrs, parent, text) {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, v);
+  if (text != null) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const qLabel = q => q.slice(5) + "Q" + q.slice(2, 4);
+const ymLabel = ym => ym.slice(0, 4) + "-" + ym.slice(4);
+function pct(v, nd = 1) { return v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(nd) + "%"; }
+function pp(v, nd = 0) { return v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(nd) + "p"; }
+function num(v, nd = 1) { return v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(nd); }
+function signCls(v) { return v == null ? "" : v > 0 ? "pos" : v < 0 ? "neg" : ""; }
+function range(p) { return p ? `${pct(p.lo, 0)}~${pct(p.hi, 0)}` : "–"; }
+function fitText(f) { return f ? `${f.r.toFixed(2)} (${f.lo == null ? "구간 없음" : f.lo.toFixed(2) + "~" + f.hi.toFixed(2)}, n ${f.n})` : "표본 부족"; }
+function isCredible(c) { return !!(c.fit && c.fit.credible); }
+function priced(c) { return !!(c.price && !c.price.void); }
+function zOf(c) { return priced(c) && c.price.since ? c.price.since.z : null; }
+function statusPill(parent, st) {
+  if (!st) return;
+  el("span", { class: "pill " + (st === "가속" ? "up" : st === "감속" ? "down" : "") }, parent, st);
+}
+function rows() {
+  let out = D.companies.filter(c => state.sector === "all" || c.sector === state.sector);
+  if (state.credible) out = out.filter(isCredible);
+  const key = {
+    t: c => c.focus && c.focus.t, delta: c => c.focus && c.focus.delta, z: c => { const z = zOf(c); return z == null ? null : -Math.abs(z); },
+    ratio: c => c.backtest.ratio == null ? null : -c.backtest.ratio, r: c => c.fit && c.fit.r, last: c => c.last_yoy,
+    surprise: c => { const f = c.nowcast.find(n => n.actual != null); return f ? f.surprise : null; },
+  }[state.sort];
+  const v = c => { const x = key(c); return x == null ? -Infinity : x; };
+  return out.sort((a, b) => v(b) - v(a) || a.name.localeCompare(b.name, "ko"));
+}
+
+// ---------------------------------------------------------------- tooltip
+const tip = document.getElementById("tip");
+function showTip(x, y, head, lines) {
+  tip.replaceChildren();
+  el("div", { class: "h" }, tip, head);
+  for (const [k, v] of lines) { const r = el("div", { class: "row" }, tip); el("span", {}, r, k); el("b", {}, r, v); }
+  tip.style.display = "block";
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(x + 14, window.innerWidth - w - 8) + "px";
+  tip.style.top = (y + h + 20 > window.innerHeight ? y - h - 10 : y + 14) + "px";
+}
+function hideTip() { tip.style.display = "none"; }
+
+// ---------------------------------------------------------------- evidence
+function tile(host, label, value, delta, ref) {
+  const t = el("div", { class: "tile" }, host);
+  el("div", { class: "label" }, t, label);
+  el("div", { class: "value" }, t, value);
+  if (delta) el("div", { class: "delta" }, t, delta);
+  if (ref) el("div", { class: "ref" }, t, ref);
+  return t;
+}
+const hitText = h => h.hit == null ? "–" : `${h.hit}% (${h.lo}~${h.hi}, ${h.n}건)`;
+function drawEvidence() {
+  const host = document.getElementById("evidence");
+  host.replaceChildren();
+  const e = D.evidence, d = e.direction, now = e.now;
+  tile(host, "지금 — 95% 구간 전체가 마지막 공시를 넘는 회사", `가속 ${now.up} · 감속 ${now.down}`,
+       `관계가 확인된 ${now.n}곳 중 · 우연만으로도 ${now.null_mean}±${now.null_sd}곳은 나온다`,
+       "구간이 겹치는 회사는 '불명' — 표는 t = (추정 − 마지막 공시) ÷ 예측 표준오차 순");
+  tile(host, `과거 신호(${e.strong}p 이상)의 방향 적중률 — 관계 확인된 회사`, d.credible.hit == null ? "–" : d.credible.hit + "%",
+       d.credible.hit == null ? "신호 없음" : `95% 구간 ${d.credible.lo}~${d.credible.hi} · ${d.credible.n}건 · 그때까지 분기만으로 맞춤`,
+       `확인 안 된 회사까지 ${hitText(d.all)} · 첫 달만 보고(두 분기 전 공시 대비) ${hitText(d.early_credible)}`);
+  const ra = e.ratio_all.value;
+  tile(host, "추정 오차 ÷ '지난 분기 그대로' 오차 — 관계 확인 · 전부",
+       `${e.ratio.value == null ? "–" : e.ratio.value.toFixed(2)} · ${ra == null ? "–" : ra.toFixed(2)}`,
+       `걸어가며 검증 ${e.ratio.n} · ${e.ratio_all.n}분기 · 1 미만이면 수출이 지난 분기보다 낫다`,
+       `'관계 확인' 조건에 이 비율 < 1이 들어 있어 왼쪽은 독립 검증이 아니다; 오른쪽이 가리지 않은 값` + (ra != null && ra >= 1 ? " — 가려 쓰지 않으면 수출은 지난 분기보다 못하다" : ""));
+  tile(host, "95% 구간 안에 실제 매출 증감이 든 비율", e.inside95.share == null ? "–" : e.inside95.share + "%",
+       `관계 확인된 회사의 걸어가며 검증 ${e.inside95.n}개 분기, 화면과 같은 구간 규칙 (95%에 가까워야 구간을 믿을 수 있음)`);
+}
+function spreadText(v) { return v.mean == null ? "–" : `${pct(v.mean)} (${pct(v.lo)}~${pct(v.hi)})`; }
+function drawSpread() {
+  const t = document.getElementById("spread");
+  t.replaceChildren();
+  const e = D.evidence.spread;
+  const head = el("tr", {}, el("thead", {}, t));
+  for (const h of ["신호", "분기 평균 (95%)", "중앙값", "양(+) 분기 비율 (95%)", "분기 수 · 회사·분기", "분기별 (왼쪽이 과거)"]) el("th", {}, head, h);
+  const body = el("tbody", {}, t);
+  const rowsDef = [
+    ["A. 수출 추정 — 분기 끝 다음 달 15일(품목 통관 확정)부터", e.signal],
+    ["B. 같은 신호 — 다음 달 1일(산업부 수출 속보)부터", e.flash],
+    ["C. 실제 매출 가속을 미리 알았다면 (상한)", e.oracle],
+    [`D. 첫 달 통관만 보고 — 둘째 달 15일부터 (그때 공시된 마지막 분기 = ${D.evidence.early_known}분기 전)`, e.early],
+  ];
+  let maxAbs = 1;
+  for (const [, v] of rowsDef) for (const q of v.quarters) maxAbs = Math.max(maxAbs, Math.abs(q.spread));
+  for (const [label, v] of rowsDef) {
+    const tr = el("tr", {}, body);
+    el("td", {}, tr, label);
+    el("td", { class: v.mean == null ? "weak" : (v.lo > 0 ? "pos" : v.hi < 0 ? "neg" : "") }, tr, spreadText(v));
+    el("td", { class: signCls(v.median) }, tr, pct(v.median));
+    el("td", {}, tr, v.positive == null ? "–" : `${v.positive}% (${v.pos_lo}~${v.pos_hi})`);
+    el("td", {}, tr, `${v.n} · ${v.events}`);
+    const td = el("td", {}, tr);
+    const strip = el("div", { class: "strip", title: v.quarters.map(q => `${qLabel(q.q)} ${pct(q.spread)} (${q.names}곳)`).join("\n") }, td);
+    for (const q of v.quarters) {
+      const bar = el("i", { class: q.spread < 0 ? "neg" : "" }, strip);
+      bar.style.height = Math.max(2, Math.abs(q.spread) / maxAbs * 38) + "px";
+      bar.title = `${qLabel(q.q)} ${pct(q.spread)} (${q.names}곳)`;
+    }
+  }
+  document.getElementById("spread-note").textContent =
+    `관계가 확인된 회사만, 걸어가며 낸 추정으로. 각 분기에 회사 ${D.evidence.min_names}곳 이상일 때 신호(추정 매출 증감 − 그때 공시된 마지막 분기 증감) 상위 ⅓의 평균 초과수익 − 하위 ⅓의 평균. 분기가 표본 단위라 같은 분기에 같이 움직인 회사들을 여러 번 세지 않는다. ` +
+    `C가 양이면 시장은 이 구간에서 매출 가속에 값을 치른다는 뜻이고, A가 C보다 작은 만큼은 수출만으로 못 잡는 부분이다. 막대 = 분기별 스프레드(빨강 = 음).`;
+}
+function drawVerdict() {
+  const e = D.evidence, a = e.spread.signal, c = e.spread.oracle, d = e.direction.credible;
+  const parts = [];
+  if (d.hit != null) parts.push(`관계가 확인된 회사들의 과거 신호(${e.strong}p 이상)는 방향이 ${d.hit}% 맞았다(${d.lo}~${d.hi}, ${d.n}건).`);
+  if (a.mean != null) {
+    if (a.lo > 0) parts.push(`신호 상·하위 ⅓ 롱숏은 분기당 ${pct(a.mean)}(${pct(a.lo)}~${pct(a.hi)})로 구간이 0 위에 있다.`);
+    else parts.push(`그러나 통관 확정에서 공시까지 신호 상·하위 ⅓ 롱숏은 분기당 ${pct(a.mean)}(${pct(a.lo)}~${pct(a.hi)}) — 그 자체로 돈이 됐다는 증거는 없다.`);
+  }
+  if (c.mean != null) {
+    if (c.lo > 0) parts.push(`실제 가속을 미리 알았다면 ${pct(c.mean)}(${pct(c.lo)}~${pct(c.hi)}): 시장은 이 구간에서 매출 가속에 값을 치른다` +
+      (a.mean != null && a.lo > 0 ? ", 수출은 그중 일부를 먼저 알려 준다." : " — 다만 수출 신호만으로 그 값을 잡았다는 증거는 없다."));
+    else parts.push(`실제 가속을 미리 알았어도 ${pct(c.mean)}(${pct(c.lo)}~${pct(c.hi)}): 이 구간에서 매출 가속이 값을 받았다는 증거가 없다.`);
+  }
+  parts.push("그래서 이 화면은 자동 매매 신호가 아니라, 어느 회사의 다음 공시를 깊이 파야 하는지 — 그리고 무엇을 이미 가격이 반영했는지 — 를 가르는 연구 순서표다.");
+  document.getElementById("verdict").textContent = parts.join(" ");
+}
+
+// ---------------------------------------------------------------- scatter: delta vs z since the last filing
+const XMAX = 60, ZMAX = 4;
+const clamp = (v, m) => Math.max(-m, Math.min(m, v));
+function drawScatter() {
+  const host = document.getElementById("scatter");
+  host.replaceChildren();
+  const pts = rows().filter(c => c.focus && c.focus.delta != null && zOf(c) != null);
+  const W = Math.max(300, host.clientWidth), H = Math.min(420, Math.max(300, W * 0.45));
+  const m = { l: 48, r: 16, t: 20, b: 34 };
+  const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img",
+    "aria-label": "수출이 말하는 매출 증감 변화와 마지막 공시 뒤 주가 움직임" }, host);
+  const x = v => m.l + (clamp(v, XMAX) + XMAX) / (2 * XMAX) * (W - m.l - m.r);
+  const y = v => H - m.b - (clamp(v, ZMAX) + ZMAX) / (2 * ZMAX) * (H - m.t - m.b);
+  for (const t of [-60, -40, -20, 0, 20, 40, 60]) {
+    sv("line", { x1: x(t), x2: x(t), y1: m.t, y2: H - m.b, stroke: t ? "var(--grid)" : "var(--axis)" }, svg);
+    sv("text", { x: x(t), y: H - m.b + 14, "text-anchor": "middle" }, svg, pp(t));
+  }
+  for (const t of [-4, -2, 0, 2, 4]) {
+    sv("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t ? (Math.abs(t) === 2 ? "var(--axis)" : "var(--grid)") : "var(--axis)",
+      "stroke-dasharray": Math.abs(t) === 2 ? "4 3" : "" }, svg);
+    sv("text", { x: m.l - 6, y: y(t) + 4, "text-anchor": "end" }, svg, (t > 0 ? "+" : "") + t + "σ");
+  }
+  sv("text", { x: W - m.r, y: H - m.b + 28, "text-anchor": "end" }, svg, "→ 수출이 말하는 매출 증감의 변화 (마지막 공시 분기 대비, 포인트)");
+  sv("text", { x: m.l - 40, y: m.t - 8 }, svg, "↑ 마지막 공시 뒤 KOSPI 대비 움직임, 그 종목의 평소 변동 대비 (z)");
+  sv("text", { x: W - m.r - 4, y: H - m.b - 6, class: "quad", "text-anchor": "end" }, svg, "수출은 가속, 주가는 아직 ↘");
+  sv("text", { x: m.l + 4, y: m.t + 12, class: "quad" }, svg, "↖ 수출은 감속, 주가는 이미 올라");
+  const g = sv("g", {}, svg);
+  for (const c of pts) {
+    const z = zOf(c), f = c.focus;
+    const out = Math.abs(f.delta) > XMAX || Math.abs(z) > ZMAX;
+    const sel = c.code === state.sel;
+    if (f.delta_lo != null && !out)
+      sv("line", { x1: x(f.delta_lo), x2: x(f.delta_hi), y1: y(z), y2: y(z), stroke: sel ? "var(--s2)" : "var(--s1)", "stroke-width": 1, opacity: 0.35 }, g);
+    const dot = sv("circle", { cx: x(f.delta), cy: y(z), r: sel ? 6.5 : 5,
+      fill: out ? "var(--surface)" : sel ? "var(--s2)" : "var(--s1)", stroke: sel ? "var(--s2)" : "var(--s1)", "stroke-width": 1.5,
+      tabindex: 0, role: "button", "aria-label": `${c.name} ${pp(f.delta)} z ${num(z)}` }, g);
+    const lines = [["섹터", c.sector_name], [`${qLabel(f.q)} 추정 매출 증감`, f.pred ? `${pct(f.pred.yoy, 0)} (${range(f.pred)})` : "–"],
+      ["마지막 공시 분기", `${c.last_q ? qLabel(c.last_q) : "–"} ${pct(c.last_yoy, 0)}`], ["변화 (95%)", `${pp(f.delta)} (${pp(f.delta_lo)}~${pp(f.delta_hi)})`],
+      ["상태", f.status || "–"], [`공시 뒤 초과수익 (${c.price.since.days}일)`, `${pct(c.price.since.excess)} · z ${num(z)}`], ["관계 r", fitText(c.fit)]];
+    const show = ev => showTip(ev.clientX, ev.clientY, c.name + (out ? " (축 밖)" : ""), lines);
+    dot.addEventListener("pointerenter", show); dot.addEventListener("pointermove", show);
+    dot.addEventListener("pointerleave", hideTip);
+    dot.addEventListener("click", () => select(c.code));
+    dot.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(c.code); } });
+    if (sel || (Math.abs(f.delta) >= 15 && pts.length <= 60))
+      sv("text", { x: x(f.delta) + 7, y: y(z) + 4, class: "lbl" }, g, c.name);
+  }
+  const leg = document.getElementById("scatter-legend");
+  leg.replaceChildren();
+  const a = el("span", {}, leg); el("i", { class: "dot" }, a); a.append(` 회사 ${pts.length}곳 (가로선 = 변화의 95% 구간)`);
+  const b = el("span", {}, leg); el("i", { class: "dot hollow" }, b); b.append(" 축 밖 값(±60p·±4σ에서 멈춤)");
+  const c2 = el("span", {}, leg); el("i", { class: "dot sel" }, c2); c2.append(" 고른 회사");
+  document.getElementById("scatter-note").textContent = pts.length
+    ? `오른쪽일수록 통관 수출이 마지막 공시보다 더 센 매출 증가를 말하고, 아래일수록 마지막 공시 뒤 주가가 시장보다 못 갔다(점선 ±${D.evidence.moved_z}σ 밖 = '이미 움직임'). 오른쪽 아래가 먼저 볼 자리 — 다만 '아직'은 추정이고, 시장이 다른 것(마진·가이던스·수출 밖 매출·잠정실적)을 보고 있을 수 있다. 점을 누르면 아래 표와 상세가 그 회사로 간다.`
+    : "주가를 받지 못했거나(--no-prices) 조건에 맞는 회사가 없어 점이 없습니다.";
+}
+
+// ---------------------------------------------------------------- company table
+const COLS = [
+  ["회사", null], ["섹터", null], ["마지막 공시", "last"], ["공시 전 분기 통관", null], ["추정 매출 증감 (95%)", null],
+  ["변화 (95%)", "delta"], ["상태 · t", "t"], ["이미 공시: 실제 · 수출 대비", "surprise"], ["관계 r (구간, n)", "r"],
+  ["오차÷지난분기 · 이긴 비율", "ratio"], ["방향 적중 (신호 n)", null], ["영업 레버리지", null], ["영업이익률 TTM", null], ["공시 뒤 주가 z", "z"],
+];
+function cell(tr, text, cls) { return el("td", cls ? { class: cls } : {}, tr, text); }
+function drawTable() {
+  const t = document.getElementById("table");
+  t.replaceChildren();
+  const head = el("tr", {}, el("thead", {}, t));
+  for (const [h, key] of COLS) {
+    const th = el("th", {}, head);
+    if (!key) { th.textContent = h; continue; }
+    const b = el("button", { type: "button", "aria-sort": state.sort === key ? "descending" : "none" }, th, h);
+    b.addEventListener("click", () => { state.sort = key; document.getElementById("sort").value = key; renderAll(); });
+  }
+  const body = el("tbody", {}, t);
+  const list = rows();
+  for (const c of list) {
+    const tr = el("tr", { class: "row" + (c.code === state.sel ? " sel" : ""), tabindex: 0 }, body);
+    const f = c.focus, filed = c.nowcast.find(n => n.actual != null);
+    const w = isCredible(c) ? "" : "weak";
+    cell(tr, c.name + (c.code === state.sel ? " ◀" : ""));
+    cell(tr, c.sector_name);
+    cell(tr, c.last_q ? `${qLabel(c.last_q)} ${pct(c.last_yoy, 0)}` : "–", signCls(c.last_yoy));
+    cell(tr, f ? `${qLabel(f.q)} ${pct(f.x, 0)}` + (f.kind === "progress" ? ` (${f.months}/3달)` : "") + (f.excluded ? " 비교 제외" : "") : "–", f ? signCls(f.x) : "");
+    cell(tr, f && f.pred ? `${pct(f.pred.yoy, 0)}  ${range(f.pred)}` : (f && !c.fit ? "표본 부족" : "–"), w || (f && f.pred ? signCls(f.pred.yoy) : ""));
+    cell(tr, f && f.delta != null ? `${pp(f.delta)}  ${pp(f.delta_lo)}~${pp(f.delta_hi)}` : "–", w || (f ? signCls(f.delta) : ""));
+    const st = cell(tr, "", w);
+    if (f && f.status) { statusPill(st, f.status); st.append(` ${num(f.t, 2)}`); } else st.textContent = "–";
+    cell(tr, filed ? `${qLabel(filed.q)} ${pct(filed.actual, 0)} · ${pp(filed.surprise)}${filed.inside === false ? " (구간 밖)" : ""}` : "–", filed ? signCls(filed.surprise) : "");
+    const rc = cell(tr, fitText(c.fit), w);
+    if (c.fit && c.fit.why) rc.title = c.fit.why;
+    const bt = c.backtest;
+    cell(tr, bt.ratio == null ? "–" : `${bt.ratio.toFixed(2)} · ${bt.win}% (${bt.win_lo}~${bt.win_hi}, n ${bt.n_prev})`,
+         bt.n_prev < 8 ? "weak" : (bt.ratio != null && bt.ratio >= 1 ? "neg" : ""));
+    cell(tr, bt.hit == null ? "–" : `${bt.hit}% (${bt.signals})`, bt.signals < 5 ? "weak" : "");
+    cell(tr, c.leverage ? `β ${c.leverage.slope.toFixed(2)} (r ${c.leverage.r.toFixed(2)})` : "–", c.leverage && Math.abs(c.leverage.r) >= 0.5 ? "" : "weak");
+    cell(tr, c.margin.ttm == null ? "–" : `${c.margin.ttm.toFixed(1)}%` + (c.margin.prev == null ? "" : ` (${pp(c.margin.ttm - c.margin.prev, 1)})`));
+    const z = zOf(c);
+    cell(tr, c.price && c.price.void ? "자료 의심" : z == null ? "–" : `${num(z)} (${pct(c.price.since.excess, 0)})` + (c.price.moved ? " 움직임" : ""),
+         c.price && c.price.void ? "weak" : signCls(z));
+    tr.addEventListener("click", () => select(c.code));
+    tr.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(c.code); } });
+  }
+  document.getElementById("count").textContent = `${list.length}곳`;
+  const pend = D.sectors.flatMap(s => s.pending.filter(p => p.kind === "disclosure"));
+  const q = pend.map(p => p.q).sort().pop();
+  document.getElementById("table-note").textContent =
+    "추정 = 그 회사의 과거 분기에서 맞춘 (통관 수출 증감 → 매출 증감) 관계에 공시 전 분기의 통관 수출 증감을 넣은 값과 95% 예측 구간. '변화'는 추정치에서 마지막 공시 분기의 실제 매출 증감을 뺀 포인트(구간도 같이). " +
+    "상태: 구간 전체가 마지막 공시 위면 가속, 아래면 감속, 겹치면 불명 — t는 (추정 − 마지막 공시)를 예측 표준오차로 나눈 값. '오차÷지난분기'는 걸어가며 검증에서 추정 오차를 '지난 분기와 같다'는 추정의 오차로 나눈 비율(1 미만이어야 수출이 보탬), 그 옆은 추정이 이긴 분기 비율(95% 구간). " +
+    "회색 = 관계가 확인되지 않음(상관 구간이 0을 품거나, 지난 분기 그대로보다 못 맞힘). 행을 누르면 아래 상세." +
+    (q ? ` 공시 기한: ${qLabel(q)} ${pend.find(p => p.q === q).due}.` : "");
+}
+
+// ---------------------------------------------------------------- sector table
+function drawSectors() {
+  const t = document.getElementById("stable");
+  t.replaceChildren();
+  const head = el("tr", {}, el("thead", {}, t));
+  for (const h of ["섹터", "품목", "회사", "마지막 공시 분기 합계", "공시 전 분기 통관", "추정 합계 매출 증감 (95%)", "변화 (95%)", "상태 · t", "관계 r (구간, n)", "오차÷지난분기 · 이긴 비율", "방향 적중 (신호 n)"])
+    el("th", {}, head, h);
+  const body = el("tbody", {}, t);
+  const list = [...D.sectors].sort((a, b) => ((b.focus && b.focus.t) ?? -Infinity) - ((a.focus && a.focus.t) ?? -Infinity));
+  for (const s of list) {
+    const tr = el("tr", {}, body);
+    const f = s.focus;
+    const w = s.fit && s.fit.credible ? "" : "weak";
+    const td = cell(tr, ""); el("a", { href: encodeURIComponent(s.key) + ".html" }, td, s.name);
+    cell(tr, s.view);
+    cell(tr, s.companies + "곳");
+    cell(tr, s.reported ? `${qLabel(s.reported)} ${pct(s.last_yoy, 0)}` : "–", signCls(s.last_yoy));
+    cell(tr, f ? `${qLabel(f.q)} ${pct(f.x, 0)}` + (f.kind === "progress" ? ` (${f.months}/3달)` : "") + (f.excluded ? " 비교 제외" : "") : "–", f ? signCls(f.x) : "");
+    cell(tr, f && f.pred ? `${pct(f.pred.yoy, 0)}  ${range(f.pred)}` : "–", w || (f && f.pred ? signCls(f.pred.yoy) : ""));
+    cell(tr, f && f.delta != null ? `${pp(f.delta)}  ${pp(f.delta_lo)}~${pp(f.delta_hi)}` : "–", w || (f ? signCls(f.delta) : ""));
+    const st = cell(tr, "", w);
+    if (f && f.status) { statusPill(st, f.status); st.append(` ${num(f.t, 2)}`); } else st.textContent = "–";
+    cell(tr, fitText(s.fit), w);
+    const bt = s.backtest;
+    cell(tr, bt.ratio == null ? "–" : `${bt.ratio.toFixed(2)} · ${bt.win}% (${bt.win_lo}~${bt.win_hi}, n ${bt.n_prev})`, bt.n_prev < 8 ? "weak" : (bt.ratio >= 1 ? "neg" : ""));
+    cell(tr, bt.hit == null ? "–" : `${bt.hit}% (${bt.signals})`, bt.signals < 5 ? "weak" : "");
+  }
+}
+
+// ---------------------------------------------------------------- detail: fit scatter + walk-forward events
+function select(code) {
+  state.sel = state.sel === code ? null : code;
+  renderAll();
+  if (state.sel) document.getElementById("detail-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function yoyDomain(values) {
+  const vs = values.filter(v => v != null);
+  let lo = Math.min(0, ...vs), hi = Math.max(0, ...vs);
+  lo = Math.max(-75, Math.min(-25, lo)); hi = Math.min(300, Math.max(25, hi));
+  lo = [...TICKS].reverse().find(t => t <= lo) ?? -75; hi = TICKS.find(t => t >= hi) ?? 300;
+  return [lo, hi];
+}
+function drawFit(c) {
+  const host = document.getElementById("fit");
+  host.replaceChildren();
+  const W = Math.max(280, host.clientWidth), H = 300, m = { l: 48, r: 14, t: 16, b: 34 };
+  const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": c.name + " 통관 수출 증감 대 매출 증감" }, host);
+  const casts = c.nowcast.filter(n => n.x != null);
+  const [xlo, xhi] = yoyDomain(c.history.map(h => h.x).concat(casts.map(n => n.x)));
+  const [ylo, yhi] = yoyDomain(c.history.map(h => h.r).concat(c.fit ? c.fit.band.flatMap(b => [b.lo, b.hi]) : []));
+  const x = v => m.l + (L(Math.max(xlo, Math.min(xhi, v))) - L(xlo)) / (L(xhi) - L(xlo)) * (W - m.l - m.r);
+  const y = v => H - m.b - (L(Math.max(ylo, Math.min(yhi, v))) - L(ylo)) / (L(yhi) - L(ylo)) * (H - m.t - m.b);
+  for (const t of TICKS.filter(t => t >= xlo && t <= xhi)) {
+    sv("line", { x1: x(t), x2: x(t), y1: m.t, y2: H - m.b, stroke: t ? "var(--grid)" : "var(--axis)" }, svg);
+    sv("text", { x: x(t), y: H - m.b + 14, "text-anchor": "middle" }, svg, pct(t, 0));
+  }
+  for (const t of TICKS.filter(t => t >= ylo && t <= yhi)) {
+    sv("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t ? "var(--grid)" : "var(--axis)" }, svg);
+    sv("text", { x: m.l - 6, y: y(t) + 4, "text-anchor": "end" }, svg, pct(t, 0));
+  }
+  sv("text", { x: W - m.r, y: H - m.b + 28, "text-anchor": "end" }, svg, "→ 통관 수출 증감 (분기, 로그 눈금)");
+  sv("text", { x: m.l - 40, y: m.t - 5 }, svg, "↑ 매출 증감");
+  if (c.fit) {
+    const b = c.fit.band;
+    const path = b.map((p, i) => (i ? "L" : "M") + x(p.x) + " " + y(p.hi)).join(" ") + " " +
+                 [...b].reverse().map(p => "L" + x(p.x) + " " + y(p.lo)).join(" ") + " Z";
+    sv("path", { d: path, fill: "var(--band)" }, svg);
+    sv("path", { d: b.map((p, i) => (i ? "L" : "M") + x(p.x) + " " + y(p.yoy)).join(" "), fill: "none", stroke: "var(--s1)", "stroke-width": 2 }, svg);
+  }
+  for (const h of c.history) {
+    const dot = sv("circle", { cx: x(h.x), cy: y(h.r), r: 4, fill: "var(--surface)", stroke: "var(--ink-2)", "stroke-width": 1.2 }, svg);
+    const show = e => showTip(e.clientX, e.clientY, qLabel(h.q), [["통관 수출 증감", pct(h.x)], ["매출 증감", pct(h.r)]]);
+    dot.addEventListener("pointerenter", show); dot.addEventListener("pointermove", show); dot.addEventListener("pointerleave", hideTip);
+  }
+  if (c.last_yoy != null) {
+    sv("line", { x1: m.l, x2: W - m.r, y1: y(c.last_yoy), y2: y(c.last_yoy), stroke: "var(--ink-2)", "stroke-width": 1, "stroke-dasharray": "2 3" }, svg);
+    sv("text", { x: W - m.r, y: y(c.last_yoy) - 3, class: "lbl", "text-anchor": "end" }, svg, `마지막 공시 ${qLabel(c.last_q)} ${pct(c.last_yoy, 0)}`);
+  }
+  for (const n of casts) {
+    sv("line", { x1: x(n.x), x2: x(n.x), y1: m.t, y2: H - m.b, stroke: "var(--s2)", "stroke-width": 1.5, "stroke-dasharray": "4 3" }, svg);
+    if (n.pred) {
+      sv("line", { x1: x(n.x), x2: x(n.x), y1: y(n.pred.lo), y2: y(n.pred.hi), stroke: "var(--s2)", "stroke-width": 3, opacity: 0.5 }, svg);
+      sv("circle", { cx: x(n.x), cy: y(n.pred.yoy), r: 5.5, fill: "var(--s2)" }, svg);
+    }
+    if (n.actual != null) sv("circle", { cx: x(n.x), cy: y(n.actual), r: 5, fill: "var(--surface)", stroke: "var(--s2)", "stroke-width": 2 }, svg);
+    sv("text", { x: x(n.x) + 5, y: m.t + 10, class: "lbl" }, svg, qLabel(n.q) + (n.pred ? " 추정" : "") + (n.actual != null ? " · 실제 ○" : ""));
+  }
+  document.getElementById("fit-note").textContent = c.fit
+    ? `흰 점 = 과거 분기 ${c.fit.n}개 (${qLabel(c.fit.span[0])}~${qLabel(c.fit.span[1])}). 파란 선 = ln(1+매출 증감) = ${c.fit.intercept.toFixed(3)} + ${c.fit.slope.toFixed(2)}·ln(1+수출 증감), 띠 = 95% 예측 구간(잔차 표준편차 ${c.fit.sigma.toFixed(3)}, 자기상관 보정 자유도 ${c.fit.dof}). 주황 = 공시 전 분기의 통관 수출 증감에서 읽은 추정치와 구간, 점선 가로줄 = 마지막 공시 분기의 매출 증감.`
+    : "짝지을 분기가 12개 미만이거나 수출 증감에 변화가 없어 관계를 맞추지 않았습니다.";
+}
+function drawEvents(c) {
+  const t = document.getElementById("events");
+  t.replaceChildren();
+  const head = el("tr", {}, el("thead", {}, t));
+  for (const h of ["분기", "통관", "추정 (95%)", "실제", "구간 안", "지난 분기 그대로", `신호 (${D.evidence.strong}p 이상)`, "맞음", "통관 확정→공시 초과수익"]) el("th", {}, head, h);
+  const body = el("tbody", {}, t);
+  for (const e of c.backtest_events) {
+    const tr = el("tr", {}, body);
+    cell(tr, qLabel(e.q));
+    cell(tr, pct(e.x, 0), signCls(e.x));
+    cell(tr, `${pct(e.pred, 0)} (${pct(e.lo, 0)}~${pct(e.hi, 0)})`);
+    cell(tr, pct(e.actual, 0), signCls(e.actual));
+    cell(tr, e.inside ? "○" : "✕", e.inside ? "" : "neg");
+    cell(tr, e.prev == null ? "–" : pct(e.prev, 0) + (Math.abs(e.pred - e.actual) < Math.abs(e.prev - e.actual) ? " (추정이 이김)" : ""), "weak");
+    cell(tr, e.signal ? (e.signal === "up" ? "가속" : "감속") + ` ${pp(e.pred - e.prev)}` : "–", e.signal ? (e.signal === "up" ? "pos" : "neg") : "weak");
+    cell(tr, e.signal ? (e.hit ? "○" : "✕") : "–", e.signal ? (e.hit ? "pos" : "neg") : "weak");
+    cell(tr, e.excess == null ? "–" : pct(e.excess), signCls(e.excess));
+  }
+  const b = c.backtest;
+  document.getElementById("events-note").textContent = b.n
+    ? `분기 ${b.n}개를 그 전 분기만으로 추정. 실제가 95% 구간 안에 든 비율 ${b.inside95}%, 평균 오차 ${b.mae_prev == null ? b.mae.toFixed(0) : b.mae_prev.toFixed(0)}p (지난 분기 그대로였다면 ${b.mae_naive == null ? "–" : b.mae_naive.toFixed(0) + "p"}, 비교 가능한 ${b.n_prev}개 분기). ` +
+      `가속 신호 ${b.up.n}건 적중 ${b.up.hit == null ? "–" : b.up.hit + "%"}(실제 변화 중앙값 ${pp(b.up.median_change)}), 감속 ${b.down.n}건 적중 ${b.down.hit == null ? "–" : b.down.hit + "%"}(${pp(b.down.median_change)}). ` +
+      (c.early ? `첫 달만 보고 냈다면(두 분기 전 공시 대비): 신호 ${c.early.signals}건 적중 ${c.early.hit == null ? "–" : c.early.hit + "%"}, 오차 비율 ${c.early.ratio == null ? "–" : c.early.ratio.toFixed(2)}. ` : "") +
+      "회사 하나의 초과수익 건수는 적다 — 돈이 됐는지는 위 롱숏 표의 전체 집계로 본다."
+    : "검증할 분기가 없습니다(관계를 맞추기 시작한 뒤의 분기가 없음).";
+}
+function drawDetail() {
+  const card = document.getElementById("detail-card");
+  const c = D.companies.find(c => c.code === state.sel);
+  card.hidden = !c;
+  if (!c) return;
+  const f = c.focus, filed = c.nowcast.find(n => n.actual != null);
+  document.getElementById("detail-title").textContent = `${c.name} (${c.code}) — ${c.sector_name}`;
+  document.getElementById("detail-note").textContent = (c.note || "") + (c.fit && c.fit.why ? ` · 관계 확인 안 됨: ${c.fit.why}` : "");
+  const host = document.getElementById("detail-facts");
+  host.replaceChildren();
+  const fact = (k, v, cls) => { const d = el("div", {}, host); el("span", {}, d, k); el("b", cls ? { class: cls } : {}, d, v); };
+  fact("마지막 공시 분기 매출 증감", c.last_q ? `${qLabel(c.last_q)} ${pct(c.last_yoy)} (영업이익 ${pct(c.last_op_yoy)})` : "–", signCls(c.last_yoy));
+  fact("그 전 분기", c.prev_yoy == null ? "–" : pct(c.prev_yoy), signCls(c.prev_yoy));
+  if (f) fact(`${qLabel(f.q)} 통관 수출 증감${f.kind === "progress" ? ` (${f.months}/3달)` : ""}`, pct(f.x), signCls(f.x));
+  if (f) fact(`${qLabel(f.q)} 추정 매출 증감 (95%)`, f.pred ? `${pct(f.pred.yoy)} (${range(f.pred)})` : "관계 없음", f.pred ? signCls(f.pred.yoy) : "weak");
+  if (f && f.delta != null) fact("변화 · 상태 · t", `${pp(f.delta)} (${pp(f.delta_lo)}~${pp(f.delta_hi)}) · ${f.status} · ${num(f.t, 2)}`, signCls(f.delta));
+  if (filed) fact(`${qLabel(filed.q)} 이미 공시 · 수출이 말한 값`, `${pct(filed.actual)} · ${filed.pred ? pct(filed.pred.yoy) : "–"} (${pp(filed.surprise)}${filed.inside === false ? ", 구간 밖" : ""})`, signCls(filed.surprise));
+  fact("영업 레버리지 (매출 1% → 영업이익 β%)", c.leverage ? `β ${c.leverage.slope.toFixed(2)}, r ${c.leverage.r.toFixed(2)}, n ${c.leverage.n}` : "표본 부족");
+  fact("영업이익률 TTM (1년 전 TTM)", c.margin.ttm == null ? "–" : `${c.margin.ttm.toFixed(1)}% (${c.margin.prev == null ? "–" : c.margin.prev.toFixed(1) + "%"})`);
+  if (c.price && c.price.void) fact("주가", c.price.void, "weak");
+  else if (priced(c) && c.price.since) fact(`주가 ${c.price.date} · 공시(${c.price.since.from}) 뒤 ${c.price.since.days}일 KOSPI 대비`, `${pct(c.price.since.excess)} · z ${num(c.price.since.z)}${c.price.moved ? " (이미 움직임)" : ""}`, signCls(c.price.since.excess));
+  drawFit(c);
+  drawEvents(c);
+}
+
+// ---------------------------------------------------------------- notes & controls
+function drawNotes() {
+  const ul = document.getElementById("notes");
+  ul.replaceChildren();
+  const e = D.evidence;
+  const notes = [
+    "왜 이 간격이 있나: 관세청 품목별 통관 수출은 다음 달 15일쯤 확정되고(산업부 속보는 1일), 분기 실적은 분기 끝 45일 뒤(사업보고서는 90일 뒤)에 공시된다. 분기 수출은 실적보다 한 달(4분기는 두 달 반) 먼저 알려진다.",
+    "회사 매출 증감은 같은 보고서의 전년 비교 열 기준(정정·분할 반영), 분할·합병 구간은 뺐다(섹터 화면과 같은 규칙). 통관 수출은 섹터의 첫 번째 품목 정의, 그 달 평균 환율로 원화 환산. 시차는 '같은 분기' 하나로 미리 정했다(가장 잘 맞는 시차를 고르면 우연을 고르게 된다).",
+    "관계 맞춤: ln(1+매출 증감)을 ln(1+수출 증감)에 최소제곱으로 맞춘 직선(같은 분기, 쌍 12개 이상). 예측 구간은 잔차 표준편차와 t 분포 — 자유도는 자기상관을 보정한 유효 표본 − 2(섹터 화면의 r 구간과 같은 수)라 매끈한 시계열일수록 구간이 넓다. 걸어가며 검증의 구간도 같은 규칙(그때까지 표본의 유효 표본)이다. 진행 중 분기(1~2달)는 과거에 첫 1~2달 증감이 분기 전체 증감에서 벗어난 표준편차만큼 더 넓혔다.",
+    "'관계가 확인된' 회사 = 상관 r의 95% 구간이 0보다 위이고, 걸어가며 검증에서 추정 오차가 '지난 분기 그대로'보다 작은 회사. 그 밖의 회사는 회색으로 두고 기본 보기에서 뺐다 — 숫자는 나오지만 믿을 근거가 없다. 이 조건 자체가 과거 검증 기록으로 고른 것이라, '관계 확인' 회사만 모은 평가 수치는 독립 검증이 아니다 — 가리지 않은 수치를 옆에 같이 둔다.",
+    `걸어가며 검증: 각 분기를 그때 공시돼 있던 분기들만으로 맞춰 추정하고(완성 분기 신호는 한 분기 전까지, 첫 달 신호는 두 분기 전까지), '그때 공시된 마지막 분기 대비 ${e.strong}p 이상' 움직임을 신호로 세어 방향이 맞았는지 봤다. 신호 뒤 주가는 분기 끝 다음 달 15일(수출 확정)부터 그 회사의 공시일(정정 보고서는 원래 기한) ${e.after_filing}거래일 뒤까지, KOSPI 대비 초과수익(일별 로그 초과수익의 합). 분기 단위로 집계해 같은 분기의 회사들을 따로 세지 않는다.`,
+    `'공시 뒤 주가 z' = 마지막 정기보고서 공시일 뒤 KOSPI 대비 누적 초과수익을, 그 전 ${e.vol_days}거래일(최소 ${e.min_vol_days}일)의 일별 초과수익 표준편차 × √일수로 나눈 값. |z| ≥ ${e.moved_z}면 '이미 움직임'. 하루 ±40%를 넘는 날이 있는 종목(분할·자료 오류)은 주가 열을 비웠다.`,
+    "이 회사 목록과 비교 제외 구간은 2026-10-21에 상관을 본 뒤 정했다(생존·선택 편향). 통관 정정·DART 정정은 그때 값이 아니라 지금 값으로 검증했다. 상장폐지·분할 전 종목은 없다. 그래서 과거 검증은 실제보다 좋게 나올 수 있고, 깨끗한 증거는 앞으로 쌓이는 실제 공시로만 생긴다.",
+    "이 화면이 못 보는 것: 수출에 안 잡히는 매출(내수·해외 생산·서비스), 단가와 물량의 분리, 컨센서스·잠정실적(시장이 이미 무엇을 아는지). '주가는 아직'은 공시 뒤 초과수익이 평소 범위 안이라는 뜻일 뿐, 싸다는 뜻이 아니다. 매출만 추정한다 — 영업 레버리지 β와 이익률 추이는 '매출이 그렇게 가면 이익은 어느 정도'를 가늠하는 참고 수치다.",
+  ];
+  for (const n of notes) el("li", {}, ul, n);
+  for (const w of D.warnings || []) el("li", { class: "neg" }, ul, w);
+  const cv = document.getElementById("caveats");
+  cv.replaceChildren();
+  for (const s of D.sectors) el("li", {}, cv, `${s.name}: ${s.caveat}`);
+}
+function setupControls() {
+  const sec = document.getElementById("sector");
+  el("option", { value: "all" }, sec, "전체");
+  for (const s of D.sectors) el("option", { value: s.key }, sec, s.name);
+  sec.addEventListener("change", () => { state.sector = sec.value; renderAll(); });
+  const cred = document.getElementById("credible");
+  for (const [v, label] of [[true, "확인된 관계만"], [false, "전부"]]) {
+    const b = el("button", { type: "button", "aria-pressed": String(state.credible === v) }, cred, label);
+    b.addEventListener("click", () => { state.credible = v; renderAll(); });
+  }
+  const sort = document.getElementById("sort");
+  for (const [v, label] of [["t", "t 큰 순 (가속 → 감속)"], ["delta", "변화 큰 순"], ["z", "주가 덜 움직인 순"], ["surprise", "공시된 분기 수출 대비 초과"], ["ratio", "추정이 지난 분기보다 나은 순"], ["r", "관계 r"], ["last", "마지막 공시 증감"]])
+    el("option", { value: v }, sort, label);
+  sort.addEventListener("change", () => { state.sort = sort.value; renderAll(); });
+}
+function renderAll() {
+  document.querySelectorAll("#credible button").forEach(b => b.setAttribute("aria-pressed", String((b.textContent === "확인된 관계만") === state.credible)));
+  drawScatter(); drawTable(); drawDetail(); drawSectors();
+}
+(function init() {
+  const e = D.evidence;
+  const months = D.sectors.map(s => s.last_month).filter(Boolean).sort();
+  document.getElementById("subtitle").textContent =
+    `섹터 ${D.sectors.length}개 · 상장사 ${D.companies.length}곳 (관계 확인 ${e.credible}곳 · 주가 ${e.priced}곳) · 통관 ${months.length ? ymLabel(months[months.length - 1]) : "–"}까지 · 만든 시각 ${D.built_at}`;
+  document.getElementById("lead").textContent =
+    "분기 통관 수출은 그 분기 실적보다 먼저 확정된다. 이 화면은 그 간격을 쓴다: 회사마다 과거 분기의 '수출 증감 → 매출 증감' 관계를 맞춰 두고, 아직 공시되지 않은 분기의 수출 증감을 넣어 매출 증감을 추정한다. 추정치는 95% 구간과 함께, 과거에 같은 방식으로 맞췄을 때 얼마나 맞았는지, '지난 분기 그대로'보다 나았는지, 그 뒤 주가가 어땠는지를 옆에 두고 본다. 관계가 확인되지 않은 회사는 기본 보기에서 뺀다.";
+  setupControls(); drawVerdict(); drawEvidence(); drawSpread(); drawNotes(); renderAll();
+  let timer = null;
+  window.addEventListener("resize", () => { clearTimeout(timer); timer = setTimeout(() => { drawScatter(); drawDetail(); }, 150); });
+})();
+</script>
+</body>
+</html>

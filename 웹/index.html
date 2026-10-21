@@ -2345,6 +2345,17 @@ details.infclockwrap{margin-top:12px}details.infclockwrap>summary{cursor:pointer
 .o2MineSec .syngo{display:inline-block;margin-top:6px}
 .o2Evd tr.o2Cur td{background:var(--accent-soft);font-weight:600}
 .o2Foot{font-size:var(--fs-2);color:var(--faint);line-height:1.55;margin:0 0 20px}.o2Foot ul{margin:4px 0 0;padding-left:18px}.o2Foot .o2Warn{color:var(--warn)}
+/* 수출 겹쳐보기 탭(2026-10-21) — 만든 HTML 을 같은 출처 틀에 */
+.ovl{max-width:var(--content-max)}
+.ovlHead{display:flex;flex-direction:column;gap:8px;margin:0 0 10px}
+.ovlT p.sub{max-width:var(--measure-wide);margin:2px 0 0}
+.ovlBar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.ovlSel{font-size:var(--fs-4);padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);max-width:280px}
+.ovlMeta{font-size:var(--fs-3);color:var(--faint)}
+.ovlRun{font-size:var(--fs-3);color:var(--dim)}.ovlRun.bad{color:var(--del)}
+.ovlFrameBox{position:relative}
+.ovlFrame{display:block;width:100%;height:max(760px,calc(100vh - 210px));border:1px solid var(--line);border-radius:var(--r-md);background:var(--panel)}
+.ovlOpen{text-align:right;font-size:var(--fs-3);margin-top:4px}.ovlOpen a{color:var(--accent)}
 .bdChip{display:inline-block;min-width:30px;padding:0 6px;border-radius:9px;font-size:var(--fs-2);line-height:17px;text-align:center;border:1px solid var(--line);color:var(--faint);background:transparent;white-space:nowrap}
 .bdChip.base.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .bdChip.ref.on{color:var(--accent);border-color:var(--accent);font-weight:600}
@@ -3740,6 +3751,7 @@ p.sub,.qtrHead .sub,.expHead .sub,.finnote,.pipeNote,.pipeHead span,.pipeCalls .
         <button data-t="tech">차트 발굴</button>
         <button data-t="cat">호재기업</button>
         <button data-t="exp">수출 추적</button>
+        <button data-t="ovl" title="섹터별 관세청 품목 수출 × 상장사 분기 실적 겹쳐보기 17장 + 변곡점 레이더(공시 전 통관으로 매출 증감 추정)">수출 겹쳐보기</button>
         <button data-t="grow">산업 성장률</button>
         <button data-t="score">기록 채점</button>
         <button data-t="trd">매매 일지</button>
@@ -3767,6 +3779,7 @@ p.sub,.qtrHead .sub,.expHead .sub,.finnote,.pipeNote,.pipeHead span,.pipeCalls .
           <span id="welcomeMsg">왼쪽 위 검색창에 기업명을 넣으면 최근 15년 보고서가 전부 열립니다.</span>
           <div style="margin-top:14px"><button class="ghost" onclick="S.tab='val';jump('val')">저평가 종목 보기 — 가치는 지켰는데 주가가 빠진 회사</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='beads';jump('beads')">신호판 — 흩어진 탭의 신호를 회사마다 한 줄로(근거 신호 몇 개 · 빨간불은 없나)</button></div>
+          <div style="margin-top:8px"><button class="ghost" onclick="S.tab='ovl';jump('ovl')">수출 겹쳐보기 — 섹터별 통관 수출 × 상장사 실적 17장 · 변곡점 레이더(공시 전 통관으로 매출 증감 추정)</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='grow';jump('grow')">산업 성장률 — 섹터별 매출 · 이익 · 생산 · 수출 추이와 시장 규모 · 시가총액 · 전망</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='tech';jump('tech')">차트 발굴 — 전 종목 차트 패턴(컵 앤 핸들 사용자 식 · 《차트의 기술》 기법 6개 · 보컬 관찰)</button></div>
           <div style="margin-top:8px"><button class="ghost" onclick="S.tab='score';jump('score')">기록 채점 — 매일 남긴 판정(저평가 · 차트 발굴)이 그 뒤 실제로 어땠나</button></div>
@@ -4109,7 +4122,7 @@ function show(t){
   ({orbit:viewOrbit, orbit2:viewOrbit2, land:viewLand, story:viewStory, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, rep:viewReports, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
-    cat:viewCatalyst, exp:viewExport, val:viewValue, top:viewTop, beads:viewBeads, qd:viewQd, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades, watch:viewWatch}[t])(p);
+    cat:viewCatalyst, exp:viewExport, ovl:viewOverlay, val:viewValue, top:viewTop, beads:viewBeads, qd:viewQd, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades, watch:viewWatch}[t])(p);
 }
 
 // ---------------------------------------------------------- 분기 변화 — 보고서가 나올 때마다 직전 공시(3개월 전)와 맞댄다
@@ -5655,6 +5668,73 @@ function o2Foot(d){
   f.appendChild(ul);
   (d.notes||[]).forEach(n=>f.appendChild(el('p','o2Warn',n)));
   return f;
+}
+
+
+// ---------------------------------------------------------- 수출 겹쳐보기 · 변곡점 레이더 (2026-10-21, 주식3 max20 에서 옮긴 export_overlay)
+// 화면은 export_overlay 가 만든 HTML(섹터 17장 · 개요 · 레이더) 그대로 — 서버 /overlay/<이름>.html 을 같은 출처 틀(iframe)에 띄운다.
+// 페이지 안의 섹터 메뉴 링크(<key>.html)도 /overlay/ 아래로 이어진다. 고른 화면은 localStorage(ovlPick)에 둔다.
+async function viewOverlay(p){
+  p.innerHTML='';
+  let d;
+  try{ d=await (await fetch('/api/overlay')).json(); }catch(e){ p.appendChild(el('div','empty','불러오지 못했다: '+e)); return; }
+  if(S.tab!=='ovl') return;
+  const box=el('div','ovl'); p.appendChild(box);
+  const hd=el('div','ovlHead');
+  const tt=el('div','ovlT'); tt.appendChild(el('h4','head','수출 겹쳐보기'));
+  tt.appendChild(el('p','sub','섹터마다 관세청 품목 수출(월)과 그 품목을 만드는 상장사들의 분기 실적(DART)을 한 장에 — 같은 방향으로 움직였나 · 시차가 있나 · 아직 공시 안 된 분기의 통관은 어땠나. '+
+    '변곡점 레이더는 공시 전 분기 통관으로 회사별 매출 증감을 추정해 줄 세운다(걸어가며 검증 · 롱숏 증거를 화면 위에). 예측이 아니라 방향과 시차를 보는 화면이다.'));
+  hd.appendChild(tt);
+  const bar=el('div','ovlBar');
+  const pick=lsGet('ovlPick','index');
+  const opts=[];
+  if(d.index) opts.push(['index','개요 — 17개 섹터 한눈에',d.index,d.index_at]);
+  if(d.radar) opts.push(['radar','변곡점 레이더',d.radar,d.radar_at]);
+  (d.sectors||[]).forEach(x=>opts.push(['s:'+x.key,x.name,x.file,x.at]));
+  const seg=el('div','seg');
+  const sel=el('select','ovlSel');
+  const frameBox=el('div','ovlFrameBox');
+  const meta=el('span','ovlMeta');
+  const show=k=>{
+    const o=opts.find(x=>x[0]===k)||opts[0];
+    frameBox.innerHTML='';
+    if(!o){ frameBox.appendChild(el('div','empty','아직 만든 화면이 없다 — 오른쪽 \'다시 만들기\'(관세청 · DART 캐시가 데워져 있으면 몇 분, 처음이면 오래 걸린다).')); return; }
+    lsSet('ovlPick',o[0]);
+    [...seg.children].forEach(b=>b.classList.toggle('on',b.dataset.k===(o[0].startsWith('s:')?'sector':o[0])));
+    if(o[0].startsWith('s:')) sel.value=o[0];
+    const f=el('iframe','ovlFrame'); f.src='/overlay/'+encodeURIComponent(o[2]); f.title=o[1]; f.loading='lazy';
+    f.setAttribute('referrerpolicy','same-origin');
+    frameBox.appendChild(f);
+    const nt=el('div','ovlOpen'); const a=el('a',null,'새 탭으로 열기 ↗'); a.href='/overlay/'+encodeURIComponent(o[2]); a.target='_blank'; a.rel='noopener'; nt.appendChild(a); frameBox.appendChild(nt);
+    meta.textContent=o[3]?'만든 때 '+new Date(o[3]*1000).toLocaleString('ko-KR'):'';
+  };
+  [['index','개요'],['radar','변곡점 레이더'],['sector','섹터']].forEach(([k,t])=>{
+    const b=el('button',null,t); b.dataset.k=k;
+    if(k==='index'&&!d.index) b.disabled=true; if(k==='radar'&&!d.radar) b.disabled=true; if(k==='sector'&&!(d.sectors||[]).length) b.disabled=true;
+    b.onclick=()=>show(k==='sector'?(sel.value||(opts.find(x=>x[0].startsWith('s:'))||[])[0]):k);
+    seg.appendChild(b); });
+  bar.appendChild(seg);
+  (d.sectors||[]).forEach(x=>{ const o=el('option',null,x.name); o.value='s:'+x.key; sel.appendChild(o); });
+  sel.onchange=()=>show(sel.value);
+  if((d.sectors||[]).length) bar.appendChild(sel);
+  bar.appendChild(meta);
+  const R=d.run||{};
+  if(!d.readonly){
+    const rb=el('button','ghost',R.running?'만드는 중…':'다시 만들기'); rb.disabled=!!R.running;
+    rb.title='관세청 품목 수출 · DART 분기 실적 · 환율 · 주가를 받아(캐시 우선) 17장 + 개요 + 레이더를 다시 만든다 — 64비트 파이썬 자식 프로세스';
+    rb.onclick=async()=>{ rb.disabled=true; rb.textContent='만드는 중…'; try{ await fetch('/api/overlay?run=1'); }catch(e){} poll(); };
+    bar.appendChild(rb);
+  }
+  if(R.running||R.error||(R.rc!=null&&R.rc!==0)) bar.appendChild(el('span','ovlRun'+(R.error||(R.rc!=null&&R.rc!==0&&!R.running)?' bad':''),
+    R.running?'만드는 중('+R.running+')':R.error?'실패: '+R.error:'지난 실행 코드 '+R.rc+' — .cache/수출겹쳐보기/run.log'));
+  hd.appendChild(bar);
+  box.appendChild(hd);
+  box.appendChild(frameBox);
+  show(pick.startsWith('s:')||pick==='radar'||pick==='index'?pick:'index');
+  function poll(){ setTimeout(async()=>{ if(S.tab!=='ovl'||!box.isConnected) return;
+    try{ const r=await (await fetch('/api/overlay')).json(); if(r.run&&r.run.running) return poll(); }catch(e){ return poll(); }
+    viewOverlay(p); },5000); }
+  if(R.running) poll();
 }
 
 // ---------------------------------------------------------- 호재기업

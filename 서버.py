@@ -1943,6 +1943,10 @@ def _druck_auto_loop():
             _orb2_nightly()                         # 궤도 v2 — 9칸 기저율(7일 넘게 묵었으면)
         except Exception as e:
             print("궤도 v2 밤 갱신: %s" % e, flush=True)
+        try:
+            _ovl_nightly()                          # 수출 겹쳐보기 · 변곡점 레이더 — 사흘 넘게 묵었으면
+        except Exception as e:
+            print("수출 겹쳐보기 밤 갱신: %s" % e, flush=True)
 
 
 # ---------------------------------------------------------------- 전 종목 미리 계산 — 풍경 · 궤도(2026-10-11)
@@ -14940,6 +14944,86 @@ def orbit2_view(code):
     return out
 
 
+
+# ---------------------------------------------------------------- 수출 겹쳐보기 · 변곡점 레이더 (2026-10-21, 주식3 max20 에서 옮긴 export_overlay 패키지)
+# 섹터마다 관세청 품목 수출과 상장사 분기 실적(DART)을 겹친 화면 17장 + 개요 + 변곡점 레이더(공시 전 분기 통관으로 회사 매출 증감 추정,
+# 걸어가며 검증 · 롱숏). 계산 · 화면은 export_overlay(순수 계산 series · screener, 템플릿 HTML) 그대로 — 서버는 만든 HTML 을 /overlay/ 로 내주고
+# 다시 만들기를 자식 프로세스(64비트 BT_PY — pandas · FinanceDataReader)로 띄운다. 설계 docs/superpowers/specs/2026-10-21-export-dart-overlay-design.md
+OVL_DIR = os.path.join(CACHE_DIR, "수출겹쳐보기")            # export_overlay.config.OUTPUT_DIR
+OVL_NAME = re.compile(r"^[0-9A-Za-z가-힣_\-]{1,48}\.html$")
+OVL_INDEX, OVL_RADAR = "수출겹쳐보기.html", "변곡점레이더.html"
+OVL = {"running": None, "at": None, "rc": None, "py": None, "secs": None, "error": None}
+OVL_LOCK = threading.Lock()
+OVL_MAX_AGE = 3 * 86400        # 밤 가속도 계산 뒤 — 개요가 사흘 넘게 묵었으면 다시(관세청은 달마다 15일 전후, DART 는 분기마다)
+
+
+def _ovl_file(name):
+    """/overlay/<name> → 파일 경로(만든 HTML 만, 하위 폴더 · 다른 확장자 없음) | None."""
+    if not OVL_NAME.match(name or ""):
+        return None
+    p = os.path.join(OVL_DIR, name)
+    return p if os.path.isfile(p) else None
+
+
+def _ovl_mtime(name):
+    try:
+        return os.path.getmtime(os.path.join(OVL_DIR, name))
+    except OSError:
+        return None
+
+
+def overlay_view():
+    """GET /api/overlay — 만든 화면 목록(개요 · 레이더 · 섹터 key · 이름 · 시각)과 실행 상태. 파일이 없으면 빈 목록."""
+    secs = []
+    sd = os.path.join(OVL_DIR, "_summary")
+    try:
+        names = sorted(os.listdir(sd))
+    except OSError:
+        names = []
+    order = []
+    try:
+        from export_overlay.sectors import SECTORS as _S        # 섹터 순서 — 프리셋 순(없으면 파일 이름 순)
+        order = [x.key for x in _S]
+    except Exception:
+        order = []
+    for fn in names:
+        if not fn.endswith(".json"):
+            continue
+        key = fn[:-5]
+        if not _ovl_file(key + ".html"):
+            continue
+        try:
+            with open(os.path.join(sd, fn), "r", encoding="utf-8") as fh:
+                sm = json.load(fh)
+        except (OSError, ValueError):
+            sm = {}
+        secs.append({"key": key, "name": sm.get("name") or key, "file": key + ".html", "at": _ovl_mtime(key + ".html")})
+    secs.sort(key=lambda x: (order.index(x["key"]) if x["key"] in order else 999, x["key"]))
+    return {"index": OVL_INDEX if _ovl_file(OVL_INDEX) else None, "index_at": _ovl_mtime(OVL_INDEX),
+            "radar": OVL_RADAR if _ovl_file(OVL_RADAR) else None, "radar_at": _ovl_mtime(OVL_RADAR),
+            "sectors": secs, "run": dict(OVL), "readonly": READONLY}
+
+
+def _ovl_run(args=()):
+    return _tool_run(OVL, OVL_LOCK, os.path.join(BASE, "도구", "수출겹쳐보기_실행.py"), os.path.join(OVL_DIR, "run.log"),
+                     ["overlay", "all"] + list(args))
+
+
+def ovl_kick():
+    if READONLY or OVL["running"]:
+        return False
+    threading.Thread(target=_ovl_run, daemon=True).start()
+    return True
+
+
+def _ovl_nightly():
+    """밤 가속도 계산 뒤 — 개요가 OVL_MAX_AGE 넘게 묵었거나 없으면 다시 만든다(캐시가 데워져 있으면 몇 분)."""
+    at = _ovl_mtime(OVL_INDEX)
+    if at is not None and time.time() - at < OVL_MAX_AGE:
+        return False
+    return _ovl_run()
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
 
@@ -15023,6 +15107,18 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path in ("/", "/index.html"):
                 return self._file("index.html", "text/html; charset=utf-8")
+            if path.startswith("/overlay/"):             # 수출 겹쳐보기 · 변곡점 레이더 — 만든 HTML 만(이름 규칙 · 하위 폴더 없음)
+                fp = _ovl_file(urllib.parse.unquote(path[len("/overlay/"):]))
+                if not fp:
+                    return self._send(404, "아직 만들지 않은 화면입니다 — 수출 겹쳐보기 탭에서 '다시 만들기'.", "text/plain; charset=utf-8")
+                with open(fp, "rb") as fh:
+                    return self._send(200, fh.read(), "text/html; charset=utf-8")
+            if path == "/api/overlay":                  # ?run=1 = 다시 만들기(같은 출처 · 조회 전용은 위에서 막힘)
+                if q.get("run") == "1":
+                    if not self._same_origin_get():
+                        return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
+                    return self._send(200, {"kicked": ovl_kick(), "run": dict(OVL)})
+                return self._send(200, overlay_view())
             if path == "/api/mode":
                 return self._send(200, mode_view())
             if path == "/api/status":
