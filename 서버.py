@@ -15109,6 +15109,347 @@ def _ovl_nightly():
     return _ovl_run()
 
 
+# ── 기본적분석 (2026-10-22) — 이 회사가 무엇을 팔아 누구한테서 돈을 받고, 무엇이 오르면 좋고 나쁘며, 주가는 실제로 무엇을 따라갔나.
+# 재료 = 최신 사업보고서 원문(사업의 내용 · 재무에 관한 사항)과 캐시(밸류체인 · 제품믹스 · 수출추적 · 가속도 · 풍경 · 수주 · 거시 · 환율 · 리포트 · 공시 위험 · 산업).
+# 네트워크 · 새 DART 호출 없음. 규칙은 기본분석.py(순수 함수), 여기는 읽어서 조립만. 캐시 .cache/기본분석/{code}.json (sig = 모듈 판 · 사업보고서 · 마지막 접수).
+FUND = _load_mod("기본분석")
+FUND_DIR = os.path.join(CACHE_DIR, "기본분석")
+FUND_LOCK = threading.Lock()
+
+
+def _fund_sig(c, r_biz):
+    rc = max((r["rcept"] for r in c["reports"]), default="")
+    return "v%d:%s:%s" % (FUND.VERSION if FUND else 0, r_biz["rcept"] if r_biz else "", rc)
+
+
+def _fund_druck(code):
+    """가속도 캐시 — 지금 판이면 그대로, 옛 판이어도 점이 있으면 쓴다(표시). 다시 계산은 띄우지 않는다."""
+    d = _druck_read(code)
+    if d:
+        return d, False
+    try:
+        with open(_druck_path(code), "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+    except (OSError, ValueError):
+        return None, False
+    return (d if isinstance(d, dict) and d.get("points") else None), True
+
+
+def _fund_vc(code):
+    """밸류체인 캐시 — 칸마다 가장 최근 값(사업보고서 해 → 그 뒤 반기 · 분기 → 옛 해). (합친 dict, 칸별 출처 해, 원본)"""
+    p = os.path.join(CACHE_DIR, "밸류체인", code + ".json")
+    try:
+        with open(p, "r", encoding="utf-8") as fh:
+            raw = json.load(fh)
+    except (OSError, ValueError):
+        return {}, {}, None
+    ys = raw.get("years") or {}
+    ann = sorted((k for k in ys if len(k) == 4), reverse=True)
+    part = sorted((k for k in ys if len(k) != 4), reverse=True)
+    order = ann[:1] + part[:1] + ann[1:] + part[1:]
+    out, src = {}, {}
+    for f in ("products", "materials", "customers", "export", "channels", "competitors", "segments", "subs"):
+        for k in order:
+            v = (ys.get(k) or {}).get(f)
+            if v:
+                out[f], src[f] = v, k
+                break
+    return out, src, raw
+
+
+def _fund_px_q(px):
+    """일별 종가 {YYYYMMDD: 종가} → 분기 키(n = 연×4 + 분기−1, 가속도와 같은 키)별 분기 마지막 종가"""
+    q = {}
+    for d in sorted(px):
+        v = px[d]
+        if v is None or v <= 0 or len(d) < 8:
+            continue
+        q[int(d[:4]) * 4 + (int(d[4:6]) - 1) // 3] = v
+    return q
+
+
+def _fund_q_of(monthly, how="avg"):
+    """월별 {YYYYMM: 값} → 분기 키별 평균(또는 합 — 석 달 다 있을 때만)"""
+    g = {}
+    for k, v in (monthly or {}).items():
+        if v is None or len(str(k)) < 6:
+            continue
+        try:
+            g.setdefault(int(k[:4]) * 4 + (int(k[4:6]) - 1) // 3, []).append(float(v))
+        except (TypeError, ValueError):
+            continue
+    out = {}
+    for n, vs in g.items():
+        if how == "sum":
+            if len(vs) == 3:
+                out[n] = sum(vs)
+        else:
+            out[n] = sum(vs) / len(vs)
+    return out
+
+
+def _fund_fx():
+    try:
+        with open(os.path.join(IND_DIR, "fx_monthly.json"), "r", encoding="utf-8") as fh:
+            return (json.load(fh) or {}).get("USD") or {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _fund_won(v):
+    if v is None:
+        return "—"
+    a = abs(v)
+    s = ("%.1f조" % (a / 1e12)) if a >= 1e12 else ("%.0f억" % (a / 1e8)) if a >= 1e8 else ("%.0f만" % (a / 1e4)) if a >= 1e4 else ("%.0f원" % a)
+    return ("-" if v < 0 else "") + s
+
+
+def _fund_reports(code, name, px):
+    """리포트 — 최근 180일 수 · 증권사 수 · 목표가 중앙 · 상승여력(리포트.consensus) · 최신 제목 넷 · 자주 나온 낱말(내러티브.hot_words). 쌓인 행만, 네트워크 없음."""
+    if REP is None:
+        return None
+    try:
+        rows = (_rep_rows().get("by_code") or {}).get(code) or []
+    except Exception:
+        return None
+    if not rows:
+        return {"n180": 0}
+    today = dt.date.today()
+    since = (today - dt.timedelta(days=180)).isoformat()
+    recent = [r for r in rows if (r.get("date") or "")[:10] >= since]
+    ks = sorted(px) if px else []
+    price = px[ks[-1]] if ks else None
+    try:
+        cs = REP.consensus(rows, price, since, closes=px) or {}
+    except Exception:
+        cs = {}
+    ops = {}
+    for r in recent:
+        if r.get("opinion"):
+            ops[r["opinion"]] = ops.get(r["opinion"], 0) + 1
+    hot = []
+    if NAR is not None:
+        try:
+            items = [{"type": "report", "title": r.get("title") or "", "d": (r.get("date") or "")[:10].replace("-", "")} for r in rows]
+            hot = NAR.hot_words(items, (today - dt.timedelta(days=120)).strftime("%Y%m%d"), name, [], top=16, code=code) or []
+            # 리포트 제목의 상용구(종목코드 · 기업명 · BUY · 시가총액 …)는 이야기가 아니다
+            junk = re.compile(r"^(?:A\d{6}|\d+|기업명|시가총액|목표주가|투자의견|BUY|Buy|NR|Hold|매수|보고서|리포트|기업|분석|코스피|코스닥|신규|더한|앞으로|전진|과도한|하반기|상반기|분기|실적)$")
+            hot = [h for h in hot if not junk.match(str(h.get("w") or "")) and len(str(h.get("w") or "")) >= 2][:8]
+        except Exception:
+            hot = []
+    latest = [{"date": (r.get("date") or "")[:10], "broker": r.get("broker"), "title": r.get("title"), "opinion": r.get("opinion"), "tp": r.get("tp"),
+               "concl": (r.get("concl") or "")[:160]} for r in rows[:4]]
+    return {"n180": len(recent), "brokers": len({r.get("broker") for r in recent if r.get("broker")}), "tp_med": cs.get("med"), "tp_n": cs.get("n"),
+            "upside": cs.get("up"), "price": price, "opinions": ops, "hot": [{"w": h.get("w"), "n": h.get("n")} for h in hot][:10], "latest": latest}
+
+
+def _fund_sector(code):
+    """산업 탭 결과(.cache/산업/_result.json)에서 이 회사 섹터의 정의 · 주가 동인(손으로 쓴 것) · 볼 것 · 국면 · 신호. 파일만 읽는다."""
+    try:
+        sec = _sector(code)
+    except Exception:
+        sec = None
+    if not sec:
+        return None
+    try:
+        with open(os.path.join(IND_DIR, "_result.json"), "r", encoding="utf-8") as fh:
+            R = json.load(fh)
+    except (OSError, ValueError):
+        return {"key": sec}
+    s = next((x for x in (R.get("sectors") or []) if x.get("key") == sec), None)
+    if not s:
+        return {"key": sec}
+    return {"key": sec, "desc": s.get("desc"), "definition": s.get("definition"), "drivers": s.get("drivers"), "watch": (s.get("watch") or [])[:6],
+            "phase": s.get("phase"), "signals": (s.get("signals") or [])[:6], "as_of": R.get("as_of")}
+
+
+def _fund_build(c, r_biz, sig):
+    code, name = c["code"], c["name"]
+    out = {"code": code, "name": name, "at": time.time(), "sig": sig, "src": {}, "warn": []}
+    out["report"] = {"label": r_biz["label"], "stamp": r_biz["stamp"], "rcept": r_biz["rcept"]} if r_biz else None
+    biz = _sec_text(c, r_biz, "사업의 내용") if r_biz else ""
+    fin = _sec_text(c, r_biz, "재무에 관한 사항") if r_biz else ""
+    if not biz:
+        out["warn"].append("사업의 내용 원문이 없다")
+    ov, ov_total = FUND.overview(biz)
+    out["overview"], out["overview_total"] = ov, ov_total
+    secs_ = FUND.sections(biz)
+    segs = FUND.segments_pct(biz)
+    out["segs_src"] = ("%s 개요 · 제품 표" % (r_biz["stamp"] if r_biz else "")) if segs else None
+    # 밸류체인 캐시 — 제품 · 원재료 · 고객 · 수출 · 판매경로 · 경쟁
+    vc, vy, vcraw = _fund_vc(code)
+    out["vc_years"] = vy
+    products = vc.get("products") or []
+    if not segs:
+        ps = [p_ for p_ in products if p_.get("pct")]
+        tot = sum(p_["pct"] for p_ in ps)
+        if ps and 60 <= tot <= 130:
+            segs = [{"name": (p_.get("item") or p_.get("segment") or "")[:40], "desc": (p_.get("use") or p_.get("segment") or "")[:90], "pct": p_["pct"]}
+                    for p_ in sorted(ps, key=lambda x: -x["pct"])[:8]]
+            out["segs_src"] = "주요 제품 표 (%s)" % vy.get("products", "")
+    out["segs"] = segs
+    out["products"] = [{"item": p_.get("item"), "segment": p_.get("segment"), "use": p_.get("use"), "pct": p_.get("pct"), "amt": p_.get("amt")} for p_ in products[:10]]
+    out["materials"] = [{"item": m.get("item"), "pct": m.get("pct"), "amt": m.get("amt"), "segment": m.get("segment"),
+                         "suppliers": [s.get("name") for s in (m.get("suppliers") or []) if s.get("name")][:3], "commodity": FUND.commodity_of(m.get("item") or "")}
+                        for m in (vc.get("materials") or [])[:8]]
+    out["customers"] = [{"name": x.get("name"), "pct": x.get("pct"), "kind": x.get("kind"), "country": x.get("country")} for x in (vc.get("customers") or [])[:8]]
+    ex = vc.get("export") or {}
+    export_pct = ex.get("export_pct") if isinstance(ex, dict) else None
+    if export_pct is None:
+        ex2 = FUND.export_split(biz)
+        if ex2:
+            ex, export_pct = ex2, ex2["export_pct"]
+    out["export"] = ex if isinstance(ex, dict) and ex else None
+    out["channels"] = (vc.get("channels") or [])[:6]
+    comp = [s for s in (vc.get("competitors") or []) if isinstance(s, str)]
+    out["shares"] = [s for s in comp if s.startswith("시장점유율")][:4]
+    out["competition"] = [s for s in comp if not s.startswith("시장점유율")][:4]
+    mix = None
+    try:
+        mix = _mix_of(c, vcraw) if vcraw else None
+    except Exception:
+        mix = None
+    if mix:
+        out["mix"] = {"years": [{"year": y.get("year"), "pass": y.get("pass"), "kind": y.get("kind"), "items": (y.get("items") or [])[:8]} for y in (mix.get("years") or [])[-6:]],
+                      "contrib": {k: (v if k != "rows" else v[:6]) for k, v in (mix.get("contrib") or {}).items()} if mix.get("contrib") else None}
+    else:
+        out["mix"] = None
+    # 수출 추적 — 수출 나라 · HS · 월별 수출(분기 합은 아래 상관에)
+    exw = _watch_export(code) or {}
+    prof = exw.get("profile") or {}
+    out["export_track"] = {"status": exw.get("status"), "countries": prof.get("countries"), "hs": [p_.get("name") for p_ in (prof.get("products") or [])][:5],
+                           "grade": exw.get("grade"), "signals": exw.get("signals"), "export_share": prof.get("export_share")} if exw else None
+    ex_series = exw.get("series") or {}
+    # 가속도 — TTM 매출 · 영업이익 · 이익률 역사 · 국면
+    dk, dk_old = _fund_druck(code)
+    pts = sorted((p_ for p_ in (dk or {}).get("points") or [] if p_.get("n") is not None and p_.get("label")), key=lambda p_: p_["n"])
+    cur = next((p_ for p_ in reversed(pts) if p_.get("국면")), None) or (pts[-1] if pts else None)
+    out["src"]["druck"] = (str((pts[-1].get("기준일") if pts else "") or "")) + (" (옛 판)" if dk_old else "")
+    rev_ttm = (cur or {}).get("매출_TTM")
+    op_ttm = (cur or {}).get("영업이익_TTM")
+    margins = [[p_["label"], round(p_["영업이익_TTM"] / p_["매출_TTM"] * 100, 2)] for p_ in pts
+               if p_.get("매출_TTM") and p_.get("영업이익_TTM") is not None and p_["매출_TTM"] > 0]
+    out["profit"] = {"label": cur.get("label") if cur else None, "rev_ttm": rev_ttm, "op_ttm": op_ttm,
+                     "margin": (op_ttm / rev_ttm * 100) if rev_ttm and op_ttm is not None else None, "margin_hist": margins[-40:],
+                     "phase": (cur or {}).get("국면"), "speed": (cur or {}).get("속도"), "accel": (cur or {}).get("가속B"), "basis": (dk or {}).get("basis"),
+                     "inv_days": (cur or {}).get("재고일수"), "ar_days": (cur or {}).get("매출채권일수"), "eps_ttm": (cur or {}).get("EPS_TTM"),
+                     "per": (cur or {}).get("PER_TTM"), "rev_yoy": (cur or {}).get("매출YoY"), "rev_ttm_hist": [[p_["label"], p_["매출_TTM"]] for p_ in pts if p_.get("매출_TTM")][-40:]}
+    # 풍경 — 순차입금 · 값 자리
+    L = _land_read(code) or {}
+    rows = [r for r in (L.get("rows") or []) if not r.get("ttm")]
+    last_row = rows[-1] if rows else None
+    nd_ratio = None
+    if last_row and last_row.get("rev"):
+        debt, cash = last_row.get("debt"), last_row.get("cash")
+        if debt is not None and cash is not None:
+            nd_ratio = (debt - cash) / last_row["rev"]
+    dc = L.get("decide") or {}
+    out["balance"] = {"year": (last_row or {}).get("year"), "debt": (last_row or {}).get("debt"), "cash": (last_row or {}).get("cash"), "rev": (last_row or {}).get("rev"),
+                      "nd_ratio": nd_ratio, "de": (last_row or {}).get("de"), "roe": (last_row or {}).get("roe"), "fcf": (last_row or {}).get("fcf")}
+    out["value"] = {"per": dc.get("per"), "pct": dc.get("pct"), "zone": dc.get("zone"), "date": dc.get("date"), "px": dc.get("px")}
+    out["src"]["land"] = dc.get("date") or L.get("price_date")
+    # 수주
+    bl_by, bl_ser = _orb2_backlog(c)
+    backlog = None
+    if bl_ser:
+        last = bl_ser[-1]
+        backlog = {"value": last["v"], "label": last["label"], "ratio": (last["v"] / rev_ttm) if rev_ttm else None, "verified": last.get("verified"),
+                   "text": "%s (%s 기준%s)" % (_fund_won(last["v"]), last["label"], " · 연 매출의 %.1f배" % (last["v"] / rev_ttm) if rev_ttm else "")}
+    out["backlog"], out["backlog_series"] = backlog, bl_ser[-12:]
+    # 거시 — 업종 수출물가(한국은행, 캐시만)
+    pidx, pseries = None, {}
+    try:
+        corp = corp_code_of(code)
+        mc = MACRO.for_company(corp, "", net=False) if (MACRO is not None and corp) else {}
+        pr = (mc or {}).get("price") or {}
+        ks = sorted(pr)
+        if len(ks) >= 13:
+            last_v, prev_v = pr[ks[-1]], pr.get(ks[-13])
+            pseries = {k: pr[k] for k in ks}
+            pidx = {"name": mc.get("price_name"), "last": last_v, "month": ks[-1], "chg12": ((last_v / prev_v - 1) * 100) if prev_v else None,
+                    "series": {k: pr[k] for k in ks[-60:]}, "ksic": mc.get("ksic")}
+    except Exception:
+        pidx = None
+    out["product_index"] = pidx
+    # 원문 — 위험 문장 · 업의 본질 · 지역 · 민감도 · 가격표
+    risk = FUND.risk_sentences(biz)
+    out["risk"] = risk
+    out["notes"] = FUND.industry_notes(biz)
+    regs = FUND.regions(biz)
+    out["regions"] = regs
+    plants = FUND.plants_from(biz)
+    out["plants"] = plants
+    out["fx_sens"] = FUND.fx_sensitivity(fin)
+    out["price_tables"] = {"products": FUND.price_table(secs_.get("products") or ""), "materials": FUND.price_table(secs_.get("materials") or "")}
+    # 호재 · 악재 판
+    out["drivers"] = FUND.drivers(export_pct=export_pct, materials=out["materials"], fx_sens=out["fx_sens"], risk=risk, net_debt_ratio=nd_ratio, backlog=backlog,
+                                  regions_=regs, product_index=pidx, competitors=out["competition"], customers=out["customers"], plants=plants)
+    # 주가가 따라간 것 — 분기 주가 1년 변화 vs 각 숫자의 1년 변화(피어슨 r)
+    px = _px_file(code) or {}
+    px_q = _fund_px_q(px)
+    named = {}
+    if pts:
+        named["매출(최근 4분기 합)"] = {p_["n"]: p_["매출_TTM"] for p_ in pts if p_.get("매출_TTM")}
+        named["영업이익(최근 4분기 합)"] = {p_["n"]: p_["영업이익_TTM"] for p_ in pts if p_.get("영업이익_TTM") is not None}
+        named["주당순이익(EPS, 4분기)"] = {p_["n"]: p_["EPS_TTM"] for p_ in pts if p_.get("EPS_TTM") is not None}
+        named["영업이익률(4분기)"] = {p_["n"]: p_["영업이익_TTM"] / p_["매출_TTM"] * 100 for p_ in pts if p_.get("매출_TTM") and p_.get("영업이익_TTM") is not None and p_["매출_TTM"] > 0}
+    if ex_series:
+        named["월 수출(관세청, 분기 합)"] = _fund_q_of(ex_series, "sum")
+    fx = _fund_fx()
+    if fx:
+        named["원/달러 환율(분기 평균)"] = _fund_q_of(fx)
+    if pseries:
+        named["업종 수출물가(분기 평균)"] = _fund_q_of(pseries)
+    out["followers"] = FUND.followers(px_q, named) if px_q and named else []
+    ks = sorted(px)
+    if ks:
+        last_d = ks[-1]
+        y1 = next((k for k in reversed(ks) if k <= str(int(last_d[:4]) - 1) + last_d[4:]), None)
+        out["px"] = {"d": last_d, "v": px[last_d], "chg1y": ((px[last_d] / px[y1] - 1) * 100) if y1 and px.get(y1) else None}
+    else:
+        out["px"] = None
+    # 시장의 이야기 — 리포트 · 공시 위험 · 업종 동인
+    out["reports"] = _fund_reports(code, name, px)
+    dr = _disc_risk() or {}
+    rc = (dr.get("codes") or {}).get(code) or {}
+    out["risk_flags"] = {"level": rc.get("level"), "hits": rc.get("hits"), "ref": rc.get("ref"), "s12": (dr.get("s12") or {}).get(code), "as_of": dr.get("기준일")}
+    out["sector"] = _fund_sector(code)
+    out["line"] = FUND.summary_line(name, segs, out["customers"], export_pct, regs, plants)
+    return out
+
+
+def fundamental_view(code, refresh=False):
+    """GET /api/fundamental?code= — 한 장. 원문 두 절 + 캐시만 읽어 조립(실측 수 초), 결과는 .cache/기본분석 에 둔다. 회사 없으면 None."""
+    c = company_by_code(code)
+    if not c:
+        return None
+    if FUND is None:
+        return {"error": "기본분석.py 를 읽지 못했다 — 서버 콘솔을 본다", "module": True}
+    reps = [r for r in c["reports"] if not r.get("tag")] or list(c["reports"])
+    ann = [r for r in reps if r.get("label") == "사업보고서"]
+    r_biz = max(ann, key=lambda r: r["rcept"]) if ann else (max(reps, key=lambda r: r["rcept"]) if reps else None)
+    sig = _fund_sig(c, r_biz)
+    p = os.path.join(FUND_DIR, code + ".json")
+    if not refresh:
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+            if d.get("sig") == sig:
+                return d
+        except (OSError, ValueError):
+            pass
+    with FUND_LOCK:
+        t0 = time.time()
+        try:
+            out = _fund_build(c, r_biz, sig)
+        except Exception as e:
+            return {"code": code, "name": c["name"], "error": "조립 실패: %s" % e, "sig": sig}
+        out["secs"] = round(time.time() - t0, 1)
+        os.makedirs(FUND_DIR, exist_ok=True)
+        _atomic_json(p, out)
+        return out
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "GiupChujeok/1.0"
 
@@ -15457,6 +15798,16 @@ class Handler(BaseHTTPRequestHandler):
                         return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
                     return self._send(200, beads_view(True))
                 return self._send(200, beads_view())
+            if path == "/api/fundamental":      # 기본적분석 — 한 회사 한 장(원문 · 캐시만). ?refresh=1 은 다시 조립(같은 출처)
+                refresh = q.get("refresh") == "1"
+                if refresh and not self._same_origin_get():
+                    return self._send(403, {"error": "이 PC 의 화면에서 온 요청만 받습니다"})
+                res = fundamental_view(q.get("code", ""), refresh=refresh)
+                if res is None:
+                    return self._send(404, {"error": "회사 없음"})
+                if res.get("module"):
+                    return self._send(500, res)
+                return self._send(200, res)
             if path == "/api/orbit2":           # 궤도 v2 — 한 회사 한 장(캐시만). ?run=1 은 9칸 기저율 다시 세기(같은 출처)
                 if q.get("run") == "1":
                     if not self._same_origin_get():

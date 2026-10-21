@@ -1105,6 +1105,103 @@ button.vbCo small{font:500 var(--fs-1) var(--mono);color:var(--faint)}button.vbC
 .drkOpts .drkOpt span{white-space:nowrap}
 .drkplate .spIdeasH em{font:500 var(--fs-3) var(--f-body);letter-spacing:0;text-transform:none}   /* 한글 꼬리표 — 자간 넓히면 읽기 어렵다 */
 .drkCmp[hidden]{display:none}
+/* ---------- 기본적분석 (Exhibit 09, 2026-10-22) — 돈의 흐름 · 이익 구조 · 호재/악재 지도 · 주가를 이끄는 것 · 업의 본질 ---------- */
+.fdplate{--add:#7fc99a;--del:#e0837a;--warn:#d9ab63;--faint:#736f68;--accent:#7fb8a4}
+.fdplate .spHead p.fdWhat{font-size:var(--fs-4);color:var(--p-faint);max-width:72em}
+.fdplate .spIdeasH em{font:500 var(--fs-3) var(--f-body);letter-spacing:0;text-transform:none}
+.fdplate .spTools .drkAll{background:transparent;color:var(--p-dim);border:1px solid rgba(255,255,255,.18)}
+.fdSec{margin-top:26px}
+.fdFlowSvg{margin-top:4px}
+.fdColT{font:700 13px var(--f-disp);fill:var(--p-hi)}
+.fdCo{fill:rgba(255,255,255,.035);stroke:rgba(255,255,255,.14);stroke-width:1}
+.fdSegBar{fill:rgba(214,180,106,.26);stroke:rgba(214,180,106,.55);stroke-width:1}
+.fdSegT{font:700 13px var(--f-body);fill:var(--p-hi)}
+.fdSegD{font:400 10.5px var(--f-body);fill:var(--p-dim)}
+.fdNA{font:500 12px var(--f-body);fill:var(--p-faint)}
+.fdHit{fill:transparent;cursor:help}
+.fdNodeR{fill:rgba(255,255,255,.04);stroke-width:1}
+.fdNodeR.in{stroke:rgba(127,184,164,.55)}.fdNodeR.out{stroke:rgba(214,180,106,.55)}.fdNodeR.dom{stroke:rgba(139,149,163,.5)}
+.fdNode.na .fdNodeR{stroke-dasharray:3 3}
+.fdNodeT{font:600 12.5px var(--f-body);fill:var(--p-ink)}
+.fdNodeS{font:500 10.5px var(--f-num);fill:var(--p-dim)}
+.fdRib{fill:none;stroke-linecap:butt;opacity:.55}
+.fdRib.in{stroke:#7fb8a4}.fdRib.out{stroke:#d6b46a}.fdRib.dom{stroke:#8b95a3}
+.fdGrid2{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px;margin-top:10px}
+.fdGrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:8px}
+@media (max-width:1100px){.fdGrid2,.fdGrid3{grid-template-columns:minmax(0,1fr)}}
+.fdDet{border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.02);padding:0 14px 6px}
+.fdDet summary{cursor:pointer;padding:11px 0;display:flex;gap:10px;align-items:baseline;list-style:none}
+.fdDet summary::-webkit-details-marker{display:none}
+.fdDet summary::before{content:'▸';color:var(--p-faint);font-size:12px}
+.fdDet[open] summary::before{content:'▾'}
+.fdDet summary b{font:700 var(--fs-5) var(--f-disp);color:var(--p-hi)}
+.fdDet summary span{font-size:var(--fs-3);color:var(--p-dim)}
+.fdQ{font:400 var(--fs-4)/1.65 var(--f-disp);color:var(--p-ink);margin:6px 0 10px;word-break:keep-all}
+.fdQ.up{color:#bfe3cf}.fdQ.down{color:#f0b9ad}
+.fdSub{margin:10px 0 4px;font:600 var(--fs-3) var(--f-body);color:var(--p-gold)}
+.fdList{list-style:none;margin:0;padding:0}
+.fdList li{display:flex;gap:10px;align-items:baseline;padding:5px 0;border-top:1px solid rgba(255,255,255,.06);font-size:var(--fs-3)}
+.fdList li:first-child{border-top:0}
+.fdList li b{color:var(--p-hi);font-weight:600;flex:none;max-width:46%}
+.fdList li span{color:var(--p-dim)}
+.fdKpi{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1100px){.fdKpi{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fdMarginSvg{margin-top:12px}
+.fdMLine{fill:none;stroke:var(--p-gold2);stroke-width:2.2;stroke-linejoin:round}
+.fdEnd{fill:var(--p-gold2);stroke:var(--p-bg);stroke-width:1.6}
+.fdMinMax{font:500 10.5px var(--f-num);fill:var(--p-faint)}
+.fdSmalls{margin-top:12px}
+.fdLegend{display:flex;justify-content:space-between;font-size:var(--fs-3);color:var(--p-dim);margin:6px 0 2px;padding:0 4px}
+.fdLegend i{display:inline-block;width:26px;height:8px;border-radius:4px;vertical-align:middle;margin:0 6px}
+.fdLegend i.n{background:#e0837a}.fdLegend i.p{background:#7fc99a}
+.fdDrv{list-style:none;margin:0;padding:0}
+.fdDrv li{display:grid;grid-template-columns:minmax(200px,1.1fr) minmax(160px,1fr) minmax(0,2fr);gap:12px;align-items:center;padding:10px 6px;border-top:1px solid rgba(255,255,255,.07)}
+.fdDrv li.hasq{cursor:pointer}.fdDrv li.hasq:hover{background:rgba(255,255,255,.025)}
+.fdDrv li:first-child{border-top:0}
+.fdDrv .f{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.fdDrv .f b{font:600 var(--fs-4) var(--f-body);color:var(--p-hi);line-height:1.3}
+.fdDrv .bar{position:relative;height:14px;border-radius:7px;background:rgba(255,255,255,.06)}
+.fdDrv .bar u{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:rgba(255,255,255,.35)}
+.fdDrv .bar i{position:absolute;top:0;bottom:0;border-radius:7px}
+.fdDrv li.fdp i{background:#7fc99a}.fdDrv li.fdn i{background:#e0837a}.fdDrv li.fd0 i{background:#8b95a3}
+.fdDrv .w{font-size:var(--fs-3);line-height:1.5;color:var(--p-dim)}
+.fdDrv .w small{display:block;color:var(--p-faint)}
+.fdDrv .q{grid-column:1/-1;padding:4px 0 2px 8px;border-left:2px solid rgba(214,180,106,.5)}
+.fdChip{display:inline-block;padding:2px 8px;border-radius:999px;font:500 var(--fs-2) var(--f-num);color:var(--p-dim);border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04)}
+.fdChip.num{color:#f1d9a0;border-color:rgba(241,217,160,.5)}.fdChip.txt{color:var(--p-ink)}.fdChip.inf{color:var(--p-faint);border-style:dashed}
+.fdChip.hot{color:var(--p-hi);background:rgba(241,217,160,.08);border-color:rgba(241,217,160,.3)}
+.fdChips{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
+.fdSens{padding:8px 0;border-top:1px solid rgba(255,255,255,.06)}
+.fdSens b{display:block;color:var(--p-hi);font-size:var(--fs-4)}
+.fdSens .fdQ{display:block;margin:4px 0 6px;font-size:var(--fs-3)}
+.fdSensRows{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:var(--fs-3);color:var(--p-dim)}
+.fdSensRows i{font-style:normal;margin-right:4px;color:var(--p-faint)}
+.fdSensRows b{color:var(--p-ink);font:600 var(--fs-3) var(--f-num)}
+.fdCol h5{margin:0 0 8px;font:700 var(--fs-5) var(--f-disp);color:var(--p-hi)}
+.fdCorr{list-style:none;margin:0;padding:0}
+.fdCorr li{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(90px,1fr) 52px;gap:8px;align-items:center;padding:5px 0;font-size:var(--fs-3);color:var(--p-dim)}
+.fdCorr li.strong .n{color:var(--p-hi);font-weight:600}
+.fdCorr .bar{position:relative;height:10px;border-radius:5px;background:rgba(255,255,255,.06)}
+.fdCorr .bar u{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:rgba(255,255,255,.3)}
+.fdCorr .bar i{position:absolute;top:0;bottom:0;border-radius:5px}
+.fdCorr .bar i.p{background:#d6b46a}.fdCorr .bar i.m{background:#8fb8f0}
+.fdCorr b{font:600 var(--fs-3) var(--f-num);color:var(--p-ink);text-align:right}
+.fdNote{font-size:var(--fs-3);line-height:1.5;color:var(--p-faint);margin:8px 0 0}
+.fdRep p{margin:0 0 6px;font-size:var(--fs-3);line-height:1.5;color:var(--p-ink)}
+.fdRepRow{padding:6px 0;border-top:1px solid rgba(255,255,255,.06);font-size:var(--fs-3)}
+.fdRepRow b{display:block;font:600 var(--fs-2) var(--f-num);color:var(--p-faint)}
+.fdRepRow span{color:var(--p-ink)}.fdRepRow small{display:block;color:var(--p-dim);margin-top:2px}
+.fdSector{margin-top:12px;padding:10px 12px;border-left:2px solid rgba(214,180,106,.5);background:rgba(241,217,160,.05);border-radius:0 8px 8px 0}
+.fdSector b{display:block;font:600 var(--fs-3) var(--f-body);color:var(--p-gold);margin-bottom:4px}
+.fdSector p{margin:0;font-size:var(--fs-3);line-height:1.55;color:var(--p-ink)}
+.fdFacts{list-style:none;margin:0;padding:0}
+.fdFacts li{padding:7px 0;border-top:1px solid rgba(255,255,255,.06)}
+.fdFacts li:first-child{border-top:0}
+.fdFacts li b{display:block;font:600 var(--fs-4) var(--f-body);color:var(--p-hi)}
+.fdFacts li span{font-size:var(--fs-3);color:var(--p-dim)}
+.fdNoteP{padding:6px 0}
+.fdNoteP b{display:block;font:600 var(--fs-4) var(--f-body);color:var(--p-hi)}
+.fdNoteP .fdQ{margin:3px 0 4px}
 /* ---------- 투자 브리핑 (Exhibit 05) — 기회 지형도 · 구루 원탁 · 투자 메모 ---------- */
 /* 보고서 캔들의 7국면 띠 · 범례 색 — 가속도 판(.drkplate)과 같은 짙은 테마 값(invArc 가 rcOf(k, 판)으로 읽는다) */
 .invplate{--add:#7fc99a;--del:#e0837a;--warn:#d9ab63;--faint:#736f68;--accent:#7fb8a4}
@@ -4107,6 +4204,7 @@ p.sub,.qtrHead .sub,.expHead .sub,.finnote,.pipeNote,.pipeHead span,.pipeCalls .
         <button data-t="watch">관심 장부</button>
         <i class="tabBr" aria-hidden="true"></i>
         <span class="tabLab" title="고른 회사 한 곳을 보는 탭">이 회사</span>
+        <button data-t="fund" title="이 회사가 무엇을 팔아 누구한테서 돈을 받고, 무엇이 오르면 좋고 나쁘며, 주가는 실제로 무엇을 따라갔나 — 최신 사업보고서 원문과 캐시만으로(생성 문장 없음)">기본적분석</button>
         <button data-t="orbit" class="on">궤도</button>
         <button data-t="orbit2" title="한 회사의 사업 궤도와 주가 궤도를 한 장에 — 결론 넉 줄 · 궤도 그림 · 분기 표 · 사건 원장 · 생각을 바꿀 조건 · 신호판 줄">궤도 v2</button>
         <button data-t="land">풍경</button>
@@ -4470,7 +4568,7 @@ function show(t){
   S.tab=t;
   if(t!=='story'&&S.stFit){ window.removeEventListener('resize',S.stFit); S.stFit=null; }   // 내러티브를 떠나면 payload 붙든 resize 리스너를 바로 놓는다
   const p=$('#panes'); p.innerHTML='<div class="loading">불러오는 중…</div>';
-  ({orbit:viewOrbit, orbit2:viewOrbit2, land:viewLand, story:viewStory, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
+  ({orbit:viewOrbit, fund:viewFund, orbit2:viewOrbit2, land:viewLand, story:viewStory, brief:viewBrief, qtr:viewQuarter, earn:viewBriefClassic, druck:viewDruck,
     tl:viewTimeline, rep:viewReports, read:viewRead,
     traj:viewTraj, diff:viewDiff, find:viewFind, trend:viewTrend,
     cat:viewCatalyst, exp:viewExport, ovl:viewOverlay, val:viewValue, top:viewTop, beads:viewBeads, qd:viewQd, vocal:viewVocal, tech:viewTech, grow:viewGrowth, score:viewScore, trd:viewTrades, watch:viewWatch}[t])(p);
@@ -5757,6 +5855,302 @@ function invDrvTable(DRV, code){
     const e=el('td','e'); e.appendChild(el('span','invGrade '+(x.grade==='검증됨'?'ok':x.grade==='약함'?'weak':'na'),x.grade||'—')); e.title=x.ev||''; if(x.ev) e.appendChild(document.createTextNode(' '+cut(x.ev,52))); tr.appendChild(e);
     t.appendChild(tr); });
   return t;
+}
+
+// ---------------------------------------------------------- 기본적분석 (EXHIBIT 09, 2026-10-22) — 이 회사가 무엇을 팔아 누구한테서 돈을 받고,
+// 무엇이 오르면 좋고 나쁘며, 주가는 실제로 무엇을 따라갔나. 서버 /api/fundamental 이 최신 사업보고서 원문 두 절과 캐시만 읽어 조립한다(생성 문장 없음).
+// 화면은 읽기만 — 판정 · 처방 문장 없이 방향 · 숫자 · 원문. 층: 한 줄 → 돈의 흐름 그림 → 이익 구조 → 호재 · 악재 지도 → 주가를 이끄는 것 → 업의 본질(원문) → 출처.
+const FD_IN='#7fb8a4', FD_OUT='#d6b46a', FD_POS='#7fc99a', FD_NEG='#e0837a', FD_MID='#8b95a3';
+const fdWon=v=>{ if(v==null||!isFinite(v)) return '—'; const a=Math.abs(v); const s=a>=1e12?(a/1e12).toFixed(1)+'조':a>=1e8?Math.round(a/1e8).toLocaleString('ko-KR')+'억':a>=1e4?Math.round(a/1e4).toLocaleString('ko-KR')+'만':Math.round(a)+'원'; return (v<0?'−':'')+s; };
+const fdPct=(v,d=0)=>v==null||!isFinite(v)?'—':(v>=0?'+':'')+v.toFixed(d)+'%';
+const fdN=(v,d=0)=>v==null||!isFinite(v)?'—':v.toFixed(d);
+function fdDetails(title, sub, open){ const d=document.createElement('details'); d.className='fdDet'; if(open) d.open=true; const s=document.createElement('summary'); s.appendChild(el('b',null,title)); if(sub) s.appendChild(el('span',null,sub)); d.appendChild(s); return d; }
+
+async function viewFund(p){
+  const c=S.co, code=c.code;
+  p.innerHTML='';
+  const plate=el('section','synplate orbplate fdplate'); p.appendChild(plate);
+  plate.appendChild(el('div','orbWait','보고서 원문과 캐시를 읽어 한 장으로 모으는 중… (처음은 몇 초)'));
+  let d;
+  try{ const r=await fetch('/api/fundamental?code='+code); d=await r.json(); if(!r.ok&&!d.error) d={error:'HTTP '+r.status}; }
+  catch(e){ d={error:'불러오지 못했다'}; }
+  if(S.tab!=='fund'||!S.co||S.co.code!==code) return;
+  plate.innerHTML='';
+  if(d.error){
+    const w=el('div','orbWait'); w.appendChild(el('b',null,d.error==='no route'?'서버가 아직 이 탭의 API(/api/fundamental)를 모른다':d.error));
+    if(d.error==='no route') w.appendChild(el('p',null,'서버 코드는 들어갔고 뷰어를 다시 시작해야 켜진다(사용자 허락 뒤 재시작 절차로).'));
+    plate.appendChild(w); return; }
+  fdPlate(plate, d, c);
+}
+
+function fdPlate(plate, d, c){
+  plate.classList.add('anim');
+  const rep=d.report||{};
+  // ── 머리
+  const top=el('div','spTop');
+  const eb=el('div','spEyebrow'); eb.innerHTML='<b>EXHIBIT 09</b><span></span><em></em>';
+  eb.querySelector('span').textContent='기본적분석 · '+c.name;
+  eb.querySelector('em').textContent=(rep.stamp?rep.stamp+' '+rep.label:'보고서 없음')+(rep.rcept?' · 접수 '+dDate(rep.rcept.slice(0,8)):'')+(d.px?' · 주가 '+Math.round(d.px.v).toLocaleString('ko-KR')+'원('+dDate(d.px.d).slice(5)+')':'');
+  top.appendChild(eb);
+  const tools=el('div','spTools');
+  const rb=el('button','spFull drkAll','다시 조립'); rb.title='원문 · 캐시를 다시 읽어 조립한다(네트워크 없음)';
+  rb.onclick=async()=>{ rb.disabled=true; rb.textContent='조립 중…'; try{ const x=await (await fetch('/api/fundamental?code='+c.code+'&refresh=1')).json(); if(!x.error){ plate.innerHTML=''; fdPlate(plate, x, c); return; } rb.textContent=x.error; }catch(e){ rb.textContent='실패'; } rb.disabled=false; };
+  tools.appendChild(rb);
+  const fs=el('button','spFull','⛶ 발표 모드'); fs.title='전시판만 전체 화면으로 (Esc 로 나가기)';
+  fs.onclick=()=>{ if(document.fullscreenElement){ document.exitFullscreen(); return; } if(plate.requestFullscreen) plate.requestFullscreen().catch(()=>{}); };
+  plate.onfullscreenchange=()=>{ const on=document.fullscreenElement===plate; plate.classList.toggle('full',on); fs.textContent=on?'발표 모드 끝내기':'⛶ 발표 모드'; };
+  tools.appendChild(fs); top.appendChild(tools); plate.appendChild(top);
+
+  // ── 한 줄
+  const hl=el('div','spHead');
+  hl.appendChild(el('h3',null,d.line||(c.name+' — 보고서 표를 못 읽었다')));
+  hl.appendChild(el('p','fdWhat','이 화면은 셋을 답한다 — ① 무엇을 팔아 누구한테서 돈을 받나(돈의 흐름) ② 무엇이 오르면 좋고 나쁜가(호재 · 악재 지도) ③ 주가는 실제로 무엇을 따라갔나. '+
+    '재료는 '+(rep.stamp||'')+' '+(rep.label||'보고서')+' 원문과 이 뷰어의 캐시뿐이고 생성 문장은 없다 — 모든 칸에 출처 칩이 붙는다. 사고 팔라는 말은 없다.'));
+  plate.appendChild(hl);
+
+  // ── ① 돈의 흐름
+  plate.appendChild(fdFlow(d));
+  // ── ② 이익이 남는 구조
+  plate.appendChild(fdProfit(d));
+  // ── ③ 호재 · 악재 지도
+  plate.appendChild(fdDrivers(d));
+  // ── ④ 주가를 이끄는 것
+  plate.appendChild(fdNarrative(d));
+  // ── ⑤ 회사가 말하는 업의 본질 · 위험 문장(원문)
+  plate.appendChild(fdNotes(d));
+
+  const ft=el('div','spFoot');
+  ft.innerHTML='<span></span><b>ORBIT · 기업궤도추적</b>';
+  ft.querySelector('span').textContent='출처: '+(rep.stamp||'')+' '+(rep.label||'')+' 「사업의 내용」 · 「재무에 관한 사항」 원문(개요 · 부문 비중 · 원재료 · 수출 · 위험관리 · 기타 참고사항 · 주석 민감도), '+
+    '밸류체인 캐시(제품 · 원재료 · 고객 · 수출 비중), 가속도 캐시(4분기 합 매출 · 영업이익 · EPS'+(d.src&&d.src.druck?' · '+d.src.druck:'')+'), 풍경 캐시(차입금 · 현금 · PER 자리'+(d.src&&d.src.land?' · '+d.src.land:'')+'), '+
+    '수주 캐시, 한국은행 수출물가 · 환율(월), 관세청 수출(월), 증권사 리포트 쌓인 행, 공시 위험 캐시, 산업 탭 결과. '+
+    '용어 — 최근 4분기 합(TTM) = 최근 1년치, 영업이익률 = 영업이익 ÷ 매출, 순차입금 = 빚 − 현금, 수주잔고 = 받아 둔 주문 중 아직 매출이 안 된 것, 상관 r = 같이 움직인 정도(−1~+1, 인과 아님).'+(d.secs!=null?' 모으는 데 '+d.secs+'초.':'');
+  plate.appendChild(ft);
+}
+
+// 머리 — 제목 + 꼬리표(한글, 자간 없음)
+function fdH(t, s){ const h=el('div','spIdeasH',t); if(s) h.appendChild(el('em',null,s)); return h; }
+function fdChip(t, cls, title){ const s=el('span','fdChip'+(cls?' '+cls:''),t); if(title) s.title=title; return s; }
+
+// ① 돈의 흐름 — 왼쪽 들어오는 것(원재료 · 조달), 가운데 이 회사(부문 · 공장), 오른쪽 돈을 주는 쪽(고객 · 수출/내수 · 지역). 띠 굵기 = 비중
+function fdFlow(d){
+  const box=el('div','fdSec');
+  box.appendChild(fdH('돈의 흐름','왼쪽에서 사 와서 → 가운데서 만들고 → 오른쪽에 판다. 띠 굵기 = 비중(보고서 표). 칸을 올리면 출처'));
+  const segs=(d.segs||[]).slice().sort((a,b)=>b.pct-a.pct).slice(0,6);
+  const mats=(d.materials||[]).filter(m=>m.item&&!/^\s*(기\s*타|그\s*밖)/.test(m.item)).slice(0,5);
+  const custs=(d.customers||[]).filter(x=>x.kind==='named'&&x.name).slice(0,4);
+  const ex=d.export||{}, exp=ex.export_pct;
+  const right=[];
+  custs.forEach(x=>right.push({t:x.name, s:(x.pct!=null?Math.round(x.pct)+'%':'')+(x.country?' · '+x.country:''), w:x.pct||4, k:'cust', tip:'주요 매출처(사업의 내용) — 비중은 보고서가 적은 그대로'}));
+  if(exp!=null){ if(exp>=1) right.push({t:'수출', s:Math.round(exp)+'%', w:exp, k:'ex', tip:'수출 · 내수(사업의 내용 매출 절'+(ex.src?' · '+ex.src:'')+')'}); if(100-exp>=1) right.push({t:'내수', s:Math.round(100-exp)+'%', w:100-exp, k:'dom', tip:'내수(사업의 내용 매출 절'+(ex.src?' · '+ex.src:'')+')'}); }
+  const regs=(d.regions||[]).filter(r=>r.name!=='국내').slice(0,3);
+  if(regs.length) right.push({t:'자주 적힌 지역', s:regs.map(r=>r.name+' '+r.n+'회').join(' · '), w:6, k:'reg', tip:'사업의 내용에서 나라 · 지역 이름이 나온 횟수 — 노출의 거친 자리'});
+  const et=d.export_track||{};
+  if(et.countries&&et.countries.length) right.push({t:'수출 상대국(관세청)', s:et.countries.slice(0,4).join(' · '), w:6, k:'reg', tip:'수출 추적 캐시 — 이 회사 품목(HS)의 주요 상대국'});
+  const left=mats.map(m=>({t:m.item.length>18?m.item.slice(0,17)+'…':m.item, s:(m.pct!=null?'매입의 '+Math.round(m.pct)+'%':m.amt!=null?fdWon(m.amt*1e6):'')+(m.commodity?' · '+m.commodity:'')+(m.suppliers&&m.suppliers.length?' · '+m.suppliers.slice(0,2).join(' · '):''), w:m.pct||6, tip:'주요 원재료(사업의 내용 표)'+(m.segment?' · '+m.segment:'')}));
+  if(!left.length) left.push({t:'원재료 표를 못 읽었다', s:'아래 개요 · 원문에서', w:4, na:true});
+  if(!right.length) right.push({t:'고객 · 수출 표를 못 읽었다', s:'아래 개요 · 원문에서', w:4, na:true});
+  // SVG
+  const W=1000, rowH=58, pad=16, LW=250, RW=270, CW=W-LW-RW-2*pad*4;
+  const rows=Math.max(left.length, right.length, Math.max(3, segs.length));
+  const H=Math.max(300, rows*rowH+60);
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'orbSvg fdFlowSvg',role:'img','aria-label':'돈의 흐름'});
+  const put=(tag,at)=>svg.appendChild(svgEl(tag,at));
+  const cx0=pad*2+LW+pad, cx1=cx0+CW;                 // 가운데 상자
+  const colT=(x,t,anc)=>{ const e=put('text',{x,y:22,class:'fdColT','text-anchor':anc||'start'}); e.textContent=t; };
+  colT(pad,'들어오는 것 — 사 오는 원재료'); colT(cx0+CW/2,'이 회사 — 매출 구성','middle'); colT(W-pad,'돈을 주는 쪽 — 고객 · 시장','end');
+  put('rect',{x:cx0,y:40,width:CW,height:H-56,rx:14,class:'fdCo'});
+  // 가운데 부문 막대
+  const segTop=52, segH=Math.min(46, Math.max(28,(H-80)/Math.max(1,segs.length)-8));
+  const segY=i=>segTop+i*(segH+8);
+  if(segs.length){
+    segs.forEach((s,i)=>{ const y=segY(i), w=Math.max(8,(CW-24)*s.pct/100);
+      put('rect',{x:cx0+12,y,width:w,height:segH,rx:6,class:'fdSegBar'});
+      const t=put('text',{x:cx0+20,y:y+segH/2+5,class:'fdSegT'}); t.textContent=(s.name.length>16?s.name.slice(0,15)+'…':s.name)+' '+Math.round(s.pct)+'%';
+      if(s.desc&&segH>=40){ const e=put('text',{x:cx0+20,y:y+segH-6,class:'fdSegD'}); e.textContent=s.desc.length>34?s.desc.slice(0,33)+'…':s.desc; }
+      tip(put('rect',{x:cx0+12,y,width:CW-24,height:segH,class:'fdHit'}), s.name+' '+s.pct+'% — '+(s.desc||'')+' ('+(d.segs_src||'보고서 표')+')'); });
+  } else { const t=put('text',{x:cx0+CW/2,y:H/2,class:'fdNA','text-anchor':'middle'}); t.textContent='매출 구성 표를 못 읽었다 — 아래 개요 원문'; }
+  if(d.plants&&d.plants.length){ const t=put('text',{x:cx0+CW/2,y:H-24,class:'fdSegD','text-anchor':'middle'}); t.textContent='공장 · 생산법인 '+d.plants.join(' · ')+(d.profit&&d.profit.basis==='영업이익'?' · 금융사(영업이익 기준)':''); }
+  // 왼쪽 · 오른쪽 상자 + 띠
+  const nodeH=44;
+  const drawSide=(items, x, w, side)=>{
+    const tot=items.reduce((a,b)=>a+(b.w||1),0)||1;
+    const gap=(H-56-items.length*nodeH)/Math.max(1,items.length+1);
+    items.forEach((it,i)=>{ const y=40+gap*(i+1)+i*nodeH;
+      const g=put('g',{class:'fdNode'+(it.na?' na':'')});
+      g.appendChild(svgEl('rect',{x,y,width:w,height:nodeH,rx:9,class:'fdNodeR '+(side==='L'?'in':'out')+(it.k==='dom'?' dom':'')}));
+      const t=svgEl('text',{x:x+12,y:y+18,class:'fdNodeT'}); t.textContent=it.t; g.appendChild(t);
+      const s=svgEl('text',{x:x+12,y:y+34,class:'fdNodeS'}); s.textContent=it.s||''; g.appendChild(s);
+      if(it.tip) tip(g, it.tip);
+      svg.appendChild(g);
+      if(it.na) return;
+      const sw=Math.max(2, Math.min(30, 30*(it.w||1)/Math.max(tot, 30)));
+      const y1=y+nodeH/2, x1=side==='L'?x+w:x, x2=side==='L'?cx0:cx1, y2=side==='L'?(40+(H-56)*(i+1)/(items.length+1)):(40+(H-56)*(i+1)/(items.length+1));
+      const mx=(x1+x2)/2;
+      put('path',{d:'M'+x1+','+y1+'C'+mx+','+y1+' '+mx+','+y2+' '+x2+','+y2,class:'fdRib '+(side==='L'?'in':'out')+(it.k==='dom'?' dom':''),'stroke-width':sw}); });
+  };
+  drawSide(left, pad, LW, 'L'); drawSide(right, W-pad-RW, RW, 'R');
+  box.appendChild(svg);
+  // 원문 · 표
+  const grid=el('div','fdGrid2');
+  const ov=fdDetails('회사가 스스로 적은 개요', (d.overview_total?'원문 '+d.overview_total.toLocaleString('ko-KR')+'자 중 앞부분':'')+(d.report?' · '+d.report.stamp+' '+d.report.label:''), true);
+  (d.overview||[]).forEach(t=>ov.appendChild(el('p','fdQ',t)));
+  if(!(d.overview||[]).length) ov.appendChild(el('p','fdQ','개요 산문을 못 읽었다 — 본문 탭에서 원문을 본다.'));
+  grid.appendChild(ov);
+  const tb=fdDetails('표로 읽은 것', [(d.products||[]).length?'제품 '+(d.products||[]).length:'', (d.channels||[]).length?'판매경로 '+(d.channels||[]).length:'', (d.shares||[]).length?'점유율':'' ].filter(Boolean).join(' · ')||'표 없음');
+  if((d.products||[]).length){ const ul=el('ul','fdList'); d.products.slice(0,8).forEach(x=>{ const li=el('li'); li.appendChild(el('b',null,x.item||'')); li.appendChild(el('span',null,[x.segment,x.use,x.pct!=null?x.pct+'%':null].filter(Boolean).join(' · '))); ul.appendChild(li); }); tb.appendChild(el('div','fdSub','주요 제품 — '+(d.vc_years&&d.vc_years.products?d.vc_years.products+' 보고서':''))); tb.appendChild(ul); }
+  if((d.channels||[]).length){ const ul=el('ul','fdList'); d.channels.slice(0,6).forEach(x=>{ const li=el('li'); li.appendChild(el('b',null,x.name||'')); li.appendChild(el('span',null,(x.desc||'').slice(0,80)+(x.pct!=null?' · '+x.pct+'%':''))); ul.appendChild(li); }); tb.appendChild(el('div','fdSub','판매 경로')); tb.appendChild(ul); }
+  if((d.shares||[]).length){ const ul=el('ul','fdList'); d.shares.forEach(s=>ul.appendChild(el('li',null,s))); tb.appendChild(el('div','fdSub','시장점유율(보고서 문장)')); tb.appendChild(ul); }
+  if(d.mix&&d.mix.contrib&&d.mix.contrib.rows&&d.mix.contrib.rows.length){ const cb=d.mix.contrib; const ul=el('ul','fdList');
+    cb.rows.slice(0,6).forEach(r=>{ const li=el('li'); li.appendChild(el('b',null,r.label||r.key)); li.appendChild(el('span',null,'기여 '+fdPct(r.contrib,1)+' · 그 품목 '+fdPct(r.yoy,0)+' · 비중 '+fdPp(r.share_pp,1))); ul.appendChild(li); });
+    tb.appendChild(el('div','fdSub','최근 성장을 끈 품목 — 제품 믹스('+cb.a+' → '+cb.b+', 검산 통과한 해만)')); tb.appendChild(ul); }
+  grid.appendChild(tb);
+  box.appendChild(grid);
+  return box;
+}
+const fdPp=(v,d=1)=>v==null||!isFinite(v)?'—':(v>=0?'+':'')+v.toFixed(d)+'%p';
+
+// ② 이익이 남는 구조 — 큰 숫자 넷 + 이익률 역사 선 + 작은 숫자들
+function fdProfit(d){
+  const box=el('div','fdSec'), P=d.profit||{}, B=d.balance||{}, V=d.value||{};
+  box.appendChild(fdH('이익이 남는 구조','최근 4분기 합(1년치) 기준 · 이익률 선은 분기마다 4분기 합으로'));
+  const kp=el('div','spKpi fdKpi');
+  const K=(b,s,sm,cls)=>{ const k=el('div','spK'); k.appendChild(el('b',cls||null,b)); k.appendChild(el('span',null,s)); if(sm) k.appendChild(el('small',null,sm)); kp.appendChild(k); };
+  K(fdWon(P.rev_ttm), '매출 · 최근 4분기 합'+(P.label?' ('+P.label+'까지)':''), P.rev_yoy!=null?'마지막 분기 1년 전보다 '+fdPct(P.rev_yoy,0):'');
+  K(fdWon(P.op_ttm), '영업이익 · 최근 4분기 합', P.phase?'흐름 '+(DRK_PLAIN[P.phase]||P.phase):'');
+  K(P.margin!=null?P.margin.toFixed(1)+'%':'—', '영업이익률', (P.margin_hist&&P.margin_hist.length>=4)?'역사 '+Math.min(...P.margin_hist.map(x=>x[1])).toFixed(0)+'~'+Math.max(...P.margin_hist.map(x=>x[1])).toFixed(0)+'%':'');
+  const nd=B.nd_ratio;
+  K(nd==null?'—':(nd>0?'빚 > 현금':'현금 > 빚'), nd==null?'순차입금 · 자료 없음':'순차입금 = '+fdWon((B.debt||0)-(B.cash||0))+' · 연 매출의 '+Math.round(Math.abs(nd)*100)+'%'+(B.year?' ('+B.year+')':''), nd==null?'':(nd>0.15?'금리가 오르면 이자 부담이 보인다':nd<-0.15?'금리에 둔감 · 이자수익 쪽':'금리 영향 작다'));
+  box.appendChild(kp);
+  // 이익률 선
+  const mh=P.margin_hist||[];
+  if(mh.length>=6){
+    const W=1000,H=150,L=50,R=120,T=16,Bm=28, n=mh.length, step=(W-L-R)/n, X=i=>L+i*step+step/2;
+    const vs=mh.map(x=>x[1]); let lo=Math.min(0,...vs), hi=Math.max(...vs); const sp=Math.max(4,hi-lo); lo-=sp*.08; hi+=sp*.1;
+    const Y=v=>T+(H-T-Bm)-(v-lo)/((hi-lo)||1)*(H-T-Bm);
+    const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'orbSvg fdMarginSvg',role:'img','aria-label':'영업이익률 역사'});
+    const put=(tag,at)=>svg.appendChild(svgEl(tag,at));
+    [0].concat(hi>0?[Math.round(hi/2)]:[]).forEach(v=>{ put('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),class:'drkGrid'+(v===0?' z':'')}); put('text',{x:L-8,y:Y(v)+4,'text-anchor':'end',class:'orbTick'}).textContent=v+'%'; });
+    put('path',{d:mh.map((x,i)=>(i?'L':'M')+X(i).toFixed(1)+','+Y(x[1]).toFixed(1)).join(''),class:'fdMLine'});
+    mh.forEach((x,i)=>{ if(/Q4$/.test(x[0])) put('text',{x:X(i),y:H-8,'text-anchor':'middle',class:'orbYear'}).textContent=x[0].slice(0,4); });
+    const last=mh[mh.length-1]; put('circle',{cx:X(n-1),cy:Y(last[1]),r:4,class:'fdEnd'}); put('text',{x:X(n-1)+10,y:Y(last[1])+4,class:'drkEndL'}).textContent=last[0]+' '+last[1].toFixed(1)+'%';
+    const mi=vs.indexOf(Math.min(...vs)), ma=vs.indexOf(Math.max(...vs));
+    [[mi,'최저'],[ma,'최고']].forEach(([i,l])=>{ if(i===n-1) return; put('text',{x:X(i),y:Y(vs[i])+(l==='최저'?16:-8),'text-anchor':'middle',class:'fdMinMax'}).textContent=l+' '+mh[i][0]+' '+vs[i].toFixed(1)+'%'; });
+    box.appendChild(svg);
+  }
+  // 작은 숫자들
+  const sm=el('div','drkSmalls fdSmalls');
+  const small=(b,t,tt)=>{ const s=el('span'); s.appendChild(el('b',null,b)); s.appendChild(document.createTextNode(t)); if(tt) s.title=tt; sm.appendChild(s); };
+  if(d.backlog) small(fdWon(d.backlog.value),'수주잔고'+(d.backlog.ratio!=null?' · 연 매출의 '+d.backlog.ratio.toFixed(1)+'배':'')+' ('+d.backlog.label+')','받아 둔 주문 중 아직 매출이 안 된 것 — 수주 캐시'+(d.backlog.verified?' · 검산 일치':''));
+  if(P.inv_days!=null) small(Math.round(P.inv_days)+'일','재고일수','재고가 매출로 바뀌는 데 걸리는 날수(가속도 캐시)');
+  if(P.ar_days!=null) small(Math.round(P.ar_days)+'일','채권일수','판 뒤 돈을 받기까지 날수');
+  if(B.roe!=null) small(B.roe.toFixed(1)+'%','ROE'+(B.year?' ('+B.year+')':''),'자기자본이익률 — 풍경 캐시');
+  if(B.fcf!=null) small(fdWon(B.fcf),'잉여현금흐름'+(B.year?' ('+B.year+')':''),'영업현금흐름 − 투자(풍경 캐시)');
+  if(V.per!=null) small(V.per.toFixed(1)+'배','PER'+(V.pct!=null?' · 자기 역사 '+Math.round(V.pct)+'% 자리('+(V.zone||'')+')':''),'풍경 캐시 decide — 공시일이 아니라 '+(V.date?dDate(V.date):'최근')+' 종가 기준');
+  if(d.product_index&&d.product_index.chg12!=null) small(fdPct(d.product_index.chg12,1),'업종 수출물가 1년('+(d.product_index.name||'')+')','한국은행 수출물가지수 — 같은 업종 제품값의 흐름, 이 회사 제품값과 다를 수 있다 · '+d.product_index.month);
+  if(sm.children.length) box.appendChild(sm);
+  // 가격표(있을 때만)
+  const pt=d.price_tables||{};
+  [['products','제품 값 변동(보고서 표)'],['materials','원재료 값 변동(보고서 표)']].forEach(([k,t])=>{ const rows=pt[k]||[]; if(!rows.length) return;
+    const dt=fdDetails(t, rows.length+'줄 · 보고서 단위 그대로'); const ul=el('ul','fdList');
+    rows.forEach(r=>{ const li=el('li'); li.appendChild(el('b',null,r.item)); li.appendChild(el('span',null,(r.cols||[]).map((cc,i)=>cc.replace(/\(.*$/,'')+' '+(r.vals[i]!=null?r.vals[i].toLocaleString('ko-KR'):'—')).join(' · ')+(r.change!=null?' → 최근 '+fdPct(r.change,0):''))); ul.appendChild(li); });
+    dt.appendChild(ul); box.appendChild(dt); });
+  return box;
+}
+
+// ③ 호재 · 악재 지도 — 요인마다 저울 막대. 왼쪽(붉음) = 그것이 오르면 이 회사에 악재, 오른쪽(초록) = 호재, 가운데 회색 = 양면. 길이 = 세기(1~3). 근거 칩 = 공시 숫자 > 공시 문장 > 구조에서 추론
+function fdDrivers(d){
+  const box=el('div','fdSec');
+  box.appendChild(fdH('무엇이 오르면 좋고 나쁜가 — 호재 · 악재 지도','왼쪽 붉은 막대 = 그것이 오르면 악재 · 오른쪽 초록 = 호재 · 가운데 회색 = 양면. 길이 = 세기. 줄을 누르면 근거 원문'));
+  const rows=d.drivers||[];
+  if(!rows.length){ box.appendChild(el('div','orbWait','요인을 뽑을 표 · 문장이 없다 — 원문 탭으로.')); return box; }
+  const lg=el('div','fdLegend'); lg.innerHTML='<span><i class="n"></i>악재 ◀</span><span class="mid">양면</span><span>▶ 호재<i class="p"></i></span>'; box.appendChild(lg);
+  const ul=el('ul','fdDrv');
+  rows.forEach(r=>{
+    const li=el('li',r.up>0?'fdp':r.up<0?'fdn':'fd0');     // 전역 .up/.dn 클래스와 겹치지 않게
+    const f=el('div','f'); f.appendChild(el('b',null,r.factor)); f.appendChild(fdChip(r.basis, r.basis==='공시 숫자'?'num':r.basis==='공시 문장'?'txt':'inf', '근거 종류 — 공시 숫자(표 · 주석) > 공시 문장(회사가 적은 말) > 구조에서 추론(수출 비중 · 차입 구조로 미룸)')); li.appendChild(f);
+    const bar=el('div','bar'); const seg=el('i'); seg.style.width=(r.strength*16)+'%'; if(r.up===0){ seg.style.width='18%'; seg.style.left='41%'; } else if(r.up>0){ seg.style.left='50%'; } else { seg.style.left=(50-r.strength*16)+'%'; } bar.appendChild(seg); bar.appendChild(el('u')); li.appendChild(bar);
+    const w=el('div','w'); w.appendChild(el('span',null,r.why)); if(r.note) w.appendChild(el('small',null,r.note)); li.appendChild(w);
+    if(r.quote){ li.classList.add('hasq'); const q=el('div','q'); q.hidden=true; q.appendChild(el('span','fdQ',r.quote)); li.appendChild(q);
+      li.addEventListener('click',e=>{ if(e.target.closest('a')) return; q.hidden=!q.hidden; li.classList.toggle('open',!q.hidden); }); }
+    ul.appendChild(li);
+  });
+  box.appendChild(ul);
+  // 주석 민감도 발췌
+  const fs=d.fx_sens||[];
+  if(fs.length){ const dt=fdDetails('주석이 적은 민감도(원문 발췌)','환율 · 금리가 움직이면 세전이익이 얼마나 — 숫자 뒤 단위는 보고서 것');
+    fs.forEach(x=>{ const p_=el('div','fdSens'); p_.appendChild(el('b',null,(x.kind==='fx'?'환율 ':'금리 ')+x.pct+(x.kind==='rate'&&!/%/.test(x.q)?'%p':'%')+' '+x.dir)); p_.appendChild(el('span','fdQ',x.q));
+      if(x.rows&&x.rows.length){ const t=el('div','fdSensRows'); x.rows.forEach(([l,v])=>{ const s=el('span'); s.appendChild(el('i',null,l||'')); s.appendChild(el('b',null,v.toLocaleString('ko-KR')+(x.unit?' '+x.unit:''))); t.appendChild(s); }); p_.appendChild(t); }
+      dt.appendChild(p_); });
+    box.appendChild(dt); }
+  box.appendChild(el('div','drkNoteKey','방향은 규칙이다 — 수출 비중 · 차입 구조 · 원재료 표 · 지역 언급 · 회사가 적은 위험 문장에서 정했고 회사마다 숫자만 다르다. 좋다 · 나쁘다의 판정이나 사고 팔라는 말이 아니다. 세기는 공시 숫자가 클수록(비중 · 차입)이지 확률이 아니다.'));
+  return box;
+}
+
+// ④ 주가를 이끄는 것 — 왼쪽: 숫자가 따라간 것(상관), 가운데: 시장이 말하는 이야기(리포트 · 업종 동인), 오른쪽: 지금 숫자가 말하는 것(국면 · 값 자리 · 위험)
+function fdNarrative(d){
+  const box=el('div','fdSec');
+  box.appendChild(fdH('주가를 이끄는 것','① 지난 분기들에서 주가 변화가 어느 숫자 변화와 같이 움직였나(상관, 인과 아님) ② 증권사 · 업종이 말하는 이야기 ③ 지금 숫자'));
+  const g=el('div','fdGrid3');
+  // ① 따라간 것
+  const a=el('div','fdCol'); a.appendChild(el('h5',null,'주가가 같이 움직인 숫자'));
+  const F=(d.followers||[]).filter(f=>f.r!=null);
+  if(F.length){ const ul=el('ul','fdCorr');
+    F.forEach(f=>{ const li=el('li'); li.appendChild(el('span','n',f.name)); const bar=el('div','bar'); const i=el('i'); i.style.width=(Math.abs(f.r)*50)+'%'; i.style.left=f.r>=0?'50%':(50-Math.abs(f.r)*50)+'%'; i.className=f.r>=0?'p':'m'; bar.appendChild(i); bar.appendChild(el('u')); li.appendChild(bar);
+      const v=el('b',null,(f.r>=0?'+':'')+f.r.toFixed(2)); v.title='피어슨 r · 분기 '+f.n+'개 · 둘 다 1년 변화'; li.appendChild(v); if(Math.abs(f.r)>=0.5) li.classList.add('strong'); ul.appendChild(li); });
+    a.appendChild(ul);
+    const top=F[0]; a.appendChild(el('p','fdNote',(Math.abs(top.r)>=0.5?'가장 같이 움직인 것은 「'+top.name+'」(r '+top.r.toFixed(2)+', 분기 '+top.n+'개). ':'뚜렷하게 같이 움직인 숫자가 없다(|r| 0.5 미만). ')+'r 은 같은 분기의 1년 변화끼리 견준 것이라 인과도, 앞날도 아니다. 표본이 '+top.n+'분기뿐이다.'));
+  } else a.appendChild(el('p','fdNote','분기 주가와 숫자가 여덟 분기 넘게 겹치지 않아 재지 않았다.'));
+  g.appendChild(a);
+  // ② 시장의 이야기
+  const b=el('div','fdCol'); b.appendChild(el('h5',null,'시장이 말하는 이야기'));
+  const R=d.reports;
+  if(R&&R.n180){ const t=el('div','fdRep');
+    t.appendChild(el('p',null,'최근 180일 리포트 '+R.n180+'건 · 증권사 '+(R.brokers||0)+'곳'+(R.tp_med?' · 목표가 중앙 '+Math.round(R.tp_med).toLocaleString('ko-KR')+'원':'')+(R.upside!=null?' · 지금 주가 대비 '+fdPct(R.upside,0):'')+(R.opinions?' · 의견 '+Object.entries(R.opinions).map(([k,v])=>k+' '+v).join(' / '):'')));
+    if(R.hot&&R.hot.length){ const ch=el('div','fdChips'); R.hot.forEach(h=>ch.appendChild(fdChip(h.w+' '+h.n,'hot','최근 120일 리포트 제목에 나온 횟수'))); t.appendChild(ch); }
+    (R.latest||[]).slice(0,3).forEach(x=>{ const li=el('div','fdRepRow'); li.appendChild(el('b',null,(x.date||'')+' '+(x.broker||''))); li.appendChild(el('span',null,x.title||'')); if(x.concl) li.appendChild(el('small',null,x.concl)); t.appendChild(li); });
+    b.appendChild(t);
+  } else b.appendChild(el('p','fdNote','쌓인 리포트가 없다(최근 180일).'));
+  const sec=d.sector;
+  if(sec&&sec.drivers){ const s=el('div','fdSector'); s.appendChild(el('b',null,'업종('+sec.key+')의 주가 동인 — 산업 탭')); s.appendChild(el('p',null,sec.drivers));
+    if(sec.watch&&sec.watch.length) s.appendChild(el('p','fdNote','볼 것: '+sec.watch.slice(0,4).join(' · '))); b.appendChild(s); }
+  g.appendChild(b);
+  // ③ 지금 숫자
+  const cc=el('div','fdCol'); cc.appendChild(el('h5',null,'지금 숫자가 말하는 것'));
+  const P=d.profit||{}, V=d.value||{}, ul=el('ul','fdFacts');
+  const li=(t,s)=>{ const x=el('li'); x.appendChild(el('b',null,t)); if(s) x.appendChild(el('span',null,s)); ul.appendChild(x); };
+  if(P.phase) li((DRK_PLAIN[P.phase]||P.phase), (P.basis==='영업이익'?'영업이익':'매출')+' 증가율 최근 반년 '+fdPct(P.speed,0)+(P.accel!=null?' · 반년 전보다 '+fdPp(P.accel,1):'')+' — 가속도 탭');
+  if(P.margin!=null) li('영업이익률 '+P.margin.toFixed(1)+'%', '최근 4분기 합');
+  if(V.zone) li('값 자리 — '+V.zone, 'PER '+fdN(V.per,1)+'배 · 자기 역사 '+Math.round(V.pct||0)+'% 자리 ('+(V.date?dDate(V.date):'')+') — 풍경 탭');
+  if(d.px&&d.px.chg1y!=null) li('주가 1년 '+fdPct(d.px.chg1y,0), Math.round(d.px.v).toLocaleString('ko-KR')+'원 · '+dDate(d.px.d));
+  if(d.backlog) li('수주잔고 '+fdWon(d.backlog.value), d.backlog.ratio!=null?'연 매출의 '+d.backlog.ratio.toFixed(1)+'배 ('+d.backlog.label+')':d.backlog.label);
+  const et=d.export_track||{};
+  if(et.status) li('수출 추적 — '+et.status, (et.signals&&et.signals.state?et.signals.state:'')+(et.hs&&et.hs.length?' · '+et.hs.slice(0,3).join(' · '):''));
+  const rf=d.risk_flags||{};
+  if(rf.hits&&rf.hits.length) li('공시 위험 '+rf.hits.length+'건', rf.hits.slice(0,4).map(h=>typeof h==='string'?h:(h.t||h.cat||JSON.stringify(h))).join(' · ')+(rf.as_of?' — '+dDate(rf.as_of):''));
+  else li('공시 위험 표지 없음', rf.as_of?'공시 위험 캐시 '+dDate(rf.as_of):'');
+  cc.appendChild(ul);
+  g.appendChild(cc);
+  box.appendChild(g);
+  return box;
+}
+
+// ⑤ 회사가 말하는 업의 본질(기타 참고사항) · 위험 문장(위험관리 절) — 원문 그대로, 접는 칸
+function fdNotes(d){
+  const box=el('div','fdSec');
+  box.appendChild(fdH('회사가 스스로 적은 업의 본질','기타 참고사항 · 위험관리 절의 원문 — 산업 특성 · 성장성 · 경쟁 · 점유율 · 경쟁력 요인 · 환율 · 금리 · 원자재 · 교역 · 수요'));
+  const notes=d.notes||[];
+  if(notes.length){ const segs={}; notes.forEach(n=>{ (segs[n.seg||'']=segs[n.seg||'']||[]).push(n); });
+    Object.entries(segs).forEach(([sg,arr],i)=>{ const dt=fdDetails((sg||'전체')+' — '+arr.map(x=>x.kind).filter((v,i,a)=>a.indexOf(v)===i).join(' · '), arr.length+'단락', i===0);
+      arr.forEach(n=>{ const q=el('div','fdNoteP'); q.appendChild(el('b',null,n.h)); q.appendChild(el('p','fdQ',n.p)); dt.appendChild(q); }); box.appendChild(dt); });
+  } else box.appendChild(el('p','fdNote','기타 참고사항의 산업 설명을 못 읽었다 — 본문 탭.'));
+  const rk=d.risk||{}, names={fx:'환율',rate:'금리',input:'원자재 · 원가',trade:'관세 · 교역 · 지정학',demand:'수요 · 경기'};
+  const any=Object.values(rk).some(v=>v&&v.length);
+  if(any){ const dt=fdDetails('회사가 적은 위험 변수 문장','환율 · 금리 · 원자재 · 교역 · 수요 — 방향 낱말이 있으면 ▲▼');
+    Object.entries(names).forEach(([k,nm])=>{ const arr=rk[k]||[]; if(!arr.length) return; const h=el('div','fdSub',nm); dt.appendChild(h);
+      arr.forEach(x=>{ const p_=el('p','fdQ '+x.tone); p_.textContent=(x.tone==='up'?'▲ ':x.tone==='down'?'▼ ':'')+x.s; dt.appendChild(p_); }); });
+    box.appendChild(dt); }
+  return box;
 }
 
 async function viewOrbit2(p){
