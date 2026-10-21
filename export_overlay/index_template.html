@@ -4,72 +4,109 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
 <style>
+/* 2026-10-21 디자인 — 섹터 화면(page_template)과 같은 토큰 */
 :root {
   color-scheme: light;
-  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
-  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
-  --s1: #2a78d6; --s2: #eb6834; --wash: rgba(11,11,11,0.05); --up: #006300; --down: #b42318;
+  --page: #f6f4f0; --surface: #ffffff; --ink: #1b1a18; --ink-2: #5a5650; --muted: #736f68;
+  --grid: #ebe8e2; --axis: #cfcbc3; --border: #e3e0da; --border-2: #d2cec6;
+  --accent: #2f5d50; --accent-soft: #e7efec; --accent-ink: #ffffff;
+  --s1: #2a78d6; --s2: #d9622a; --wash: rgba(27,26,24,0.045);
+  --up: #1f6b3f; --down: #a3352c;
+  --shadow: 0 2px 6px rgba(48,40,26,.06), 0 12px 28px -8px rgba(48,40,26,.20);
+  --sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  --serif: 'Noto Serif KR', 'Nanum Myeongjo', 'Batang', serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
-    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-    --s1: #3987e5; --s2: #d95926; --wash: rgba(240,239,236,0.08); --up: #0ca30c; --down: #e66767;
+    --page: #161513; --surface: #1e1d1a; --ink: #e8e6e1; --ink-2: #b0aca3; --muted: #928e86;
+    --grid: #2a2925; --axis: #3d3b37; --border: #33312c; --border-2: #45423c;
+    --accent: #7fb8a4; --accent-soft: #233029; --accent-ink: #11201a;
+    --s1: #5a9cf0; --s2: #ef8a52; --wash: rgba(232,230,225,0.06);
+    --up: #7fc99a; --down: #e0837a;
+    --shadow: 0 2px 6px rgba(0,0,0,.3), 0 12px 28px -8px rgba(0,0,0,.5);
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
-  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-  --s1: #3987e5; --s2: #d95926; --wash: rgba(240,239,236,0.08); --up: #0ca30c; --down: #e66767;
+  --page: #161513; --surface: #1e1d1a; --ink: #e8e6e1; --ink-2: #b0aca3; --muted: #928e86;
+  --grid: #2a2925; --axis: #3d3b37; --border: #33312c; --border-2: #45423c;
+  --accent: #7fb8a4; --accent-soft: #233029; --accent-ink: #11201a;
+  --s1: #5a9cf0; --s2: #ef8a52; --wash: rgba(232,230,225,0.06);
+  --up: #7fc99a; --down: #e0837a;
+  --shadow: 0 2px 6px rgba(0,0,0,.3), 0 12px 28px -8px rgba(0,0,0,.5);
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--page); color: var(--ink);
-  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
-main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
-h1 { font-size: 20px; margin: 0 0 2px; font-weight: 650; word-break: keep-all; }
-h2 { font-size: 15px; margin: 0 0 6px; font-weight: 600; }
-.sub, .note { color: var(--ink-2); margin: 0; font-size: 13px; }
-.radar { margin-top: 6px; }
-.radar a { color: var(--s1); text-decoration: none; font-weight: 600; }
-.radar a:hover { text-decoration: underline; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 12px 0 4px; color: var(--ink-2); font-size: 12.5px; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.55 var(--sans); font-variant-numeric: tabular-nums; }
+main { max-width: 1320px; margin: 0 auto; padding: 18px 20px 56px; }
+h1 { font: 700 26px/1.25 var(--serif); margin: 0; letter-spacing: -.015em; word-break: keep-all; }
+h2 { font: 700 18px/1.3 var(--serif); margin: 0 0 8px; letter-spacing: -.01em; }
+p { margin: 0; }
+.sub, .note { color: var(--ink-2); font-size: 13px; }
+.top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 18px; align-items: end; margin-bottom: 12px; }
+.meta { font-size: 12.5px; color: var(--muted); text-align: right; white-space: pre-line; line-height: 1.5; }
+@media (max-width: 720px) { .top { grid-template-columns: 1fr; } .meta { text-align: left; } }
+.radar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 12px 0 14px; padding: 12px 16px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--border); box-shadow: inset 3px 0 0 var(--accent); }
+.radar a.btn { font: 600 13.5px/1 var(--sans); color: var(--accent-ink); background: var(--accent); border-radius: 8px; padding: 9px 14px; text-decoration: none; white-space: nowrap; }
+.radar a.btn:hover { filter: brightness(1.06); }
+.radar span { color: var(--ink-2); font-size: 13px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 8px; color: var(--ink-2); font-size: 12.5px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
-.key { display: inline-block; width: 18px; height: 0; border-top: 2px solid; }
+.key { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; }
 .key.box { width: 12px; height: 10px; border: 0; background: var(--wash); outline: 1px solid var(--axis); }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; margin: 10px 0 18px; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 10px; color: inherit;
-  text-decoration: none; display: block; }
-.card:hover, .card:focus-visible { border-color: var(--s1); outline: none; box-shadow: 0 0 0 1px var(--s1) inset; }
-.card .t { font-weight: 650; font-size: 15px; word-break: keep-all; }
-.card .hs { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.card .facts { margin-top: 6px; font-size: 12.5px; color: var(--ink-2); }
-.card .facts div { display: flex; justify-content: space-between; gap: 8px; }
-.card .facts b { color: var(--ink); font-weight: 650; white-space: nowrap; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; margin: 8px 0 18px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px 12px; color: inherit;
+  text-decoration: none; display: block; transition: border-color .15s, box-shadow .15s; }
+.card:hover, .card:focus-visible { border-color: var(--accent); outline: none; box-shadow: var(--shadow); }
+.card .hd { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: start; }
+.card .t { font-weight: 700; font-size: 17px; word-break: keep-all; line-height: 1.3; }
+.card .hs { color: var(--muted); font-size: 12px; margin-top: 1px; }
+.card .big { text-align: right; white-space: nowrap; }
+.card .big b { display: block; font-size: 24px; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; }
+.card .big small { font-size: 11px; color: var(--muted); }
+.chart svg { display: block; width: 100%; margin-top: 8px; font-family: var(--sans); }
+svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.card .facts { margin-top: 8px; font-size: 13px; color: var(--ink-2); display: flex; flex-direction: column; gap: 3px; }
+.card .facts div { display: flex; justify-content: space-between; gap: 10px; }
+.card .facts b { color: var(--ink); font-weight: 700; white-space: nowrap; }
 .card .facts .weak b { color: var(--muted); font-weight: 500; }
-.chart svg { display: block; width: 100%; margin-top: 6px;
-  font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
-svg text { fill: var(--muted); font-size: 10.5px; font-variant-numeric: tabular-nums; }
-.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px 12px; margin-bottom: 16px; }
-.tablewrap { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
-th, td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
-th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
-th { color: var(--ink-2); font-weight: 600; }
-td a { color: var(--s1); text-decoration: none; }
-td.weak { color: var(--muted); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border-2); color: var(--ink-2); white-space: nowrap; }
+.pill b { font-weight: 700; color: var(--ink); }
+.pill.strong { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.pill.strong b { color: var(--accent); }
+.pill.none { color: var(--muted); border-style: dashed; }
 .pos { color: var(--up); } .neg { color: var(--down); }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px 14px; margin-bottom: 16px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--grid); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
+td a { color: var(--accent); text-decoration: none; font-weight: 600; }
+td.weak { color: var(--muted); }
 ul.notes { color: var(--ink-2); font-size: 12.5px; padding-left: 18px; margin: 0; }
-ul.notes li { margin: 3px 0; }
+ul.notes li { margin: 4px 0; line-height: 1.55; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 600px) { h1 { font-size: 21px; } main { padding: 14px 12px 40px; } }
 </style>
 </head>
 <body>
 <main>
-  <h1>섹터별 통관 수출 × 상장사 실적</h1>
-  <p class="sub" id="subtitle"></p>
-  <p class="sub radar"><a href="변곡점레이더.html">변곡점 레이더 →</a> 공시 전 분기의 통관 수출로 회사별 매출 증감을 미리 추정해 줄 세운 화면 (관계가 확인된 회사만, 과거 검증과 함께)</p>
+  <div class="top">
+    <h1>섹터별 통관 수출 × 상장사 실적</h1>
+    <p class="meta" id="subtitle"></p>
+  </div>
+  <div class="radar">
+    <a class="btn" href="변곡점레이더.html">변곡점 레이더 열기 →</a>
+    <span>아직 공시 안 된 분기의 통관 수출로 회사별 매출 증감을 미리 추정해 줄 세운 화면 — 관계가 확인된 회사만, 과거 검증과 함께.</span>
+  </div>
   <div class="legend">
     <span><i class="key" style="border-top-color: var(--s1)"></i>통관 수출 3개월 합 증감 (전년 대비)</span>
     <span><i class="key" style="border-top-color: var(--s2)"></i>상장사 합계 분기 매출 증감</span>
@@ -122,13 +159,14 @@ function weak(d) { return !d || d.r == null || d.lo == null || (d.lo <= 0 && d.h
 function rText(d) { return d && d.r != null ? `${d.r.toFixed(2)}` + (d.lo != null ? ` (${d.lo.toFixed(2)}~${d.hi.toFixed(2)})` : "") : "–"; }
 const L = v => Math.log1p(v / 100);
 
-// one shared log domain for every card
-const all = D.sectors.flatMap(s => s.yoy3.concat(Object.values(s.basket_yoy))).filter(v => v != null);
-let lo = Math.max(-75, Math.min(-50, ...all)), hi = Math.min(300, Math.max(100, ...all));
+// one shared log domain for every card — 5~95% 분위로 잡아 극단값이 모두를 눌러 놓지 않게(밖은 선이 끊긴다)
+const all = D.sectors.flatMap(s => s.yoy3.concat(Object.values(s.basket_yoy))).filter(v => v != null).sort((a, b) => a - b);
+const p05 = all.length ? all[Math.floor(all.length * 0.05)] : -50, p95 = all.length ? all[Math.ceil(all.length * 0.95) - 1] : 100;
+let lo = Math.max(-75, Math.min(-50, p05)), hi = Math.min(300, Math.max(100, p95));
 lo = [...TICKS].reverse().find(t => t <= lo) ?? -75; hi = TICKS.find(t => t >= hi) ?? 300;
 
 function mini(host, s) {
-  const W = Math.max(220, host.clientWidth), H = 110, m = { l: 34, r: 6, t: 6, b: 16 };
+  const W = Math.max(220, host.clientWidth), H = 140, m = { l: 40, r: 8, t: 8, b: 18 };
   const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img",
     "aria-label": s.name + " 통관 수출 증감과 상장사 매출 증감" }, host);
   const n = s.months.length, slot = (W - m.l - m.r) / Math.max(1, n);
@@ -137,18 +175,18 @@ function mini(host, s) {
   const pend = new Set(s.pending_qs);
   s.months.forEach((ym, j) => {
     if (pend.has(quarterOf(ym))) sv("rect", { x: left(j), y: m.t, width: slot + 0.5, height: H - m.t - m.b, fill: "var(--wash)" }, svg);
-    if (ym.slice(4) === "01") sv("text", { x: left(j), y: H - 3 }, svg, "'" + ym.slice(2, 4));
+    if (ym.slice(4) === "01") sv("text", { x: left(j), y: H - 4 }, svg, "'" + ym.slice(2, 4));
   });
   for (const t of [-50, 0, 100].filter(t => t >= lo && t <= hi)) {
-    sv("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, svg);
-    sv("text", { x: m.l - 4, y: y(t) + 4, "text-anchor": "end" }, svg, (t > 0 ? "+" : t < 0 ? "−" : "") + Math.abs(t) + "%");
+    sv("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": t === 0 ? 1.25 : 1 }, svg);
+    sv("text", { x: m.l - 5, y: y(t) + 4, "text-anchor": "end" }, svg, (t > 0 ? "+" : t < 0 ? "−" : "") + Math.abs(t) + "%");
   }
   let d = "", on = false;
   s.yoy3.forEach((v, j) => {
     if (v == null || v < lo || v > hi) { on = false; return; }
     d += (on ? "L" : "M") + x(j).toFixed(1) + " " + y(v).toFixed(1); on = true;
   });
-  sv("path", { d, fill: "none", stroke: "var(--s1)", "stroke-width": 1.75, "stroke-linejoin": "round" }, svg);
+  sv("path", { d, fill: "none", stroke: "var(--s1)", "stroke-width": 2, "stroke-linejoin": "round" }, svg);
   const slots = {};
   s.months.forEach((ym, j) => { (slots[quarterOf(ym)] = slots[quarterOf(ym)] || []).push(j); });
   let sd = "", prev = false;
@@ -158,7 +196,7 @@ function mini(host, s) {
     const js = slots[q], x0 = left(js[0]), x1 = left(js[js.length - 1] + 1), yy = y(v).toFixed(1);
     sd += (prev ? "L" : "M") + x0.toFixed(1) + " " + yy + "L" + x1.toFixed(1) + " " + yy; prev = true;
   }
-  sv("path", { d: sd, fill: "none", stroke: "var(--s2)", "stroke-width": 2 }, svg);
+  sv("path", { d: sd, fill: "none", stroke: "var(--s2)", "stroke-width": 2.5, "stroke-linejoin": "round" }, svg);
 }
 
 function fact(host, label, value, cls) {
@@ -166,19 +204,30 @@ function fact(host, label, value, cls) {
   el("span", {}, row, label);
   el("b", {}, row, value);
 }
+function rPill(parent, d) {
+  if (!d || d.r == null) return el("span", { class: "pill none" }, parent, "상관 안 냄");
+  const p = el("span", { class: "pill" + (weak(d) ? "" : " strong") }, parent);
+  el("b", {}, p, "r " + d.r.toFixed(2));
+  p.append(` ${d.lo != null ? d.lo.toFixed(2) + "~" + d.hi.toFixed(2) : "구간 없음"}` + (weak(d) ? " · 구분 안 됨" : " · 뚜렷"));
+  return p;
+}
 
 const cards = document.getElementById("cards");
 for (const s of D.sectors) {
   const a = el("a", { class: "card", href: encodeURIComponent(s.key) + ".html" }, cards);
-  el("div", { class: "t" }, a, s.name);
-  el("div", { class: "hs" }, a, "HS " + s.hs.join("·") + " · " + s.noun + " " + s.companies + "곳");
+  const hd = el("div", { class: "hd" }, a);
+  const left = el("div", {}, hd);
+  el("div", { class: "t" }, left, s.name);
+  el("div", { class: "hs" }, left, "HS " + s.hs.join("·") + " · " + s.noun + " " + s.companies + "곳");
+  const big = el("div", { class: "big" }, hd);
+  if (s.pending) { el("b", { class: signCls(s.pending.yoy) }, big, pct(s.pending.yoy, 0)); el("small", {}, big, qLabel(s.pending.q) + " 통관 · 공시 전"); }
+  else if (s.last_month) { el("b", { class: signCls(s.yoy3_last) }, big, pct(s.yoy3_last, 0)); el("small", {}, big, "통관 3개월 · " + ymLabel(s.last_month)); }
   const chart = el("div", { class: "chart" }, a);
   requestAnimationFrame(() => mini(chart, s));
   const f = el("div", { class: "facts" }, a);
-  if (s.pending) fact(f, `${qLabel(s.pending.q)} 통관 (공시 전, 기한 ${s.pending.due.slice(5).replace("-", "/")})`, pct(s.pending.yoy));
-  else if (s.last_month) fact(f, `통관 3개월 증감 (${ymLabel(s.last_month)}까지)`, pct(s.yoy3_last));
+  if (s.pending) fact(f, `실적 기한 ${s.pending.due.slice(5).replace("-", "/")} · ${qLabel(s.pending.q)} 통관`, pct(s.pending.yoy));
   if (s.reported) fact(f, `${qLabel(s.reported)} 합계 매출 · 같은 분기 통관`, `${pct(s.revenue_yoy)} · ${pct(s.export_yoy_same_q)}`);
-  fact(f, "같은 분기 상관 r", rText(s.lag0), weak(s.lag0) ? "weak" : "");
+  const pr = el("div", {}, f); el("span", {}, pr, "같은 분기 상관"); rPill(pr, s.lag0);
 }
 
 const t = document.getElementById("table");
@@ -201,10 +250,10 @@ for (const s of D.sectors) {
   el("td", weak(s.lag0) ? { class: "weak" } : {}, tr, rText(s.lag0));
   el("td", weak(s.lag1) ? { class: "weak" } : {}, tr, rText(s.lag1));
 }
-document.getElementById("cards-note").textContent = "카드를 누르면 그 섹터 화면으로 갑니다. 모든 카드는 같은 세로축(로그 눈금, 최근 5년)을 씁니다. 수출은 " +
+document.getElementById("cards-note").textContent = "카드를 누르면 그 섹터 화면으로 갑니다(회사별 칸 · 팝업). 모든 카드는 같은 세로축(로그 눈금, 최근 5년) — 큰 숫자는 아직 공시 안 된 분기의 통관 증감. 수출은 " +
   (D.sectors.length && D.sectors[0].currency === "USD" ? "달러 기준" : "그 달 평균 환율로 원화 환산") + ", 섹터마다 첫 번째 품목 정의 기준.";
 document.getElementById("subtitle").textContent =
-  `관세청 통관 수출과 DART 분기 실적 · 섹터 ${D.sectors.length}개 · 만든 시각 ${D.built_at}`;
+  `관세청 통관 수출과 DART 분기 실적\n섹터 ${D.sectors.length}개 · 만든 시각 ${D.built_at}`;
 let resizeTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);

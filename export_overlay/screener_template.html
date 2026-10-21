@@ -4,110 +4,157 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
 <style>
+/* 2026-10-21 디자인 — 섹터 화면(page_template)과 같은 토큰. 상태 색: 가속 = 초록(up) · 감속 = 붉음(down) · 불명 = 회색 */
 :root {
   color-scheme: light;
-  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
-  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
-  --s1: #2a78d6; --s2: #eb6834; --ctx: #898781; --wash: rgba(11,11,11,0.05); --band: rgba(42,120,214,0.14);
-  --up: #006300; --down: #b42318;
+  --page: #f6f4f0; --surface: #ffffff; --ink: #1b1a18; --ink-2: #5a5650; --muted: #736f68;
+  --grid: #ebe8e2; --axis: #cfcbc3; --border: #e3e0da; --border-2: #d2cec6;
+  --accent: #2f5d50; --accent-soft: #e7efec; --accent-ink: #ffffff;
+  --s1: #2a78d6; --s2: #d9622a; --ctx: #9a968d; --wash: rgba(27,26,24,0.045); --band: rgba(42,120,214,0.14);
+  --up: #1f6b3f; --down: #a3352c; --up-soft: rgba(31,107,63,0.10); --down-soft: rgba(163,53,44,0.09);
+  --shadow: 0 2px 6px rgba(48,40,26,.06), 0 12px 28px -8px rgba(48,40,26,.20);
+  --sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  --serif: 'Noto Serif KR', 'Nanum Myeongjo', 'Batang', serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
-    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-    --s1: #3987e5; --s2: #d95926; --ctx: #898781; --wash: rgba(240,239,236,0.08); --band: rgba(57,135,229,0.22);
-    --up: #0ca30c; --down: #e66767;
+    --page: #161513; --surface: #1e1d1a; --ink: #e8e6e1; --ink-2: #b0aca3; --muted: #928e86;
+    --grid: #2a2925; --axis: #3d3b37; --border: #33312c; --border-2: #45423c;
+    --accent: #7fb8a4; --accent-soft: #233029; --accent-ink: #11201a;
+    --s1: #5a9cf0; --s2: #ef8a52; --ctx: #7a776f; --wash: rgba(232,230,225,0.06); --band: rgba(90,156,240,0.22);
+    --up: #7fc99a; --down: #e0837a; --up-soft: rgba(127,201,154,0.12); --down-soft: rgba(224,131,122,0.12);
+    --shadow: 0 2px 6px rgba(0,0,0,.3), 0 12px 28px -8px rgba(0,0,0,.5);
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
-  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-  --s1: #3987e5; --s2: #d95926; --ctx: #898781; --wash: rgba(240,239,236,0.08); --band: rgba(57,135,229,0.22);
-  --up: #0ca30c; --down: #e66767;
+  --page: #161513; --surface: #1e1d1a; --ink: #e8e6e1; --ink-2: #b0aca3; --muted: #928e86;
+  --grid: #2a2925; --axis: #3d3b37; --border: #33312c; --border-2: #45423c;
+  --accent: #7fb8a4; --accent-soft: #233029; --accent-ink: #11201a;
+  --s1: #5a9cf0; --s2: #ef8a52; --ctx: #7a776f; --wash: rgba(232,230,225,0.06); --band: rgba(90,156,240,0.22);
+  --up: #7fc99a; --down: #e0837a; --up-soft: rgba(127,201,154,0.12); --down-soft: rgba(224,131,122,0.12);
+  --shadow: 0 2px 6px rgba(0,0,0,.3), 0 12px 28px -8px rgba(0,0,0,.5);
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--page); color: var(--ink);
-  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
-main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.55 var(--sans); font-variant-numeric: tabular-nums; }
+main { max-width: 1320px; margin: 0 auto; padding: 18px 20px 56px; }
 h1, h2, .tile { word-break: keep-all; }
-h1 { font-size: 20px; margin: 0 0 2px; font-weight: 650; }
-h2 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
-h3 { font-size: 13px; margin: 0 0 6px; font-weight: 600; color: var(--ink-2); }
-.sub, .note { color: var(--ink-2); margin: 0; }
-.note { font-size: 12.5px; margin-top: 4px; }
-.lead { margin: 10px 0 14px; max-width: 920px; }
-.verdict { font-size: 14px; margin: 0 0 12px; padding: 10px 14px; border-left: 3px solid var(--s2); background: var(--wash); border-radius: 0 8px 8px 0; max-width: 920px; }
-.topnav { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin: 0 0 10px; font-size: 13px; color: var(--ink-2); }
-.topnav a { color: var(--s1); text-decoration: none; }
+h1 { font: 700 26px/1.25 var(--serif); margin: 0; letter-spacing: -.015em; }
+h2 { font: 700 18px/1.3 var(--serif); margin: 0 0 6px; letter-spacing: -.01em; }
+h3 { font: 600 14px/1.4 var(--sans); margin: 0 0 6px; color: var(--ink-2); }
+p { margin: 0; }
+.sub, .note { color: var(--ink-2); }
+.note { font-size: 12.5px; margin-top: 6px; line-height: 1.5; }
+.lead { margin: 10px 0 12px; max-width: 960px; font-size: 13.5px; line-height: 1.6; }
+.verdict { font-size: 14.5px; line-height: 1.6; margin: 0 0 14px; padding: 12px 16px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 10px 10px 0; max-width: 960px; }
+.topnav { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin: 0 0 8px; font-size: 13px; color: var(--ink-2); }
+.topnav a { color: var(--accent); text-decoration: none; }
 .topnav a:hover { text-decoration: underline; }
-.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 14px 0; }
-.controls label { color: var(--ink-2); font-size: 13px; display: flex; gap: 6px; align-items: center; }
-select, .seg button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
-  border-radius: 6px; padding: 5px 8px; }
-.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
-.seg button { border: 0; border-radius: 0; cursor: pointer; }
-.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
-:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 14px 0; }
+.controls label { color: var(--ink-2); font-size: 13px; display: flex; gap: 7px; align-items: center; }
+select, .seg button { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-2); border-radius: 7px; padding: 6px 10px; }
+.seg { display: inline-flex; border: 1px solid var(--border-2); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; border-radius: 0; cursor: pointer; background: transparent; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-bottom: 16px; }
 @media (max-width: 600px) { .tiles { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 420px) { .tiles { grid-template-columns: 1fr; } }
-.tile, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
-.tile { padding: 12px 14px; }
-.tile .label { color: var(--ink-2); font-size: 12.5px; }
-.tile .value { font-size: 26px; font-weight: 650; margin: 2px 0; line-height: 1.2; }
-.tile .delta, .tile .ref { font-size: 12.5px; color: var(--ink-2); }
-.tile .ref { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--grid); }
-.card { padding: 14px 16px 12px; margin-bottom: 16px; }
+.tile, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.tile { padding: 12px 16px; }
+.tile .label { color: var(--ink-2); font-size: 12.5px; line-height: 1.4; }
+.tile .value { font-size: 28px; font-weight: 700; margin: 4px 0 2px; line-height: 1.15; letter-spacing: -.02em; }
+.tile .delta, .tile .ref { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }
+.tile .ref { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--grid); }
+.card { padding: 16px 18px 14px; margin-bottom: 16px; }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 6px; }
+.card-head .sub { font-size: 13px; }
 .chart { width: 100%; position: relative; }
-.chart svg { display: block; width: 100%; overflow: visible;
-  font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
-svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-svg text.quad { fill: var(--ink-2); font-size: 11.5px; }
-svg text.lbl { fill: var(--ink); font-size: 11px; }
+.chart svg { display: block; width: 100%; overflow: visible; font-family: var(--sans); }
+svg text { fill: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+svg text.quad { fill: var(--ink-2); font-size: 13px; font-weight: 600; }
+svg text.lbl { fill: var(--ink); font-size: 12.5px; font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+svg text.axt { fill: var(--ink-2); font-size: 12.5px; font-weight: 600; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 4px; color: var(--ink-2); font-size: 12.5px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
-.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--s1); }
-.dot.hollow { background: transparent; border: 1.5px solid var(--s1); }
+.dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: var(--ctx); }
+.dot.up { background: var(--up); } .dot.dn { background: var(--down); }
+.dot.hollow { background: transparent; border: 2px solid var(--ctx); }
 .dot.sel { background: var(--s2); }
 .cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-.tablewrap { overflow-x: auto; max-height: 640px; overflow-y: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
-th, td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+.tablewrap { overflow-x: auto; max-height: 640px; overflow-y: auto; border: 1px solid var(--grid); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
 th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
-th { color: var(--ink-2); font-weight: 600; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+th { color: var(--ink-2); font-weight: 600; font-size: 12px; position: sticky; top: 0; background: var(--surface); z-index: 1; }
 th:first-child { z-index: 2; }
 th button { all: unset; cursor: pointer; }
 th button[aria-sort="descending"]::after { content: " ▼"; font-size: 9px; }
 tr.row { cursor: pointer; }
 tr.row:hover td { background: var(--wash); }
 tr.row:hover td:first-child { background: linear-gradient(var(--wash), var(--wash)), var(--surface); }
-tr.sel td { background: var(--wash); font-weight: 600; }
-tr.sel td:first-child { background: linear-gradient(var(--wash), var(--wash)), var(--surface); }
+tr.sel td { background: var(--accent-soft); font-weight: 600; }
+tr.sel td:first-child { background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--surface); }
 td.weak, .weak { color: var(--muted); }
 .pos { color: var(--up); } .neg { color: var(--down); }
-.pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--wash); color: var(--ink-2); }
-.pill.up { color: var(--up); font-weight: 650; } .pill.down { color: var(--down); font-weight: 650; }
-.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 4px 16px; font-size: 12.5px; margin: 6px 0 10px; }
-.facts div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dotted var(--grid); padding: 2px 0; }
-.facts span { color: var(--ink-2); } .facts b { font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
+.pill { display: inline-block; font-size: 11.5px; padding: 1px 8px; border-radius: 999px; background: var(--wash); color: var(--ink-2); font-weight: 600; }
+.pill.up { color: var(--up); background: var(--up-soft); } .pill.down { color: var(--down); background: var(--down-soft); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 16px; font-size: 13px; margin: 6px 0 10px; }
+.facts div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dotted var(--grid); padding: 3px 0; }
+.facts span { color: var(--ink-2); } .facts b { font-weight: 700; text-align: right; }
 .strip { display: flex; align-items: flex-end; gap: 2px; height: 40px; margin: 4px 0; }
-.strip i { display: block; flex: 1; background: var(--s1); min-width: 3px; opacity: 0.8; }
+.strip i { display: block; flex: 1; background: var(--up); min-width: 3px; opacity: 0.85; }
 .strip i.neg { background: var(--down); }
 .evtable td:first-child, .evtable th:first-child { position: static; }
 details { margin-top: 10px; }
-details summary { cursor: pointer; color: var(--ink-2); margin: 4px 0; font-size: 13px; }
+details summary { cursor: pointer; color: var(--accent); margin: 4px 0; font-size: 13px; font-weight: 600; }
 .notes { color: var(--ink-2); font-size: 12.5px; }
-.notes li { margin: 3px 0; }
-#tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border);
-  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.14); display: none; z-index: 10;
-  min-width: 200px; max-width: min(92vw, 340px); }
-#tip .h { color: var(--ink-2); margin: 0 0 4px; font-weight: 600; }
+.notes li { margin: 4px 0; line-height: 1.55; }
+#tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border-2);
+  border-radius: 10px; padding: 9px 12px; font-size: 12.5px; box-shadow: var(--shadow); display: none; z-index: 10;
+  min-width: 220px; max-width: min(92vw, 360px); }
+#tip .h { color: var(--ink); margin: 0 0 4px; font-weight: 700; font-size: 13.5px; }
 #tip .row { display: flex; justify-content: space-between; gap: 10px; }
 #tip .row span { color: var(--ink-2); }
-@media (max-width: 600px) { .tile .value { font-size: 22px; } h1 { font-size: 18px; } }
+#tip .row b { font-weight: 700; }
+/* 읽는 법 — 산점도 위 한 줄 */
+.howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 16px; margin: 6px 0 10px; }
+.howto div { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+.howto i { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-style: normal; font-weight: 700; font-size: 14px; color: var(--accent-ink); background: var(--accent); }
+.howto b { color: var(--ink); }
+/* 회사별 막대 — 수출이 말하는 변화 순 */
+.rank { display: flex; flex-direction: column; gap: 2px; max-height: 720px; overflow: auto; border: 1px solid var(--grid); border-radius: 10px; padding: 6px 8px; }
+.rank .hd, .rank .r { display: grid; grid-template-columns: 150px minmax(0, 1fr) 150px 120px; gap: 10px; align-items: center; font-size: 13px; }
+.rank .hd { color: var(--ink-2); font-size: 12px; font-weight: 600; padding: 4px 6px 6px; border-bottom: 1px solid var(--grid); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.rank .hd .ax { position: relative; height: 16px; }
+.rank .hd .ax span { position: absolute; top: 0; transform: translateX(-50%); color: var(--muted); font-weight: 500; }
+.rank .r { padding: 5px 6px; border-radius: 8px; cursor: pointer; }
+.rank .r:hover { background: var(--wash); }
+.rank .r.sel { background: var(--accent-soft); }
+.rank .r.weakrow { opacity: .55; }
+.rank .nm { min-width: 0; }
+.rank .nm b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank .nm small { color: var(--muted); font-size: 11.5px; }
+.rank .bar { position: relative; height: 22px; }
+.rank .bar .zero { position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--axis); transform: translateX(-50%); }
+.rank .bar .ci { position: absolute; top: 50%; height: 2px; margin-top: -1px; background: var(--ink-2); opacity: .35; border-radius: 1px; }
+.rank .bar .fill { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; background: var(--ctx); opacity: .9; }
+.rank .bar .fill.up { background: var(--up); } .rank .bar .fill.dn { background: var(--down); }
+.rank .bar .v { position: absolute; top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.rank .est { text-align: right; white-space: nowrap; }
+.rank .est small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
+.rank .px { text-align: right; white-space: nowrap; font-size: 12.5px; color: var(--ink-2); }
+.rank .px b { display: block; font-weight: 700; color: var(--ink); }
+@media (max-width: 760px) { .rank .hd, .rank .r { grid-template-columns: 110px minmax(0, 1fr) 110px; } .rank .px, .rank .hd .px { display: none; } }
+@media (max-width: 600px) { .tile .value { font-size: 22px; } h1 { font-size: 21px; } main { padding: 14px 12px 40px; } }
 </style>
 </head>
 <body>
@@ -136,10 +183,20 @@ details summary { cursor: pointer; color: var(--ink-2); margin: 4px 0; font-size
   </div>
 
   <section class="card">
-    <h2 id="scatter-title">수출이 말하는 매출 변화와, 마지막 공시 뒤 주가가 이미 움직였는지</h2>
+    <div class="card-head"><h2 id="scatter-title">수출이 말하는 매출 변화와, 마지막 공시 뒤 주가가 이미 움직였는지</h2></div>
+    <div class="howto">
+      <div><i>→</i><span><b>오른쪽</b>일수록 통관 수출이 "마지막 공시보다 매출이 더 좋아진다"고 말한다. 왼쪽은 "더 나빠진다".</span></div>
+      <div><i>↓</i><span><b>아래</b>일수록 마지막 공시 뒤 주가가 시장보다 못 갔다. 가운데 띠(±2σ) 안이면 "아직 안 움직임".</span></div>
+      <div><i>★</i><span><b>오른쪽 아래 초록 칸</b>이 먼저 볼 자리 — 수출은 가속을 말하는데 주가는 아직. 점 색 = 상태(초록 가속 · 붉음 감속 · 회색 불명).</span></div>
+    </div>
     <div class="legend" id="scatter-legend"></div>
     <div class="chart" id="scatter"></div>
     <p class="note" id="scatter-note"></p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>회사별 — 수출이 말하는 변화 순</h2><p class="sub">막대 = 추정 매출 증감 − 마지막 공시 증감(포인트), 가는 선 = 95% 구간. 줄을 누르면 아래 상세.</p></div>
+    <div class="rank" id="rank"></div>
   </section>
 
   <section class="card">
@@ -317,58 +374,123 @@ function drawVerdict() {
 // ---------------------------------------------------------------- scatter: delta vs z since the last filing
 const XMAX = 60, ZMAX = 4;
 const clamp = (v, m) => Math.max(-m, Math.min(m, v));
+function statusCls(st) { return st === "가속" ? "up" : st === "감속" ? "dn" : ""; }
+function statusColor(st) { return st === "가속" ? "var(--up)" : st === "감속" ? "var(--down)" : "var(--ctx)"; }
 function drawScatter() {
   const host = document.getElementById("scatter");
   host.replaceChildren();
   const pts = rows().filter(c => c.focus && c.focus.delta != null && zOf(c) != null);
-  const W = Math.max(300, host.clientWidth), H = Math.min(420, Math.max(300, W * 0.45));
-  const m = { l: 48, r: 16, t: 20, b: 34 };
+  const W = Math.max(300, host.clientWidth), H = Math.min(560, Math.max(380, W * 0.46));
+  const m = { l: 56, r: 20, t: 30, b: 44 };
   const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img",
     "aria-label": "수출이 말하는 매출 증감 변화와 마지막 공시 뒤 주가 움직임" }, host);
   const x = v => m.l + (clamp(v, XMAX) + XMAX) / (2 * XMAX) * (W - m.l - m.r);
   const y = v => H - m.b - (clamp(v, ZMAX) + ZMAX) / (2 * ZMAX) * (H - m.t - m.b);
+  const mz = D.evidence.moved_z;
+  // 사분면 칠 — 오른쪽 아래(가속 · 주가 아직)는 초록, 왼쪽 위(감속 · 주가 이미 올라)는 붉음
+  sv("rect", { x: x(0), y: y(mz), width: x(XMAX) - x(0), height: y(-ZMAX) - y(mz), fill: "var(--up-soft)" }, svg);
+  sv("rect", { x: x(-XMAX), y: y(ZMAX), width: x(0) - x(-XMAX), height: y(-mz) - y(ZMAX), fill: "var(--down-soft)" }, svg);
   for (const t of [-60, -40, -20, 0, 20, 40, 60]) {
-    sv("line", { x1: x(t), x2: x(t), y1: m.t, y2: H - m.b, stroke: t ? "var(--grid)" : "var(--axis)" }, svg);
-    sv("text", { x: x(t), y: H - m.b + 14, "text-anchor": "middle" }, svg, pp(t));
+    sv("line", { x1: x(t), x2: x(t), y1: m.t, y2: H - m.b, stroke: t ? "var(--grid)" : "var(--axis)", "stroke-width": t ? 1 : 1.5 }, svg);
+    sv("text", { x: x(t), y: H - m.b + 15, "text-anchor": "middle" }, svg, pp(t));
   }
   for (const t of [-4, -2, 0, 2, 4]) {
-    sv("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t ? (Math.abs(t) === 2 ? "var(--axis)" : "var(--grid)") : "var(--axis)",
-      "stroke-dasharray": Math.abs(t) === 2 ? "4 3" : "" }, svg);
-    sv("text", { x: m.l - 6, y: y(t) + 4, "text-anchor": "end" }, svg, (t > 0 ? "+" : "") + t + "σ");
+    sv("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : Math.abs(t) === 2 ? "var(--axis)" : "var(--grid)",
+      "stroke-dasharray": Math.abs(t) === 2 ? "5 4" : "", "stroke-width": t === 0 ? 1.5 : 1 }, svg);
+    sv("text", { x: m.l - 7, y: y(t) + 4, "text-anchor": "end" }, svg, (t > 0 ? "+" : "") + t + "σ");
   }
-  sv("text", { x: W - m.r, y: H - m.b + 28, "text-anchor": "end" }, svg, "→ 수출이 말하는 매출 증감의 변화 (마지막 공시 분기 대비, 포인트)");
-  sv("text", { x: m.l - 40, y: m.t - 8 }, svg, "↑ 마지막 공시 뒤 KOSPI 대비 움직임, 그 종목의 평소 변동 대비 (z)");
-  sv("text", { x: W - m.r - 4, y: H - m.b - 6, class: "quad", "text-anchor": "end" }, svg, "수출은 가속, 주가는 아직 ↘");
-  sv("text", { x: m.l + 4, y: m.t + 12, class: "quad" }, svg, "↖ 수출은 감속, 주가는 이미 올라");
-  const g = sv("g", {}, svg);
-  for (const c of pts) {
+  sv("text", { x: (m.l + W - m.r) / 2, y: H - m.b + 33, "text-anchor": "middle", class: "axt" }, svg, "← 마지막 공시보다 나빠질 듯          수출이 말하는 매출 증감의 변화(포인트)          더 좋아질 듯 →");
+  sv("text", { x: m.l - 48, y: m.t - 12, class: "axt" }, svg, "↑ 공시 뒤 주가가 시장보다 올랐다 (평소 변동 대비 σ)      ↓ 못 갔다");
+  sv("text", { x: W - m.r - 8, y: H - m.b - 10, class: "quad", "text-anchor": "end" }, svg, "★ 수출은 가속 · 주가는 아직 — 먼저 볼 자리");
+  sv("text", { x: m.l + 8, y: m.t + 16, class: "quad" }, svg, "수출은 감속 · 주가는 이미 올라 — 조심할 자리");
+  sv("text", { x: x(0) + 6, y: y(mz) - 5, class: "quad" }, svg, "±" + mz + "σ 안 = 아직 안 움직임");
+  const g = sv("g", {}, svg), lab = sv("g", {}, svg), boxes = [];
+  const sorted = [...pts].sort((a, b) => Math.abs(b.focus.t || 0) - Math.abs(a.focus.t || 0));
+  for (const c of sorted) {
     const z = zOf(c), f = c.focus;
     const out = Math.abs(f.delta) > XMAX || Math.abs(z) > ZMAX;
     const sel = c.code === state.sel;
+    const col = sel ? "var(--s2)" : statusColor(f.status);
+    let ci = null;
     if (f.delta_lo != null && !out)
-      sv("line", { x1: x(f.delta_lo), x2: x(f.delta_hi), y1: y(z), y2: y(z), stroke: sel ? "var(--s2)" : "var(--s1)", "stroke-width": 1, opacity: 0.35 }, g);
-    const dot = sv("circle", { cx: x(f.delta), cy: y(z), r: sel ? 6.5 : 5,
-      fill: out ? "var(--surface)" : sel ? "var(--s2)" : "var(--s1)", stroke: sel ? "var(--s2)" : "var(--s1)", "stroke-width": 1.5,
+      ci = sv("line", { x1: x(f.delta_lo), x2: x(f.delta_hi), y1: y(z), y2: y(z), stroke: col, "stroke-width": 2, opacity: sel ? 0.7 : 0.22 }, g);
+    const r = sel ? 9 : 7;
+    const dot = sv("circle", { cx: x(f.delta), cy: y(z), r,
+      fill: out ? "var(--surface)" : col, stroke: out ? col : "var(--surface)", "stroke-width": out ? 2.5 : 2,
       tabindex: 0, role: "button", "aria-label": `${c.name} ${pp(f.delta)} z ${num(z)}` }, g);
+    boxes.push([x(f.delta) - r, y(z) - r, x(f.delta) + r, y(z) + r]);
     const lines = [["섹터", c.sector_name], [`${qLabel(f.q)} 추정 매출 증감`, f.pred ? `${pct(f.pred.yoy, 0)} (${range(f.pred)})` : "–"],
       ["마지막 공시 분기", `${c.last_q ? qLabel(c.last_q) : "–"} ${pct(c.last_yoy, 0)}`], ["변화 (95%)", `${pp(f.delta)} (${pp(f.delta_lo)}~${pp(f.delta_hi)})`],
       ["상태", f.status || "–"], [`공시 뒤 초과수익 (${c.price.since.days}일)`, `${pct(c.price.since.excess)} · z ${num(z)}`], ["관계 r", fitText(c.fit)]];
-    const show = ev => showTip(ev.clientX, ev.clientY, c.name + (out ? " (축 밖)" : ""), lines);
+    const show = ev => { showTip(ev.clientX, ev.clientY, c.name + (out ? " (축 밖)" : ""), lines); if (ci) ci.setAttribute("opacity", "0.8"); dot.setAttribute("r", r + 2); };
+    const hide = () => { hideTip(); if (ci) ci.setAttribute("opacity", sel ? "0.7" : "0.22"); dot.setAttribute("r", r); };
     dot.addEventListener("pointerenter", show); dot.addEventListener("pointermove", show);
-    dot.addEventListener("pointerleave", hideTip);
+    dot.addEventListener("pointerleave", hide);
     dot.addEventListener("click", () => select(c.code));
     dot.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(c.code); } });
-    if (sel || (Math.abs(f.delta) >= 15 && pts.length <= 60))
-      sv("text", { x: x(f.delta) + 7, y: y(z) + 4, class: "lbl" }, g, c.name);
+  }
+  // 이름 — 전부 적되 겹치면 오른쪽 · 왼쪽 · 위 · 아래 순으로 빈자리, 그래도 없으면 작은 점만(툴팁에 이름)
+  const w = t => t.length * 12.5 * 0.92 + 6, hh = 15;
+  for (const c of sorted) {
+    const z = zOf(c), f = c.focus, X = x(f.delta), Y = y(z), tw = w(c.name), r = c.code === state.sel ? 9 : 7;
+    const cand = [[X + r + 4, Y + 4, "start"], [X - r - 4, Y + 4, "end"], [X, Y - r - 5, "middle"], [X, Y + r + 13, "middle"]];
+    const bx = ([px, py, a]) => { const x0 = a === "start" ? px : a === "end" ? px - tw : px - tw / 2; return [x0, py - 12, x0 + tw, py - 12 + hh]; };
+    const hit = b => boxes.some(q => !(b[2] < q[0] || b[0] > q[2] || b[3] < q[1] || b[1] > q[3])) || b[0] < m.l || b[2] > W - m.r || b[1] < m.t || b[3] > H - m.b;
+    const pick = cand.find(p => !hit(bx(p)));
+    if (!pick) continue;
+    boxes.push(bx(pick));
+    sv("text", { x: pick[0], y: pick[1], "text-anchor": pick[2], class: "lbl" }, lab, c.name);
   }
   const leg = document.getElementById("scatter-legend");
   leg.replaceChildren();
-  const a = el("span", {}, leg); el("i", { class: "dot" }, a); a.append(` 회사 ${pts.length}곳 (가로선 = 변화의 95% 구간)`);
-  const b = el("span", {}, leg); el("i", { class: "dot hollow" }, b); b.append(" 축 밖 값(±60p·±4σ에서 멈춤)");
-  const c2 = el("span", {}, leg); el("i", { class: "dot sel" }, c2); c2.append(" 고른 회사");
-  document.getElementById("scatter-note").textContent = pts.length
-    ? `오른쪽일수록 통관 수출이 마지막 공시보다 더 센 매출 증가를 말하고, 아래일수록 마지막 공시 뒤 주가가 시장보다 못 갔다(점선 ±${D.evidence.moved_z}σ 밖 = '이미 움직임'). 오른쪽 아래가 먼저 볼 자리 — 다만 '아직'은 추정이고, 시장이 다른 것(마진·가이던스·수출 밖 매출·잠정실적)을 보고 있을 수 있다. 점을 누르면 아래 표와 상세가 그 회사로 간다.`
+  for (const [cls, text] of [["up", "가속 — 95% 구간 전체가 마지막 공시 위"], ["dn", "감속 — 전체가 아래"], ["", "불명 — 구간이 마지막 공시를 품는다"], ["hollow", "축 밖 값 (±60p · ±4σ 에서 멈춤)"], ["sel", "고른 회사"]]) {
+    const sp = el("span", {}, leg); el("i", { class: "dot " + cls }, sp); sp.append(" " + text);
+  }
+  const n = pts.length;
+  el("span", {}, leg, `회사 ${n}곳 · 가로선 = 변화의 95% 구간`);
+  document.getElementById("scatter-note").textContent = n
+    ? `'아직'은 추정이다 — 시장이 다른 것(마진 · 가이던스 · 수출 밖 매출 · 잠정실적)을 보고 있을 수 있다. 점이나 아래 막대를 누르면 표와 상세가 그 회사로 간다.`
     : "주가를 받지 못했거나(--no-prices) 조건에 맞는 회사가 없어 점이 없습니다.";
+}
+
+// ---------------------------------------------------------------- 회사별 막대 — 수출이 말하는 변화 순(지금 거르기 · 정렬 그대로)
+function drawRank() {
+  const host = document.getElementById("rank");
+  host.replaceChildren();
+  const list = rows().filter(c => c.focus && c.focus.delta != null);
+  const hd = el("div", { class: "hd" }, host);
+  el("span", {}, hd, "회사");
+  const ax = el("div", { class: "ax" }, hd);
+  for (const t of [-60, -30, 0, 30, 60]) { const sp = el("span", {}, ax, pp(t)); sp.style.left = ((t + XMAX) / (2 * XMAX) * 100) + "%"; }
+  el("span", { class: "est", style: "text-align:right" }, hd, "추정 매출 증감 · 마지막 공시");
+  el("span", { class: "px", style: "text-align:right" }, hd, "공시 뒤 주가");
+  if (!list.length) { el("div", { class: "note" }, host, "조건에 맞는 회사가 없습니다."); return; }
+  const X = v => (clamp(v, XMAX) + XMAX) / (2 * XMAX) * 100;
+  for (const c of list) {
+    const f = c.focus, z = zOf(c);
+    const row = el("div", { class: "r" + (c.code === state.sel ? " sel" : "") + (isCredible(c) ? "" : " weakrow"), tabindex: 0, role: "button" }, host);
+    const nm = el("div", { class: "nm" }, row);
+    el("b", {}, nm, c.name);
+    el("small", {}, nm, c.sector_name + (isCredible(c) ? "" : " · 관계 확인 안 됨"));
+    const bar = el("div", { class: "bar" }, row);
+    const zero = el("i", { class: "zero" }, bar); zero.style.left = X(0) + "%";
+    if (f.delta_lo != null) { const ci = el("i", { class: "ci" }, bar); ci.style.left = X(f.delta_lo) + "%"; ci.style.width = Math.max(0.5, X(f.delta_hi) - X(f.delta_lo)) + "%"; }
+    const fill = el("i", { class: "fill " + statusCls(f.status) }, bar);
+    const a = X(0), b = X(f.delta);
+    fill.style.left = Math.min(a, b) + "%"; fill.style.width = Math.max(0.6, Math.abs(b - a)) + "%";
+    const v = el("span", { class: "v " + signCls(f.delta) }, bar, pp(f.delta) + (Math.abs(f.delta) > XMAX ? " ▸" : ""));
+    if (f.delta >= 0) v.style.left = (Math.min(100, b) + 1) + "%"; else { v.style.right = (100 - Math.max(0, b) + 1) + "%"; }
+    const est = el("div", { class: "est" }, row);
+    const e1 = el("span", { class: f.pred ? signCls(f.pred.yoy) : "weak" }, est, f.pred ? pct(f.pred.yoy, 0) : "–");
+    e1.style.fontWeight = "700";
+    el("small", {}, est, (c.last_q ? qLabel(c.last_q) + " 공시 " + pct(c.last_yoy, 0) : "–") + (f.status ? " · " + f.status : ""));
+    const px = el("div", { class: "px" }, row);
+    if (c.price && c.price.void) { el("b", { class: "weak" }, px, "자료 의심"); }
+    else if (z != null) { el("b", { class: signCls(z) }, px, pct(c.price.since.excess, 0)); px.append(c.price.moved ? "이미 움직임 · z " + num(z) : "아직 · z " + num(z)); }
+    else el("b", { class: "weak" }, px, "–");
+    row.addEventListener("click", () => select(c.code));
+    row.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(c.code); } });
+  }
 }
 
 // ---------------------------------------------------------------- company table
@@ -607,7 +729,7 @@ function setupControls() {
 }
 function renderAll() {
   document.querySelectorAll("#credible button").forEach(b => b.setAttribute("aria-pressed", String((b.textContent === "확인된 관계만") === state.credible)));
-  drawScatter(); drawTable(); drawDetail(); drawSectors();
+  drawScatter(); drawRank(); drawTable(); drawDetail(); drawSectors();
 }
 (function init() {
   const e = D.evidence;

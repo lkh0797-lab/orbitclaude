@@ -4,138 +4,241 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
+<!-- 글꼴은 기업추적 뷰어와 같다(Pretendard · Noto Serif KR). 오프라인이면 시스템 글꼴로 떨어진다. -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
 <style>
+/* 2026-10-21 디자인 — 기업추적 뷰어의 토큰(따뜻한 회색 종이 · 흰 판 · 초록 강조 · Pretendard · 제목만 Noto Serif KR)을 그대로.
+   자료 색은 둘뿐: 통관 수출 = 파랑, 매출 = 주황(밝은 · 어두운 판 모두 검사 통과). 맥락(합계)은 회색. 장식 없음 — 테두리 · 칠은 뜻이 있을 때만. */
 :root {
   color-scheme: light;
-  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
-  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
-  --s1: #2a78d6; --s2: #eb6834; --ctx: #898781; --wash: rgba(11,11,11,0.05); --break: rgba(11,11,11,0.09);
-  --up: #006300; --down: #b42318;
+  --page: #f6f4f0; --surface: #ffffff; --ink: #1b1a18; --ink-2: #5a5650; --muted: #736f68;
+  --grid: #ebe8e2; --axis: #cfcbc3; --border: #e3e0da; --border-2: #d2cec6;
+  --accent: #2f5d50; --accent-soft: #e7efec; --accent-ink: #ffffff;
+  --s1: #2a78d6; --s1-soft: rgba(42,120,214,0.12); --s2: #d9622a; --s2-soft: rgba(217,98,42,0.12); --ctx: #9a968d;
+  --wash: rgba(27,26,24,0.045); --break: rgba(27,26,24,0.10);
+  --up: #1f6b3f; --down: #a3352c; --up-soft: #e8f4ec; --down-soft: #fbeceb;
+  --shadow: 0 2px 6px rgba(48,40,26,.06), 0 12px 28px -8px rgba(48,40,26,.20);
+  --shadow-lg: 0 4px 12px rgba(48,40,26,.08), 0 28px 60px -18px rgba(48,40,26,.34);
+  --scrim: rgba(32,28,20,.42);
+  --sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  --serif: 'Noto Serif KR', 'Nanum Myeongjo', 'Batang', serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
-    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-    --s1: #3987e5; --s2: #d95926; --ctx: #898781; --wash: rgba(240,239,236,0.08); --break: rgba(240,239,236,0.13);
-    --up: #0ca30c; --down: #e66767;
+    --page: #161513; --surface: #1e1d1a; --ink: #e8e6e1; --ink-2: #b0aca3; --muted: #928e86;
+    --grid: #2a2925; --axis: #3d3b37; --border: #33312c; --border-2: #45423c;
+    --accent: #7fb8a4; --accent-soft: #233029; --accent-ink: #11201a;
+    --s1: #5a9cf0; --s1-soft: rgba(90,156,240,0.16); --s2: #ef8a52; --s2-soft: rgba(239,138,82,0.16); --ctx: #7a776f;
+    --wash: rgba(232,230,225,0.06); --break: rgba(232,230,225,0.12);
+    --up: #7fc99a; --down: #e0837a; --up-soft: #1c2b21; --down-soft: #2e1f1d;
+    --shadow: 0 2px 6px rgba(0,0,0,.3), 0 12px 28px -8px rgba(0,0,0,.5);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,.4), 0 28px 60px -18px rgba(0,0,0,.6);
+    --scrim: rgba(0,0,0,.6);
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
-  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-  --s1: #3987e5; --s2: #d95926; --ctx: #898781; --wash: rgba(240,239,236,0.08); --break: rgba(240,239,236,0.13);
-  --up: #0ca30c; --down: #e66767;
+  --page: #161513; --surface: #1e1d1a; --ink: #e8e6e1; --ink-2: #b0aca3; --muted: #928e86;
+  --grid: #2a2925; --axis: #3d3b37; --border: #33312c; --border-2: #45423c;
+  --accent: #7fb8a4; --accent-soft: #233029; --accent-ink: #11201a;
+  --s1: #5a9cf0; --s1-soft: rgba(90,156,240,0.16); --s2: #ef8a52; --s2-soft: rgba(239,138,82,0.16); --ctx: #7a776f;
+  --wash: rgba(232,230,225,0.06); --break: rgba(232,230,225,0.12);
+  --up: #7fc99a; --down: #e0837a; --up-soft: #1c2b21; --down-soft: #2e1f1d;
+  --shadow: 0 2px 6px rgba(0,0,0,.3), 0 12px 28px -8px rgba(0,0,0,.5);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,.4), 0 28px 60px -18px rgba(0,0,0,.6);
+  --scrim: rgba(0,0,0,.6);
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--page); color: var(--ink);
-  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
-main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
-h1, h2, .tile, .mini .t { word-break: keep-all; }
-h1 { font-size: 20px; margin: 0 0 2px; font-weight: 650; }
-h2 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
-h3 { font-size: 13px; margin: 0 0 6px; font-weight: 600; color: var(--ink-2); }
-.sub, .note { color: var(--ink-2); margin: 0; }
-.note { font-size: 12.5px; margin-top: 4px; }
-.topnav { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin: 0 0 10px; font-size: 13px; color: var(--ink-2); }
-.topnav a { color: var(--s1); text-decoration: none; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.55 var(--sans); font-variant-numeric: tabular-nums; }
+main { max-width: 1320px; margin: 0 auto; padding: 18px 20px 56px; }
+h1, h2, h3, .co .t, .dlg-head .nm { word-break: keep-all; }
+h1 { font: 700 26px/1.25 var(--serif); margin: 0; letter-spacing: -.015em; }
+h2 { font: 700 18px/1.3 var(--serif); margin: 0; letter-spacing: -.01em; }
+h3 { font: 600 14px/1.4 var(--sans); margin: 0 0 6px; color: var(--ink-2); }
+p { margin: 0; }
+.sub, .note { color: var(--ink-2); }
+.note { font-size: 12.5px; margin-top: 6px; line-height: 1.5; }
+a { color: var(--accent); }
+.pos { color: var(--up); } .neg { color: var(--down); }
+
+/* 머리 — 섹터 이동 · 제목 · 자료 시각 */
+.top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; align-items: end; margin-bottom: 14px; }
+.topnav { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px; color: var(--ink-2); margin-bottom: 8px; }
+.topnav a { text-decoration: none; }
 .topnav a:hover { text-decoration: underline; }
 .topnav label { display: flex; gap: 6px; align-items: center; }
-.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 16px 0; }
-.controls label { color: var(--ink-2); font-size: 13px; display: flex; gap: 6px; align-items: center; }
-select, .seg button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
-  border-radius: 6px; padding: 5px 8px; }
+.meta { font-size: 12.5px; color: var(--muted); text-align: right; line-height: 1.5; }
+@media (max-width: 720px) { .top { grid-template-columns: 1fr; } .meta { text-align: left; } }
+
+/* 조절 줄 */
+.controls { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 0 0 12px; }
+.controls label { color: var(--ink-2); font-size: 13px; display: flex; gap: 7px; align-items: center; }
+select, .seg button, .btn { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--border-2);
+  border-radius: 7px; padding: 6px 10px; }
 select { max-width: min(88vw, 420px); }
-.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
-.seg button { border: 0; border-radius: 0; cursor: pointer; }
-.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg { display: inline-flex; border: 1px solid var(--border-2); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; border-radius: 0; cursor: pointer; background: transparent; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .seg button:disabled { color: var(--muted); cursor: not-allowed; }
-:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px; }
-@media (max-width: 600px) { .tiles { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 420px) { .tiles { grid-template-columns: 1fr; } }
-.tile, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
-.tile { padding: 12px 14px; }
-.tile .label { color: var(--ink-2); font-size: 12.5px; }
-.tile .value { font-size: 28px; font-weight: 650; margin: 2px 0; line-height: 1.2; }
-.tile.hero .value { font-size: 40px; }
-.tile .delta { font-size: 12.5px; color: var(--ink-2); }
-.tile .ref { font-size: 12px; color: var(--ink-2); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--grid); }
-.lagstrip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 6px; }
-.lagstrip div { text-align: center; padding: 4px 0; border-radius: 6px; background: var(--wash); }
-.lagstrip b { display: block; font-size: 17px; font-weight: 650; }
-.lagstrip span { display: block; font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.btn { cursor: pointer; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn.primary:hover { color: var(--accent-ink); filter: brightness(1.06); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 판 */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px 14px; margin-bottom: 16px; }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 6px; }
+.card-head .sub { font-size: 13px; }
+
+/* 요약 타일 — 숫자 넷 */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px 12px; min-width: 0; }
+.tile .label { color: var(--ink-2); font-size: 12.5px; line-height: 1.4; }
+.tile .value { font-size: 30px; font-weight: 700; margin: 4px 0 2px; line-height: 1.15; letter-spacing: -.02em; }
+.tile.hero { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.tile.hero .value { font-size: 38px; }
+.tile .delta { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }
+.tile .ref { font-size: 12px; color: var(--ink-2); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--grid); line-height: 1.5; }
+.lagstrip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0 4px; }
+.lagstrip div { text-align: center; padding: 6px 2px; border-radius: 8px; background: var(--wash); }
+.lagstrip b { display: block; font-size: 19px; font-weight: 700; }
+.lagstrip span { display: block; font-size: 11px; color: var(--ink-2); }
 .lagstrip .weak b { color: var(--muted); font-weight: 500; }
-.card { padding: 14px 16px 12px; margin-bottom: 16px; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 4px; color: var(--ink-2); font-size: 12.5px; }
+.lagstrip .strong { background: var(--accent-soft); }
+
+/* 범례 · 차트 */
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 6px; color: var(--ink-2); font-size: 12.5px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
-.key { display: inline-block; width: 18px; height: 0; border-top: 2px solid; position: relative; vertical-align: middle; }
+.key { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; position: relative; vertical-align: middle; }
 .key.thin { border-top-width: 1.5px; }
 .key.dash { border-top-style: dashed; }
 .key.box { width: 12px; height: 10px; border: 0; background: var(--wash); outline: 1px solid var(--axis); }
 .key.brk { width: 12px; height: 10px; border: 0; background: var(--break); }
 .chart { width: 100%; position: relative; }
-.chart svg { display: block; width: 100%; overflow: visible;
-  font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+.chart svg { display: block; width: 100%; overflow: visible; font-family: var(--sans); }
 .chart svg:focus { outline: none; }
-.chart svg:focus-visible { outline: 2px solid var(--s1); outline-offset: 4px; border-radius: 4px; }
-svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-svg text.end, svg text.val { fill: var(--ink-2); font-size: 11.5px; }
-svg text.band { fill: var(--ink-2); font-size: 11px; }
+.chart svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+svg text { fill: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+svg text.end, svg text.val { fill: var(--ink); font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+svg text.band { fill: var(--ink-2); font-size: 11.5px; }
+svg text.big { font-size: 13px; }
+svg text.big.end, svg text.big.val { font-size: 13.5px; }
 .stack .chart + .chart { margin-top: 6px; }
 .subtitle { color: var(--ink-2); font-size: 12.5px; margin: 10px 0 0; }
+
+/* 구성 */
 .cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 .bars { list-style: none; margin: 0; padding: 0; }
-.bars li { display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 2px 8px; align-items: center; margin: 5px 0; font-size: 12.5px; }
+.bars li { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 2px 8px; align-items: center; margin: 6px 0; font-size: 13px; }
 .bars .name { color: var(--ink); overflow-wrap: anywhere; }
-.bars .pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
-.bars .track { grid-column: 1 / -1; height: 8px; }
-.bars .fill { height: 8px; background: var(--s1); border-radius: 0 4px 4px 0; min-width: 2px; }
-.bars li.sel .name { font-weight: 650; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 8px; }
-.mini { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px 4px; cursor: pointer; background: var(--surface);
-  text-align: left; font: inherit; color: inherit; }
-.mini[aria-pressed="true"] { border-color: var(--s2); box-shadow: 0 0 0 1px var(--s2) inset; }
-.mini .t { font-weight: 600; font-size: 13.5px; }
-.mini .s { color: var(--ink-2); font-size: 12px; min-height: 18px; }
-.tablewrap { overflow-x: auto; max-height: 560px; overflow-y: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
-th, td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+.bars .pct { text-align: right; color: var(--ink-2); }
+.bars .track { grid-column: 1 / -1; height: 8px; background: var(--wash); border-radius: 4px; }
+.bars .fill { height: 8px; background: var(--s1); border-radius: 4px; min-width: 2px; }
+.bars li.sel .name { font-weight: 700; }
+
+/* 회사별 — 크게, 한 칸에 이름 · 마지막 분기 · r */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; margin-top: 10px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.co { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 8px; cursor: pointer; background: var(--surface);
+  text-align: left; font: inherit; color: inherit; transition: border-color .15s, box-shadow .15s; position: relative; min-width: 0; }
+.co:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.co[aria-pressed="true"] { border-color: var(--s2); box-shadow: inset 0 0 0 1px var(--s2); }
+.co:disabled { cursor: default; opacity: .6; }
+.co .hd { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: start; }
+.co .t { font-weight: 700; font-size: 16px; line-height: 1.3; }
+.co .q { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.co .yoy { font-size: 24px; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; text-align: right; white-space: nowrap; }
+.co .yoy small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-top: 2px; }
+.co .pill { margin-top: 6px; }
+.co .zoom { position: absolute; right: 10px; bottom: 8px; font-size: 11.5px; color: var(--muted); opacity: 0; transition: opacity .15s; }
+.co:hover .zoom { opacity: 1; }
+.co .chart { margin-top: 6px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border-2); color: var(--ink-2); background: var(--surface); white-space: nowrap; }
+.pill b { font-weight: 700; color: var(--ink); }
+.pill.strong { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.pill.strong b { color: var(--accent); }
+.pill.none { color: var(--muted); border-style: dashed; }
+
+/* 표 */
+.tablewrap { overflow-x: auto; max-height: 560px; overflow-y: auto; border: 1px solid var(--grid); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
 th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
-th { color: var(--ink-2); font-weight: 600; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+th { color: var(--ink-2); font-weight: 600; font-size: 12px; position: sticky; top: 0; background: var(--surface); z-index: 1; }
 th:first-child { z-index: 2; }
 tr.pending td { background: var(--wash); }
-tr.pending td:first-child { background: linear-gradient(var(--wash), var(--wash)), var(--surface); }   /* sticky cell stays opaque */
+tr.pending td:first-child { background: linear-gradient(var(--wash), var(--wash)), var(--surface); }
 td.weak { color: var(--muted); }
-.pos { color: var(--up); } .neg { color: var(--down); }
 details { margin-top: 10px; }
-details summary { cursor: pointer; color: var(--ink-2); margin: 4px 0; font-size: 13px; }
+details summary { cursor: pointer; color: var(--accent); margin: 4px 0; font-size: 13px; font-weight: 600; }
 .notes { color: var(--ink-2); font-size: 12.5px; }
-.notes li { margin: 3px 0; }
-#tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border);
-  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.14); display: none; z-index: 10;
-  min-width: 200px; max-width: min(92vw, 340px); }
+.notes li { margin: 4px 0; line-height: 1.55; }
+
+/* 툴팁 */
+#tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border-2);
+  border-radius: 10px; padding: 9px 12px; font-size: 12.5px; box-shadow: var(--shadow); display: none; z-index: 30;
+  min-width: 220px; max-width: min(92vw, 360px); }
 #tip .h { color: var(--ink-2); margin: 0 0 4px; font-weight: 600; }
 #tip .h + .row, #tip .sep { margin-top: 2px; }
 #tip .sep { border-top: 1px solid var(--grid); margin: 6px 0 4px; }
 #tip .row { display: flex; align-items: center; gap: 8px; }
-#tip .row b { font-weight: 650; min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+#tip .row b { font-weight: 700; min-width: 66px; text-align: right; }
 #tip .row span { color: var(--ink-2); }
 #tip .row .key { flex: none; }
 #tip .row .nokey { width: 18px; flex: none; }
-@media (max-width: 600px) { .tile.hero .value { font-size: 32px; } h1 { font-size: 18px; } }
+
+/* 팝업 — 회사 하나를 크게 */
+.modal { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 20px; background: var(--scrim); }
+.modal.open { display: flex; }
+.dlg { background: var(--surface); color: var(--ink); border: 1px solid var(--border-2); border-radius: 16px; box-shadow: var(--shadow-lg);
+  width: min(1240px, 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column; overflow: hidden; }
+.dlg-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: start; padding: 16px 20px 10px; border-bottom: 1px solid var(--grid); }
+.dlg-head .nm { font: 700 24px/1.2 var(--serif); letter-spacing: -.015em; }
+.dlg-head .nm small { font: 500 13px/1 var(--sans); color: var(--muted); margin-left: 8px; letter-spacing: 0; }
+.dlg-head .facts { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 6px; font-size: 13px; color: var(--ink-2); }
+.dlg-head .facts b { color: var(--ink); font-weight: 700; font-size: 15px; }
+.dlg-head .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.dlg-body { overflow: auto; padding: 10px 20px 16px; }
+.dlg .legend { margin: 2px 0 4px; }
+.dlg .lags { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0 4px; }
+.dlg .lags div { padding: 8px 10px; border-radius: 10px; background: var(--wash); display: grid; grid-template-columns: auto 1fr; gap: 0 10px; align-items: center; }
+.dlg .lags b { font-size: 22px; font-weight: 700; }
+.dlg .lags span { font-size: 11.5px; color: var(--ink-2); line-height: 1.35; }
+.dlg .lags .weak b { color: var(--muted); font-weight: 500; }
+.dlg .lags .strong { background: var(--accent-soft); }
+.dlg .lags .strong b { color: var(--accent); }
+.dlg .qt { margin-top: 12px; }
+.dlg .qt th, .dlg .qt td { padding: 5px 10px; }
+.dlg .qt td:first-child { font-weight: 600; }
+.dlg-foot { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 10px 20px 14px; border-top: 1px solid var(--grid); font-size: 12.5px; color: var(--muted); }
+.dlg-foot .nav { display: flex; gap: 6px; }
+.dlg .memo { font-size: 12.5px; color: var(--ink-2); margin-top: 8px; line-height: 1.5; }
+@media (max-width: 760px) { .dlg .lags { grid-template-columns: 1fr 1fr; } .dlg-head { grid-template-columns: 1fr; } .dlg-head .nm { font-size: 20px; } }
+@media (prefers-reduced-motion: reduce) { .co, .co .zoom { transition: none; } }
+@media (max-width: 600px) { .tile.hero .value { font-size: 32px; } h1 { font-size: 21px; } main { padding: 14px 12px 40px; } }
 </style>
 </head>
 <body>
 <main>
-  <nav class="topnav" aria-label="섹터 이동">
-    <a href="수출겹쳐보기.html">← 섹터 개요</a>
-    <label>섹터 <select id="sector-nav"></select></label>
-    <a href="변곡점레이더.html">변곡점 레이더 →</a>
-  </nav>
-  <h1 id="title"></h1>
-  <p class="sub" id="subtitle"></p>
+  <div class="top">
+    <div>
+      <nav class="topnav" aria-label="섹터 이동">
+        <a href="수출겹쳐보기.html">← 섹터 개요</a>
+        <label>섹터 <select id="sector-nav"></select></label>
+        <a href="변곡점레이더.html">변곡점 레이더 →</a>
+      </nav>
+      <h1 id="title"></h1>
+    </div>
+    <p class="meta" id="subtitle"></p>
+  </div>
 
   <div class="controls" role="group" aria-label="보기 조절">
     <label>품목 <select id="code"></select></label>
@@ -144,10 +247,8 @@ details summary { cursor: pointer; color: var(--ink-2); margin: 4px 0; font-size
     <label>매출 선 <select id="focus"></select></label>
   </div>
 
-  <section class="tiles" id="tiles" aria-label="요약"></section>
-
   <section class="card stack">
-    <h2>통관 수출 증감과 매출 증감 (전년 같은 기간 대비)</h2>
+    <div class="card-head"><h2>통관 수출과 매출, 한 축에</h2><p class="sub">통관 3개월 합 증감(파랑)과 분기 매출 증감(주황)을 같은 로그 눈금에. 회색 띠는 아직 공시 안 된 분기.</p></div>
     <div class="legend" id="legend"></div>
     <div class="chart" id="overlay"></div>
     <p class="note" id="overlay-caveat"></p>
@@ -159,39 +260,71 @@ details summary { cursor: pointer; color: var(--ink-2); margin: 4px 0; font-size
     <details><summary>월별 표로 보기</summary><div class="tablewrap"><table id="mtable"></table></div></details>
   </section>
 
+  <section class="tiles" id="tiles" aria-label="요약"></section>
+
   <section class="card">
-    <h2>무엇이 수출됐나 (최근 12개월)</h2>
+    <div class="card-head"><h2>회사별 — 매출 증감과 통관 수출 증감</h2>
+      <p class="sub">칸을 누르면 그 회사를 크게 본다(분기 표 · 시차별 상관 · 십자선). 모든 칸은 같은 세로축(로그 눈금, 전체 값의 5~95% 분위로 잡아 그 밖은 ▲▼ — 팝업 · 표에 값). 회색 띠 = 분할 등으로 비교에서 뺀 구간.</p></div>
+    <div class="grid" id="multiples"></div>
+    <details><summary>회사 × 분기 매출 증감 표로 보기</summary><div class="tablewrap"><table id="cqtable"></table></div></details>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>품목 구성과 수출국</h2></div>
     <p class="note" id="mix-note"></p>
-    <div class="cols2" style="margin-top:8px">
+    <div class="cols2" style="margin-top:10px">
       <div><h3 id="mix-title">하위 품목 비중</h3><ul class="bars" id="mix"></ul></div>
       <div><h3 id="dest-title">수출국 상위 5</h3><ul class="bars" id="dest"></ul></div>
     </div>
   </section>
 
   <section class="card">
-    <h2>회사별 — 매출 증감과 통관 수출 증감</h2>
-    <p class="note">칸을 누르면 위 겹쳐보기의 매출 선이 그 회사로 바뀝니다. 열 칸은 같은 세로축(로그 눈금, 회사 변동을 담느라 합계 화면보다 넓음 — 회사를 고르면 위 차트도 이 축)과 같은 기간을 씁니다. 축 밖 값은 ▲▼, 회색 띠 = 분할 등으로 비교에서 뺀 구간.</p>
-    <div class="grid" id="multiples"></div>
-    <details><summary>회사 × 분기 매출 증감 표로 보기</summary><div class="tablewrap"><table id="cqtable"></table></div></details>
-  </section>
-
-  <section class="card">
-    <h2>분기 표</h2>
+    <div class="card-head"><h2>분기 표</h2></div>
     <div class="tablewrap"><table id="qtable"></table></div>
   </section>
 
   <section class="card">
-    <h2>회사 표</h2>
+    <div class="card-head"><h2>회사 표</h2></div>
     <p class="note" id="ctable-note"></p>
-    <div class="tablewrap"><table id="ctable"></table></div>
+    <div class="tablewrap" style="margin-top:8px"><table id="ctable"></table></div>
   </section>
 
   <section class="card notes">
-    <h2>읽을 때 주의</h2>
+    <div class="card-head"><h2>읽을 때 주의</h2></div>
     <ul id="notes"></ul>
   </section>
 </main>
 <div id="tip" role="tooltip"></div>
+<div class="modal" id="modal" aria-hidden="true">
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-name">
+    <div class="dlg-head">
+      <div>
+        <div class="nm" id="dlg-name"></div>
+        <div class="facts" id="dlg-facts"></div>
+      </div>
+      <div class="tools">
+        <span class="seg" id="dlg-period"></span>
+        <button class="btn" type="button" id="dlg-focus">겹쳐보기 매출 선을 이 회사로</button>
+        <button class="btn" type="button" id="dlg-close" aria-label="닫기">닫기 ✕</button>
+      </div>
+    </div>
+    <div class="dlg-body">
+      <div class="legend" id="dlg-legend"></div>
+      <div class="chart" id="dlg-chart"></div>
+      <div class="lags" id="dlg-lags"></div>
+      <p class="note" id="dlg-lagnote"></p>
+      <div class="tablewrap qt"><table id="dlg-table"></table></div>
+      <p class="memo" id="dlg-memo"></p>
+    </div>
+    <div class="dlg-foot">
+      <div class="nav">
+        <button class="btn" type="button" id="dlg-prev">◀ 이전 회사</button>
+        <button class="btn" type="button" id="dlg-next">다음 회사 ▶</button>
+      </div>
+      <span>Esc 닫기 · ←/→ 다른 회사 · 차트 위에서 십자선, 차트에 포커스를 두면 ←/→ 가 달을 옮긴다</span>
+    </div>
+  </div>
+</div>
 <script type="application/json" id="data">{{DATA}}</script>
 <script>
 "use strict";
@@ -200,7 +333,7 @@ const NS = "http://www.w3.org/2000/svg";
 const state = { code: D.codes[0].key, cur: D.currencies[0], period: 5, focus: "basket" };
 const LO_MIN = -75, HI_MAX = 300;                     // clamp of the YoY axis
 const TICKS = [-75, -50, -25, 0, 25, 50, 100, 200, 300];
-const MARGIN = { l: 56, r: 100, t: 16, b: 24 };        // shared by the stacked charts so x lines up
+const MARGIN = { l: 60, r: 112, t: 18, b: 26 };        // shared by the stacked charts so x lines up
 
 // ---------------------------------------------------------------- helpers
 function el(tag, attrs, parent, text) {
@@ -231,7 +364,8 @@ function curWord() { return state.cur === "KRW" ? "원화 환산" : "달러"; }
 function companyByCode(code) { return D.companies.find(c => c.code === code); }
 function okCompanies() { return D.companies.filter(c => !c.error); }
 function basketName() { return D.sector.noun + " " + okCompanies().length + "곳 합계"; }
-function focusName() { return state.focus === "basket" ? basketName() : companyByCode(state.focus).name; }
+function nameOf(focus) { return focus === "basket" ? basketName() : companyByCode(focus).name; }
+function focusName() { return nameOf(state.focus); }
 function money(v) {
   if (v == null) return "–";
   return state.cur === "KRW" ? (v / 1e12).toFixed(2) + "조 원" : (v / 1e8).toFixed(1) + "억 달러";
@@ -256,6 +390,16 @@ function lagCell(d) { return d && d.r != null ? d.r.toFixed(2) : "–"; }
 function ciText(d) { return d && d.lo != null && d.hi != null ? `${d.lo.toFixed(2)}~${d.hi.toFixed(2)}` : "구간 없음"; }
 function noRReason(d) { return !d || d.n < 12 ? `표본 적음 (n ${d ? d.n : 0} < 12)` : "유효 표본 3 이하"; }
 function weakStat(d) { return !d || d.r == null || d.lo == null || (d.lo <= 0 && d.hi >= 0); }
+const LAG_NAME = { "-1": "매출이 1분기 앞섬", "0": "같은 분기", "1": "수출이 1분기 앞섬", "2": "수출이 2분기 앞섬" };
+// r 알약 — 뚜렷(구간이 0 을 비킴) · 구분 안 됨 · 상관 안 냄
+function rPill(parent, st) {
+  if (!st || st.r == null) return el("span", { class: "pill none" }, parent, "상관 안 냄 — " + noRReason(st));
+  const weak = weakStat(st);
+  const p = el("span", { class: "pill" + (weak ? "" : " strong") }, parent);
+  el("b", {}, p, "r " + st.r.toFixed(2));
+  p.append(` ${ciText(st)} · n ${st.n}` + (weak ? " · 구분 안 됨" : " · 뚜렷"));
+  return p;
+}
 
 // ---------------------------------------------------------------- window & scales
 function windowOf() {
@@ -272,11 +416,12 @@ function yoyDomain(values) {
   hi = TICKS.find(t => t >= hi) ?? HI_MAX;
   return [lo, hi];
 }
-function frame(host, height, w) {
+function frame(host, height, w, margin) {
   host.replaceChildren();
   const W = Math.max(280, host.clientWidth), H = height;
+  const base = margin || MARGIN;
   // Narrow screens drop the end-label gutter; the legend and tooltip carry identity there.
-  const m = W < 480 ? { l: 44, r: 10, t: MARGIN.t, b: MARGIN.b } : MARGIN;
+  const m = W < 480 ? { l: 44, r: 10, t: base.t, b: base.b } : base;
   const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" }, host);
   const slot = (W - m.l - m.r) / w.N;
   return { svg, W, H, m, w, slot, x: j => m.l + slot * (j + 0.5), left: j => m.l + slot * j,
@@ -292,21 +437,21 @@ function clip(f, id) {
   sv("rect", { x: f.m.l, y: f.m.t - 2, width: f.W - f.m.l - f.m.r, height: f.plotH + 4 }, cp);
   return `url(#${id})`;
 }
-function yearTicks(f, g, labels, every) {
+function yearTicks(f, g, labels, every, cls) {
   every = every || (f.slot * 12 < 40 ? 2 : 1);
   f.w.months.forEach((ym, j) => {
     if (ym.slice(4) !== "01") return;
     sv("line", { x1: f.left(j), x2: f.left(j), y1: f.m.t, y2: f.H - f.m.b, stroke: "var(--grid)", "stroke-width": 1 }, g);
-    if (labels && +ym.slice(0, 4) % every === 0) sv("text", { x: f.left(j) + 3, y: f.H - f.m.b + 15 }, g, "'" + ym.slice(2, 4));
+    if (labels && +ym.slice(0, 4) % every === 0) sv("text", { x: f.left(j) + 3, y: f.H - f.m.b + 16, class: cls || "" }, g, "'" + ym.slice(2, 4));
   });
 }
-function yoyAxis(f, g, y, lo, hi, labels = true) {
+function yoyAxis(f, g, y, lo, hi, labels = true, cls) {
   for (const t of TICKS.filter(t => t >= lo && t <= hi)) {
-    sv("line", { x1: f.m.l, x2: f.W - f.m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, g);
-    if (labels) sv("text", { x: f.m.l - 6, y: y(t) + 4, "text-anchor": "end" }, g, (t > 0 ? "+" : t < 0 ? "−" : "") + Math.abs(t) + "%");
+    sv("line", { x1: f.m.l, x2: f.W - f.m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": t === 0 ? 1.25 : 1 }, g);
+    if (labels) sv("text", { x: f.m.l - 7, y: y(t) + 4, "text-anchor": "end", class: cls || "" }, g, (t > 0 ? "+" : t < 0 ? "−" : "") + Math.abs(t) + "%");
   }
 }
-function shadePending(f, g, labels) {
+function shadePending(f, g, labels, cls) {
   const pend = new Set(D.pending.map(p => p.q));
   const shown = [];
   f.w.months.forEach((ym, j) => {
@@ -323,7 +468,7 @@ function shadePending(f, g, labels) {
     return p.kind === "disclosure" ? qLabel(q) + " 공시 전" + (p.filed ? ` ${p.filed}/${p.of}곳` : "")
                                    : qLabel(q) + " 진행 중 " + p.months + "/3달";
   }).join(" · ");
-  sv("text", { x: f.W - f.m.r, y: f.m.t - 4, class: "band", "text-anchor": "end" }, g, text);
+  sv("text", { x: f.W - f.m.r, y: f.m.t - 5, class: "band " + (cls || ""), "text-anchor": "end" }, g, text);
 }
 function shadeBreaks(f, g, company) {
   for (const b of company.breaks || []) f.w.months.forEach((ym, j) => {
@@ -368,10 +513,11 @@ function quarterEnds(f) {
   return out;
 }
 function chevron(g, x, yEdge, up, color) {
-  const p = up ? `M${x - 4} ${yEdge + 6}L${x + 4} ${yEdge + 6}L${x} ${yEdge}Z` : `M${x - 4} ${yEdge - 6}L${x + 4} ${yEdge - 6}L${x} ${yEdge}Z`;
+  const p = up ? `M${x - 4.5} ${yEdge + 7}L${x + 4.5} ${yEdge + 7}L${x} ${yEdge}Z` : `M${x - 4.5} ${yEdge - 7}L${x + 4.5} ${yEdge - 7}L${x} ${yEdge}Z`;
   sv("path", { d: p, fill: color }, g);
 }
-function dots(f, g, y, qvals, lo, hi, color, hollow, labelClipped) {
+function dots(f, g, y, qvals, lo, hi, color, hollow, labelClipped, r) {
+  r = r || 4;
   for (const [q, j] of Object.entries(quarterEnds(f))) {
     const v = qvals[q];
     if (v == null) continue;
@@ -382,7 +528,7 @@ function dots(f, g, y, qvals, lo, hi, color, hollow, labelClipped) {
       if (labelClipped) sv("text", { x: x + 6, y: up ? yy + 10 : yy - 3, class: "val" }, g, pct(v, 0));
       continue;
     }
-    sv("circle", { cx: x, cy: y(v), r: 4, fill: hollow ? "var(--surface)" : color, stroke: hollow ? color : "var(--surface)",
+    sv("circle", { cx: x, cy: y(v), r, fill: hollow ? "var(--surface)" : color, stroke: hollow ? color : "var(--surface)",
                    "stroke-width": 2 }, g);
   }
 }
@@ -395,6 +541,7 @@ function monthChevrons(f, g, y, arr, lo, hi, color) {
 }
 
 // ---------------------------------------------------------------- shared crosshair + tooltip
+// group: "main" = 겹쳐보기 세 차트가 같이 움직인다, "modal" = 팝업 차트 혼자. focus = 매출 선 주인(기본 state.focus).
 const tip = document.getElementById("tip");
 let crossLines = [];
 function tipRow(parent, color, value, label, opts = {}) {
@@ -404,7 +551,8 @@ function tipRow(parent, color, value, label, opts = {}) {
   el("b", {}, row, value);
   el("span", {}, row, label);
 }
-function describeMonth(i) {
+function describeMonth(i, focus) {
+  focus = focus || state.focus;
   const ex = exportsNow(), ym = D.months[i], q = quarterOf(ym), p = pendingOf(q);
   tip.replaceChildren();
   el("div", { class: "h" }, tip, ymLabel(ym) + (p ? (p.kind === "disclosure" ? " · 실적 공시 전" : " · 분기 진행 중") : ""));
@@ -417,16 +565,16 @@ function describeMonth(i) {
   if (eq) tipRow(tip, null, pct(eq.yoy), "분기 통관 (=분기 끝 달 3개월)");
   else if (ex.qtd && ex.qtd.q === q) tipRow(tip, null, pct(ex.qtd.yoy), `분기 통관 ${ex.qtd.months}/3달까지`);
   const b = D.basket[q];
-  if (state.focus !== "basket") {
-    const c = companyByCode(state.focus).quarters[q];
-    tipRow(tip, "var(--s2)", c && c.excluded ? "제외" : pct(c && c.revenue_yoy), companyByCode(state.focus).name + " 매출" +
+  if (focus !== "basket") {
+    const c = companyByCode(focus).quarters[q];
+    tipRow(tip, "var(--s2)", c && c.excluded ? "제외" : pct(c && c.revenue_yoy), companyByCode(focus).name + " 매출" +
       (c ? ` · ${c.basis === "CFS" ? "연결" : "별도"}${c.restated ? " · 재작성 기준" : ""}${c.proforma ? " · 합병 전 두 회사 합산 기저" : ""}` : ""));
     tipRow(tip, "var(--ctx)", pct(b && b.revenue_yoy), basketName() + " 매출", { thin: true });
   } else {
     tipRow(tip, "var(--s2)", pct(b && b.revenue_yoy), basketName() + " 매출" + (b ? ` · 비교 ${b.matched}/${b.reported}곳` : ""));
     if (b && b.top) tipRow(tip, null, b.top.share + "%", "최대 비중 " + b.top.name);
   }
-  const mg = marginSeries(state.focus)[q];
+  const mg = marginSeries(focus)[q];
   tipRow(tip, null, mg == null ? "–" : mg.toFixed(1) + "%", "영업이익률");
   if (p && p.kind === "disclosure") tipRow(tip, null, p.due.slice(5).replace("-", "/"), "실적 공시 기한(≈)");
 }
@@ -448,23 +596,25 @@ function placeTip(clientX, clientY, pointerType, anchor) {
 }
 function hideTip() { tip.style.display = "none"; for (const c of crossLines) c.line.setAttribute("visibility", "hidden"); }
 let cursor = null;
-function hover(j, clientX, clientY, pointerType, anchor) {
+function hover(j, clientX, clientY, pointerType, anchor, group, focus) {
   const w = windowOf();
   j = Math.max(0, Math.min(w.N - 1, j));
   cursor = j;
   for (const c of crossLines) {
+    if (c.group !== group) { c.line.setAttribute("visibility", "hidden"); continue; }
     c.line.setAttribute("x1", c.f.x(j)); c.line.setAttribute("x2", c.f.x(j)); c.line.setAttribute("visibility", "visible");
   }
-  describeMonth(w.start + j);
+  describeMonth(w.start + j, focus);
   placeTip(clientX, clientY, pointerType, anchor);
 }
-function attachCrosshair(f) {
+function attachCrosshair(f, group, focus) {
+  group = group || "main";
   const line = sv("line", { y1: f.m.t, y2: f.H - f.m.b, stroke: "var(--ink-2)", "stroke-width": 1, visibility: "hidden" }, f.svg);
-  crossLines.push({ f, line });
+  crossLines.push({ f, line, group });
   const hit = sv("rect", { x: f.m.l, y: 0, width: f.W - f.m.l - f.m.r, height: f.H, fill: "transparent" }, f.svg);
   const toJ = e => { const r = f.svg.getBoundingClientRect(); return Math.floor(((e.clientX - r.left) * f.W / r.width - f.m.l) / f.slot); };
-  hit.addEventListener("pointermove", e => hover(toJ(e), e.clientX, e.clientY, e.pointerType, f.svg));
-  hit.addEventListener("pointerdown", e => hover(toJ(e), e.clientX, e.clientY, e.pointerType, f.svg));
+  hit.addEventListener("pointermove", e => hover(toJ(e), e.clientX, e.clientY, e.pointerType, f.svg, group, focus));
+  hit.addEventListener("pointerdown", e => hover(toJ(e), e.clientX, e.clientY, e.pointerType, f.svg, group, focus));
   hit.addEventListener("pointerleave", e => { if (e.pointerType !== "touch") hideTip(); });
   f.svg.setAttribute("tabindex", "0");
   f.svg.addEventListener("keydown", e => {
@@ -476,8 +626,8 @@ function attachCrosshair(f) {
     else if (e.key in map) j = cursor == null ? w.N - 1 : cursor + map[e.key];   // first press shows the latest month
     else if (e.key === "Escape") { hideTip(); return; }
     else return;
-    e.preventDefault();
-    hover(j, null, null, "keyboard", f.svg);
+    e.preventDefault(); e.stopPropagation();
+    hover(j, null, null, "keyboard", f.svg, group, focus);
   });
   f.svg.addEventListener("blur", hideTip);
 }
@@ -485,18 +635,41 @@ function attachCrosshair(f) {
 // ---------------------------------------------------------------- overlay (one % axis, log scale)
 // Basket view: exports + basket. Company view: exports + every company — the same wide domain as the
 // small multiples, so switching between companies never rescales the axis.
-function overlayDomain(w, companies) {
+function overlayDomain(w, companies, trim) {
   const ex = exportsNow(), vals = [];
   for (let j = 0; j < w.N; j++) vals.push(ex.yoy3[w.start + j]);
   const qs = new Set(w.months.map(quarterOf));
-  if (companies) { for (const c of okCompanies()) for (const [q, v] of Object.entries(c.quarters)) if (qs.has(q)) vals.push(v.revenue_yoy); }
+  if (companies) { for (const c of okCompanies()) for (const [q, v] of Object.entries(c.quarters)) if (qs.has(q) && !v.excluded) vals.push(v.revenue_yoy); }
   else for (const [q, b] of Object.entries(D.basket)) if (qs.has(q)) vals.push(b.revenue_yoy);
-  return yoyDomain(vals);
+  if (!trim) return yoyDomain(vals);
+  // 회사 칸들: 극단값 한두 개가 축을 늘여 모두를 가운데로 눌러 놓지 않게 — 5~95% 분위로 잡고 밖은 ▲▼(값은 팝업 · 표에)
+  const vs = vals.filter(v => v != null).sort((a, b) => a - b);
+  if (vs.length < 8) return yoyDomain(vals);
+  return yoyDomain([vs[Math.floor(vs.length * 0.05)], vs[Math.ceil(vs.length * 0.95) - 1]]);
+}
+function endLabels(f, y, lo, hi, w, ex, rev, revWord) {
+  // direct end labels: export at its last month, revenue at its last quarter (nudged apart when they collide)
+  const ends = [];
+  let lastJ = null;
+  for (let j = w.N - 1; j >= 0; j--) if (ex.yoy3[w.start + j] != null) { lastJ = j; break; }
+  if (lastJ != null) {
+    const v = ex.yoy3[w.start + lastJ];
+    ends.push({ yy: y(Math.max(lo, Math.min(hi, v))), text: "수출 " + monthWord(w.months[lastJ]) + " " + pct(v, 0), color: "var(--s1)" });
+  }
+  const qe = quarterEnds(f);
+  const lastQ = Object.keys(qe).filter(q => rev[q] != null).sort().pop();
+  if (lastQ) ends.push({ yy: y(Math.max(lo, Math.min(hi, rev[lastQ]))), text: (revWord || "매출") + " " + qLabel(lastQ) + " " + pct(rev[lastQ], 0), color: "var(--s2)" });
+  if (f.m.r < 60) return;
+  if (ends.length === 2 && Math.abs(ends[0].yy - ends[1].yy) < 16) {         // 겹치면 위아래로 벌린다
+    const mid = (ends[0].yy + ends[1].yy) / 2, up = ends[0].yy <= ends[1].yy ? 0 : 1;
+    ends[up].yy = mid - 8; ends[1 - up].yy = mid + 8;
+  }
+  for (const e of ends) { const t = sv("text", { x: f.W - f.m.r + 10, y: e.yy + 4, class: "end big" }, f.svg, e.text); t.style.fill = e.color; }
 }
 function drawOverlay() {
   const w = windowOf(), ex = exportsNow();
   const host = document.getElementById("overlay");
-  const f = frame(host, 330, w);
+  const f = frame(host, 380, w);
   f.svg.setAttribute("aria-label", "통관 수출 3개월 증감과 " + focusName() + " 분기 매출 증감, 로그 눈금");
   const [lo, hi] = overlayDomain(w, state.focus !== "basket");
   const y = yoyScale(f, lo, hi);
@@ -512,31 +685,19 @@ function drawOverlay() {
   const rev = revSeries(state.focus);
   if (state.focus !== "basket")
     sv("path", { d: stepPath(f, y, basket, lo, hi), fill: "none", stroke: "var(--ctx)", "stroke-width": 1.5 }, marks);
-  sv("path", { d: stepPath(f, y, rev, lo, hi, q => !partial(q)), fill: "none", stroke: "var(--s2)", "stroke-width": 2, "stroke-linejoin": "round" }, marks);
-  sv("path", { d: stepPath(f, y, rev, lo, hi, partial), fill: "none", stroke: "var(--s2)", "stroke-width": 2, "stroke-dasharray": "4 3" }, marks);
-  sv("path", { d: monthPath(f, y, ex.yoy3, lo, hi), fill: "none", stroke: "var(--s1)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, marks);
+  sv("path", { d: stepPath(f, y, rev, lo, hi, q => !partial(q)), fill: "none", stroke: "var(--s2)", "stroke-width": 2.5, "stroke-linejoin": "round" }, marks);
+  sv("path", { d: stepPath(f, y, rev, lo, hi, partial), fill: "none", stroke: "var(--s2)", "stroke-width": 2.5, "stroke-dasharray": "4 3" }, marks);
+  sv("path", { d: monthPath(f, y, ex.yoy3, lo, hi), fill: "none", stroke: "var(--s1)", "stroke-width": 2.25, "stroke-linejoin": "round", "stroke-linecap": "round" }, marks);
   const top = sv("g", {}, f.svg);
   monthChevrons(f, top, y, ex.yoy3, lo, hi, "var(--s1)");
   const exQ = {};
   for (const [q, v] of Object.entries(ex.quarters)) exQ[q] = v.yoy;
-  dots(f, top, y, exQ, lo, hi, "var(--s1)", true, false);
+  dots(f, top, y, exQ, lo, hi, "var(--s1)", true, false, 4.5);
   const qe0 = quarterEnds(f);
   const clipped = Object.keys(qe0).filter(q => rev[q] != null && (rev[q] > hi || rev[q] < lo)).length;
-  dots(f, top, y, rev, lo, hi, "var(--s2)", false, clipped <= 3);      // more than three: tooltip and tables carry them
-  // direct end labels: export at its last month, revenue at its last quarter (skipped when they collide)
-  const ends = [];
-  let lastJ = null;
-  for (let j = w.N - 1; j >= 0; j--) if (ex.yoy3[w.start + j] != null) { lastJ = j; break; }
-  if (lastJ != null) {
-    const v = ex.yoy3[w.start + lastJ];
-    ends.push({ yy: y(Math.max(lo, Math.min(hi, v))), text: "수출 " + monthWord(w.months[lastJ]) + " " + pct(v, 0) });
-  }
-  const qe = quarterEnds(f);
-  const lastQ = Object.keys(qe).filter(q => rev[q] != null).sort().pop();
-  if (lastQ) ends.push({ yy: y(Math.max(lo, Math.min(hi, rev[lastQ]))), text: "매출 " + qLabel(lastQ) + " " + pct(rev[lastQ], 0) });
-  if (f.m.r >= 60 && (ends.length < 2 || Math.abs(ends[0].yy - ends[1].yy) >= 14))
-    for (const e of ends) sv("text", { x: f.W - f.m.r + 8, y: e.yy + 4, class: "end" }, f.svg, e.text);
-  attachCrosshair(f);
+  dots(f, top, y, rev, lo, hi, "var(--s2)", false, clipped <= 3, 4.5);      // more than three: tooltip and tables carry them
+  endLabels(f, y, lo, hi, w, ex, rev, state.focus === "basket" ? "합계" : "매출");
+  attachCrosshair(f, "main");
 
   const legend = document.getElementById("legend");
   legend.replaceChildren();
@@ -573,7 +734,7 @@ function drawAmount() {
   for (let k = 0; k * step <= hi + 1e-9; k++) {
     const t = k * step;
     sv("line", { x1: f.m.l, x2: f.W - f.m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, g);
-    sv("text", { x: f.m.l - 6, y: y(t) + 4, "text-anchor": "end" }, g, unit.fmt(+t.toPrecision(6)));
+    sv("text", { x: f.m.l - 7, y: y(t) + 4, "text-anchor": "end" }, g, unit.fmt(+t.toPrecision(6)));
   }
   if (w.N > 36) {
     let line = "", area = "", start = null, lastX = null;
@@ -585,7 +746,7 @@ function drawAmount() {
       lastX = X;
     });
     if (start != null) area += "L" + lastX + " " + y(0) + "Z";
-    sv("path", { d: area, fill: "var(--s1)", "fill-opacity": 0.1 }, f.svg);
+    sv("path", { d: area, fill: "var(--s1)", "fill-opacity": 0.12 }, f.svg);
     sv("path", { d: line, fill: "none", stroke: "var(--s1)", "stroke-width": 2, "stroke-linejoin": "round" }, f.svg);
   } else {
     const bw = Math.min(24, Math.max(2, f.slot - 2));
@@ -595,7 +756,7 @@ function drawAmount() {
       sv("path", { d: `M${x0} ${b}V${t + r}Q${x0} ${t} ${x0 + r} ${t}H${x0 + bw - r}Q${x0 + bw} ${t} ${x0 + bw} ${t + r}V${b}Z`, fill: "var(--s1)" }, f.svg);
     });
   }
-  attachCrosshair(f);
+  attachCrosshair(f, "main");
 }
 
 // ---------------------------------------------------------------- operating margin strip (its own axis: a level, not a change)
@@ -616,16 +777,16 @@ function drawMargin() {
   const stepT = hi - lo > 60 ? 20 : 10;
   for (let t = Math.ceil(lo / stepT) * stepT; t <= hi; t += stepT) {
     sv("line", { x1: f.m.l, x2: f.W - f.m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, g);
-    sv("text", { x: f.m.l - 6, y: y(t) + 4, "text-anchor": "end" }, g, t + "%");
+    sv("text", { x: f.m.l - 7, y: y(t) + 4, "text-anchor": "end" }, g, t + "%");
   }
   const marks = sv("g", { "clip-path": clip(f, "clip-margin") }, f.svg);
   if (state.focus !== "basket") sv("path", { d: stepPath(f, y, bm, lo, hi), fill: "none", stroke: "var(--ctx)", "stroke-width": 1.5 }, marks);
-  sv("path", { d: stepPath(f, y, mg, lo, hi), fill: "none", stroke: "var(--s2)", "stroke-width": 2 }, marks);
-  dots(f, f.svg, y, mg, lo, hi, "var(--s2)", false, false);
+  sv("path", { d: stepPath(f, y, mg, lo, hi), fill: "none", stroke: "var(--s2)", "stroke-width": 2.25 }, marks);
+  dots(f, f.svg, y, mg, lo, hi, "var(--s2)", false, false, 4);
   const qe = quarterEnds(f);
   const lastQ = Object.keys(qe).filter(q => mg[q] != null).sort().pop();
-  if (lastQ && f.m.r >= 60) sv("text", { x: f.W - f.m.r + 8, y: y(mg[lastQ]) + 4, class: "end" }, f.svg, qLabel(lastQ) + " " + mg[lastQ].toFixed(1) + "%");
-  attachCrosshair(f);
+  if (lastQ && f.m.r >= 60) { const t = sv("text", { x: f.W - f.m.r + 10, y: y(mg[lastQ]) + 4, class: "end" }, f.svg, qLabel(lastQ) + " " + mg[lastQ].toFixed(1) + "%"); t.style.fill = "var(--s2)"; }
+  attachCrosshair(f, "main");
 }
 
 // ---------------------------------------------------------------- composition
@@ -652,31 +813,40 @@ function drawMix() {
     (big && big.share != null ? `가장 큰 하위 품목은 ${big.label} (${big.share}%)입니다. ` : "") + (D.sector.mix_note || "");
 }
 
-// ---------------------------------------------------------------- small multiples
+// ---------------------------------------------------------------- small multiples — 회사 칸(크게) → 누르면 팝업
+function lastQuarterOf(c) {
+  const q = c.last || Object.keys(c.quarters).sort().pop();
+  return q ? { q, v: c.quarters[q] } : null;
+}
 function drawMultiples() {
   const host = document.getElementById("multiples");
   host.replaceChildren();
   const w = windowOf(), ex = exportsNow();
   // One domain shared by every panel (so panels compare with each other), wide enough for company swings.
-  const [lo, hi] = overlayDomain(w, true);
+  const [lo, hi] = overlayDomain(w, true, true);
   for (const c of D.companies) {
-    const card = el("button", { class: "mini", type: "button", "aria-pressed": String(state.focus === c.code) }, host);
-    el("div", { class: "t" }, card, c.name);
+    const card = el("button", { class: "co", type: "button", "aria-pressed": String(state.focus === c.code), "data-code": c.code }, host);
+    const hd = el("div", { class: "hd" }, card);
+    const left = el("div", {}, hd);
+    el("div", { class: "t" }, left, c.name);
+    const lq = c.error ? null : lastQuarterOf(c);
+    el("div", { class: "q" }, left, c.error ? "자료 없음 — " + c.error : (lq ? `${qLabel(lq.q)} 매출 ${fmtNum(lq.v.revenue)}억 · 영업이익률 ${lq.v.revenue && lq.v.operating != null ? (lq.v.operating / lq.v.revenue * 100).toFixed(1) + "%" : "–"}` : "–"));
     const st = (ex.lags[c.code] || []).find(d => d.lag === 0);
-    let sub;
-    if (c.error) sub = "자료 없음 — " + c.error;
-    else if (!st || st.r == null) sub = `상관 안 냄 — ${noRReason(st)}`;
-    else sub = `같은 분기 r = ${st.r.toFixed(2)} (${ciText(st)}) · n ${st.n}` + (weakStat(st) ? " · 구분 안 됨" : "");
-    el("div", { class: "s" }, card, sub);
+    rPill(left, c.error ? null : st);
+    if (lq && lq.v.revenue_yoy != null && !lq.v.excluded) {
+      const yoy = el("div", { class: "yoy " + signCls(lq.v.revenue_yoy) }, hd, pct(lq.v.revenue_yoy, 0));
+      el("small", {}, yoy, qLabel(lq.q) + " 매출 증감");
+    }
     const chart = el("div", { class: "chart" }, card);
-    if (c.error) { card.disabled = true; continue; }           // nothing to focus on
-    card.addEventListener("click", () => { state.focus = state.focus === c.code ? "basket" : c.code; syncControls(); renderAll(); });
+    if (c.error) { card.disabled = true; continue; }
+    el("span", { class: "zoom" }, card, "누르면 크게 ⤢");
+    card.addEventListener("click", () => openModal(c.code, card));
     requestAnimationFrame(() => drawMini(chart, c, ex, w, lo, hi));
   }
 }
 function drawMini(host, c, ex, w, lo, hi) {
   host.replaceChildren();
-  const W = Math.max(200, host.clientWidth), H = 124, m = { l: 34, r: 8, t: 8, b: 16 };
+  const W = Math.max(240, host.clientWidth), H = 180, m = { l: 42, r: 10, t: 10, b: 20 };
   const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": c.name + " 매출 증감과 통관 수출 증감" }, host);
   const slot = (W - m.l - m.r) / w.N;
   const f = { svg, W, H, m, w, slot, x: j => m.l + slot * (j + 0.5), left: j => m.l + slot * j, plotH: H - m.t - m.b };
@@ -685,23 +855,172 @@ function drawMini(host, c, ex, w, lo, hi) {
   shadePending(f, g, false);
   shadeBreaks(f, g, c);
   for (const t of [-50, 0, 100, 300].filter(t => t >= lo && t <= hi)) {
-    sv("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, g);
-    sv("text", { x: m.l - 4, y: y(t) + 4, "text-anchor": "end" }, g, (t > 0 ? "+" : t < 0 ? "−" : "") + Math.abs(t) + "%");
+    sv("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": t === 0 ? 1.25 : 1 }, g);
+    sv("text", { x: m.l - 5, y: y(t) + 4, "text-anchor": "end" }, g, (t > 0 ? "+" : t < 0 ? "−" : "") + Math.abs(t) + "%");
   }
-  w.months.forEach((ym, j) => { if (ym.slice(4) === "01" && (w.N <= 72 || +ym.slice(0, 4) % 2 === 0)) sv("text", { x: f.left(j), y: H - 3 }, g, "'" + ym.slice(2, 4)); });
+  w.months.forEach((ym, j) => { if (ym.slice(4) === "01" && (w.N <= 72 || +ym.slice(0, 4) % 2 === 0)) sv("text", { x: f.left(j), y: H - 4 }, g, "'" + ym.slice(2, 4)); });
   const rev = {};
   for (const [q, v] of Object.entries(c.quarters)) rev[q] = v.revenue_yoy;
   const marks = sv("g", { "clip-path": clip(f, "clip-mini-" + c.code) }, svg);
-  sv("path", { d: monthPath(f, y, ex.yoy3, lo, hi), fill: "none", stroke: "var(--s1)", "stroke-width": 1.5, "stroke-opacity": 0.75 }, marks);
-  sv("path", { d: stepPath(f, y, rev, lo, hi), fill: "none", stroke: "var(--s2)", "stroke-width": 2 }, marks);
-  if (w.N <= 72) dots(f, svg, y, rev, lo, hi, "var(--s2)", false, false);    // past 24 quarters the dots crowd the step
+  sv("path", { d: monthPath(f, y, ex.yoy3, lo, hi), fill: "none", stroke: "var(--s1)", "stroke-width": 1.75, "stroke-opacity": 0.85, "stroke-linejoin": "round" }, marks);
+  sv("path", { d: stepPath(f, y, rev, lo, hi), fill: "none", stroke: "var(--s2)", "stroke-width": 2.5, "stroke-linejoin": "round" }, marks);
+  if (w.N <= 48) dots(f, svg, y, rev, lo, hi, "var(--s2)", false, false, 3.4);    // 3년까지만 점 — 그 뒤는 계단만(점이 선을 구슬처럼 덮는다)
   else for (const [q, j] of Object.entries(quarterEnds(f))) {
     const v = rev[q];
     if (v != null && (v > hi || v < lo)) chevron(svg, f.x(j), y(v > hi ? hi : lo), v > hi, "var(--s2)");
   }
   if (c.first_yoy && c.first_yoy > quarterOf(w.months[0]))
-    sv("text", { x: m.l + 4, y: m.t + 10 }, svg, "증감 자료 " + qLabel(c.first_yoy) + "~");
+    sv("text", { x: m.l + 6, y: m.t + 11 }, svg, "증감 자료 " + qLabel(c.first_yoy) + "~");
 }
+
+// ---------------------------------------------------------------- 팝업 — 회사 하나를 크게(차트 · 시차 상관 · 분기 표 · 메모)
+const modal = document.getElementById("modal");
+let modalCode = null, modalOpener = null;
+function drawBig(host, c) {
+  const w = windowOf(), ex = exportsNow();
+  const f = frame(host, Math.max(300, Math.min(440, window.innerHeight * 0.42)), w, { l: 64, r: 124, t: 22, b: 28 });
+  f.svg.setAttribute("aria-label", c.name + " 분기 매출 증감과 통관 수출 3개월 증감, 로그 눈금");
+  // 이 회사의 흔들림이 칸을 채우게 — 회사 + 수출로만 축을 잡는다(아래 칸들과 축이 다르다고 적는다)
+  const qs = new Set(w.months.map(quarterOf)), vals = [];
+  for (let j = 0; j < w.N; j++) vals.push(ex.yoy3[w.start + j]);
+  for (const [q, v] of Object.entries(c.quarters)) if (qs.has(q) && !v.excluded) vals.push(v.revenue_yoy);
+  const [lo, hi] = yoyDomain(vals);
+  const y = yoyScale(f, lo, hi);
+  const g = sv("g", {}, f.svg);
+  shadePending(f, g, true, "big");
+  shadeBreaks(f, g, c);
+  yearTicks(f, g, true, 1, "big");
+  yoyAxis(f, g, y, lo, hi, true, "big");
+  const marks = sv("g", { "clip-path": clip(f, "clip-big") }, f.svg);
+  const rev = revSeries(c.code), basket = revSeries("basket");
+  sv("path", { d: stepPath(f, y, basket, lo, hi), fill: "none", stroke: "var(--ctx)", "stroke-width": 1.5, "stroke-dasharray": "2 3" }, marks);
+  sv("path", { d: monthPath(f, y, ex.yoy3, lo, hi), fill: "none", stroke: "var(--s1)", "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round" }, marks);
+  sv("path", { d: stepPath(f, y, rev, lo, hi), fill: "none", stroke: "var(--s2)", "stroke-width": 3, "stroke-linejoin": "round" }, marks);
+  const top = sv("g", {}, f.svg);
+  monthChevrons(f, top, y, ex.yoy3, lo, hi, "var(--s1)");
+  const exQ = {};
+  for (const [q, v] of Object.entries(ex.quarters)) exQ[q] = v.yoy;
+  dots(f, top, y, exQ, lo, hi, "var(--s1)", true, false, 5);
+  dots(f, top, y, rev, lo, hi, "var(--s2)", false, true, 5.5);
+  endLabels(f, y, lo, hi, w, ex, rev, "매출");
+  attachCrosshair(f, "modal", c.code);
+  return { lo, hi };
+}
+function openModal(code, opener) {
+  const c = companyByCode(code);
+  if (!c || c.error) return;
+  modalCode = code; modalOpener = opener || modalOpener;
+  modal.classList.add("open"); modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  renderModal();
+  document.getElementById("dlg-close").focus();
+}
+function closeModal() {
+  if (!modal.classList.contains("open")) return;
+  modal.classList.remove("open"); modal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  hideTip();
+  crossLines = crossLines.filter(c => c.group !== "modal");
+  const op = modalOpener; modalCode = null; modalOpener = null;
+  if (op && op.isConnected) op.focus();
+}
+function stepModal(dir) {
+  const list = okCompanies(), i = list.findIndex(c => c.code === modalCode);
+  if (i < 0) return;
+  const n = list[(i + dir + list.length) % list.length];
+  modalCode = n.code;
+  modalOpener = document.querySelector(`.co[data-code="${n.code}"]`) || modalOpener;
+  renderModal();
+}
+function renderModal() {
+  const c = companyByCode(modalCode);
+  if (!c) return;
+  const ex = exportsNow(), lq = lastQuarterOf(c);
+  crossLines = crossLines.filter(x => x.group !== "modal");
+  const nm = document.getElementById("dlg-name");
+  nm.textContent = c.name;
+  el("small", {}, nm, c.code + " · " + D.sector.name);
+  const facts = document.getElementById("dlg-facts");
+  facts.replaceChildren();
+  const fact = (k, v, cls) => { const s = el("span", {}, facts); s.append(k + " "); el("b", cls ? { class: cls } : {}, s, v); };
+  if (lq) {
+    fact(qLabel(lq.q) + " 매출", fmtNum(lq.v.revenue) + "억");
+    fact("증감", lq.v.excluded ? "비교 제외" : pct(lq.v.revenue_yoy), lq.v.excluded ? "" : signCls(lq.v.revenue_yoy));
+    fact("영업이익", fmtNum(lq.v.operating) + "억" + (lq.v.operating_yoy != null ? ` (${pct(lq.v.operating_yoy, 0)})` : ""), signCls(lq.v.operating_yoy));
+    fact("이익률", lq.v.revenue && lq.v.operating != null ? (lq.v.operating / lq.v.revenue * 100).toFixed(1) + "%" : "–");
+    fact("기준", (lq.v.basis === "CFS" ? "연결" : "별도") + (lq.v.restated ? " · 재작성" : "") + (lq.v.proforma ? " · 합병 합산 기저" : ""));
+  }
+  const disc = [...D.pending].reverse().find(p => p.kind === "disclosure");
+  if (disc) { const qv = ex.quarters[disc.q]; fact(qLabel(disc.q) + " 통관(공시 전)", pct(qv && qv.yoy), signCls(qv && qv.yoy)); }
+  // 기간 단추 — 전체 화면과 같은 state.period 를 바꾼다
+  const per = document.getElementById("dlg-period");
+  per.replaceChildren();
+  for (const [k, t] of [[3, "3년"], [5, "5년"], ["all", "전체"]]) {
+    const b = el("button", { type: "button", "aria-pressed": String(String(k) === String(state.period)) }, per, t);
+    b.addEventListener("click", () => { state.period = k; syncControls(); renderAll(); });
+  }
+  const fb = document.getElementById("dlg-focus");
+  fb.onclick = () => { state.focus = c.code; syncControls(); renderAll(); closeModal(); document.getElementById("overlay").scrollIntoView({ block: "start", behavior: "smooth" }); };
+  // 차트 + 범례
+  const dom = drawBig(document.getElementById("dlg-chart"), c);
+  const legend = document.getElementById("dlg-legend");
+  legend.replaceChildren();
+  const key = (cls, color, text) => { const s = el("span", {}, legend); const k = el("i", { class: "key " + cls }, s); if (color) k.style.borderTopColor = color; s.append(text); };
+  key("", "var(--s2)", c.name + " 분기 매출 증감 (● = 그 분기)");
+  key("", "var(--s1)", "통관 수출 3개월 합 증감 — " + codeInfo().label + " (○ = 분기 끝 달)");
+  key("thin dash", "var(--ctx)", basketName());
+  key("box", null, "실적 공시 전 · 분기 진행 중");
+  if ((c.breaks || []).length) key("brk", null, "비교에서 뺀 구간");
+  // 시차 상관 넷
+  const lags = document.getElementById("dlg-lags");
+  lags.replaceChildren();
+  const stats = ex.lags[c.code] || [];
+  for (const k of [-1, 0, 1, 2]) {
+    const d = stats.find(x => x.lag === k);
+    const cell = el("div", { class: !d || d.r == null ? "weak" : weakStat(d) ? "weak" : "strong" }, lags);
+    el("b", {}, cell, lagCell(d));
+    el("span", {}, cell, LAG_NAME[k] + "\n" + (d && d.r != null ? ciText(d) + " · n " + d.n + (weakStat(d) ? " · 구분 안 됨" : " · 뚜렷") : noRReason(d)));
+  }
+  const s0 = stats.find(x => x.lag === 0);
+  document.getElementById("dlg-lagnote").textContent =
+    `상관 r = 분기 통관 증감(${codeInfo().label}, ${curWord()})과 매출 증감의 로그 변화율 상관 · 괄호 = 95% 구간 · 초록 = 0 을 비킨 시차. ` +
+    (s0 && s0.hit != null ? `같은 분기 방향 일치 ${s0.hit}% (우연이면 ${s0.chance}%). ` : "") +
+    `이 차트의 세로축은 이 회사와 수출로만 잡아(${pct(dom.lo, 0)} ~ ${pct(dom.hi, 0)}) 아래 칸들과 다르다.`;
+  // 최근 분기 표
+  const t = document.getElementById("dlg-table");
+  t.replaceChildren();
+  const head = el("tr", {}, el("thead", {}, t));
+  for (const h of ["분기", "통관 수출 증감", "매출 (억원)", "증감", "영업이익 (억원)", "증감", "이익률", "기준"]) el("th", {}, head, h);
+  const body = el("tbody", {}, t);
+  const qs = Object.keys(c.quarters).sort().reverse().slice(0, 8);
+  for (const q of qs) {
+    const v = c.quarters[q], e = ex.quarters[q], tr = el("tr", {}, body);
+    cell(tr, qLabel(q));
+    cell(tr, pct(e && e.yoy), signCls(e && e.yoy));
+    cell(tr, fmtNum(v.revenue));
+    cell(tr, v.excluded ? "비교 제외" : pct(v.revenue_yoy) + (v.restated ? "*" : "") + (v.proforma ? "†" : ""), v.excluded ? "weak" : signCls(v.revenue_yoy));
+    cell(tr, fmtNum(v.operating));
+    cell(tr, pct(v.operating_yoy), signCls(v.operating_yoy));
+    cell(tr, v.revenue && v.operating != null ? (v.operating / v.revenue * 100).toFixed(1) + "%" : "–");
+    cell(tr, (v.basis === "CFS" ? "연결" : "별도"));
+  }
+  const memo = [];
+  if (c.note) memo.push(c.note);
+  for (const b of c.breaks || []) memo.push(`비교에서 뺀 구간 ${qLabel(b.from)}~${qLabel(b.to)}: ${b.reason}`);
+  if (c.first_yoy) memo.push(`증감 자료는 ${qLabel(c.first_yoy)}부터.`);
+  memo.push("* 재작성 기준 · † 흡수합병 뒤 두 회사 합산 기저");
+  document.getElementById("dlg-memo").textContent = memo.join(" ");
+}
+document.getElementById("dlg-close").addEventListener("click", closeModal);
+document.getElementById("dlg-prev").addEventListener("click", () => stepModal(-1));
+document.getElementById("dlg-next").addEventListener("click", () => stepModal(1));
+modal.addEventListener("pointerdown", e => { if (e.target === modal) closeModal(); });
+document.addEventListener("keydown", e => {
+  if (!modal.classList.contains("open")) return;
+  if (e.key === "Escape") { e.preventDefault(); closeModal(); }
+  else if (e.key === "ArrowLeft" && e.target.tagName !== "svg") { e.preventDefault(); stepModal(-1); }
+  else if (e.key === "ArrowRight" && e.target.tagName !== "svg") { e.preventDefault(); stepModal(1); }
+});
 
 // ---------------------------------------------------------------- tiles
 function drawTiles() {
@@ -727,9 +1046,10 @@ function drawTiles() {
       ? `과거 통관 증감 ${an.band} 분기 ${an.quarters.length}개: ${D.sector.noun} 합계 매출 증감 중앙값 ${pct(an.median, 0)}, ${an.positive}개 증가 (` +
         an.quarters.map(a => qLabel(a.q) + " " + pct(a.r, 0)).join(" · ") + "). 예측이 아니라 지난 분포입니다."
       : null;
-    tile("hero", `${qLabel(disc.q)} 통관 수출 증감 · 실적 공시 전`, pct(qv && qv.yoy),
+    const t = tile("hero", `${qLabel(disc.q)} 통관 수출 증감 · 실적 공시 전`, pct(qv && qv.yoy),
       `${months} · ${label} · ${curWord()} · 실적 기한 ${disc.due.slice(5).replace("-", "/")} (${dd >= 0 ? "D-" + dd : "D+" + (-dd)})` +
       (disc.filed ? ` · ${disc.filed}/${disc.of}곳 공시` : ""), ref);
+    t.querySelector(".value").classList.add(signCls(qv && qv.yoy));
   }
   if (prog) {
     const qtd = ex.qtd;
@@ -743,25 +1063,25 @@ function drawTiles() {
     const rv = revSeries(state.focus)[D.reported];
     const b = D.basket[D.reported];
     const same = ex.quarters[D.reported];
-    tile("", `${qLabel(D.reported)} ${focusName()} 매출 증감 (마지막 공시 분기)`, pct(rv),
+    const t = tile("", `${qLabel(D.reported)} ${focusName()} 매출 증감 (마지막 공시 분기)`, pct(rv),
       `같은 분기 통관 ${pct(same && same.yoy)}` + (state.focus === "basket" && b ? ` · 비교 ${b.matched}곳 · 영업이익률 ${b.margin == null ? "–" : b.margin.toFixed(1) + "%"}` : ""));
+    t.querySelector(".value").classList.add(signCls(rv));
   }
   const stats = statsFor(state.focus === "basket" ? "basket" : state.focus);
   const t = tile("", `통관 → ${focusName()} 매출 상관 (r, 95% 구간)`, "", null);
   t.querySelector(".value").remove();
   const strip = el("div", { class: "lagstrip" }, t);
-  const names = { "-1": "매출이 1분기 앞섬", "0": "같은 분기", "1": "수출이 1분기 앞섬", "2": "2분기 앞섬" };
   for (const d of stats) {
-    const cell = el("div", weakStat(d) ? { class: "weak" } : {}, strip);
+    const cell = el("div", { class: weakStat(d) ? "weak" : "strong" }, strip);
     el("b", {}, cell, lagCell(d));
     el("span", {}, cell, d.r == null ? noRReason(d) : ciText(d));
-    el("span", {}, cell, names[d.lag]);
+    el("span", {}, cell, LAG_NAME[d.lag]);
   }
   const s0 = stats.find(d => d.lag === 0);
   const span = s0 && s0.span ? `${qLabel(s0.span[0])}~${qLabel(s0.span[1])}` : "";
   el("div", { class: "delta" }, t,
     (s0 && s0.hit != null ? `같은 분기 방향 일치 ${s0.hit}% (우연이면 ${s0.chance}%, ±5% 미만 ${s0.flat}분기 제외) · ` : "") +
-    `${span} 전체 · 유효 표본 ${s0 && s0.n_eff != null ? "≈" + s0.n_eff : "–"} · 흐린 칸 = 0과 구분 안 됨`);
+    `${span} 전체 · 유효 표본 ${s0 && s0.n_eff != null ? "≈" + s0.n_eff : "–"} · 초록 칸 = 0 을 비킴, 흐린 칸 = 0 과 구분 안 됨`);
 }
 
 // ---------------------------------------------------------------- tables
@@ -942,6 +1262,7 @@ function renderAll() {
     (state.cur === "KRW" ? "수출은 그 달 평균 원/달러 환율로 원화 환산. " : "수출은 달러 기준(매출은 원화). ") +
     "○와 ●는 같은 석 달을 비교합니다(분기 끝 달의 3개월 합 증감 = 그 분기 통관 증감). 십자선은 세 차트에 함께 움직이고, ←/→ · Home/End 로도 옮길 수 있습니다." +
     (st && st.r != null ? ` 같은 분기 상관 r = ${st.r.toFixed(2)} (${ciText(st)}, n ${st.n}).` : "");
+  if (modalCode) renderModal();
 }
 
 document.getElementById("title").textContent = D.sector.name + " (HS " + D.sector.hs.join("·") + ") 통관 수출 × " + D.sector.noun + " 실적";
@@ -952,8 +1273,9 @@ document.getElementById("title").textContent = D.sector.name + " (HS " + D.secto
   nav.addEventListener("change", () => { location.href = encodeURIComponent(nav.value) + ".html"; });
 })();
 document.getElementById("subtitle").textContent =
-  "관세청 통관 " + (D.months.length ? ymLabel(D.months[D.months.length - 1]) : "–") + "까지 · DART 실적 " +
+  "관세청 통관 " + (D.months.length ? ymLabel(D.months[D.months.length - 1]) : "–") + "까지\nDART 실적 " +
   (D.reported ? qLabel(D.reported) : "–") + "까지 · 만든 시각 " + D.built_at;
+document.getElementById("subtitle").style.whiteSpace = "pre-line";
 setupControls();
 drawNotes();
 renderAll();
