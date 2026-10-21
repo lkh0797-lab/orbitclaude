@@ -105,12 +105,16 @@ def corp_code_of(stock_code):
             return None
         with open(path, "rb") as fh:
             text = fh.read().decode("utf-8", errors="replace")
+        got = {}
         for m in re.finditer(r"<list>(.*?)</list>", text, re.S):
             blob = m.group(1)
             s = re.search(r"<stock_code>(.*?)</stock_code>", blob, re.S)
             c = re.search(r"<corp_code>(.*?)</corp_code>", blob, re.S)
             if s and c and s.group(1).strip():
-                _CORP[s.group(1).strip()] = c.group(1).strip()
+                got[s.group(1).strip()] = c.group(1).strip()
+        # 다 채운 뒤 한 번에 바꿔 끼운다 — 전역 표를 채우는 도중 다른 스레드가 반쯤 찬 표(참)를 보고 None 을 받아
+        # 뷰어 막 켠 때 여러 회사를 같이 그리면 'DART 고유번호나 재무 모듈이 없습니다' 가 나던 것(2026-10-22)
+        _CORP = got
     return _CORP.get(stock_code)
 
 
@@ -7380,7 +7384,10 @@ def lineage(c, rx, secs=None, labels=None, raw=True, strict=False):
 #   안목 — 이 회사의 15년이 가르치는 규칙(불황 성적, 자본 배분, 유보이익 1원 테스트, 사업 정의의 일관성)
 #   결단 — 그들의 조건이 과거 어느 때 맞았고 그 뒤 주가는 어땠나, 그리고 지금은(기다릴 가격)
 # 주당 값은 액면분할·무상증자를 연말 주식 수로 역산해 오늘 주식 수 기준으로 맞춘다(네이버 수정주가와 같은 기준).
-LAND_V = 10         # 8 · 9: 마지막 사업보고서 뒤 분기 · 반기가 있으면 최근 4분기 칸(2026-10-03, 9 = 배당은 마지막 결산 값)
+LAND_V = 12         # 12: 주당 값(EPS · PER · 띠 · 이익선 · BPS · ROE)을 지배주주 순이익 · 자본으로(2026-10-22) — 분기 ni4 는 연결 전체,
+#                     최근 4분기 칸은 지배라 지주사 PER 이 틀렸다(HD현대 1.4배 → 3.8배). 유형 · 사건의 부호와 배당성향은 연결 전체 그대로.
+#                     11 = 커밋 전 중간 코드(1% 가드 · 지배자본 검산 없음 · 가속도 v4)로 그린 판 43개 — 미리 계산이 'fresh' 로 남기지 않게 건너뜀
+#                     8 · 9: 마지막 사업보고서 뒤 분기 · 반기가 있으면 최근 4분기 칸(2026-10-03, 9 = 배당은 마지막 결산 값)
 #                     10: 월별 고가 · 저가(장중) · 그림 기간 최고 · 최저 · 연중 최고/최저 장중 기준(2026-10-14)
 #                     (같은 날 덧붙임 — 판의 날 = 그날 값이 굳은 가장 최근 날(_land_day, 평일 20:10), px_partial · px_at. 판 형식은 그대로라 10 유지:
 #                      예전 판은 날이 달라 지난 판으로 보이며 뒤에서 다시 그린다)
@@ -7578,9 +7585,29 @@ def _land_ttm(c, corp, F):
                 if any(v is not None for v in vs):
                     tot = (tot or 0) + abs(sum(v or 0 for v in vs))
         return tot
-    rev, op, ni, cfo = x.get("rev_ttm"), x.get("op_ttm"), x.get("ni_ttm"), x.get("cfo_ttm")
+    # 순이익 둘 — ni_ctrl = 지배주주(_pipe_rows ni_ttm: 지배 줄, 없으면 당기 − 비지배) → 주당 값,
+    # ni = 연결 전체(당기순이익 줄 4분기 합 — 연간 칸 'ni' 와 같은 뜻, 린치 유형의 부호). 전체 줄이 한 분기라도 비면 None
+    rev, op, ni_c, cfo = x.get("rev_ttm"), x.get("op_ttm"), x.get("ni_ttm"), x.get("cfo_ttm")
+    tot = _mseries(mi, _mrow(mi, ("t:ProfitLoss",), r"^당기순(이익|손익|손실)"))
+    tv = [tot.get(q_) for q_ in q4]
+    ni = sum(tv) if all(v is not None for v in tv) else None
     eq = x.get("eq_total") or x.get("equity")
     eq_ly = xl.get("eq_total") or xl.get("equity")
+    # 지배자본 — 매트릭스 지배자본 줄(_pipe_rows equity)을 연간 owner_parts 와 같은 검산으로: 비지배가 있으면 지배 + 비지배 = 자본총계,
+    # 없으면 지배가 자본총계의 절반 미만 · 0 이하일 때만 자본총계(우주일렉트로 2025Q2–Q3 지배자본 줄 49.7억 = 자본금). ROE = 지배순이익 ÷ 그 평균
+    nci_s = _mseries(mb, _mrow(mb, ("t:NoncontrollingInterests",), r"^비지배(?:주주)?\s*지?분$"))
+
+    def eq_c(r, lab_):
+        e, t, n = r.get("equity"), r.get("eq_total"), nci_s.get(lab_)
+        if t is None:
+            return e
+        if n is not None and (e is None or abs(e + n - t) > max(1e6, abs(t) * 0.005)):
+            return t - n
+        if n is None and t > 0 and (e is None or e <= 0 or e / t < 0.5):
+            return t
+        return e
+    ec, ec_ly = eq_c(x, lab), eq_c(xl, _qshift(lab, 4))
+    eca = (ec + ec_ly) / 2 if (ec and ec_ly and ec > 0 and ec_ly > 0) else (ec if ec and ec > 0 else None)
     capex = cf4(INF.CAPEX_TAG, INF.CAPEX_NM, "처분")
     cash, inv, re_ = bs("t:CashAndCashEquivalents", INF.CASH_NM), bs("t:Inventories", INF.INV_NM), bs("t:RetainedEarnings", re.compile(r"^이익잉여금"))
     eav = (eq + eq_ly) / 2 if (eq and eq_ly) else eq
@@ -7588,12 +7615,15 @@ def _land_ttm(c, corp, F):
     return {"year": int(lab[:4]), "ttm": "%s.%sQ" % (lab[:4], lab[5]), "q": int(lab[5]),
             "end": "%s%s" % (lab[:4], LAND_Q_END[int(lab[5])]),
             "rev": rev, "op": op, "ni": ni, "eq": eq, "liab": x.get("debt"), "re": re_, "cfo": cfo, "capex": capex,
+            "ni_ctrl": ni_c, "eq_ctrl": ec,
             # 배당은 분기 현금흐름표에서 지급 줄이 자주 빠진다(효성중공업 2026.1·2분기 빈 칸) — 1년에 한 번이니 마지막 결산 배당을 잇는다
             "div": F[-1].get("div"), "div_year": F[-1]["year"] if F[-1].get("div") else None,
             "buyback": cf4(INF.BUYBACK_TAG, INF.BUYBACK_NM, "처분"),
             "debt": debt, "cash": cash, "rev_yoy": x.get("rev_yoy"),
             "margin": op / rev * 100 if (rev and op is not None and rev > 0) else None,
-            "roe": ni / eav * 100 if (ni is not None and eav and eav > 0) else None,
+            # ROE = 지배주주 순이익 ÷ 검산한 지배주주 자본 평균(지금 · 1년 전 분기 말 — 연간 칸 roe 와 같은 꼴), roe_all = 연결 전체끼리
+            "roe": ni_c / eca * 100 if (ni_c is not None and eca) else None,
+            "roe_all": ni / eav * 100 if (ni is not None and eav and eav > 0) else None,
             "roic": op * 0.78 / ic * 100 if (op is not None and ic and ic > 0) else None,
             "fcf": (cfo - (capex or 0)) if cfo is not None else None,
             "capex_int": capex / rev * 100 if (capex is not None and rev and rev > 0) else None,
@@ -7800,11 +7830,19 @@ def _landscape_build(c, prog=None):
         sa = S_adj.get(y)
         pe = px_on("%d1230" % y)
         yhi, ylo, ybasis = hl_span([k for k in ds if k[:4] == str(y)])
-        eps = d["ni"] / sa if (d.get("ni") is not None and sa) else None
-        bps = d["eq"] / sa if (d.get("eq") and sa) else None
+        # 주당 값(EPS · BPS · PER · PBR · ROE)은 지배주주 순이익 · 자본(LAND_V 11) — 못 내면 연결 전체. 'ni' · 'eq' 는 연결 전체 그대로:
+        # 린치 유형 · 사건의 부호(회사 사업의 흑자 · 적자), 차입/자본 · ROIC 처럼 연결 차입과 짝인 비율이 쓴다.
+        # 배당성향(div ÷ ni)도 연결끼리 — 연결 '배당금의 지급'에 자회사가 비지배주주에게 준 배당이 섞여(SK 2025) 분모만 지배로 바꾸면 더 틀어진다
+        nic = d["ni_ctrl"] if d.get("ni_ctrl") is not None else d.get("ni")
+        eqc = d.get("eq_ctrl") or d.get("eq")
+        eps = nic / sa if (nic is not None and sa) else None
+        bps = eqc / sa if (eqc and sa) else None
         dps = d["div"] / sa if (d.get("div") and sa) else None
         row = {k: d.get(k) for k in ("year", "rev", "op", "ni", "eq", "liab", "margin", "roe", "roic", "fcf", "cfo", "capex",
-                                     "div", "buyback", "debt", "cash", "de", "capex_int", "rev_yoy", "inv_days", "re")}
+                                     "div", "buyback", "debt", "cash", "de", "capex_int", "rev_yoy", "inv_days", "re",
+                                     "ni_ctrl", "ni_ctrl_src", "eq_ctrl")}
+        row.update(roe_all=d.get("roe"), roe=d["roe_ctrl"] if d.get("roe_ctrl") is not None else
+                   (None if d.get("ni_ctrl") is not None else d.get("roe")))     # 지배 순이익은 아는데 지배자본 ≤ 0 이면 비운다(연결로 섞지 않게)
         row.update(eps=eps, bps=bps, dps=dps, shares=sa, px=pe, hi=yhi, lo=ylo, hl_basis=ybasis,
                    per=pe / eps if (pe and eps and eps > 0) else None,
                    pbr=pe / bps if (pe and bps and bps > 0) else None,
@@ -7824,8 +7862,10 @@ def _landscape_build(c, prog=None):
         pe = px_on(end)
         st_ = (dt.datetime.strptime(end, "%Y%m%d") - dt.timedelta(days=365)).strftime("%Y%m%d")
         whi, wlo, wbasis = hl_span([k for k in ds if st_ < k <= end])
-        eps = tt["ni"] / sa if (tt.get("ni") is not None and sa) else None
-        bps = tt["eq"] / sa if (tt.get("eq") and sa) else None
+        nic = tt["ni_ctrl"] if tt.get("ni_ctrl") is not None else tt.get("ni")     # 연간 칸과 같은 기준(지배주주)
+        eqc = tt.get("eq_ctrl") or tt.get("eq")
+        eps = nic / sa if (nic is not None and sa) else None
+        bps = eqc / sa if (eqc and sa) else None
         dps = tt["div"] / sa if (tt.get("div") and sa) else None
         row = dict(tt)
         row.update(eps=eps, bps=bps, dps=dps, shares=sa, px=pe, hi=whi, lo=wlo, hl_basis=wbasis,
@@ -7850,17 +7890,33 @@ def _landscape_build(c, prog=None):
     nkey = lambda p: p["year"] * 4 + p["q"] - 1      # noqa: E731
     Pby = {nkey(p): p for p in P}
     qs = []
+
+    def own(x):
+        """지배주주 순이익(LAND_V 11) — 비어 있으면 별도 재무제표(OFS) 분기만 당기순이익(비지배가 없다). 연결(CFS) 분기가 비면 None:
+        비지배 줄이 있는 회사라 당기순이익을 끼우면 그 창이 부푼다(HD현대 2026Q2 한 분기만 섞어도 4분기 합 +67%).
+        총포괄 · 계속영업 · 엉터리 태그 · 주당 줄 오선택은 가속도 v5(드러켄밀러 _owner_ni — 지배 + 비지배 = 당기 검산 고르기)에서 고쳤다.
+        여기 가드는 남은 엉터리 값을 막는 마지막 장치 — 당기순이익이 1억 넘는데 지배 값이 100만원도 안 되면(v4 캐시의 위메이드 6,455원 ·
+        한미반도체 2016 0원, 태그가 뒤바뀐 265520 2018Q1) 그 분기는 당기순이익으로. '1% 미만'으로 재면 진짜 작은 지배 몫(LG에너지솔루션
+        2024Q1 −4.64억 vs 비지배 2,125억)까지 덮는다. 단위 오류로 지배 값만 남은 분기(품질 unit · 당기 없음 — 콜마비앤에이치 2015 8,159만 억)는 버린다."""
+        v, t = x.get("지배순이익"), x.get("당기순이익")
+        if t is None and "unit" in (x.get("품질") or []):
+            return None
+        if v is not None and t is not None and abs(t) >= 1e8 and abs(v) < 1e6:
+            return t
+        return v if v is not None else (t if x.get("fs") == "OFS" else None)
     for p in P:
         n = nkey(p)
         win = [Pby.get(m) for m in range(n - 3, n + 1)]
-        ni4 = sum(x["당기순이익"] for x in win) if all(x is not None and x.get("당기순이익") is not None for x in win) else None
+        # 주당이익 · PER · 띠 · 이익선 = 지배주주 순이익 4분기 합(공시 EPS · 보통값 백테스트 패널과 같은 기준). ni4_all = 연결 전체(참고)
+        ni4 = sum(own(x) for x in win) if all(x is not None and own(x) is not None for x in win) else None
+        ni4_all = sum(x["당기순이익"] for x in win) if all(x is not None and x.get("당기순이익") is not None for x in win) else None
         op4 = p.get("영업이익_TTM")
         sa = S_adj.get(p["year"]) or S_adj.get(min(S_adj, key=lambda y: abs(y - p["year"]))) if S_adj else None
         eps = ni4 / sa if (ni4 is not None and sa) else None
         qd = "%d%s" % (p["year"], LAND_Q_END[p["q"]])
         dd = p.get("주가일")                   # 보고서 접수일(그날 알 수 있던 값) — 결단 시점에 쓴다
         qs.append({"label": p["label"], "year": p["year"], "q": p["q"], "n": n, "end": qd, "filed": dd,
-                   "ni4": ni4, "op4": op4, "eps": eps, "rev4": p.get("매출_TTM"),
+                   "ni4": ni4, "ni4_all": ni4_all, "op4": op4, "eps": eps, "rev4": p.get("매출_TTM"),
                    "inv_days": p.get("재고일수"), "px_end": px_on(qd), "px_filed": prices.get(dd) if dd else None})
     qby = {q["n"]: q for q in qs}
     for q in qs:
@@ -7923,7 +7979,7 @@ def _landscape_build(c, prog=None):
         past = [yrow[y] for y in yrow if y <= q["year"] - 1]
         roes = [r["roe"] for r in past if r.get("roe") is not None]
         quality = len(roes) >= 3 and sum(1 for v in roes if v >= 12) >= 0.7 * len(roes) and \
-            all((r.get("ni") or 0) > 0 for r in past[-3:])
+            all(((r["ni_ctrl"] if r.get("ni_ctrl") is not None else r.get("ni")) or 0) > 0 for r in past[-3:])   # 주주 몫이 흑자
         typ = ytype.get(q["year"] - 1)
         hits = []
         if quality and pct is not None and pct <= 25:

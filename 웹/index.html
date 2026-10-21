@@ -17598,7 +17598,7 @@ function lsPlate(plate, d, c, animate){
 
   const ft=el('div','spFoot');
   const sp=(d.splits||[]).map(s=>s.year+'년 ×'+s.ratio).join(', ');
-  ft.innerHTML='<span>주가는 수정주가, 주당 값은 오늘 주식 수 기준'+(sp?'(분할·무상증자 보정 '+sp+')':'')+'. 유형은 그해까지의 숫자로만 매겼다(린치의 여섯 유형 — 매출 3년 증가율과 6년 안의 이익 꺾임). '+
+  ft.innerHTML='<span>주가는 수정주가, 주당 값(주당이익 · PER · BPS · ROE · 이익선)은 지배주주 순이익 · 자본으로 오늘 주식 수 기준'+(sp?'(분할·무상증자 보정 '+sp+')':'')+'. 유형은 그해까지의 숫자로만 매겼다(린치의 여섯 유형 — 매출 3년 증가율과 6년 안의 이익 꺾임, 흑자 · 적자는 연결 순이익). '+
     'B·L 은 그 분기 보고서 접수일에 그때까지 알 수 있던 숫자로만 조건을 따졌다. 한 회사 15년의 기록이라 표본이 작다 — 규칙이 맞았는지보다 이 회사가 어떻게 움직이는 회사인지를 보라. '+
     '보통 값 검증(공시 11,949건 · 2017–2025 · 지금 상장사만): 1년 초과수익 중앙 싼 구간 +1.6 · 보통 +2.7 · 비싼 −3.4%p — 맞은 건 \'비싼 구간은 뒤처졌다\' 쪽이다. 싼 구간이 1년 안에 보통 값에 닿은 경우는 22.5%.</span><b>LONG VIEW</b>';
   plate.appendChild(ft);
@@ -18380,7 +18380,7 @@ function lsEvChap(d,ci){
   const s2=lsEvSec(body,'num','숫자','NUMBERS');
   const sy=lsEvSub(s2,'years','해마다 판정',hasWhy?'그해 유형과 까닭 — 서버가 판정에 쓴 숫자':null);
   if(!hasWhy) lsEvP(sy,LS_EV_OLD+'. 지금은 매출 · 영업이익 · 순이익만 보인다.','lsEvWarn');
-  lsEvTbl(sy,['해','매출','영업이익','순이익','그해 유형'].concat(hasWhy?['까닭']:[]),
+  lsEvTbl(sy,['해','매출','영업이익','순이익(연결)','그해 유형'].concat(hasWhy?['까닭']:[]),
     rr.map(r=>({cls:r.type!==ch.type?'dim':null,c:[lsEvYl(r),lsEvWt(r.rev),lsEvWt(r.op),lsEvWt(r.ni),
       (r.type||'없음')+(r.type&&r.type!==ch.type?' · 붙임':'')].concat(hasWhy?[lsEvWhy(r)]:[])})),[0,1,1,1,0,0],'why');
   if(r1.ttm) lsEvP(sy,lsEvYl(r1)+' = '+r1.ttm+'까지 최근 4분기 합 — 앞 연간 칸과 기간이 겹친다.','lsEvFine');
@@ -18399,7 +18399,7 @@ function lsEvChap(d,ci){
     {i:'rev',c:['매출 연',lsEvC2((pre?pre.year+'(장 앞 해)':lsEvYl(r0)+'(첫 해 — 앞 해 칸 없음)')+' '+lsEvWt(a)+' → '+lsEvYl(r1)+' '+lsEvWt(b),
       '(끝 ÷ 처음)^(1/'+n+') − 1 — 햇수 '+n+'(해 수로 센다)'),lsEvPct(cg),lsEvSame(lsEvPct(cg),lsEvPct(ch.rev_cagr))]},
     {i:'margin',c:['이익률',lsEvC2('해마다 영업이익률(영업이익 ÷ 매출)의 평균',ms.map(x=>lsEvYl(x)+' '+x.margin.toFixed(1)).join(' · ')||'기록 없음'),pc(mA),lsEvSame(pc(mA),pc(ch.margin))]},
-    {i:'roe',c:['ROE',lsEvC2('해마다 ROE(순이익 ÷ 앞 해 말 · 그해 말 자본 평균)의 평균',rs.map(x=>lsEvYl(x)+' '+x.roe.toFixed(1)).join(' · ')||'기록 없음'),pc(rA),lsEvSame(pc(rA),pc(ch.roe))]},
+    {i:'roe',c:['ROE',lsEvC2('해마다 ROE(지배주주 순이익 ÷ 앞 해 말 · 그해 말 지배주주 자본 평균)의 평균',rs.map(x=>lsEvYl(x)+' '+x.roe.toFixed(1)).join(' · ')||'기록 없음'),pc(rA),lsEvSame(pc(rA),pc(ch.roe))]},
     {i:'px',c:['주가',lsEvC2((own?pre.year+'년 말 '+lsEvW(p0):ch.y0+'년 첫 거래일 무렵 '+lsEvW(p0)+' *')+' → '+e1+' '+lsEvW(p1),
       own?'수정주가 — 끝 ÷ 처음 − 1':'* 판에 그날 값 칸이 없어 카드 값에서 거꾸로 셌다'),lsEvPct(pr),lsEvSame(lsEvPct(pr),lsEvPct(ch.px_ret))]}
   ],[0,0,1,0],'calc');
@@ -18483,7 +18483,7 @@ function lsEvWorst(d,l,body){
   lsEvKV(s2,[['가장 나쁜 해',String(wy),''],['영업이익',lsEvWt(A.find(r=>r.year===wy-1)&&A.find(r=>r.year===wy-1).op)+' → '+lsEvWt(w[1].op),lsPct(w[0],0)+' (카드 '+lsPct(l.v,0)+')'],
     ['앞선 정점',pkr?pkr.year+' '+lsEvWt(peak):'—',''],['되찾은 해',back?back.year+'년 ('+(back.year-wy)+'년 걸림)':'아직 못 되찾음',back?lsEvWt(back.op):''],
     ['그해 순이익',lsEvWt(w[1].ni),(w[1].ni||0)>0?'흑자를 지켰다':'적자']]);
-  lsEvTbl(lsEvSub(s2,'years','해마다 영업이익','연간 칸 — 금색 줄 = 가장 나쁜 해'),['해','매출','매출 전년比','영업이익','영업이익 전년比','순이익','표시'],
+  lsEvTbl(lsEvSub(s2,'years','해마다 영업이익','연간 칸 — 금색 줄 = 가장 나쁜 해'),['해','매출','매출 전년比','영업이익','영업이익 전년比','순이익(연결)','표시'],
     A.map(r=>({cls:r.year===wy?'hit':(pkr&&r.year===pkr.year)||(back&&r.year===back.year)?'gold':null,
       c:[String(r.year),lsEvWt(r.rev),lsEvPct(r.rev_yoy),lsEvWt(r.op),r.year in chg?lsPct(chg[r.year],0):'—',lsEvWt(r.ni),
         r.year===wy?'가장 나쁜 해':pkr&&r.year===pkr.year?'앞선 정점':back&&r.year===back.year?'되찾음':'']})),[0,1,1,1,1,1,0]);
@@ -18571,7 +18571,7 @@ function lsEvIdent(d,l,body){
 function lsEvRoe(d,l,body){
   const A=(d.rows||[]).filter(r=>!r.ttm&&lsEvNum(r.roe)), n15=A.filter(r=>r.roe>=15).length, mn=A.length?A.reduce((a,b)=>b.roe<a.roe?b:a):null;
   const s1=lsEvSec(body,'rule','규칙','RULE');
-  lsEvP(s1,'연간 칸의 ROE(순이익 ÷ 앞 해 말 · 그해 말 자본 평균). 15%↑ 해 수 ÷ 기록 해 수로 가른다.');
+  lsEvP(s1,'연간 칸의 ROE(지배주주 순이익 ÷ 앞 해 말 · 그해 말 지배주주 자본 평균). 15%↑ 해 수 ÷ 기록 해 수로 가른다.');
   const k=A.length?(n15>=0.7*A.length?0:n15<0.5*A.length?1:2):-1;
   lsEvRules(s1,[['70%↑','대부분의 해에 15%를 넘겼다 — \'예측 가능한 수익 기계\'에 가깝다'],['50% 아래','15%를 넘긴 해가 절반이 안 된다 — 좋은 해만 보고 판단하면 안 되는 회사'],['그 사이','좋은 해와 나쁜 해가 섞였다 — 나쁜 해의 바닥을 보라']],k);
   const s2=lsEvSec(body,'num','숫자','NUMBERS');
@@ -18580,7 +18580,7 @@ function lsEvRoe(d,l,body){
   const same=Array.isArray(l.v)&&l.v.length===A.length&&l.v.every((x,i)=>Math.abs(x-Math.round(A[i].roe*10)/10)<0.051);
   lsEvP(s2,'',null).appendChild(lsEvOk(same,same?'해마다 값이 카드 셈(서버 v)과 같음':'카드 셈과 다름'));
   lsEvTail(body,[['대부분의 해에 15%를 넘겼다 — 버핏이 찾는 \'예측 가능한 수익 기계\'에 가깝다.','15%를 넘긴 해가 절반이 안 된다 — 좋은 해만 보고 판단하면 안 되는 회사.','좋은 해와 나쁜 해가 섞였다 — 평균보다 나쁜 해의 바닥을 보라.'][k]||null],
-    ['ROE 는 빚을 늘려도 오른다 — 결단 칸의 빚 줄(버핏 점검 3)과 함께 보라.','큰 손실 · 자사주 소각 뒤 자본이 작아지면 ROE 가 부풀려진다.','연결 순이익(비지배 몫 포함) 기준이다.']);
+    ['ROE 는 빚을 늘려도 오른다 — 결단 칸의 빚 줄(버핏 점검 3)과 함께 보라.','큰 손실 · 자사주 소각 뒤 자본이 작아지면 ROE 가 부풀려진다.','지배주주 몫 기준이다(비지배 몫을 뺀 순이익 · 자본) — 지배 몫을 못 고른 해만 연결 전체.']);
   return 'ROE 15%↑ 해 '+n15+'/'+A.length+(mn?' — 가장 낮은 해 '+mn.year+'년 '+mn.roe.toFixed(1)+'%':'')+'.';
 }
 
@@ -18604,7 +18604,7 @@ function lsEvBuf(d){
   lsEvKV(sb,[['사업 점검 ✓',ok4+'/4'+(known<4?' (판정 없음 '+(4-known)+'줄)':''),lsEvOk(good,good?'좋은 사업 — 3개↑':'좋은 사업 아님 — 3개 미만'),'tot']]);
   const sz=lsEvSub(s2,'zone','값 구간','PER 자기 역사 백분위 — 0 = 기록 중 가장 쌌던 때');
   lsEvZone(sz,pct);
-  lsEvKV(sz,[['지금 PER',lsEvF(dc.per,1)+'배',''],['자기 역사',lsEvNum(pct)?'하위 '+pct.toFixed(0)+'%':'—',zone?'→ '+zone+(zone==='싸다'?' (25%↓)':zone==='비싸다'?' (75%↑)':' (25–75%)'):'적자거나 기록이 모자라 잴 수 없다']]);
+  lsEvKV(sz,[['지금 PER',lsEvNum(dc.per)?lsEvF(dc.per,1)+'배':'— (적자 · 기록 모자람)',''],['자기 역사',lsEvNum(pct)?'하위 '+pct.toFixed(0)+'%':'—',zone?'→ '+zone+(zone==='싸다'?' (25%↓)':zone==='비싸다'?' (75%↑)':' (25–75%)'):'적자거나 기록이 모자라 잴 수 없다']]);
   const so=[[ '사업이 15년 사이 달라졌고 수익도 들쭉날쭉하다 — 숫자로 이해할 수 있는 회사가 아니라 값은 보지 않는다.',
     '좋은 사업이 자기 역사 하위 25% 값에 있다 — 버핏이 기다리는 순간. 그래도 아래 한계를 보라.',
     '좋은 사업 — 남은 것은 값이다. 기다릴 값 '+lsEvW(dc.wait_px)+'(결단 칸 셋째 상자)까지 기다린다.',
@@ -18630,15 +18630,15 @@ function lsEvChk(d,k){
     lim=['낱말 셈은 뜻을 모른다 — 회사 · 부문 이름이 바뀌거나 보고서 서식이 바뀌어도 닮음이 떨어진다.','\'이해할 수 있는가\'는 원래 읽는 사람의 몫이다 — 이 줄은 설명이 바뀌었는지만 본다.'];
   } else if(k===1){
     const r5=A.slice(-5), rr5=r5.filter(r=>lsEvNum(r.roe)), n15=rr5.filter(r=>r.roe>=15).length;
-    lsEvP(s1,'연간 칸 끝 다섯 해의 ROE(순이익 ÷ 앞 해 말 · 그해 말 자본 평균). 기록이 3개↑이고 15%↑ 해가 4개↑이면 ✓ — 다섯 해 중 한 해만 미끄러져도 된다. 최근 4분기 칸은 참고로만 보인다(세지 않음).');
+    lsEvP(s1,'연간 칸 끝 다섯 해의 ROE(지배주주 순이익 ÷ 앞 해 말 · 그해 말 지배주주 자본 평균). 기록이 3개↑이고 15%↑ 해가 4개↑이면 ✓ — 다섯 해 중 한 해만 미끄러져도 된다. 최근 4분기 칸은 참고로만 보인다(세지 않음).');
     lsEvRoeBars(s2,r5.filter(r=>lsEvNum(r.roe)).map(r=>({k:String(r.year),v:r.roe})).concat(tr&&lsEvNum(tr.roe)?[{k:lsEvYl(tr)+' 참고',v:tr.roe,dim:true}]:[]),15);
-    lsEvTbl(s2,['해','순이익','ROE','15%↑'],r5.map(r=>({c:[String(r.year),lsEvWt(r.ni),lsEvNum(r.roe)?r.roe.toFixed(1)+'%':'—',lsEvNum(r.roe)?lsEvOk(r.roe>=15):'—']}))
-      .concat(tr?[{cls:'dim',c:[lsEvYl(tr)+' (참고)',lsEvWt(tr.ni),lsEvNum(tr.roe)?tr.roe.toFixed(1)+'%':'—','세지 않음']}]:[]),[0,1,1,0]);
+    lsEvTbl(s2,['해','지배주주 순이익','ROE','15%↑'],r5.map(r=>({c:[String(r.year),lsEvWt((lsEvNum(r.ni_ctrl)?r.ni_ctrl:r.ni)),lsEvNum(r.roe)?r.roe.toFixed(1)+'%':'—',lsEvNum(r.roe)?lsEvOk(r.roe>=15):'—']}))
+      .concat(tr?[{cls:'dim',c:[lsEvYl(tr)+' (참고)',lsEvWt(lsEvNum(tr.ni_ctrl)?tr.ni_ctrl:tr.ni),lsEvNum(tr.roe)?tr.roe.toFixed(1)+'%':'—','세지 않음']}]:[]),[0,1,1,0]);
     lsEvKV(s2,[['15%↑ 해',n15+'/'+rr5.length,lsEvOk(rr5.length>=3&&n15>=4,'4개↑ · 기록 3개↑'),'tot']]);
     mine='최근 5년 ROE '+rr5.map(r=>r.roe.toFixed(0)).join(' · ')+(tr&&lsEvNum(tr.roe)?' · 최근 4분기('+tr.ttm+') '+tr.roe.toFixed(0):'');
     so.push(rr5.length>=3&&n15>=4?'최근 다섯 해 중 '+n15+'해가 15%↑ — 꾸준히 버는 회사다.':'최근 다섯 해 중 15%↑는 '+n15+'해 — 버핏의 \'꾸준히 버는 회사\' 문턱(4해)에 못 미친다.');
     if(tr&&lsEvNum(tr.roe)&&tr.roe>=15&&!(n15>=4)) so.push('최근 4분기('+tr.ttm+') ROE 는 '+tr.roe.toFixed(1)+'%로 높다 — 다만 한 번의 좋은 해는 꾸준함이 아니다.');
-    lim=['ROE 는 빚을 늘려도 오른다 — 점검 3(빚)과 함께 보라.','연결 순이익(비지배 몫 포함) 기준.'];
+    lim=['ROE 는 빚을 늘려도 오른다 — 점검 3(빚)과 함께 보라.','지배주주 몫 기준(비지배 몫을 뺀 순이익 · 자본) — 지배 몫을 못 고른 해만 연결 전체.'];
   } else if(k===2){
     const lr=R[R.length-1]||{}, de=lr.de;
     if(lsEvNum(de)){
@@ -18672,7 +18672,7 @@ function lsEvChk(d,k){
     const p2=lsEvNum(per)&&P.v.length?P.v.filter(v=>v<=per).length/P.v.length*100:null;
     lsEvP(s1,'지금 PER = 지금 주가 ÷ 최근 4분기 주당이익. 자기 역사 = 기록된 PER '+P.v.length+P.u+' 가운데 지금 PER 이하인 몫 — 하위 절반(50%↓)이면 ✓. '+
       '기록 PER = 분기 말 주가 ÷ 그 분기 최근 4분기 주당이익(0.5–300배만, 분기 기록이 6개 모자라면 연말 PER).');
-    lsEvKV(s2,[['지금 주가',lsEvW(dc.px),dc.date?lsD(dc.date):''],['주당이익',lsEvW(dc.eps),lq?lq.label+'까지 최근 4분기':''],['지금 PER',lsEvF(per,1)+'배','주가 ÷ 주당이익'],
+    lsEvKV(s2,[['지금 주가',lsEvW(dc.px),dc.date?lsD(dc.date):''],['주당이익',lsEvW(dc.eps),lq?lq.label+'까지 최근 4분기':''],['지금 PER',lsEvNum(per)?lsEvF(per,1)+'배':'—','주가 ÷ 주당이익'],
       ['PER 기록',(b.n||P.v.length)+P.u,'25 · 50 · 75% 자리 '+lsEvF(b.lo,1)+' · '+lsEvF(b.mid,1)+' · '+lsEvF(b.hi,1)+'배'],
       ['자기 역사',lsEvNum(pct)?'하위 '+pct.toFixed(0)+'%':'—',lsEvOk(lsEvNum(pct)?pct<=50:false,'문턱 50%'),'tot'],
       ['다시 셈',lsEvNum(p2)?'하위 '+p2.toFixed(0)+'%':'—',lsEvNum(p2)&&lsEvNum(pct)?lsEvSame(p2.toFixed(0),pct.toFixed(0)):'']]);
@@ -18702,7 +18702,7 @@ function lsEvLyn(d){
       ['관찰','그 밖 — 이익의 방향을 지켜본다(재고가 줄고 이익이 바닥을 지날 때를 기다린다)']];
     on=peak?0:(turn&&hot)?1:turn?2:3;
     const ratio=lsEvNum(eN)&&em&&em.eps>0?eN/em.eps*100:null, peak2=!!(em&&lsEvNum(eN)&&eN>=em.eps*0.95&&em.n>=8);
-    const sp=lsEvSub(s2,'peak','첫째 — 이익이 꼭대기인가','주당이익 = 최근 4분기 순이익 ÷ 주식 수');
+    const sp=lsEvSub(s2,'peak','첫째 — 이익이 꼭대기인가','주당이익 = 최근 4분기 지배주주 순이익 ÷ 주식 수');
     lsEvKV(sp,[['지금 주당이익',lsEvW(eN),lq?lq.label+'까지':''],['기록 최고',lsEvW(em&&em.eps),em?em.label+' · 분기 기록 '+em.n+'개 중':''],
       ['지금 ÷ 최고',lsEvNum(ratio)?ratio.toFixed(0)+'%':'—',lsEvOk(peak,'95%↑ · 기록 8개↑'),'tot']]);
     if(peak2!==peak) lsEvP(sp,'다시 센 값('+(peak2?'꼭대기':'아님')+')이 서버 판정과 다르다 — 서버 값을 따른다.','lsEvWarn');
@@ -18742,7 +18742,7 @@ function lsEvLyn(d){
     on=(lsEvNum(de)?de:0)<=100?0:1;
     lsEvKV(s2,[['마지막 칸',lsEvYl(lr),''],['차입금',lsEvWt(lr.debt),''],['자본총계',lsEvWt(lr.eq),''],
       ['차입금/자본',lsEvNum(de)?de.toFixed(0)+'%':'줄 없음 → 0으로',lsEvOk((lsEvNum(de)?de:0)<=100,'문턱 100%'),'tot']]);
-    lsEvTbl(lsEvSub(s2,'ni','흑자 전환','최근 칸 순이익'),['칸','순이익','유형'],R.slice(-4).map(r=>({c:[lsEvYl(r),lsEvWt(r.ni),r.type||'—']})),[0,1,0]);
+    lsEvTbl(lsEvSub(s2,'ni','흑자 전환','최근 칸 순이익(연결 — 유형의 부호)'),['칸','순이익(연결)','유형'],R.slice(-4).map(r=>({c:[lsEvYl(r),lsEvWt(r.ni),r.type||'—']})),[0,1,0]);
     so.push(on===0?'흑자로 돌아섰고 빚을 버틸 만하다 — 린치는 여기서 산다. 이 판은 흑자 셋째 해부터 회생이 아닌 다른 유형으로 매긴다.':'흑자로 돌아섰지만 빚이 무겁다 — 빚을 줄이는지 지켜본다.');
     lim=['한 해 흑자가 회생의 끝은 아니다 — 일회성 이익(자산 매각 등)으로 흑자가 난 해일 수 있다.','차입금 줄이 없으면 빚 0으로 보고 결단 쪽으로 간다 — 서버 규칙의 빈틈이다.'];
   } else {
@@ -18751,7 +18751,7 @@ function lsEvLyn(d){
       lsEvP(s2,'유형을 매긴 해가 없다 — '+(w.rule==='none'&&!lsEvNum(w.r0)?'원장에 매출 줄이 없어'+(d.sector==='금융'?'(금융업은 손익 구조가 달라 매출액 줄이 잡히지 않는다)':'')+' 매출 증가율을 셀 수 없다.':'매출 증가율을 셀 기록이 모자라다.')+
         ' 서버는 유형이 없을 때도 적자와 같은 갈래로 보내 「관찰 — 적자 중」 문장이 붙는다.','lsEvWarn');
     }
-    lsEvKV(s2,[['최근 4분기 순이익',lsEvWt(lq&&lq.ni4),lq?lq.label+'까지':''],['주당이익',lsEvW(eN),lsEvNum(eN)?(eN>0?'흑자':'적자'):'']]);
+    lsEvKV(s2,[['최근 4분기 지배주주 순이익',lsEvWt(lq&&lq.ni4),lq?lq.label+'까지':''],['주당이익',lsEvW(eN),lsEvNum(eN)?(eN>0?'흑자':'적자'):'']]);
     so.push(!t&&lsEvNum(eN)&&eN>0?'이 회사는 적자가 아니다 — 유형이 없어 린치의 갈래를 쓸 수 없을 뿐이다. 이익 기준 판정은 버핏 카드와 값 상자를 보라.':'흑자 전환과 빚(현금 · 차입 · 구조조정)을 먼저 확인한다 — 흑자 전환 전에는 이야기만 있다.');
     lim=['유형은 매출 증가율 · 이익 꺾임으로 가른다 — 매출 줄이 없거나 기록이 짧은 회사는 유형이 없다.'];
   }
@@ -18780,11 +18780,11 @@ function lsEvPx(d,k){
   } else if(k==='line'){
     const box=ln||lp;
     title='이익선 '+lsEvW(box); lede='최근 4분기 주당이익 × 이 회사 PER 기록의 중앙값 — 보통 값';
-    lsEvP(s1,'이익선(보통 값) = 주당이익 × PER 중앙. 주당이익 = 최근 4분기 순이익 합 ÷ 주식 수(그 분기 해의 주식 수 — 분할 · 무상증자 보정). '+
+    lsEvP(s1,'이익선(보통 값) = 주당이익 × PER 중앙. 주당이익 = 최근 4분기 지배주주 순이익 합 ÷ 주식 수(그 분기 해의 주식 수 — 분할 · 무상증자 보정). '+
       'PER 중앙 = 기록된 PER '+P.v.length+P.u+'의 50% 자리(기록 PER = 분기 말 주가 ÷ 그 분기 최근 4분기 주당이익, 0.5–300배만).');
     if(lsEvNum(ln)&&lq){
       const sh=lsEvNum(lq.ni4)&&lq.eps?lq.ni4/lq.eps:null, mine=lq.eps*b.mid;
-      lsEvKV(s2,[['최근 4분기 순이익',lsEvWt(lq.ni4),lq.label+'까지 네 분기 합'],['÷ 주식 수',lsEvSh(sh),'순이익 ÷ 주당이익으로 거꾸로 셈 — 분할 보정 값'],['= 주당이익',lsEvW(lq.eps),''],
+      lsEvKV(s2,[['최근 4분기 지배주주 순이익',lsEvWt(lq.ni4),lq.label+'까지 네 분기 합'],['÷ 주식 수',lsEvSh(sh),'순이익 ÷ 주당이익으로 거꾸로 셈 — 분할 보정 값'],['= 주당이익',lsEvW(lq.eps),''],
         ['× PER 중앙',lsEvF(b.mid,2)+'배','기록 '+(b.n||P.v.length)+P.u+'의 50% 자리'],['= 이익선',lsEvW(mine),lsEvSame(lsEvW(mine),lsEvW(box)),'tot'],
         ['참고 — 싼 값 · 비싼 값',lsEvW(lq.eps*b.lo)+' · '+lsEvW(lq.eps*b.hi),'25% · 75% 자리 '+lsEvF(b.lo,2)+' · '+lsEvF(b.hi,2)+'배']]);
     } else if(lsEvNum(lp)){
@@ -18792,7 +18792,7 @@ function lsEvPx(d,k){
     } else lsEvP(s2,'주당이익이 마이너스(적자)거나 PER 기록이 모자라 이익선을 그을 수 없다.');
     lsEvPerStrip(s2,P.v,dc.per,b);
     const g1=rel(px,box);
-    so.push('지금 '+lsEvW(px)+'은 이익선보다 '+(lsEvNum(g1)?Math.abs(g1).toFixed(0)+'% '+(g1>=0?'비싸다.':'싸다.'):'—'));
+    so.push(lsEvNum(g1)?'지금 '+lsEvW(px)+'은 이익선보다 '+Math.abs(g1).toFixed(0)+'% '+(g1>=0?'비싸다.':'싸다.'):'지금은 이익선이 없다(적자이거나 PER 기록이 모자람).');
     if(dc.norm_eps&&lsEvNum(lp)&&lp!==box) so.push('순환주는 이익 꼭대기에서 이익선이 높게 그어진다 — 5년 평균 주당이익('+lsEvW(dc.norm_eps)+')으로 그은 선은 '+lsEvW(lp)+'(상자 아래 주석).');
     lim=['PER 중앙은 이 회사 기록뿐 — 금리 · 업종 평균과 견주지 않았다.','한 분기 일회성 이익이 4분기 합에 들면 선이 튄다.',
       '검증(공시 11,949건 · 2017–2025 · 지금 상장사만): 이 잣대로 맞은 건 \'비싼 구간은 뒤처졌다\' 쪽 — 싸다는 것만으로 사지 마라.'];
@@ -18803,8 +18803,8 @@ function lsEvPx(d,k){
       '꼭대기 이익으로 재면 싸 보이므로. 그 밖에는 지금 주당이익(최근 4분기).');
     if(lsEvNum(ne)){
       const r5=A.slice(-5), e5=r5.filter(r=>lsEvNum(r.eps)), avg=lsEvAvg(e5.map(r=>r.eps));
-      lsEvTbl(lsEvSub(s2,'e5','5년 평균 주당이익','연간 칸 끝 다섯 해'),['해','순이익','주식 수','주당이익'],
-        r5.map(r=>({c:[String(r.year),lsEvWt(r.ni),lsEvSh(r.shares),lsEvW(r.eps)]})).concat([{cls:'tot',c:['평균','','',lsEvW(avg)]}]),[0,1,1,1]);
+      lsEvTbl(lsEvSub(s2,'e5','5년 평균 주당이익','연간 칸 끝 다섯 해'),['해','지배주주 순이익','주식 수','주당이익'],
+        r5.map(r=>({c:[String(r.year),lsEvWt((lsEvNum(r.ni_ctrl)?r.ni_ctrl:r.ni)),lsEvSh(r.shares),lsEvW(r.eps)]})).concat([{cls:'tot',c:['평균','','',lsEvW(avg)]}]),[0,1,1,1]);
       lsEvP(s2,'',null).appendChild(lsEvSame(lsEvW(avg),lsEvW(ne)));
     }
     lsEvKV(s2,[['기준 주당이익',lsEvW(base),lsEvNum(ne)&&ne>0?'5년 평균':'지금 — '+(lq?lq.label+'까지 최근 4분기':'')],['× 싼 값 PER',lsEvF(b.lo,2)+'배','25% 자리'],
@@ -18821,7 +18821,7 @@ function lsEvPx(d,k){
 const LS_EV_MOM=[['버핏 · 좋은 회사가 싸다','그 분기 보고서 접수일 기준 — 앞선 해들의 ROE 12%↑ 해가 70%↑(기록 3해↑) · 최근 세 해 흑자이고, 접수일 주가 ÷ 그 분기 주당이익(PER)이 그때까지 기록(8개↑)의 하위 25%↓'],
   ['린치 · 고성장주가 PEG 1 아래','앞 해 유형이 고성장 · 주당이익 1년 20%↑ · PER ÷ 증가율 ≤ 1'],
   ['린치 · 순환주 이익 바닥 통과','앞 해 유형이 경기순환 · 적자 · 회생 — 최근 4분기 합 영업이익이 두 분기 줄다 돌아섰고, 주가가 5년 평균 주당이익 × PER 중앙의 2배 아래(적자면 「회생 — 적자가 줄기 시작」)'],
-  ['린치 · 회생 — 흑자 전환','최근 4분기 순이익이 두 분기 적자 뒤 흑자'],
+  ['린치 · 회생 — 흑자 전환','최근 4분기 지배주주 순이익이 두 분기 적자 뒤 흑자'],
   ['린치 · 우량주가 이익선 아래','앞 해 유형이 대형우량 · 저성장 — PER 하위 15%↓이고 버핏의 품질 조건은 못 맞춤']];
 function lsEvRec(d){
   const M=(d.moments||[]).slice().sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0), st=d.stats||{}, base=st.base, body=el('div');
@@ -18972,7 +18972,7 @@ function lsLedger(led, d){
   const R=d.rows;
   const lt=R[R.length-1].ttm;
   led.appendChild(el('h4',null,'밸류라인 한 장 — '+R[0].year+'–'+(lt||R[R.length-1].year)));
-  led.appendChild(el('p','sub','버핏이 회사를 처음 볼 때 펼치는 15년 원장. 주당 값은 오늘 주식 수 기준(분할·무상증자 보정). 금색 칸은 좋은 해(ROE 15%↑ · PER이 자기 역사 하위 25%↓), 빨간 글씨는 뒷걸음친 해.'+
+  led.appendChild(el('p','sub','버핏이 회사를 처음 볼 때 펼치는 15년 원장. 주당 값(주당순이익 · PER · PBR)과 ROE 는 지배주주 순이익 · 자본, 오늘 주식 수 기준(분할·무상증자 보정). 배당성향 · 차입금/자본 · ROIC 는 연결 전체. 금색 칸은 좋은 해(ROE 15%↑ · PER이 자기 역사 하위 25%↓), 빨간 글씨는 뒷걸음친 해.'+
     (lt?' 마지막 칸 = 최근 4분기 합('+lt+'까지 · 앞 칸과 기간이 겹친다). 주가·PER은 그 분기 말, 최고·최저는 그 4분기 동안, 배당은 마지막 결산 배당. 새 분기·반기 보고서가 들어오면 이 칸이 바뀐다.':'')));
   const w=el('div','lsTblW'), t=el('table','lsTbl');
   const hd=el('thead'), hr=el('tr'); hr.appendChild(el('th',null,''));
@@ -19007,7 +19007,7 @@ function lsLedger(led, d){
   const hlb=r=>r.hl_basis==='종가'?' (종가)':r.hl_basis==='장중+종가'?' *':'';
   row('연중 최고(장중)',r=>r.hi?won(r.hi)+hlb(r):'—');
   row('연중 최저(장중)',r=>r.lo?won(r.lo)+hlb(r):'—');
-  row('PER',r=>f1(r.per),r=>r.per&&d.band.lo&&r.per<=d.band.lo?'hot':'');
+  row('PER',r=>r.per>300?'300↑':f1(r.per),r=>r.per&&d.band.lo&&r.per<=d.band.lo?'hot':'');     // 300배 넘으면(띠도 버리는 값 — 위메이드 2013 지배 순이익 328만원) 숫자 대신
   row('PBR',r=>r.pbr===null||r.pbr===undefined?'—':r.pbr.toFixed(2));
   row('배당수익률',r=>r.dy===null||r.dy===undefined?'—':r.dy.toFixed(1)+'%');
   t.appendChild(tb); w.appendChild(t); led.appendChild(w);

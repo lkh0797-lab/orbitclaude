@@ -31,6 +31,7 @@ import sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 # 카드 배지의 '가속' 문턱 = 가속(B) 띠 — 숫자를 따로 두지 않고 드러켄밀러(가속도 탭 · 업황 시계와 한 곳)에서 읽는다(산업.py 와 같은 import)
 from 드러켄밀러 import PHASE_BAND as DRUCK_BAND  # noqa: E402
+from 드러켄밀러 import _grab as _DRK_GRAB, IS_PICK as _DRK_IS_PICK  # noqa: E402
 
 
 # ---------------------------------------------------------------- 연간 재무
@@ -59,6 +60,111 @@ def _year_rows(FIN, corp, y):
 def _key(FIN, r):
     nm = FIN.NUM_PREFIX.sub("", (r.get("account_nm") or "").strip())
     return FIN._row_key(r.get("account_id"), nm).split("|")[0], FIN._merge_name(nm)
+
+
+# 지배주주 몫(2026-10-22) — 주당 값(EPS · BPS · ROE)은 지배주주 순이익 · 자본으로 낸다(풍경 탭). 'ni' · 'eq' 는 연결 전체 그대로 둔다 —
+# ROIC · 차입/자본 · FCF 전환율 · 순차입/자본처럼 연결 차입 · 현금흐름과 짝인 비율이 쓴다. 규칙은 드러켄밀러 분기 '지배순이익'과 같고
+# (지배 줄 → 당기순이익 − 비지배 → 비지배 줄이 없으면 당기순이익), 연간 원장에서 본 함정 넷을 피한다: 계속 · 중단영업으로만 나뉜 귀속 줄
+# (솔브레인홀딩스 2025 — 계속 421억만 집으면 실제 4,874억을 놓친다) · 총포괄 귀속 줄(사람인 2023) · 주당이익 줄 · 펀드 몫 부채
+# '비지배지분부채'(미래에셋벤처투자 2025 — 자본총계보다 크다). 고른 뒤 검산한다(지배 + 비지배 = 당기순이익 · 자본총계).
+# 2021~25 연간 3,988건에서 공시 EPS ±10% 일치가 당기순이익 64.6% → 88.5%
+_IF = "ifrs-full_"
+OWN_NI_TAG, NCI_NI_TAG = _IF + "ProfitLossAttributableToOwnersOfParent", _IF + "ProfitLossAttributableToNoncontrollingInterests"
+OWN_NI_CD = (_IF + "IncomeFromContinuingOperationsAttributableToOwnersOfParent",
+             _IF + "IncomeFromDiscontinuedOperationsAttributableToOwnersOfParent")
+NCI_NI_CD = (_IF + "ProfitLossFromContinuingOperationsAttributableToNoncontrollingInterests",
+             _IF + "ProfitLossFromDiscontinuedOperationsAttributableToNoncontrollingInterests")
+OWN_EQ_TAG, NCI_EQ_TAG = _IF + "EquityAttributableToOwnersOfParent", _IF + "NoncontrollingInterests"
+# 주당이익 줄은 '주당 (순)이익 · 손실 · 손익' 으로만 — 맨 '주당' 은 '지배주주당기순이익'(지배주주 + 당기)까지 걸러 버린다(가속도 세션 감사, 2026-10-22)
+OWN_SKIP = re.compile(r"계속영업|중단영업|포괄|주당\s*순?(?:이익|손실|손익)")
+NCI_SKIP = re.compile(r"부채|금융|계속영업|중단영업|포괄|주당\s*순?(?:이익|손실|손익)")
+OWN_NI_PICK = {"o": ([OWN_NI_TAG], _DRK_IS_PICK["지배순이익"][1])}
+NCI_NI_PICK = {"n": ([NCI_NI_TAG], r"^비지배")}
+OWN_EQ_PICK = {"e": ([OWN_EQ_TAG], r"^지배(?:기업|회사)|^(?:지배주주|소유주|주주)\s*지분")}
+NCI_EQ_PICK = {"e": ([NCI_EQ_TAG], r"^비지배(?:주주)?\s*지?분$")}       # 비지배지분 · 비지배주주지분 · 비지배 지분 · 비지배분
+# 지배자본을 이름으로 고를 때 뺄 줄 — 본문 원장에서 머리 줄이 첫 자식 줄과 붙어 나온 '지배기업소유지분자본금'(위메이드 · 유한양행 2011)
+EQ_SKIP = re.compile(r"부채|자본금|잉여금|자본조정")
+
+
+def owner_parts(FIN, rows, tot=None, eqt=None):
+    """연간 원장 행에서 지배주주 순이익 · 비지배 순이익 · 지배주주 자본. tot · eqt = 그 원장의 당기순이익 · 자본총계(pick_accounts).
+    반환 {ni_ctrl, ni_ctrl_src, nci_ni, eq_ctrl, eq_ctrl_src, ctrl_chk} — ctrl_chk = 지배 줄로 골랐을 때 지배 + 비지배 = 당기순이익(±0.5%)인가
+    (어긋나도 값은 지배 줄, 다른 길로 냈으면 None)."""
+    IS, BS = ("IS", "CIS"), ("BS",)
+
+    def nm(r):
+        return FIN.NUM_PREFIX.sub("", (r.get("account_nm") or "").strip())
+
+    def tag(t, divs):
+        for r in rows:
+            if r.get("sj_div") in divs and FIN.norm_tag(r.get("account_id")) == t:
+                v = FIN.num(r.get("thstrm_amount"))
+                if v is not None:
+                    return v
+        return None
+
+    def grab(skip, divs, pick):
+        return next(iter(_DRK_GRAB([r for r in rows if not skip(nm(r))], divs, pick, "thstrm_amount").values()), None)
+    # 비지배 몫 — 태그 → 계속 + 중단 태그 → 이름(부채 · 금융 · 계속 · 중단 · 포괄 · 주당 줄 뺌)
+    nci = tag(NCI_NI_TAG, IS)
+    if nci is None:
+        c, d = tag(NCI_NI_CD[0], IS), tag(NCI_NI_CD[1], IS)
+        nci = (c or 0) + (d or 0) if (c is not None or d is not None) else None
+    if nci is None:
+        nci = grab(NCI_SKIP.search, IS, NCI_NI_PICK)
+    # 지배 몫 — 태그 → 계속 + 중단 지배 귀속 태그 → 이름 → 당기순이익 − 비지배 → (비지배 줄 없음) 당기순이익
+    own, src = tag(OWN_NI_TAG, IS), "지배 줄"
+    if own is None:
+        c = tag(OWN_NI_CD[0], IS)
+        if c is not None:
+            own, src = c + (tag(OWN_NI_CD[1], IS) or 0), "계속 + 중단 지배 귀속"
+    if own is None:
+        # 이름으로 고를 때는 후보를 다 모아 지배 + 비지배 = 당기순이익(±0.5%)인 줄을 먼저 — 태그 없는 '지배기업소유주지분' 두 줄 중
+        # 총포괄 쪽이 앞에 오는 원장(SK 2023 3분기 꼴)에서 앞줄을 집지 않게. 맞는 줄이 없으면 _grab 의 고르기 그대로
+        rx = re.compile(OWN_NI_PICK["o"][1])
+        cands = []
+        for r in rows:
+            n_ = nm(r)
+            if r.get("sj_div") not in IS or OWN_SKIP.search(n_) or "우선주" in n_ or \
+                    FIN.norm_tag(r.get("account_id")).startswith("ifrs-full_ComprehensiveIncome"):
+                continue
+            hit, _ = FIN._account_hit(r, n_, OWN_NI_PICK["o"][0], rx)
+            v = FIN.num(r.get("thstrm_amount")) if hit else None
+            if v is not None:
+                cands.append(v)
+        fit = [v for v in cands if nci is not None and tot is not None and abs(v + nci - tot) <= max(1e6, abs(tot) * 0.005)]
+        own, src = (fit[0] if fit else grab(OWN_SKIP.search, IS, OWN_NI_PICK)), "지배 줄(이름)"
+    if own is None and tot is not None:
+        own, src = (tot - nci, "당기순이익 − 비지배") if nci is not None else (tot, "당기순이익(비지배 없음)")
+    chk = abs(own + nci - tot) <= max(1e6, abs(tot) * 0.005) \
+        if (own is not None and nci is not None and tot is not None and src.startswith(("지배", "계속"))) else None
+    # 검산(지배 + 비지배 = 당기순이익)이 어긋나면 지배 줄을 버리고 당기순이익 − 비지배(ctrl_chk False 는 남긴다). 2016–25 캐시의 어긋난 54건은
+    # 공시 EPS ±5% 로 '지배 줄 틀림 · 당기 − 비지배 맞음' 24 대 그 반대 4 — 태그가 계속영업 귀속 줄에 붙은 원장(삼성전기 2019–22 · LG이노텍 2020 ·
+    # 덕산하이메탈 2023), 총포괄 쌍둥이 줄(풍산 2017), 자릿수 · 부호가 틀린 공시 값(세아제강지주 2017 · 2020, 대웅제약 2018), 엉터리 태그 줄(위메이드 6,455원)
+    if chk is False:
+        own, src = tot - nci, "당기순이익 − 비지배(지배 줄 검산 어긋남)"
+    # 비지배 줄이 없으면 지배 = 당기순이익이어야 한다 — 이름으로 고른 줄이 다르면(제주은행 2016 · 클리오 2019 · 로보스타 2023) 당기순이익
+    elif nci is None and tot is not None and own is not None and src == "지배 줄(이름)" and abs(own - tot) > max(1e6, abs(tot) * 0.005):
+        own, src = tot, "당기순이익(비지배 없음 · 이름 줄 값 이상)"
+    # 지배 자본 — 태그 → 이름(부채 · 자본금 · 잉여금 · 자본조정 줄 뺌) → 자본총계 − 비지배지분 → (비지배 없음) 자본총계.
+    # 고른 뒤 검산한다: 태그가 '납입자본' · '자본금' 줄에 붙은 원장(현대백화점 2017 · 2019–22, 우주일렉트로 2017–24)을 그대로 쓰면 ROE 160–610%.
+    # 비지배가 있으면 지배 + 비지배 = 자본총계(±0.5%)가 아니면 자본총계 − 비지배. 비지배 줄이 없으면 지배 ≤ 0 이거나 자본총계의 절반 미만일 때만
+    # 자본총계(무조건 바꾸면 본문 원장에서 비지배 이름이 다른 회사 약 50곳의 그럴듯한 값을 덮는다). 캐시 2011–26 에서 52건 고침 · ROE 이상 24 → 9
+    en = tag(NCI_EQ_TAG, BS)
+    if en is None:
+        en = grab(lambda n: "부채" in n, BS, NCI_EQ_PICK)
+    eq, esrc = tag(OWN_EQ_TAG, BS), "지배자본 줄"
+    if eq is None:
+        eq, esrc = grab(EQ_SKIP.search, BS, OWN_EQ_PICK), "지배자본 줄(이름)"
+    if eq is not None and eqt is not None:
+        if en is not None and abs(eq + en - eqt) > max(1e6, abs(eqt) * 0.005):
+            eq, esrc = eqt - en, "자본총계 − 비지배지분(지배자본 줄 검산 어긋남)"
+        elif en is None and eqt > 0 and (eq <= 0 or eq / eqt < 0.5):
+            eq, esrc = eqt, "자본총계(지배자본 줄 값 이상)"
+    if eq is None and eqt is not None:
+        eq, esrc = (eqt - en, "자본총계 − 비지배지분") if en is not None else (eqt, "자본총계(비지배 없음)")
+    return {"ni_ctrl": own, "ni_ctrl_src": src if own is not None else None, "nci_ni": nci,
+            "eq_ctrl": eq, "eq_ctrl_src": esrc if eq is not None else None, "ctrl_chk": chk}
 
 
 def fundamentals(FIN, corp, years):
@@ -111,6 +217,7 @@ def fundamentals(FIN, corp, years):
                     pbt = v
         d.update(cfo=cfo, capex=capex, buyback=bb, div=div, debt=debt, cash=cash, inv=inv, ar=ar,
                  tax=tax, pbt=pbt)
+        d.update(owner_parts(FIN, rows, d["ni"], d["eq"]))
         out.append(d)
     # 파생 — 전년 값이 필요한 것은 한 번 더 돈다
     prev = None
@@ -127,6 +234,11 @@ def fundamentals(FIN, corp, years):
         d["roic"] = op * (1 - t) / ic_avg * 100 if (op is not None and ic_avg and ic_avg > 0) else None
         eq_avg = (eq + prev["eq"]) / 2 if (eq and prev and prev.get("eq")) else eq
         d["roe"] = ni / eq_avg * 100 if (ni is not None and eq_avg and eq_avg > 0) else None
+        # 지배주주 ROE = 지배순이익 ÷ 지배자본(그해 · 전년 말 평균 — 전년이 바로 앞 해일 때만, 아니면 그해 말 하나). 분기 _pipe_rows 와 같은 꼴
+        nc, ec = d["ni_ctrl"], d["eq_ctrl"]
+        ep = prev.get("eq_ctrl") if (prev and prev["year"] == d["year"] - 1) else None
+        eca = (ec + ep) / 2 if (ec and ep and ec > 0 and ep > 0) else (ec if ec and ec > 0 else None)
+        d["roe_ctrl"] = nc / eca * 100 if (nc is not None and eca) else None
         d["capex_int"] = d["capex"] / rev * 100 if (d["capex"] is not None and rev and rev > 0) else None
         d["de"] = d["debt"] / eq * 100 if (d["debt"] is not None and eq and eq > 0) else None
         d["liab_eq"] = d["liab"] / eq * 100 if (d["liab"] is not None and eq and eq > 0) else None
