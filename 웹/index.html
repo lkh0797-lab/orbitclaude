@@ -3161,36 +3161,13 @@ table.vclYr td.num.up{color:#d24c43}table.vclYr td.num.dn{color:#3a6fd8}
 .lsPxC{fill:none;stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
 .lsplate.anim .lsPxZ{animation:spFade .8s 1.9s both}
 .lsOff{font:600 10.5px var(--f-body);fill:var(--p-gold2);paint-order:stroke;stroke:#0e1319;stroke-width:4px;stroke-linejoin:round}
-.lsSw{display:flex;gap:6px;justify-content:flex-end;margin:10px 2px -6px}
 .lsFig.noBand .lsBandG,.lsFig.noBand .lsPxZ{display:none}
 .lsFig.noMk .lsMk{display:none}
-.lsKey span.g{color:var(--p-hi);font-weight:600}
-.lsKey i.hatch{width:16px;height:11px;border:0;background:repeating-linear-gradient(45deg,rgba(229,83,75,.55) 0 2px,transparent 2px 5px)}
 .lsNowDot{fill:var(--p-gold2);stroke:#0e1319;stroke-width:2}
 .lsRoe{font:500 9.5px var(--f-num);fill:var(--p-faint)}
 .lsGuide{stroke:rgba(241,217,160,.5);stroke-width:1;stroke-dasharray:3 4}
 .lsCap .k{font:600 12px var(--f-body);fill:var(--p-hi)}
 .lsCap .e{font:500 9.5px var(--f-num);letter-spacing:.14em;fill:var(--p-faint)}
-.lsGauge{margin:12px 0 4px;max-width:760px}
-.lsGaugeH{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:var(--fs-4);color:var(--p-hi)}
-.lsGaugeH b{font-size:var(--fs-3);letter-spacing:.04em;color:var(--p-dim)}
-.lsGaugeH .z{font-weight:700;padding:1px 8px;border-radius:999px;font-size:var(--fs-3);color:#0e1319}
-.lsGaugeH .z.lo{background:#7cc4ff}.lsGaugeH .z.mid{background:#f7f3e9}.lsGaugeH .z.hi{background:#f5a35c}
-.lsGaugeBar{position:relative;height:16px;margin:10px 0 4px;border-radius:8px;overflow:visible;background:linear-gradient(90deg,rgba(124,196,255,.55),rgba(247,243,233,.22) 25%,rgba(247,243,233,.22) 75%,rgba(245,163,92,.6))}
-.lsGaugeBar .seg{position:absolute;top:0;bottom:0;border-right:1px dashed rgba(255,255,255,.28)}
-.lsGaugeBar .seg.hi{border-right:0}
-.lsGaugeBar .seg span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:var(--fs-2);color:rgba(255,255,255,.75);white-space:nowrap;pointer-events:none}
-.lsGaugeBar .dot{position:absolute;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:3px solid #0e1319;box-shadow:0 0 0 2px #f1d9a0}
-.lsGaugeBar .dot.lo{background:#7cc4ff}.lsGaugeBar .dot.mid{background:#f7f3e9}.lsGaugeBar .dot.hi{background:#f5a35c}
-.lsGaugeSc{position:relative;height:16px;font-size:var(--fs-2);color:var(--p-faint)}
-.lsGaugeSc span{position:absolute;transform:translateX(-50%);white-space:nowrap}
-.lsGaugeSc span.l{transform:none}.lsGaugeSc span.r{transform:translateX(-100%)}
-.lsGaugeNote{font-size:var(--fs-2);color:var(--p-faint);margin-top:2px}.lsGaugeNote.warn{color:#f5a35c}
-.lsGaugeNa{font-size:var(--fs-3);color:var(--p-dim);margin:10px 0}
-.lsKey{display:flex;gap:16px;flex-wrap:wrap;margin:6px 2px 0;font-size:var(--fs-3);color:var(--p-dim)}
-.lsKey span{display:inline-flex;align-items:center;gap:6px}
-.lsKey i{display:inline-block;width:18px;height:0;border-top:2px solid}
-.lsKey b{display:inline-flex;width:15px;height:15px;border-radius:50%;align-items:center;justify-content:center;font:700 var(--fs-1) var(--f-num);color:#0e1319}
 .lsTri{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr) minmax(0,1fr);gap:22px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08)}
 @media (max-width:1200px){.lsTri{grid-template-columns:minmax(0,1fr)}}
 .lsColH{margin:0 0 10px}
@@ -3246,6 +3223,132 @@ table.vclYr td.num.up{color:#d24c43}table.vclYr td.num.dn{color:#3a6fd8}
 .lsRec{margin-top:10px;font-size:var(--fs-3);line-height:1.6;color:var(--p-dim)}
 .lsRec b{color:var(--p-ink);font-family:var(--f-num);font-weight:600}
 .lsplate.full .lsFig{width:min(100%, calc((100vh - 330px) * 1000 / 470));margin:1vh auto 0}
+/* ls-v2: evidence — 풍경 · 안목 · 결단 칸 근거 팝업(2026-10-22). 누를 수 있는 항목 표시 + 가운데 모달.
+   모달은 body(발표 모드면 전체 화면 판)에 붙으므로 판 팔레트 토큰을 .lsEvBg 에 다시 선언한다 */
+.lsplate .lsEvOn{position:relative;cursor:pointer;transition:box-shadow .18s,background-image .18s}
+.lsplate .lsEvOn:hover:not(:has(.lsEvOn:hover)){box-shadow:inset 0 0 0 1px rgba(214,180,106,.55);background-image:linear-gradient(rgba(255,255,255,.035),rgba(255,255,255,.035))}
+.lsplate .lsEvOn:focus-visible{outline:2px solid #f1d9a0;outline-offset:2px}
+.lsplate .lsEvTag{position:absolute;top:-8px;right:10px;z-index:2;padding:0 7px 0 8px;border-radius:999px;font:600 10px/16px 'IBM Plex Mono',var(--mono);letter-spacing:.04em;
+  color:#f1d9a0;background:#0e1319;border:1px solid rgba(214,180,106,.6);opacity:0;transform:translateY(2px);transition:opacity .16s,transform .16s;pointer-events:none;white-space:nowrap}
+.lsplate .lsEvOn:hover:not(:has(.lsEvOn:hover))>.lsEvTag,.lsplate .lsEvOn:focus-visible>.lsEvTag{opacity:1;transform:none}
+.lsplate .lsChk li.lsEvOn{border-radius:6px;padding:2px 56px 2px 4px;margin:0 -4px}
+.lsplate .lsChk li.lsEvOn>.lsEvTag{top:4px;right:5px}
+.lsplate .lsPx3 div.lsEvOn>.lsEvTag{top:-9px;right:6px}
+.lsplate .lsRec.lsEvOn{padding:8px 10px;margin:10px -10px 0;border-radius:8px}
+.lsplate .lsCh [data-ev]{cursor:pointer}
+.lsplate .lsCh .lsWords span[data-ev]:hover{background:rgba(214,180,106,.24);color:#f7f3e9}
+.lsplate .lsCh .lsEv li[data-ev]:hover,.lsplate .lsCh .lsChN span[data-ev]:hover{color:#f7f3e9;text-decoration:underline dotted rgba(241,217,160,.75);text-underline-offset:3px}
+.lsplate .lsEvAlias{cursor:pointer}
+.lsplate .lsEvAlias:hover{color:var(--p-dim)!important;text-decoration:underline dotted rgba(241,217,160,.6);text-underline-offset:3px}
+.lsEvBg{--p-bg:#0e1319;--p-ink:#eceae4;--p-hi:#f7f3e9;--p-dim:#9aa4b0;--p-faint:#7d8897;--p-gold:#d6b46a;--p-gold2:#f1d9a0;
+  --f-disp:'Noto Serif KR','Nanum Myeongjo','Batang',serif;--f-body:var(--sans);--f-num:'IBM Plex Mono',var(--mono);
+  position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:16px;
+  background:rgba(4,7,11,.66);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);color-scheme:dark;word-break:keep-all;animation:lsEvIn .16s ease-out both}
+.lsEvPop{position:relative;width:min(760px,100%);max-height:84vh;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;
+  color:var(--p-ink);font:400 13px/1.62 var(--f-body);text-align:left;
+  background:radial-gradient(560px 260px at 100% 0%,rgba(214,180,106,.09),transparent 70%),linear-gradient(180deg,#151d28 0%,#0e1319 100%);
+  border:1px solid rgba(214,180,106,.32);box-shadow:0 40px 90px -30px rgba(0,0,0,.9),0 0 0 1px rgba(0,0,0,.45);animation:lsEvUp .22s cubic-bezier(.2,.8,.2,1) both}
+.lsEvPop::before{content:'';position:absolute;left:24px;right:24px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(214,180,106,.75),transparent)}
+.lsEvPop:focus{outline:none}
+.lsEvTop{flex:none;padding:15px 22px 13px;border-bottom:1px solid rgba(255,255,255,.08)}
+.lsEvRow{display:flex;align-items:center;gap:10px}
+.lsEvEb{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
+.lsEvEb b{font:600 10px/1.6 var(--f-num);letter-spacing:.16em;color:var(--p-gold);padding:1px 8px 0;border:1px solid rgba(214,180,106,.42);border-radius:4px;white-space:nowrap}
+.lsEvEb span{font:600 12.5px var(--f-body);color:var(--p-hi)}
+.lsEvEb span small{font:500 9.5px var(--f-num);letter-spacing:.16em;color:var(--p-faint);margin-left:7px}
+.lsEvEb em{font:500 11px var(--f-num);font-style:normal;color:var(--p-dim)}
+.lsEvNav{margin-left:auto;display:flex;gap:6px;flex:none}
+.lsEvBtn{width:30px;height:30px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--p-ink);
+  font:500 17px/1 var(--f-body);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s}
+.lsEvBtn:hover:not(:disabled){border-color:rgba(214,180,106,.65);color:var(--p-gold2)}
+.lsEvBtn:disabled{opacity:.28;cursor:default}
+.lsEvBtn:focus-visible{outline:2px solid var(--p-gold2);outline-offset:2px}
+.lsEvBtn.lsEvX{font-size:13px}
+.lsEvT{margin:11px 0 0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font:700 22px/1.3 var(--f-disp);letter-spacing:-.01em;color:var(--p-hi)}
+.lsEvT .lsEvDot{width:10px;height:10px;border-radius:50%;flex:none;align-self:center;box-shadow:0 0 0 3px rgba(255,255,255,.06)}
+.lsEvT small{font:600 10px var(--f-num);letter-spacing:.16em;color:var(--p-gold)}
+.lsEvLede{margin:6px 0 0;font-size:13.5px;line-height:1.55;color:var(--p-dim)}
+.lsEvBody{position:relative;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:2px 22px 20px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+.lsEvFoot{flex:none;padding:7px 22px 9px;border-top:1px solid rgba(255,255,255,.06);font:500 10.5px var(--f-num);color:var(--p-faint)}
+.lsEvSec{margin-top:18px}
+.lsEvSec>h5{display:flex;align-items:center;gap:9px;margin:0 0 7px;font-weight:400}
+.lsEvSec>h5 b{font:700 15px var(--f-disp);color:var(--p-gold2)}
+.lsEvSec>h5 em{font:500 9.5px var(--f-num);font-style:normal;letter-spacing:.2em;color:var(--p-faint)}
+.lsEvSec>h5::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(214,180,106,.3),rgba(255,255,255,.04))}
+.lsEvSec p{margin:6px 0 0;color:var(--p-ink)}
+.lsEvSec p.lsEvFine{font-size:12px;line-height:1.55;color:var(--p-dim)}
+.lsEvSec p.lsEvWarn{font-size:12px;line-height:1.55;color:#f3c98a;padding:6px 10px;border-radius:7px;background:rgba(245,163,92,.08);border:1px solid rgba(245,163,92,.28)}
+.lsEvSub{margin:14px 0 0;border-radius:8px}
+.lsEvSub h6{margin:0 0 5px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font:600 13px var(--f-body);color:var(--p-hi)}
+.lsEvSub h6 small{font-weight:400;font-size:11.5px;color:var(--p-faint)}
+.lsEvRule{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:2px;counter-reset:lsr}
+.lsEvRule li{display:grid;grid-template-columns:18px var(--lw,6em) minmax(0,1fr);gap:4px 10px;padding:5px 9px;border-radius:7px;font-size:12.5px;line-height:1.5;color:var(--p-dim);counter-increment:lsr}
+.lsEvRule li::before{content:counter(lsr);font:500 10.5px/1.85 var(--f-num);color:var(--p-faint)}
+.lsEvRule li b{font-weight:600;color:var(--p-ink)}
+.lsEvRule li.on{background:rgba(214,180,106,.14);box-shadow:inset 2px 0 0 var(--p-gold);color:var(--p-ink)}
+.lsEvRule li.on b,.lsEvRule li.on::before{color:var(--p-gold2)}
+.lsEvRule li.on2{background:rgba(214,180,106,.05);box-shadow:inset 2px 0 0 rgba(214,180,106,.4)}
+.lsEvTblW{overflow-x:auto;margin-top:6px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:rgba(0,0,0,.12)}
+table.lsEvTbl{width:100%;border-collapse:collapse;font-size:12px;line-height:1.45}
+.lsEvTbl th{padding:6px 9px;text-align:left;white-space:nowrap;font:600 10.5px var(--f-body);letter-spacing:.02em;color:var(--p-faint);background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.1)}
+.lsEvTbl td{padding:5px 9px;vertical-align:top;color:var(--p-ink);border-bottom:1px solid rgba(255,255,255,.05)}
+.lsEvTbl tbody tr:last-child td{border-bottom:0}
+.lsEvTbl .n{text-align:right;white-space:nowrap}
+.lsEvTbl td.n{font-family:var(--f-num);font-size:11.5px}
+.lsEvTbl td small{display:block;margin-top:1px;font-size:11px;line-height:1.45;color:var(--p-faint)}
+.lsEvTbl tr.dim td{color:var(--p-dim)}
+.lsEvTbl tr.hit td{background:rgba(214,180,106,.13)}
+.lsEvTbl tr.gold td:first-child{box-shadow:inset 2px 0 0 var(--p-gold)}
+.lsEvTbl tr.tot td{border-top:1px solid rgba(255,255,255,.14);font-weight:600;color:var(--p-hi)}
+.lsEvTbl.kv td:first-child{color:var(--p-dim);white-space:nowrap;width:1%}
+.lsEvTbl.kv td.n{font-size:12.5px;color:var(--p-hi);width:1%}
+.lsEvTbl.kv td:last-child{color:var(--p-dim);font-size:11.5px}
+.lsEvTbl.why td:last-child{font-size:11.5px;color:var(--p-dim);min-width:15em}
+.lsEvTbl.why tr:not(.dim) td:nth-child(5){color:var(--p-gold2);font-weight:600}
+.lsEvTbl.calc td:nth-child(2){min-width:16em}
+.lsEvTbl.mom td:nth-child(3){min-width:15em}
+.lsEvOk{font:600 11.5px var(--f-num);white-space:nowrap}
+.lsEvOk.y{color:#8fe0c2}.lsEvOk.n{color:#f0a58c}.lsEvOk.na{color:var(--p-faint)}
+.lsEvR{font-family:var(--f-num)}.lsEvR.up{color:#f08a84}.lsEvR.dn{color:#8fb8f0}
+.lsEvMatch{margin-top:10px;font-size:11.5px;color:var(--p-faint)}
+.lsEvQ{margin:6px 0 0;padding:8px 12px;border-left:2px solid rgba(214,180,106,.6);border-radius:0 8px 8px 0;background:rgba(255,255,255,.03);font:400 13px/1.75 var(--f-disp);color:var(--p-ink)}
+.lsEvChips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.lsEvChips span{font-size:11.5px;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--p-ink)}
+.lsEvChips.core span{border-radius:4px;background:none;border:1px solid rgba(214,180,106,.35);color:var(--p-gold2)}
+.lsEvEvt{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.lsEvEvt li{padding:6px 10px;border-radius:7px;background:rgba(255,255,255,.03);border-left:2px solid var(--p-faint)}
+.lsEvEvt li.up{border-left-color:#e9b8b4}.lsEvEvt li.down,.lsEvEvt li.warn{border-left-color:#a9c4ea}
+.lsEvEvt li b{display:block;font-weight:600;font-size:12.5px;color:var(--p-hi)}
+.lsEvEvt li span{display:block;font:500 11.5px var(--f-num);color:var(--p-dim)}
+.lsEvUl{margin:6px 0 0;padding:0 0 0 17px;font-size:12.5px;line-height:1.6;color:var(--p-dim)}
+.lsEvUl li{margin:3px 0}
+.lsEvUl li::marker{color:var(--p-gold)}
+.lsEvSvg{display:block;width:100%;height:auto;margin-top:8px;overflow:visible}
+.lsEvSvg .z{stroke:rgba(255,255,255,.22)}
+.lsEvSvg .th{stroke:rgba(241,217,160,.5);stroke-dasharray:3 4}
+.lsEvSvg .th2{stroke:rgba(255,255,255,.1);stroke-dasharray:2 5}
+.lsEvSvg .ax{font:500 10px var(--f-num);fill:var(--p-faint)}
+.lsEvSvg .ax.now{fill:var(--p-gold2)}.lsEvSvg .ax.dim{opacity:.7}
+.lsEvSvg .val{font:600 10.5px var(--f-num);fill:var(--p-ink)}.lsEvSvg .val.dim{fill:var(--p-dim)}
+.lsEvSvg rect.hi{fill:#f5a35c}.lsEvSvg rect.lo{fill:#7cc4ff}.lsEvSvg rect.mid{fill:rgba(247,243,233,.38)}.lsEvSvg rect.neg{fill:#e5534b}.lsEvSvg rect.good{fill:#d6b46a}
+.lsEvSvg rect.now{stroke:#f1d9a0;stroke-width:1.6}.lsEvSvg rect.dim{opacity:.45}
+.lsEvSvg .cap{fill:#f1d9a0}
+.lsEvSvg circle.rec{fill:rgba(247,243,233,.42)}
+.lsEvSvg circle.nowc{fill:#d6b46a;stroke:#0e1319;stroke-width:2}
+.lsEvZone{position:relative;height:24px;margin:12px 0 4px;border-radius:6px;overflow:visible}
+.lsEvZone .seg{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:500 10.5px var(--f-body);font-style:normal;color:rgba(14,19,25,.85)}
+.lsEvZone .seg.lo{background:rgba(124,196,255,.22);color:#bfe1ff;border-radius:6px 0 0 6px}.lsEvZone .seg.mid{background:rgba(247,243,233,.08);color:var(--p-dim)}.lsEvZone .seg.hi{background:rgba(245,163,92,.24);color:#ffd2ab;border-radius:0 6px 6px 0}
+.lsEvZone .seg+.seg{border-left:1px solid rgba(14,19,25,.9)}
+.lsEvZone .dot{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#d6b46a;border:2px solid #0e1319;box-shadow:0 0 0 2px rgba(241,217,160,.7)}
+.lsEvHit{animation:lsEvHit 1.9s ease-out both}
+.lsEvTbl tr.lsEvHit td{animation:lsEvHitTd 1.9s ease-out both}
+@keyframes lsEvHit{0%,35%{box-shadow:0 0 0 2px rgba(241,217,160,.9);background-color:rgba(214,180,106,.16)}100%{box-shadow:0 0 0 2px rgba(241,217,160,0);background-color:rgba(214,180,106,0)}}
+@keyframes lsEvHitTd{0%,35%{background-color:rgba(214,180,106,.3)}100%{background-color:rgba(214,180,106,0)}}
+@keyframes lsEvIn{from{opacity:0}to{opacity:1}}
+@keyframes lsEvUp{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+@media (max-width:640px){.lsEvBg{padding:8px}.lsEvTop{padding:13px 14px 11px}.lsEvBody{padding:2px 14px 16px}.lsEvFoot{padding:7px 14px 9px}
+  .lsEvT{font-size:19px}.lsEvRule li{grid-template-columns:16px minmax(0,1fr)}.lsEvRule li span{grid-column:2}}
+@media (prefers-reduced-motion:reduce){.lsEvBg,.lsEvPop,.lsEvHit,.lsEvTbl tr.lsEvHit td{animation:none}}
 /* 원장 — 밸류라인 한 장 */
 .lsLed{--f-num:'IBM Plex Mono',var(--mono);--f-disp:'Noto Serif KR','Nanum Myeongjo','Batang',serif;margin-top:6px}
 .lsLed h4{font:700 var(--fs-7) var(--f-disp);margin:10px 0 3px;color:var(--ink)}
@@ -3723,6 +3826,182 @@ table.csTbl td.num.dn,table.vclYr td.num.dn,.vclNums .n.dn b,.vclNums .n.dn smal
 p.sub,.qtrHead .sub,.expHead .sub,.finnote,.pipeNote,.pipeHead span,.pipeCalls .ev,.tpLine,.tpFlow p,.tpEvd p,.vnNote,.vnFoot,.stHint,.legend,.dsec p,.vbFoot,.vcHint,.galFoot,.infhd p,.csHead p,.pitem{max-width:var(--measure)}
 .dipHead span{flex:1 1 24em;max-width:var(--measure)}
 /* ===== 디자인 1단계 끝 ===== */
+/* ls-v2: verdict — EXHIBIT 07(풍경) 머리 개편(2026-10-22). 머리 = 두 기둥(왼쪽 제목 · 장 띠 · 요약 / 오른쪽 '지금 자리' 계기판),
+   그 아래 쪽지 세 묶음(읽는 법 · 주의 · 검증), 그림 오른쪽 위 스위치 칩, 범례 = 선 · 색 · 띠 · 표지 격자. 모두 .lsplate · 새 ls* 클래스 아래 */
+.lsplate{--z-lo:#7cc4ff;--z-mid:#f7f3e9;--z-hi:#f5a35c}
+.lsHeroW{container-type:inline-size;margin:24px 0 0}
+.lsplate .spHead.lsHero{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,440px);grid-template-rows:auto 1fr;
+  grid-template-areas:"L D" "R D";gap:22px 44px;align-items:start;max-width:none;margin:0}
+.lsplate .lsHeroL{grid-area:L;min-width:0}
+.lsplate .lsHero>.lsDial{grid-area:D;align-self:start}
+.lsplate .lsHero>.lsNg.read{grid-area:R;max-width:46em;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)}
+@container (max-width:860px){
+  .lsplate .spHead.lsHero{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-template-areas:"L" "D" "R"}
+}
+.lsplate .lsHero h3{margin:0;font:700 clamp(24px,2.45vw,38px)/1.24 var(--f-disp);letter-spacing:-.016em;color:var(--p-hi);max-width:19em;text-wrap:balance}
+.lsplate .lsHero h3 .ty{color:color-mix(in srgb,var(--c,#f7f3e9) 52%,#f7f3e9)}
+.lsplate .lsHero h3 .ar{color:var(--p-gold);font-weight:400}
+.lsplate .lsHero p.lsSum{margin:18px 0 0;max-width:44em;font-size:clamp(15px,1.1vw,17px);line-height:1.72;color:var(--p-ink)}
+.lsplate .lsHero p.spEn{margin:12px 0 0;max-width:50em;font:italic 400 var(--fs-4)/1.55 var(--f-body);color:var(--p-faint)}
+/* 장(章) 띠 */
+.lsArc{display:flex;gap:3px;max-width:44em;margin:20px 0 0}
+.lsArc .sg{flex:1 1 0;min-width:min(4.4em,calc((100% - (var(--n,1) - 1) * 3px) / var(--n,1)));display:flex;flex-direction:column;gap:6px;font-size:var(--fs-5)}
+.lsArc .sg.pre{min-width:min(3.2em,calc((100% - (var(--n,1) - 1) * 3px) / var(--n,1)))}
+.lsArc .sg b{min-height:1.2em;font:700 var(--fs-5)/1.2 var(--f-disp);color:var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lsArc .sg i{position:relative;display:block;height:9px;border-radius:2px;background:var(--c)}
+.lsArc .sg:first-child i{border-radius:5px 2px 2px 5px}
+.lsArc .sg:last-child i{border-radius:2px 5px 5px 2px}
+.lsArc .sg:last-child i::after{content:'';position:absolute;right:-5px;top:50%;width:11px;height:11px;margin-top:-5.5px;border-radius:50%;
+  background:var(--p-gold2);box-shadow:0 0 0 3px #10161e,0 0 12px rgba(241,217,160,.55)}
+.lsArc .sg.pre i{background:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 2px,rgba(255,255,255,.04) 2px 6px)}
+.lsArc .sg small{font:500 var(--fs-2)/1.2 var(--f-num);color:var(--p-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lsArc .sg.pre small{color:var(--p-faint)}
+/* '지금 자리' 계기판 */
+.lsDial{--zc:var(--p-gold2);min-width:0;position:relative;padding:17px 20px 16px;border-radius:15px;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.022));border:1px solid rgba(255,255,255,.1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 22px 44px -28px rgba(0,0,0,.9)}
+.lsDial::before{content:'';position:absolute;left:20px;right:20px;top:-1px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--zc) 18%,var(--zc) 82%,transparent);opacity:.85}
+.lsDial.z-lo{--zc:var(--z-lo)}.lsDial.z-mid{--zc:var(--z-mid)}.lsDial.z-hi{--zc:var(--z-hi)}
+.lsDialH{display:flex;align-items:center;gap:10px;min-height:26px}
+.lsDialH b{font:700 var(--fs-5) var(--f-disp);color:var(--p-hi);letter-spacing:.01em}
+.lsDialH b::before{content:'';display:inline-block;width:6px;height:6px;margin:0 8px 2px 0;border-radius:50%;background:var(--zc);vertical-align:middle}
+.lsDialH .wn{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:4px 10px 3px 5px;border-radius:999px;cursor:pointer;
+  font:700 var(--fs-3)/1.2 var(--f-body);color:#f9bd82;background:rgba(245,163,92,.1);border:1px solid rgba(245,163,92,.45)}
+.lsDialH .wn::before{content:'!';display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;
+  background:var(--z-hi);color:#0e1319;font:800 10.5px/1 var(--f-num)}
+.lsDialH .wn:hover{background:rgba(245,163,92,.18)}
+.lsDialH .wn:focus-visible{outline:2px solid var(--p-gold2);outline-offset:2px}
+.lsDialH .wn+.z{margin-left:0}
+.lsNg.warn.flash{animation:lsFlash 1.4s ease-out}
+@keyframes lsFlash{0%,30%{box-shadow:0 0 0 3px rgba(245,163,92,.55)}100%{box-shadow:0 0 0 3px rgba(245,163,92,0)}}
+.lsDialH .z{margin-left:auto;padding:5px 12px 4px;border-radius:999px;font:700 var(--fs-4)/1.2 var(--f-body);color:#0e1319;background:var(--zc);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--zc) 18%,transparent)}
+.lsDialNow{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:6px 18px;margin-top:14px}
+.lsDialNow small{display:block;margin-bottom:3px;font-size:var(--fs-3);color:var(--p-dim)}
+.lsDialNow .px b{font:600 clamp(30px,2.55vw,40px)/1.02 var(--f-num);letter-spacing:-.06em;color:var(--p-hi);white-space:nowrap}
+.lsDialNow .px b u{margin-left:3px;text-decoration:none;font:500 var(--fs-6) var(--f-body);letter-spacing:0;color:var(--p-dim)}
+.lsDialNow .gap{text-align:right}
+.lsDialNow .gap b{font:700 clamp(22px,1.9vw,29px)/1.05 var(--f-num);letter-spacing:-.02em;color:var(--zc);white-space:nowrap}
+.lsDialNow .gap b em{font:700 var(--fs-6) var(--f-body);font-style:normal;letter-spacing:0}
+.lsDialPer{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 10px;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07);font-size:var(--fs-4);line-height:1.45;color:var(--p-dim)}
+.lsDialPer b{padding:1px 7px;border-radius:4px;background:rgba(255,255,255,.06);font:600 var(--fs-4) var(--f-num);color:var(--p-ink)}
+.lsTherm{position:relative;height:26px;margin:44px 2px 0;border-radius:13px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)}
+.lsTherm .sg{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center}
+.lsTherm .sg.lo{border-radius:13px 0 0 13px;background:linear-gradient(90deg,rgba(124,196,255,.62),rgba(124,196,255,.28))}
+.lsTherm .sg.mid{background:rgba(247,243,233,.13)}
+.lsTherm .sg.hi{border-radius:0 13px 13px 0;background:linear-gradient(90deg,rgba(245,163,92,.28),rgba(245,163,92,.68))}
+.lsTherm .sg.lo:not(.on){background:linear-gradient(90deg,rgba(124,196,255,.34),rgba(124,196,255,.15))}
+.lsTherm .sg.mid:not(.on){background:rgba(247,243,233,.07)}
+.lsTherm .sg.hi:not(.on){background:linear-gradient(90deg,rgba(245,163,92,.15),rgba(245,163,92,.36))}
+.lsTherm .sg span{font:600 var(--fs-2) var(--f-body);color:rgba(255,255,255,.8);white-space:nowrap;pointer-events:none}
+.lsTherm .zl{position:absolute;z-index:1;top:50%;transform:translateY(-50%);font:700 var(--fs-3)/1 var(--f-body);color:#fff;white-space:nowrap;
+  text-shadow:0 1px 3px rgba(0,0,0,.6);pointer-events:none}
+.lsTherm .zl.r{left:calc(var(--p) + 18px)}
+.lsTherm .zl.l{right:calc(100% - var(--p) + 18px)}
+.lsTherm .sg.on span{font-weight:700;color:#fff}
+.lsTherm .tk{position:absolute;top:calc(100% + 2px);height:6px;width:0;border-left:1.5px solid rgba(255,255,255,.38)}
+.lsTherm .dot{position:absolute;z-index:2;left:var(--p);top:50%;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;
+  background:var(--zc);border:3px solid #0e1319;box-shadow:0 0 0 2px var(--p-gold2),0 4px 14px rgba(0,0,0,.55)}
+.lsTherm .tip{position:absolute;z-index:3;left:var(--p);bottom:calc(100% + 11px);transform:translateX(-50%);padding:3px 10px 2px;border-radius:6px;
+  background:var(--p-gold2);color:#11151b;font:700 var(--fs-3)/1.4 var(--f-body);white-space:nowrap;box-shadow:0 6px 16px -6px rgba(0,0,0,.6)}
+.lsTherm .tip::after{content:'';position:absolute;top:100%;left:50%;margin-left:-5px;border:5px solid transparent;border-top-color:var(--p-gold2)}
+.lsTherm .tip.l{transform:translateX(-15px)}.lsTherm .tip.l::after{left:15px}
+.lsTherm .tip.r{transform:translateX(calc(-100% + 15px))}.lsTherm .tip.r::after{left:auto;right:10px;margin-left:0}
+.lsThermSc{position:relative;height:52px;margin:9px 2px 0}
+.lsThermSc span{position:absolute;top:0;transform:translateX(-50%);text-align:center;white-space:nowrap;line-height:1.3}
+.lsThermSc small{display:block;font-size:var(--fs-2);color:var(--p-dim)}
+.lsThermSc b{display:block;font:600 var(--fs-3) var(--f-num);color:var(--p-ink)}
+.lsThermSc small.m{margin:1px 0 0;font:500 var(--fs-2) var(--f-num);color:var(--p-faint)}
+.lsThermAx{display:flex;align-items:center;gap:10px;margin:7px 2px 0;font-size:var(--fs-2);color:var(--p-faint);white-space:nowrap}
+.lsThermAx i{flex:1;height:0;border-top:1px dashed rgba(255,255,255,.14)}
+.lsThermAx span:first-child::before{content:'← '}.lsThermAx span:last-child::after{content:' →'}
+.lsDialNa{margin:14px 0 2px;padding:10px 12px;border-radius:9px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.14);font-size:var(--fs-4);line-height:1.55;color:var(--p-dim)}
+.lsVd{display:flex;flex-wrap:wrap;gap:7px;margin-top:0;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+.lsVd .vc{flex:1 1 0;min-width:6.8em;display:flex;flex-direction:column;gap:3px;padding:8px 11px 8px;border-radius:10px;border:1px solid var(--vb);background:var(--vbg)}
+.lsVd .vc small{font-size:var(--fs-2);color:var(--p-dim);white-space:nowrap}
+.lsVd .vc b{display:flex;align-items:center;gap:6px;font:700 var(--fs-6)/1.2 var(--f-disp);color:var(--vt);white-space:nowrap}
+.lsVd .vc b::before{content:'';flex:none;width:7px;height:7px;border-radius:50%;background:var(--vt)}
+.lsVd .vc.go{--vt:#8fe0c2;--vb:rgba(79,195,161,.55);--vbg:rgba(25,158,112,.13)}
+.lsVd .vc.wait{--vt:var(--p-gold2);--vb:rgba(214,180,106,.42);--vbg:rgba(214,180,106,.08)}
+.lsVd .vc.stop{--vt:#f0a58c;--vb:rgba(240,165,140,.42);--vbg:rgba(229,83,75,.09)}
+.lsVd .vc.ty{--vt:color-mix(in srgb,var(--c,#9aa4b0) 62%,#f7f3e9);--vb:rgba(255,255,255,.09);--vbg:rgba(255,255,255,.025)}
+.lsVd .vc.ty b::before{border-radius:2px;background:var(--c,#9aa4b0)}
+.lsplate.anim .lsTherm .dot{animation:lsDotIn 1s .35s cubic-bezier(.2,.8,.2,1) both}
+.lsplate.anim .lsTherm .tip{animation:lsTipIn 1s .35s cubic-bezier(.2,.8,.2,1) both}
+.lsplate.anim .lsArc .sg i{transform-origin:left center;animation:lsGrow .7s cubic-bezier(.2,.8,.2,1) both}
+@keyframes lsDotIn{from{left:50%;opacity:0}}
+@keyframes lsTipIn{from{left:50%;opacity:0}}
+@keyframes lsGrow{from{transform:scaleX(0)}}
+/* 쪽지 세 묶음 */
+.lsNotes{display:flex;flex-direction:column;gap:12px;margin:24px 0 0}
+.lsNg{min-width:0}
+.lsNg .nh{display:flex;align-items:baseline;gap:9px;margin:0 0 7px}
+.lsNg .nh b{font:700 var(--fs-5) var(--f-body);color:var(--p-hi)}
+.lsNg .nh em{font:500 var(--fs-1) var(--f-num);font-style:normal;letter-spacing:.16em;color:var(--p-faint)}
+.lsNg ul{display:flex;flex-direction:column;gap:7px;margin:0;padding:0;list-style:none}
+.lsNg li{position:relative;padding-left:15px;font-size:var(--fs-4);line-height:1.68;color:var(--p-dim)}
+.lsNg li::before{content:'';position:absolute;left:2px;top:.72em;width:5px;height:5px;border-radius:50%;background:var(--p-faint)}
+.lsNg li b{font-weight:600;color:var(--p-ink)}
+.lsNg.read{padding:2px 0 0}
+.lsNg.warn{padding:12px 18px 13px 18px;border-radius:4px 12px 12px 4px;background:rgba(245,163,92,.075);border:1px solid rgba(245,163,92,.2);border-left:4px solid var(--z-hi)}
+.lsNg.warn .nh b{color:var(--z-hi)}
+.lsNg.warn .nh b::before{content:'!';display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin:0 7px 0 0;border-radius:50%;
+  background:var(--z-hi);color:#0e1319;font:800 11px/1 var(--f-num);vertical-align:1px}
+.lsNg.warn li{color:#ecc8a4}
+.lsNg.warn li b{color:#f9bd82}
+.lsNg.warn li::before{background:var(--z-hi)}
+.lsNg.warn ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:8px 30px}
+.lsThermAx,.lsDialNa{margin-bottom:16px}
+.lsNg.proof{display:flex;align-items:baseline;gap:10px;padding:9px 0 0;border-top:1px dashed rgba(255,255,255,.1);font-size:var(--fs-3);line-height:1.6;color:var(--p-faint)}
+.lsNg.proof>b{flex:none;padding:1px 7px;border:1px solid rgba(214,180,106,.4);border-radius:4px;font:600 var(--fs-2)/1.5 var(--f-body);color:var(--p-gold)}
+.lsNg.proof strong{font-weight:600;color:var(--p-dim)}
+/* 그림 둘레 — 스위치 칩 */
+.lsFigBar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px 18px;margin:24px 0 -2px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07)}
+.lsFigBar .t{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;min-width:0}
+.lsFigBar .t em{font:600 var(--fs-1) var(--f-num);font-style:normal;letter-spacing:.2em;color:var(--p-gold)}
+.lsFigBar .t b{font:700 var(--fs-5) var(--f-disp);color:var(--p-hi)}
+.lsFigBar .t span{font:500 var(--fs-2) var(--f-num);color:var(--p-faint)}
+.lsFigBar .c{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-left:auto}
+.lsFigBar .c>span{margin-right:2px;font:500 var(--fs-2) var(--f-body);color:var(--p-faint)}
+.lsplate .spChip.lsTg{gap:8px;padding:5px 12px 5px 7px;color:var(--p-dim)}
+.lsplate .spChip.lsTg i{position:relative;flex:none;width:26px;height:15px;border-radius:8px;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);transition:background .2s}
+.lsplate .spChip.lsTg i::after{content:'';position:absolute;top:2.5px;left:2.5px;width:10px;height:10px;border-radius:50%;background:var(--p-dim);transition:transform .2s,background .2s}
+.lsplate .spChip.lsTg.on{color:var(--p-hi);border-color:rgba(214,180,106,.5);background:rgba(214,180,106,.08)}
+.lsplate .spChip.lsTg.on i{background:rgba(214,180,106,.6);box-shadow:none}
+.lsplate .spChip.lsTg.on i::after{transform:translateX(11px);background:#fff8e8}
+/* 범례 — 선 · 색 · 띠 · 표지 */
+.lsKeyW{container-type:inline-size;margin:12px 0 0;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)}
+.lsLegend{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,.95fr) minmax(0,1.3fr) minmax(0,.85fr);gap:16px 28px}
+@container (max-width:1020px){.lsLegend{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container (max-width:560px){.lsLegend{grid-template-columns:minmax(0,1fr)}}
+.lsLegend .kg{min-width:0}
+.lsLegend .kh{display:flex;align-items:baseline;gap:8px;margin:0 0 9px;padding-bottom:6px;border-bottom:1px solid rgba(214,180,106,.22)}
+.lsLegend .kh b{font:700 var(--fs-6) var(--f-disp);color:var(--p-gold2)}
+.lsLegend .kh em{font:500 var(--fs-1) var(--f-num);font-style:normal;letter-spacing:.16em;color:var(--p-faint)}
+.lsLegend .ks{margin:-3px 0 8px;font-size:var(--fs-3);font-weight:600;color:var(--p-ink)}
+.lsLegend .ki{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:start;margin:0 0 8px;font-size:var(--fs-3);line-height:1.55;color:var(--p-dim)}
+.lsLegend .ki .sw{display:block;margin-top:1px}
+.lsLegend .ki b.l{font-weight:600;color:var(--p-ink)}
+.lsLegend .ki .ext{display:block;margin-top:3px;font:500 var(--fs-2)/1.5 var(--f-num);color:var(--p-dim)}
+.lsLegend .ki.g b.l{color:var(--p-hi)}
+.lsLegend .ki.warn{color:#ecc8a4}.lsLegend .ki.warn b.l{color:#f9bd82}
+.lsLegend .bang{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin:1px 0 0 7px;border-radius:50%;background:var(--z-hi);color:#0e1319;font:800 11px/1 var(--f-num);font-style:normal}
+.lsLegend .mk2{display:flex;gap:2px}
+.lsLegend .mk2 b{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;font:700 9.5px/1 var(--f-num);color:#0e1319}
+.lsLegend .hatch{width:28px;height:13px;border-radius:2px;background:repeating-linear-gradient(45deg,rgba(229,83,75,.62) 0 2px,transparent 2px 5px);box-shadow:inset 0 0 0 1px rgba(229,83,75,.35)}
+/* 발표 모드 */
+.lsplate.full .lsHeroW{margin-top:2.6vh}
+.lsplate.full .spHead.lsHero{grid-template-columns:minmax(0,1fr) minmax(400px,31vw);gap:2.4vh 3.2vw}
+.lsplate.full .lsDial{padding:2.2vh 1.6vw 2vh}
+.lsplate.full .lsHero p.lsSum{max-width:46em;font-size:clamp(15px,1.12vw,20px)}
+.lsplate.full .lsArc{max-width:52em}
+.lsplate.full .lsDialNow .px b{font-size:clamp(34px,2.9vw,52px)}
+.lsplate.full .lsDialNow .gap b{font-size:clamp(24px,2.1vw,36px)}
+.lsplate.full .lsNotes{margin-top:2.6vh}
+.lsplate.full .lsNg li{font-size:clamp(13px,.92vw,16px)}
+.lsplate.full :is(.lsFigBar,.lsKeyW){width:min(100%, calc((100vh - 330px) * 1000 / 470));margin-left:auto;margin-right:auto}
+@container (max-width:860px){.lsplate.full .spHead.lsHero{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -17066,10 +17345,18 @@ function lsPlate(plate, d, c, animate){
     plate.classList.toggle('full',on); fs.textContent=on?'발표 모드 끝내기':'⛶ 발표 모드'; };
   tools.appendChild(fs); top.appendChild(tools); plate.appendChild(top);
 
-  // ── 헤드라인 — 회사의 일생을 유형으로 한 줄
+  // ── 머리 — 두 기둥(ls-v2: verdict, 2026-10-22). 왼쪽 = 제목 · 장(章) 띠 · 요약, 오른쪽 = '지금 자리' 계기판(가치 온도계 · 두 구루의 판정).
+  // 글은 예전 그대로 — 묶음 · 위계 · 모양만 바꿨다. 제목 글도 그대로(회사의 일생을 유형으로 한 줄), 유형 이름에만 그 유형 색을 엷게 입힌다
   const path=CH.map(x=>x.type);
-  const h3=c.name+', '+(tt?y0+'–'+yEnd:(y1-y0+1)+'년')+'의 풍경 — '+(path.length>1 ? path.join(' → ') : (path[0]||'—')+' 한 길');
-  const hl=el('div','spHead'); hl.appendChild(el('h3',null,h3));
+  const hl=el('div','spHead lsHero'), hL=el('div','lsHeroL');
+  const h3=el('h3');
+  // 장(章)이 없으면(유형을 못 매긴 회사 — 금융 등) '…의 풍경' 에서 끝낸다(예전엔 '— — 한 길'로 줄표가 겹쳤다)
+  h3.appendChild(document.createTextNode(c.name+', '+(tt?y0+'–'+yEnd:(y1-y0+1)+'년')+'의 풍경'+(path.length?' — ':'')));
+  const tyW=t=>{ const s=el('span','ty',t); if(LS_TC[t]) s.style.setProperty('--c',LS_TC[t]); return s; };
+  if(path.length>1) path.forEach((t,i)=>{ if(i) h3.appendChild(el('span','ar',' → ')); h3.appendChild(tyW(t)); });
+  else if(path[0]){ h3.appendChild(tyW(path[0])); h3.appendChild(document.createTextNode(' 한 길')); }
+  hL.appendChild(h3);
+  const arc=lsArc(d); if(arc) hL.appendChild(arc);
   const fol=(d.lessons||[]).find(l=>l.k==='follow');
   const lineNow=dc.line_now||dc.line_px;
   const gapNow=dc.px && lineNow ? (dc.px/lineNow-1)*100 : null;
@@ -17078,46 +17365,42 @@ function lsPlate(plate, d, c, animate){
   if(gapNow!==null && fol && (gapNow>=gmax || gapNow<=gmin) && Math.abs(gapNow)>=40) p1+='그런데 지금은 15년 들어 이익선에서 가장 멀리 '+(gapNow>0?'위로':'아래로')+' 떨어져 있다. ';
   if(gapNow!==null) p1+='지금 '+won(dc.px)+'원은 보통 값(최근 4분기 이익 × 이 회사 15년 PER 중앙값) '+won(lineNow)+'원보다 '+Math.abs(gapNow).toFixed(0)+'% '+(gapNow>=0?'비싸다':'싸다')+
     (dc.pct!==null&&dc.pct!==undefined?' — PER '+dc.per.toFixed(1)+'배, 15년 중 '+dc.pct.toFixed(0)+'%의 시간보다 비싼 자리.':'.');
-  hl.appendChild(el('p',null,p1));
-  hl.appendChild(lsGauge(d));
-  hl.appendChild(el('p',null,'버핏이라면 「'+dc.buffett.v+'」, 린치라면 「'+dc.lynch.v+'」 — 지금 유형은 '+(dc.type||'—')+'.'));
-  hl.appendChild(el('p','spEn','Fifteen years of filings in one frame: the kind of company it has been, whether price followed earnings, and when Buffett’s and Lynch’s conditions lined up.'));
-  plate.appendChild(hl);
+  if(p1) hL.appendChild(el('p','lsSum',p1));
+  hL.appendChild(el('p','spEn','Fifteen years of filings in one frame: the kind of company it has been, whether price followed earnings, and when Buffett’s and Lynch’s conditions lined up.'));
+  hl.appendChild(hL);
+  hl.appendChild(lsGauge(d));          // 계기판 — 버핏 · 린치 판정 칩과 지금 유형까지 안에
+  // 쪽지 세 묶음 — '읽는 법'은 요약 밑(넓을 때 왼쪽 기둥 아래, 좁으면 계기판 뒤), '주의' · '검증'은 머리 아래 온 폭
+  const nts=lsGaugeNotes(d);
+  if(nts.read) hl.appendChild(nts.read);
+  const hw=el('div','lsHeroW'); hw.appendChild(hl); plate.appendChild(hw);
+  if(nts.more) plate.appendChild(nts.more);
 
-  // ── 그림
-  // 켜고 끄는 칩 — 이익선 · 값 띠 / 버핏 · 린치 표지
+  // ── 그림 — 켜고 끄는 칩(이익선 · 값 띠 / 버핏 · 린치 표지)은 그림 오른쪽 위, 스위치 모양
   S.lsShow=S.lsShow||{band:true,mk:true};
   const fig=el('div','lsFig');
-  const sw=el('div','lsSw');
+  const sw=el('div','lsFigBar'), ft_=el('div','t'), ctl=el('div','c');
+  ft_.appendChild(el('em',null,'FIG. 07')); ft_.appendChild(el('b',null,'주가와 이익선 · 가치 대비 위치 · 사업의 체력'));
+  ft_.appendChild(el('span',null,y0+'–'+(tt||y1)));
+  sw.appendChild(ft_); sw.appendChild(ctl);
+  ctl.appendChild(el('span',null,'켜고 끄기'));
   const apply=()=>{ fig.classList.toggle('noBand',!S.lsShow.band); fig.classList.toggle('noMk',!S.lsShow.mk); };
   [['band','이익선 · 값 띠'],['mk','버핏 · 린치 표지']].forEach(([k,t])=>{
-    const b=el('button','spChip'+(S.lsShow[k]?' on':''),t);
-    b.onclick=()=>{ S.lsShow[k]=!S.lsShow[k]; b.classList.toggle('on',S.lsShow[k]); apply(); };
-    sw.appendChild(b); });
+    const b=el('button','spChip lsTg'+(S.lsShow[k]?' on':''));
+    b.appendChild(el('i')); b.appendChild(document.createTextNode(t));
+    b.setAttribute('aria-pressed',S.lsShow[k]?'true':'false');
+    b.onclick=()=>{ S.lsShow[k]=!S.lsShow[k]; b.classList.toggle('on',S.lsShow[k]); b.setAttribute('aria-pressed',S.lsShow[k]?'true':'false'); apply(); };
+    ctl.appendChild(b); });
   plate.appendChild(sw);
   plate.appendChild(fig); apply();
   lsChart(fig,d,plate);
-  const key=el('div','lsKey');
-  const z=k=>'<span><i style="border-color:'+LS_ZONE[k][1]+';border-top-width:3px"></i>'+LS_ZONE[k][0]+'</span>';
-  // 주가 = 네이버 일봉 — KRX + 넥스트레이드 통합 시세에 가깝다(KRX 공식 종가와 1% 안팎 다를 수 있음, 재무.FINAL_AT 주석)
-  key.innerHTML='<span class="g">주가 선 = 월말 종가(네이버 일봉 · KRX+넥스트레이드 통합 시세 — KRX 공식 종가와 조금 다를 수 있음) · 색 = 그때 이익 대비 값</span>'+
-    (d.px_partial?'<span class="g">확정 전 값 — 마지막 주가는 '+lsD(((d.monthly||[]).slice(-1)[0]||{}).d)+' '+d.px_at+'에 받은 값(장중 · 넥스트레이드 시간외 값이 섞임 — 20:10 뒤 다시 받아 확정 값으로)</span>':'')+
-    '<span><i style="border-color:rgba(236,234,228,.45);border-left-width:2px;border-top-width:0;height:10px;width:0"></i>세로 막대 = 그달 고가~저가(장중) · 점 = 기간 최고 · 최저'+
-      ((d._extTxt||[]).length?' — '+d._extTxt.join(' / '):'')+'</span>'+      // 숫자 · 날짜만(서버 값) — HTML 특수문자 없음
-    z('hi').replace('</span>',' (비싼 값 위)</span>')+z('mid').replace('</span>',' (싼 값~비싼 값)</span>')+
-    z('lo').replace('</span>',' (싼 값 아래)</span>')+z('na').replace('</span>',' (적자)</span>')+z('few').replace('</span>',' (PER 기록 8분기 전)</span>')+
-    '<span><i style="border-color:#f1d9a0;border-top-style:dashed"></i>보통 값(이익선) = 최근 4분기 주당이익 × 그때까지 쌓인 이 회사 PER 기록의 중앙값'+(d.band.mid?'(지금 '+d.band.mid.toFixed(1)+'배)':'')+'</span>'+
-    '<span><i style="border-color:rgba(214,180,106,.5);border-top-width:8px"></i>띠 = 싼 값~비싼 값 (그때까지 PER 기록 25–75% 자리'+(d.band.lo?', 지금 '+d.band.lo.toFixed(1)+'–'+d.band.hi.toFixed(1)+'배':'')+') — 옛 분기도 그때 알던 기록으로만 그었다</span>'+
-    '<span><i style="border-color:#f5a35c;border-top-width:6px"></i>가운데 띠 = 달마다 보통 값 대비 위치(위 = 비쌌던 때 · 아래 = 쌌던 때)</span>'+
-    '<span><b style="background:#d6b46a">B</b>버핏 · <b style="background:#4fc3a1">L</b>린치 조건이 맞은 때 — 위 숫자는 그 뒤 1년 주가</span>'+
-    '<span><i class="hatch"></i>적자 분기</span>';
-  plate.appendChild(key);
+  plate.appendChild(lsKeyBuild(d));    // 범례 — 선 · 색 · 띠 · 표지(lsChart 가 채운 d._extTxt 를 쓰므로 그림 뒤에)
 
   // ── 세 개의 창
   const tri=el('div','lsTri');
   tri.appendChild(lsLandCol(d));
   tri.appendChild(lsEyeCol(d));
   tri.appendChild(lsDecideCol(d));
+  lsEvWire(tri,d);                    // ls-v2: evidence — 세 칸 항목을 누르면 근거 팝업
   plate.appendChild(tri);
 
   const ft=el('div','spFoot');
@@ -17128,49 +17411,186 @@ function lsPlate(plate, d, c, animate){
   plate.appendChild(ft);
 }
 
-// 가치 온도계(2026-10-16) — 지금 주가가 이 회사 15년 역사에서 얼마나 싼가 · 비싼가. 자리 = 자기 역사 PER 백분위(decide.pct):
-// 0 = 15년 중 가장 쌌던 때, 100 = 가장 비쌌던 때. 25 · 75 가 싼 값 · 비싼 값 선(값 띠)과 같은 자리라 구간 경계도 같다
-function lsGauge(d){
-  const dc=d.decide||{}, w=el('div','lsGauge');
+// 가치 온도계 자리(2026-10-16; ls-v2 에서 계기판 · 쪽지가 같이 쓰게 떼어 냄) — 지금 주가가 이 회사 역사에서 얼마나 싼가 · 비싼가.
+// 자리 = 자기 역사 PER 백분위(decide.pct): 0 = 가장 쌌던 때, 100 = 가장 비쌌던 때. 25 · 75 가 싼 값 · 비싼 값 선(값 띠)과 같은 자리라
+// 구간 경계도 같다. 적자이거나 기록이 모자라 잴 수 없으면 null
+function lsGaugeAt(d){
+  const dc=d.decide||{};
   const lastL=[...(d.line||[])].reverse().find(x=>x.mid);
-  if(dc.pct===null||dc.pct===undefined||!lastL||!dc.px){
-    w.appendChild(el('div','lsGaugeNa','가치 온도계 — 지금은 적자이거나 이익 기록이 모자라 이익 기준 값을 잴 수 없다'));
-    return w;
-  }
+  if(dc.pct===null||dc.pct===undefined||!lastL||!dc.px) return null;
   const pct=Math.max(0,Math.min(100,dc.pct)), gap=(dc.px/lastL.mid-1)*100;
   const zone=pct>75?'hi':pct<25?'lo':'mid';
   // '15년' 이 아니라 실제로 쌓인 PER 기록 수 — 분기 PER 이 6개 모자라면 서버가 연말 PER 로 띠를 잡는다(그땐 '해')
   const qn=(d.quarters||[]).filter(q=>q.per!==null&&q.per!==undefined).length, bn=(d.band||{}).n||0;
   const span='PER 기록 '+bn+(qn===bn?'분기':'해');
   const where=pct<0.5?span+' 중 가장 싼 자리':pct>99.5?span+' 중 가장 비싼 자리':span+' 중 '+Math.round(pct)+'%보다 비싼 자리';
-  const h=el('div','lsGaugeH'); h.appendChild(el('b',null,'가치 온도계'));
-  h.appendChild(el('span','z '+zone,LS_ZONE[zone][0]));
-  h.appendChild(el('span',null,'지금 '+won(dc.px)+'원 — 보통 값 '+won(lastL.mid)+'원보다 '+(Math.abs(gap)<5?'거의 같음':Math.abs(gap).toFixed(0)+'% '+(gap>0?'비쌈':'쌈'))+
-    ' · '+where));
+  return {dc,lastL,pct,gap,zone,span,where};
+}
+
+// '지금 자리' 계기판(ls-v2: verdict) — 구간 알약 · 큰 지금 주가 · 보통 값과 몇 % · PER 과 기록 중 자리 · 두꺼운 온도계(눈금 · 구간 이름 ·
+// 지금 점과 말풍선) · 버핏/린치 판정 칩. 잴 수 없으면(lsGaugeNa 경우) 지금 주가와 까닭 한 줄, 판정 칩만
+function lsGauge(d){
+  const dc=d.decide||{}, g=lsGaugeAt(d);
+  const w=el('div','lsDial'+(g?' z-'+g.zone:' na'));
+  const h=el('div','lsDialH'); h.appendChild(el('b',null,'가치 온도계'));
+  const nw=g?lsGaugeWarns(d,g).length:0;
+  if(nw){ const t=el('button','wn','경고 '+nw); t.type='button'; t.title='이 온도계를 덜 믿어야 할 까닭 '+nw+'가지 — 아래 「주의」 상자로';
+    t.onclick=()=>{ const p=w.closest('.lsplate'), x=p&&p.querySelector('.lsNg.warn'); if(!x) return;
+      x.scrollIntoView({behavior:'smooth',block:'center'}); x.classList.remove('flash'); void x.offsetWidth; x.classList.add('flash'); };
+    h.appendChild(t); }
+  if(g) h.appendChild(el('span','z',LS_ZONE[g.zone][0]));
   w.appendChild(h);
-  const bar=el('div','lsGaugeBar');
-  [['lo','싼 구간',0,25],['mid','보통 구간',25,75],['hi','비싼 구간',75,100]].forEach(([k,t,a,b])=>{
-    const s=el('div','seg '+k); s.style.left=a+'%'; s.style.width=(b-a)+'%'; s.appendChild(el('span',null,t)); bar.appendChild(s); });
-  const dot=el('i','dot '+zone); dot.style.left=pct+'%'; dot.title='지금 — '+where; bar.appendChild(dot);
-  w.appendChild(bar);
-  const sc=el('div','lsGaugeSc');
-  [['기록 중 가장 쌌던 때',0,'l'],['싼 값 '+won(lastL.lo)+'원',25,''],['보통 값 '+won(lastL.mid)+'원',50,''],['비싼 값 '+won(lastL.hi)+'원',75,''],['가장 비쌌던 때',100,'r']]
-    .forEach(([t,p,c])=>{ const s=el('span',c||null,t); s.style.left=p+'%'; sc.appendChild(s); });
-  w.appendChild(sc);
-  // 쪽지 — 숫자는 도구/보통값_백테스트.py(공시 11,949건 · 2017–2025 · 지금 상장사만, 1년 초과수익 중앙). [글, 경고?]
-  const nt=[['값 = 최근 4분기 주당이익 × 이 회사 '+span+'의 25% · 중앙 · 75% 자리('+d.band.lo.toFixed(1)+' · '+d.band.mid.toFixed(1)+' · '+d.band.hi.toFixed(1)+'배)',0]];
-  if(zone==='lo') nt.push(['역사보다 PER 이 낮은 자리 — 대개 이익이 막 늘어난 때다. 과거 이 자리의 64%는 1년 뒤 순이익이 줄었고, 1년 성적은 보통 구간보다 낫지 않았다(+1.6 vs +2.7%p). 보통 값에 1년 안에 닿은 경우는 22.5%',0]);
-  if(zone==='hi') nt.push(['비싼 구간 — 이 잣대가 맞은 쪽이다. 과거 이 자리는 1년 성적이 가장 나빴다(−3.4%p, 1년에 30% 넘게 뒤처진 비율 15.0% — 보통 구간 10.3%)',0]);
-  // 경고 — 경기순환 유형은 어느 구간에서든. 싼 구간에서는 이익 꼭대기 · 이익 출렁 · 금융업도(이 셋에서는 '싸다'가 맞지 않았다)
-  if(dc.type==='경기순환') nt.push(['경기순환 유형 — 이익이 꼭대기일 때는 PER 이 낮아 싸 보이고 바닥일 때는 비싸 보인다. 이 온도계를 덜 믿는다',1]);
-  if(zone==='lo'){
-    if(dc.eps_peak) nt.push(['주당이익이 기록 최고 근처(95%↑) — 과거 싼 구간 중 이럴 때는 1년 성적이 +0.4%p 로 나머지(+2.9)보다 못했다. 이익이 꺾이면 싼 값이 아니게 된다(결과를 본 뒤 고른 문턱 — 참고만)',1]);
-    const cv=lsEarnCv(d);
-    if(cv!==null&&cv>=LS_CV_CUT) nt.push(['이익이 크게 출렁이는 회사(최근 12분기 순이익 변동계수 '+cv.toFixed(2)+' — 상장사 상위 ⅓) — 이런 회사에서는 싼 구간이 비싼 구간보다 낫다는 근거가 없었다(차이 +1.9%p, 범위 −1.7~+6.2)',1]);
-    if(d.sector==='금융') nt.push(['금융업 — 이익보다 자산(PBR)으로 값을 매기는 업종. 금융만 보면 싼 구간이 비싼 구간보다 1년 12.1%p 뒤처졌다',1]);
+  const now=el('div','lsDialNow');
+  if(dc.px){ const a=el('div','px'); a.appendChild(el('small',null,'지금'));
+    const b=el('b',null,won(dc.px)); b.appendChild(el('u',null,'원')); a.appendChild(b); now.appendChild(a); }
+  if(!g){
+    if(dc.px) w.appendChild(now);
+    w.appendChild(el('div','lsDialNa','지금은 적자이거나 이익 기록이 모자라 이익 기준 값을 잴 수 없다'));
+    w.appendChild(lsVerdict(dc));
+    return w;
   }
-  nt.push(['검증: 1년 초과수익 중앙 싼 구간 +1.6 · 보통 +2.7 · 비싼 −3.4%p — 맞은 건 \'비싼 구간은 뒤처졌다\' 쪽. 싸다는 것만으로 사지 마라(공시 11,949건 · 2017–2025 · 지금 상장사만)',0]);
-  nt.forEach(([t,wn])=>w.appendChild(el('div','lsGaugeNote'+(wn?' warn':''),t)));
+  const {lastL,pct,gap,zone,where}=g;
+  const gp=el('div','gap'); gp.appendChild(el('small',null,'보통 값 '+won(lastL.mid)+'원보다'));
+  const gb=el('b');
+  if(Math.abs(gap)<5) gb.textContent='거의 같음';
+  else { gb.textContent=Math.abs(gap).toFixed(0)+'%'; gb.appendChild(el('em',null,' '+(gap>0?'비쌈':'쌈'))); }
+  gp.appendChild(gb); now.appendChild(gp); w.appendChild(now);
+  const per=el('div','lsDialPer');
+  if(dc.per!==null&&dc.per!==undefined) per.appendChild(el('b',null,'PER '+dc.per.toFixed(1)+'배'));
+  per.appendChild(el('span',null,where));
+  w.appendChild(per);
+  // 온도계 막대 — 구간 셋(지금 구간만 밝게) · 눈금 25 · 50 · 75 · 지금 점과 말풍선(끝 가까이면 말풍선을 안쪽으로).
+  // 지금 구간의 이름은 점에 가리지 않게 점 옆에 붙인다 — 구간 안에 자리(막대의 19%)가 있는 쪽, 없으면 넓은 쪽
+  const bar=el('div','lsTherm');
+  [['lo','싼 구간',0,25],['mid','보통 구간',25,75],['hi','비싼 구간',75,100]].forEach(([k,t,a,b])=>{
+    const s=el('div','sg '+k+(k===zone?' on':'')); s.style.left=a+'%'; s.style.width=(b-a)+'%';
+    if(k!==zone){ s.appendChild(el('span',null,t)); bar.appendChild(s); return; }
+    bar.appendChild(s);
+    const rr=b-pct, rl=pct-a, right=rr>=19||(rl<19&&rr>=rl);
+    const zl=el('span','zl '+(right?'r':'l'),t); zl.style.setProperty('--p',pct+'%'); bar.appendChild(zl); });
+  [25,50,75].forEach(p=>{ const t=el('i','tk'); t.style.left=p+'%'; bar.appendChild(t); });
+  const dot=el('i','dot'); dot.style.setProperty('--p',pct+'%'); dot.title='지금 — '+where; bar.appendChild(dot);
+  const tip=el('span','tip '+(pct<10?'l':pct>90?'r':'c'),'지금'); tip.style.setProperty('--p',pct+'%'); bar.appendChild(tip);
+  w.appendChild(bar);
+  const sc=el('div','lsThermSc'), B=d.band||{};
+  [['싼 값',lastL.lo,25,B.lo],['보통 값',lastL.mid,50,B.mid],['비싼 값',lastL.hi,75,B.hi]].forEach(([t,v,p,m])=>{
+    const s=el('span'); s.style.left=p+'%'; s.appendChild(el('small',null,t)); s.appendChild(el('b',null,won(v)+'원'));
+    if(m) s.appendChild(el('small','m','PER '+m.toFixed(1)+'배'));
+    sc.appendChild(s); });
+  w.appendChild(sc);
+  const ax=el('div','lsThermAx');
+  ax.appendChild(el('span',null,'기록 중 가장 쌌던 때')); ax.appendChild(el('i')); ax.appendChild(el('span',null,'가장 비쌌던 때'));
+  w.appendChild(ax);
+  w.appendChild(lsVerdict(dc));
+  return w;
+}
+
+// 두 구루의 판정 — LS_VER 색 칩(결단 = go · 기다림 · 관찰 · 정점 경계 · 비쌈 = wait · 너무 어려움 · 지나침 = stop) + 지금 유형(유형 색)
+function lsVerdict(dc){
+  const r=el('div','lsVd');
+  const chip=(who,v)=>{ const s=el('span','vc '+(LS_VER[v]||'wait')); s.appendChild(el('small',null,who)); s.appendChild(el('b',null,v||'—')); return s; };
+  r.appendChild(chip('버핏이라면',(dc.buffett||{}).v));
+  r.appendChild(chip('린치라면',(dc.lynch||{}).v));
+  const t=el('span','vc ty'); if(LS_TC[dc.type]) t.style.setProperty('--c',LS_TC[dc.type]);
+  t.appendChild(el('small',null,'지금 유형은')); t.appendChild(el('b',null,dc.type||'—')); r.appendChild(t);
+  return r;
+}
+
+// 온도계 쪽지 — 읽는 법(중립) · 주의(노란 경고, 숨기지 않는다) · 검증(각주) 세 묶음(ls-v2: verdict). 글은 예전 쪽지 그대로.
+// 숫자는 도구/보통값_백테스트.py(공시 11,949건 · 2017–2025 · 지금 상장사만, 1년 초과수익 중앙)
+// 경고 — 경기순환 유형은 어느 구간에서든. 싼 구간에서는 이익 꼭대기 · 이익 출렁 · 금융업도(이 셋에서는 '싸다'가 맞지 않았다).
+// 계기판 머리의 '경고 n' 꼬리표와 '주의' 상자가 같이 쓴다
+function lsGaugeWarns(d,g){
+  g=g||lsGaugeAt(d); if(!g) return [];
+  const {dc,zone}=g, warn=[];
+  if(dc.type==='경기순환') warn.push('경기순환 유형 — 이익이 꼭대기일 때는 PER 이 낮아 싸 보이고 바닥일 때는 비싸 보인다. 이 온도계를 덜 믿는다');
+  if(zone==='lo'){
+    if(dc.eps_peak) warn.push('주당이익이 기록 최고 근처(95%↑) — 과거 싼 구간 중 이럴 때는 1년 성적이 +0.4%p 로 나머지(+2.9)보다 못했다. 이익이 꺾이면 싼 값이 아니게 된다(결과를 본 뒤 고른 문턱 — 참고만)');
+    const cv=lsEarnCv(d);
+    if(cv!==null&&cv>=LS_CV_CUT) warn.push('이익이 크게 출렁이는 회사(최근 12분기 순이익 변동계수 '+cv.toFixed(2)+' — 상장사 상위 ⅓) — 이런 회사에서는 싼 구간이 비싼 구간보다 낫다는 근거가 없었다(차이 +1.9%p, 범위 −1.7~+6.2)');
+    if(d.sector==='금융') warn.push('금융업 — 이익보다 자산(PBR)으로 값을 매기는 업종. 금융만 보면 싼 구간이 비싼 구간보다 1년 12.1%p 뒤처졌다');
+  }
+  return warn;
+}
+
+function lsGaugeNotes(d){
+  const g=lsGaugeAt(d); if(!g) return {read:null,more:null};
+  const {zone,span}=g, read=[], warn=lsGaugeWarns(d,g);
+  read.push('값 = 최근 4분기 주당이익 × 이 회사 '+span+'의 25% · 중앙 · 75% 자리('+d.band.lo.toFixed(1)+' · '+d.band.mid.toFixed(1)+' · '+d.band.hi.toFixed(1)+'배)');
+  if(zone==='lo') read.push('역사보다 PER 이 낮은 자리 — 대개 이익이 막 늘어난 때다. 과거 이 자리의 64%는 1년 뒤 순이익이 줄었고, 1년 성적은 보통 구간보다 낫지 않았다(+1.6 vs +2.7%p). 보통 값에 1년 안에 닿은 경우는 22.5%');
+  if(zone==='hi') read.push('비싼 구간 — 이 잣대가 맞은 쪽이다. 과거 이 자리는 1년 성적이 가장 나빴다(−3.4%p, 1년에 30% 넘게 뒤처진 비율 15.0% — 보통 구간 10.3%)');
+  const grp=(cls,ko,en,items)=>{ const s=el('div','lsNg '+cls), h=el('div','nh');
+    h.appendChild(el('b',null,ko)); h.appendChild(el('em',null,en)); s.appendChild(h);
+    const ul=el('ul'); items.forEach(t=>{ const li=el('li'); lsLead(li,t); ul.appendChild(li); }); s.appendChild(ul); return s; };
+  const w=el('div','lsNotes');
+  if(warn.length) w.appendChild(grp('warn','주의','CAUTION',warn));
+  const pf=el('div','lsNg proof'); pf.appendChild(el('b',null,'검증'));
+  const pt=el('span',null,'1년 초과수익 중앙 싼 구간 +1.6 · 보통 +2.7 · 비싼 −3.4%p — 맞은 건 \'비싼 구간은 뒤처졌다\' 쪽. ');
+  pt.appendChild(el('strong',null,'싸다는 것만으로 사지 마라')); pt.appendChild(document.createTextNode('(공시 11,949건 · 2017–2025 · 지금 상장사만)'));
+  pf.appendChild(pt); w.appendChild(pf);
+  return {read:grp('read','읽는 법','HOW TO READ',read), more:w};
+}
+
+// 앞말 굵게 — 괄호 밖 첫 ' — ' 앞(60자 안)을 <b> 로. 글은 그대로
+function lsLead(node,t){
+  let dep=0, cut=-1;
+  for(let i=0;i<t.length&&cut<0;i++){ const ch=t[i];
+    if(ch==='(') dep++; else if(ch===')') dep=Math.max(0,dep-1);
+    else if(!dep&&t.startsWith(' — ',i)) cut=i; }
+  if(cut>0&&cut<=60){ node.appendChild(el('b',null,t.slice(0,cut))); node.appendChild(document.createTextNode(t.slice(cut))); }
+  else node.textContent=t;
+}
+
+// 장(章) 띠 — 유형 색 칸이 햇수만큼 길다(마지막 칸 끝 금색 점 = 지금). 유형을 매기기 전 해 · 장 사이 빈 해는 옅은 빗금 칸(이름 없음)
+function lsArc(d){
+  const CH=d.chapters||[], R=d.rows||[];
+  if(!CH.length) return null;
+  const segs=[]; let cur=R.length?R[0].year:CH[0].y0;
+  CH.forEach(ch=>{ if(ch.y0>cur) segs.push({pre:true,y0:cur,y1:ch.y0-1}); segs.push(ch); cur=ch.y1+1; });
+  const w=el('div','lsArc'); w.style.setProperty('--n',segs.length);
+  segs.forEach(s=>{
+    const g=el('div','sg'+(s.pre?' pre':''));
+    g.style.flexGrow=Math.max(1,s.y1-s.y0+1);
+    if(!s.pre){ g.style.setProperty('--c',LS_TC[s.type]||'#8b95a3'); const T=(d.types||{})[s.type]; if(T) g.title=s.type+' — '+T[1]; }
+    g.appendChild(el('b',null,s.pre?'':s.type));
+    g.appendChild(el('i'));
+    g.appendChild(el('small',null,s.y0===s.y1&&!s.y1_label?String(s.y0):s.y0+'–'+String(s.y1_label||s.y1).slice(2)));
+    w.appendChild(g);
+  });
+  return w;
+}
+
+// 범례 — 선 · 색 · 띠 · 표지 넷으로 묶은 격자(ls-v2: verdict). 글은 예전 범례 그대로, 견본은 그림과 같은 색 · 굵기의 작은 SVG
+function lsKeyBuild(d){
+  const B=d.band||{};
+  const sv=s=>'<svg class="sw" viewBox="0 0 30 14" width="34" height="16" aria-hidden="true">'+s+'</svg>';
+  const zl=k=>sv('<line x1="2" y1="7" x2="28" y2="7" stroke="'+LS_ZONE[k][1]+'" stroke-width="3.4" stroke-linecap="round"/>');
+  const it=(sw,lead,rest,cls)=>'<div class="ki'+(cls?' '+cls:'')+'">'+sw+'<span><b class="l">'+lead+'</b>'+rest+'</span></div>';
+  const grp=(ko,en,sub,body)=>'<div class="kg"><div class="kh"><b>'+ko+'</b><em>'+en+'</em></div>'+(sub?'<div class="ks">'+sub+'</div>':'')+body+'</div>';
+  const ext=(d._extTxt||[]).map(esc);      // 숫자 · 날짜만(서버 값)
+  // 주가 = 네이버 일봉 — KRX + 넥스트레이드 통합 시세에 가깝다(KRX 공식 종가와 1% 안팎 다를 수 있음, 재무.FINAL_AT 주석)
+  const lines=
+    it(sv('<g fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 10.5 L6 8.5 L10 10" stroke="#7cc4ff"/><path d="M10 10 L15 6 L19 7.5" stroke="#f7f3e9"/><path d="M19 7.5 L24 3 L28.5 4.5" stroke="#f5a35c"/></g>'),
+      '주가 선',' = 월말 종가(네이버 일봉 · KRX+넥스트레이드 통합 시세 — KRX 공식 종가와 조금 다를 수 있음)','g')+
+    (d.px_partial?it('<i class="bang">!</i>','확정 전 값',' — 마지막 주가는 '+lsD(((d.monthly||[]).slice(-1)[0]||{}).d)+' '+esc(d.px_at||'')+'에 받은 값(장중 · 넥스트레이드 시간외 값이 섞임 — 20:10 뒤 다시 받아 확정 값으로)','warn'):'')+
+    it(sv('<line x1="8" y1="1.5" x2="8" y2="12.5" stroke="rgba(236,234,228,.55)" stroke-width="2.2" stroke-linecap="round"/><circle cx="21" cy="7" r="3.8" fill="#0e1319" stroke="#f7f3e9" stroke-width="1.6"/>'),
+      '세로 막대',' = 그달 고가~저가(장중) · 점 = 기간 최고 · 최저'+ext.map(t=>'<span class="ext">'+t+'</span>').join(''))+
+    it(sv('<line x1="1" y1="7" x2="29" y2="7" stroke="#f1d9a0" stroke-width="1.7" stroke-dasharray="5 3.5"/>'),
+      '보통 값(이익선)',' = 최근 4분기 주당이익 × 그때까지 쌓인 이 회사 PER 기록의 중앙값'+(B.mid?'(지금 '+B.mid.toFixed(1)+'배)':''));
+  const colors=
+    it(zl('hi'),'비싼 구간',' (비싼 값 위)')+it(zl('mid'),'보통 구간',' (싼 값~비싼 값)')+it(zl('lo'),'싼 구간',' (싼 값 아래)')+
+    it(zl('na'),'이익 없음',' (적자)')+it(zl('few'),'기록 모자람',' (PER 기록 8분기 전)');
+  const bands=
+    it(sv('<rect x="1" y="2" width="28" height="10" fill="rgba(214,180,106,.32)"/><path d="M1 2.5 H29 M1 11.5 H29" stroke="rgba(214,180,106,.55)" stroke-width="1"/><line x1="1" y1="7" x2="29" y2="7" stroke="#f1d9a0" stroke-width="1.2" stroke-dasharray="3.5 2.5"/>'),
+      '띠',' = 싼 값~비싼 값 (그때까지 PER 기록 25–75% 자리'+(B.lo?', 지금 '+B.lo.toFixed(1)+'–'+B.hi.toFixed(1)+'배':'')+') — 옛 분기도 그때 알던 기록으로만 그었다')+
+    it(sv('<line x1="1" y1="7" x2="29" y2="7" stroke="rgba(241,217,160,.55)" stroke-dasharray="2 2"/><rect x="2" y="1.5" width="3.6" height="5.5" fill="#f5a35c"/><rect x="7.2" y="3.5" width="3.6" height="3.5" fill="#f5a35c"/><rect x="12.4" y="6" width="3.6" height="2" fill="#f7f3e9" opacity=".5"/><rect x="17.6" y="7" width="3.6" height="3.5" fill="#7cc4ff"/><rect x="22.8" y="7" width="3.6" height="5.5" fill="#7cc4ff"/>'),
+      '가운데 띠',' = 달마다 보통 값 대비 위치(위 = 비쌌던 때 · 아래 = 쌌던 때)');
+  const marks=
+    it('<span class="sw mk2"><b style="background:#d6b46a">B</b><b style="background:#4fc3a1">L</b></span>','버핏 · 린치',' 조건이 맞은 때 — 위 숫자는 그 뒤 1년 주가')+
+    it('<i class="sw hatch"></i>','적자 분기','');
+  const w=el('div','lsKeyW'), k=el('div','lsLegend');
+  k.innerHTML=grp('선','LINES','',lines)+grp('색','COLOR','색 = 그때 이익 대비 값',colors)+grp('띠','BANDS','',bands)+grp('표지','MARKS','',marks);
+  w.appendChild(k);
   return w;
 }
 
@@ -17582,6 +18002,776 @@ function lsDecideCol(d){
     (st.base?'<br>아무 분기에나 샀다면 1년 뒤 평균 <b>'+lsPct(st.base.avg1)+'</b>'+(st.base.avg3!==null&&st.base.avg3!==undefined?', 3년 뒤 <b>'+lsPct(st.base.avg3)+'</b>':'')+' — 이것보다 나아야 조건이 쓸모 있다.':'');
   col.appendChild(rec);
   return col;
+}
+
+// ── ls-v2: evidence — 근거 팝업(2026-10-22)
+// 아래 세 칸(풍경 · 안목 · 결단)의 항목을 누르면 그 판정을 뒷받침하는 규칙과 숫자를 가운데 모달 한 장에:
+// 머리(무엇을 판정했나) → 규칙 → 숫자(표) → 그래서 → 한계. 숫자는 판 JSON(d)에서만 — 서버 _land_type · _landscape_build 와 같은
+// 규칙으로 다시 세고, 카드에 보이는 값과 다르면 표에 ✗ 로 드러낸다. 지난 판(type_why · word_stats · turns · eps_q … 없음)은
+// 있는 숫자만 보이고 '다음 새 판부터'라고 적는다(분기 값은 d.quarters 에서 서버와 같은 방법으로 찾는다).
+const LS_EV_COLS={land:['풍경','WHAT THEY SEE'], eye:['안목','WHAT THEY LEARN'], dec:['결단','WHAT MAKES THEM ACT']};
+const LS_EV_OLD='이 판은 근거를 덧붙이기 전에 그렸다 — 다음 새 판(평일 20:10 뒤)부터';
+const lsEvNum=v=>typeof v==='number'&&isFinite(v);
+const lsEvWt=v=>!lsEvNum(v)?'—':Math.abs(v)>=1e12?(v/1e12).toFixed(1)+'조':(v/1e8).toFixed(0)+'억';     // 서버 _won_txt 꼴(카드 글과 같은 자릿수)
+const lsEvF=(v,dp)=>lsEvNum(v)?v.toFixed(dp===undefined?1:dp):'—';
+const lsEvPct=(v,dp)=>lsEvNum(v)?lsPct(v,dp||0):'—';
+const lsEvW=v=>lsEvNum(v)?won(v)+'원':'—';
+const lsEvYl=r=>!r?'—':r.ttm?String(r.ttm).slice(2):String(r.year);                 // 최근 4분기 칸 = '26.2Q'
+const lsEvYs=y=>typeof y==='string'&&y.indexOf('.')>0?y.slice(2):String(y);          // 꺾인 곳의 해 — 최근 4분기 칸이면 '2026.2Q'
+const lsEvSh=v=>lsEvNum(v)?Math.round(v/1e4).toLocaleString('ko-KR')+'만 주':'—';
+const lsEvAvg=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
+let LS_EV=null;     // 열린 팝업 하나 {bg, pop, items, i, …}
+
+// ── 그리는 도구
+function lsEvSec(par,k,h,en){ const s=el('section','lsEvSec'); s.dataset.k=k; const hh=el('h5'); hh.appendChild(el('b',null,h)); hh.appendChild(el('em',null,en)); s.appendChild(hh); par.appendChild(s); return s; }
+function lsEvSub(par,k,h,note){ const s=el('div','lsEvSub'); if(k) s.dataset.k=k;
+  if(h){ const hh=el('h6',null,h); if(note) hh.appendChild(el('small',null,note)); s.appendChild(hh); }
+  par.appendChild(s); return s; }
+function lsEvP(par,t,cls){ const p=el('p',cls||null,t); par.appendChild(p); return p; }
+function lsEvUl(par,items){ const u=el('ul','lsEvUl'); items.filter(Boolean).forEach(t=>u.appendChild(el('li',null,t))); par.appendChild(u); return u; }
+// 갈래 — 서버가 위에서부터 따지는 규칙. on = 지금 걸린 줄, on2 = 덧붙은 줄(한 해짜리 장)
+function lsEvRules(par,items,on,on2){
+  const o=el('ol','lsEvRule'), has=(a,j)=>Array.isArray(a)?a.includes(j):a===j;
+  o.style.setProperty('--lw',Math.min(11,Math.max(...items.map(x=>x[0].length))*0.95+0.6).toFixed(1)+'em');    // 이름 칸 너비를 줄마다 같게
+  items.forEach(([b,t],j)=>{ const li=el('li',has(on,j)?'on':has(on2,j)?'on2':null); li.appendChild(el('b',null,b)); li.appendChild(el('span',null,t)); o.appendChild(li); });
+  par.appendChild(o); return o;
+}
+const lsEvOk=(ok,t)=>el('span','lsEvOk '+(ok===true?'y':ok===false?'n':'na'),(ok===true?'✓':ok===false?'✗':'·')+(t?' '+t:''));
+const lsEvSame=(mine,card)=>lsEvOk(mine===card,mine===card?'카드와 같음':'카드 '+card);      // 다시 센 값 ↔ 카드에 보이는 값
+const lsEvC2=(a,b,cls)=>{ const s=el('span',cls||null); s.appendChild(document.createTextNode(a)); if(b) s.appendChild(el('small',null,b)); return s; };
+const lsEvRet=v=>el('span','lsEvR '+(lsEvNum(v)?(v>=0?'up':'dn'):''),lsEvNum(v)?lsPct(v,0):'아직');
+function lsEvTbl(par,head,rows,num,cls){
+  const w=el('div','lsEvTblW'), t=el('table','lsEvTbl'+(cls?' '+cls:''));
+  if(head){ const th=el('thead'), tr=el('tr'); head.forEach((h,j)=>tr.appendChild(el('th',num&&num[j]?'n':null,h))); th.appendChild(tr); t.appendChild(th); }
+  const tb=el('tbody');
+  rows.filter(Boolean).forEach(r=>{ const tr=el('tr',r.cls||null); if(r.i!==undefined) tr.dataset.i=r.i;
+    r.c.forEach((v,j)=>{ const td=el('td',num&&num[j]?'n':null);
+      if(v instanceof Node) td.appendChild(v); else td.textContent=v===null||v===undefined?'—':String(v);
+      tr.appendChild(td); });
+    tb.appendChild(tr); });
+  t.appendChild(tb); w.appendChild(t); par.appendChild(w); return t;
+}
+// 셈 줄 — [이름, 값, 설명, 줄 class]
+const lsEvKV=(par,rows)=>lsEvTbl(par,null,rows.filter(Boolean).map(([k,v,n,cls])=>({cls:cls||null,c:[k,v,n===undefined?'':n]})),[0,1,0],'kv');
+function lsEvTail(body,so,lim){
+  const s3=lsEvSec(body,'so','그래서','SO WHAT'); so.filter(Boolean).forEach(t=>lsEvP(s3,t));
+  const s4=lsEvSec(body,'lim','한계','LIMITS'); lsEvUl(s4,lim);
+}
+// 값 구간 막대 — 0 = 기록 중 가장 쌌던 때, 100 = 가장 비쌌던 때(가치 온도계와 같은 25 · 75 경계)
+function lsEvZone(par,pct){
+  const w=el('div','lsEvZone');
+  [['lo','싼 구간 ≤25',0,25],['mid','보통 구간',25,75],['hi','비싼 구간 ≥75',75,100]].forEach(([k,t,a,b])=>{
+    const s=el('i','seg '+k); s.style.left=a+'%'; s.style.width=(b-a)+'%'; s.appendChild(el('span',null,t)); w.appendChild(s); });
+  if(lsEvNum(pct)){ const dt=el('b','dot'); dt.style.left=Math.max(0,Math.min(100,pct))+'%'; dt.title='지금 '+pct.toFixed(0)+'%'; w.appendChild(dt); }
+  par.appendChild(w); return w;
+}
+// 분기마다 이익선 대비 벌어짐 막대 — ±30% 선, 지금은 테두리 막대
+function lsEvGapBars(par,G,now){
+  if(!G.length) return;
+  const vals=G.map(g=>g.gap); if(lsEvNum(now)) vals.push(now);
+  const W=700,H=150,L=42,R=8,T=12,B=22, n=vals.length, bw=(W-L-R)/n, hh=(H-T-B)/2;
+  const lim=Math.max(60,Math.min(300,Math.max(...vals.map(v=>Math.abs(v)))));
+  // 세로 눈금은 제곱근 — 수백 % 벌어진 분기가 있어도 ±30% 안팎이 보이게
+  const y=v=>{ const c=Math.max(-lim,Math.min(lim,v)); return T+hh-Math.sign(c)*Math.sqrt(Math.abs(c)/lim)*hh; };
+  const s=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'lsEvSvg',role:'img','aria-label':'분기마다 이익선 대비 주가 벌어짐'});
+  s.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y(0),y2:y(0),class:'z'}));
+  [[30,'+30%'],[-30,'−30%'],[100,'+100%'],[-100,'−100%']].filter(([v])=>Math.abs(v)<=lim).forEach(([v,t])=>{
+    s.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:Math.abs(v)===30?'th':'th2'}));
+    const tx=svgEl('text',{x:L-6,y:y(v)+3.5,'text-anchor':'end',class:'ax'}); tx.textContent=t; s.appendChild(tx); });
+  vals.forEach((v,i)=>{ const isNow=lsEvNum(now)&&i===n-1, x=L+i*bw+bw*.18, w=Math.max(1.5,bw*.64);
+    const a=y(Math.max(0,v)), c=y(Math.min(0,v));
+    const r=svgEl('rect',{x:x.toFixed(1),y:Math.min(a,c).toFixed(1),width:w.toFixed(1),height:Math.max(1,Math.abs(c-a)).toFixed(1),
+      class:(isNow?'now ':'')+(Math.abs(v)>=30?(v>0?'hi':'lo'):'mid')});
+    tip(r,(isNow?'지금':lsD(G[i].d))+' · '+lsPct(v,0)); s.appendChild(r);
+    if(Math.abs(v)>lim){ const yy=v>0?T-2:H-B+2, d0=v>0?-1:1;      // 막대 끝 세모 = 눈금 밖(값은 마우스를 올리면)
+      s.appendChild(tip(svgEl('path',{d:'M'+(x+w/2-3.5).toFixed(1)+' '+(yy-d0*4)+'l3.5 '+(d0*-5)+'l3.5 '+(d0*5)+'z',class:'cap'}),lsPct(v,0))); }
+  });
+  let py=null, px=-99; G.forEach((g,i)=>{ const yr=String(g.d).slice(0,4), x=L+i*bw+1;      // 해 이름표 — 적자 분기가 빠져 붙은 해는 앞 이름표와 34px 넘게 떨어질 때만
+    if(yr!==py){ py=yr; if(x-px<34) return; px=x; const tx=svgEl('text',{x:x.toFixed(1),y:H-5,class:'ax'}); tx.textContent=yr; s.appendChild(tx); } });
+  if(lsEvNum(now)){ const tx=svgEl('text',{x:(L+(n-1)*bw+bw/2).toFixed(1),y:H-5,'text-anchor':'end',class:'ax now'}); tx.textContent='지금'; s.appendChild(tx); }
+  par.appendChild(s);
+}
+// PER 기록 점 — 25 · 50 · 75% 자리 선과 지금(금색)
+function lsEvPerStrip(par,vals,now,b){
+  const v=vals.filter(x=>lsEvNum(x)&&x>0); if(v.length<2) return;
+  const all=v.concat(lsEvNum(now)&&now>0?[now]:[]), lo=Math.min(...all), hi=Math.max(...all), lg=hi/lo>8;
+  const W=700,H=84,L=16,R=16, f=lg?Math.log:(x=>x), a=f(lo), c=f(hi)>a?f(hi):a+1;
+  const X=x=>L+(f(x)-a)/(c-a)*(W-L-R), Y=38;
+  const s=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'lsEvSvg',role:'img','aria-label':'PER 기록과 지금 자리'});
+  s.appendChild(svgEl('line',{x1:L,x2:W-R,y1:Y,y2:Y,class:'z'}));
+  // 위 줄 = 지금, 선 아래 = 25 · 50 · 75% 자리(짧은 이름표), 맨 아래 = 기록 양 끝 — 이름표끼리 겹치지 않게
+  [['25%',b.lo],['50%',b.mid],['75%',b.hi]].forEach(([t,p])=>{ if(!lsEvNum(p)||p<=0) return; const x=X(Math.min(hi,Math.max(lo,p)));
+    s.appendChild(svgEl('line',{x1:x,x2:x,y1:Y-12,y2:Y+12,class:'th'}));
+    const tx=tip(svgEl('text',{x:x,y:Y+24,'text-anchor':'middle',class:'ax'}),t+' 자리 '+p.toFixed(1)+'배'); tx.appendChild(document.createTextNode(t)); s.appendChild(tx); });
+  v.forEach(p=>s.appendChild(tip(svgEl('circle',{cx:X(p).toFixed(1),cy:Y,r:3.4,class:'rec'}),'PER '+p.toFixed(1)+'배')));
+  if(lsEvNum(now)&&now>0){ const x=X(now); s.appendChild(svgEl('circle',{cx:x,cy:Y,r:6.5,class:'nowc'}));
+    const tx=svgEl('text',{x:Math.max(L+24,Math.min(W-R-24,x)),y:Y-15,'text-anchor':'middle',class:'ax now'}); tx.textContent='지금 '+now.toFixed(1)+'배'; s.appendChild(tx); }
+  [[lo,'start',L],[hi,'end',W-R]].forEach(([p,an,x])=>{ const tx=svgEl('text',{x,y:H-3,'text-anchor':an,class:'ax'}); tx.textContent=(an==='start'?'가장 낮음 ':'가장 높음 ')+p.toFixed(1)+'배'; s.appendChild(tx); });
+  par.appendChild(s);
+  if(lg) lsEvP(par,'눈금은 로그(배수) — 기록 PER 이 '+lo.toFixed(1)+'배에서 '+hi.toFixed(1)+'배까지 넓게 퍼져 있다.','lsEvFine');
+}
+// 해마다 ROE 막대 — 15% 선
+function lsEvRoeBars(par,rows,line){
+  if(!rows.length) return;
+  const W=700, rh=18, T=4, H=T+rows.length*rh+18, L=62, R=58;
+  const vs=rows.map(r=>r.v), mn=Math.min(0,...vs), mx=Math.max(line*1.3,...vs), X=v=>L+(v-mn)/(mx-mn)*(W-L-R);
+  const s=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'lsEvSvg',role:'img','aria-label':'해마다 ROE 와 15% 선'});
+  rows.forEach((r,i)=>{ const yy=T+i*rh;
+    const k=svgEl('text',{x:L-8,y:yy+12.5,'text-anchor':'end',class:'ax'+(r.dim?' dim':'')}); k.textContent=r.k; s.appendChild(k);
+    const x0=X(0), x1=X(r.v); s.appendChild(svgEl('rect',{x:Math.min(x0,x1).toFixed(1),y:yy+3,width:Math.max(1,Math.abs(x1-x0)).toFixed(1),height:rh-7,
+      class:(r.v>=line?'good':r.v<0?'neg':'mid')+(r.dim?' dim':'')}));
+    const t=svgEl('text',{x:(Math.max(x0,x1)+6).toFixed(1),y:yy+12.5,class:'val'+(r.dim?' dim':'')}); t.textContent=r.v.toFixed(1)+'%'; s.appendChild(t); });
+  const xl=X(line); s.appendChild(svgEl('line',{x1:xl,x2:xl,y1:T,y2:H-14,class:'th'}));
+  const tl=svgEl('text',{x:xl,y:H-3,'text-anchor':'middle',class:'ax now'}); tl.textContent=line+'% 선'; s.appendChild(tl);
+  if(mn<0){ const x0=X(0); s.appendChild(svgEl('line',{x1:x0,x2:x0,y1:T,y2:H-14,class:'z'})); }
+  par.appendChild(s);
+}
+// 판정에 쓴 분기 — 새 키가 없으면(지난 판) d.quarters 에서 서버와 같은 방법으로 찾는다
+function lsEvLastQ(d){ const Q=d.quarters||[], dc=d.decide||{};
+  return (dc.eps_q&&Q.find(q=>q.label===dc.eps_q&&lsEvNum(q.eps)))||[...Q].reverse().find(q=>lsEvNum(q.eps))||null; }
+function lsEvY4(d){ const dc=d.decide||{}; if(dc.y4) return dc.y4; const lq=lsEvLastQ(d);
+  const q=lq&&(d.quarters||[]).find(x=>x.year===lq.year-1&&x.q===lq.q); return q?{label:q.label,eps:q.eps}:null; }
+function lsEvEpsMax(d){ const dc=d.decide||{}; if(dc.eps_max) return dc.eps_max; const h=(d.quarters||[]).filter(q=>lsEvNum(q.eps));
+  if(!h.length) return null; const m=h.reduce((a,b)=>b.eps>a.eps?b:a); return {label:m.label,eps:m.eps,n:h.length}; }
+function lsEvO4(d){ const dc=d.decide||{}; if(dc.o4&&dc.o4.length) return dc.o4;
+  const Q=d.quarters||[], lq=[...Q].reverse().find(q=>lsEvNum(q.op4)); if(!lq) return [];
+  const by={}; Q.forEach(q=>{ by[q.n]=q; }); return [3,2,1,0].map(k=>{ const q=by[lq.n-k]||{}; return {label:q.label||null, op4:lsEvNum(q.op4)?q.op4:null}; }); }
+// PER 기록 — 분기 PER 6개↑면 분기, 모자라면 연말 PER(서버 band 와 같은 모음)
+function lsEvPers(d){ const q=(d.quarters||[]).map(x=>x.per).filter(lsEvNum);
+  if(q.length>=6) return {v:q,u:'분기'};
+  return {v:(d.rows||[]).map(r=>r.per).filter(x=>lsEvNum(x)&&x>=0.5&&x<=300),u:'해'}; }
+
+// ── A. 풍경 — 장(章) 카드
+const LS_EV_TYPES=[['적자','그해 순이익이 마이너스'],
+  ['회생','흑자인데 앞 해가 적자였다 — 또는 두 해 전 적자 · 앞 해 흑자(흑자 둘째 해)'],
+  ['고성장','매출 연 증가율 15%↑ — 단 최근 4개 해 안에 크게 꺾인 적이 있으면 25%↑여야'],
+  ['경기순환','최근 6개 해 안에 크게 꺾였다 — 영업이익이 앞선 정점(영업이익률 4%↑인 해)의 60% 아래로 떨어졌거나(흑자 → 적자 포함), 매출이 한 해에 10%↑ 줄었다'],
+  ['대형우량','매출 연 증가율 5%↑ — 위 줄에 안 걸렸다'],
+  ['저성장','매출 연 증가율 5% 아래 — 위 줄에 안 걸렸다']];
+// 그해 유형의 까닭(rows[].type_why) — 서버 _land_type 이 판정에 쓴 숫자 그대로
+function lsEvWhy(r){
+  const w=r.type_why; if(!w) return '—';
+  const yl=lsEvYl(r), nn=lsEvNum(w.n)?(Number.isInteger(w.n)?String(w.n):w.n.toFixed(1)):'—', g=lsEvPct(w.g,1);
+  const grow=()=>'매출 '+w.y0+' '+lsEvWt(w.r0)+' → '+yl+' '+lsEvWt(w.r1)+', 연 '+g+'('+nn+'년)';
+  const sw=h=>!h?'—':h.kind==='op'?lsEvYs(h.y)+' 영업이익 '+lsEvWt(h.op)+' — '+lsEvYs(h.peak_y)+' 정점 '+lsEvWt(h.peak)+'의 60% 아래'
+    :lsEvYs(h.y)+' 매출 '+lsEvPct(h.rev_yoy,0)+'(−10% 이하)';
+  switch(w.rule){
+    case 'loss': return '순손실 '+lsEvWt(w.ni);
+    case 'turn': return lsEvNum(w.p1)&&w.p1<0 ? '앞 해('+w.p1_y+') 순손실 '+lsEvWt(w.p1)+' → 흑자 '+lsEvWt(w.ni)
+      : w.p2_y+' 순손실 '+lsEvWt(w.p2)+' → '+w.p1_y+' 흑자 '+lsEvWt(w.p1)+' → 흑자 둘째 해 '+lsEvWt(w.ni);
+    case 'grow': return grow()+' — '+(w.swing4?'최근 4개 해 안에 꺾였지만('+sw(w.swing4)+') 25%↑':'최근 4개 해 크게 꺾인 적 없음');
+    case 'cycle': return '6개 해 안에 꺾임: '+sw(w.swing6)+(lsEvNum(w.g)?' · 매출 연 '+g+(w.g>=15?' — 15%↑지만 4개 해 안에 꺾여 25%↑여야 고성장':''):'');
+    case 'stal': return grow()+' — 5%↑, 6개 해 안 크게 꺾인 적 없음';
+    case 'slow': return grow()+' — 5% 아래, 6개 해 안 크게 꺾인 적 없음';
+    case 'none': return !lsEvNum(w.r0)||!lsEvNum(w.r1)?'매출 줄이 없어 증가율을 셀 수 없다 → 유형 없음'
+      : !(w.n>=2)?'매출 기록 '+nn+'년 — 2년↑여야 센다 → 유형 없음':'매출이 0 이하라 증가율을 셀 수 없다 → 유형 없음';
+  }
+  return '—';
+}
+function lsEvChap(d,ci){
+  const ch=d.chapters[ci], R=d.rows||[], ty=(d.types||{})[ch.type]||[], body=el('div');
+  const yall={}; R.forEach(r=>{ yall[r.year]=r; });
+  const rr=[]; for(let y=ch.y0;y<=ch.y1;y++) if(yall[y]) rr.push(yall[y]);
+  const pre=yall[ch.y0-1]||null, r0=rr[0]||{}, r1=rr[rr.length-1]||{}, also=ch.also||[];
+  const span=ch.y0===ch.y1&&!ch.y1_label?String(ch.y0):ch.y0+'–'+(ch.y1_label||ch.y1);
+  const hasWhy=rr.some(r=>r.type_why);
+  // 규칙
+  const s1=lsEvSec(body,'rule','규칙','RULE');
+  lsEvP(s1,'해마다 그해까지의 연간 숫자로만 유형을 매긴다 — 아래 줄을 위에서부터 따져 처음 맞는 줄이 그해 유형이다.');
+  const nm=LS_EV_TYPES.map(x=>x[0]);
+  lsEvRules(s1,LS_EV_TYPES,nm.indexOf(ch.type),also.map(t=>nm.indexOf(t)));
+  lsEvP(s1,'매출 증가율 = 3년 전(기록이 그보다 짧으면 첫 해) → 그해 매출의 연율(2년↑ 떨어져야 센다 — 못 세면 유형 없음). 최근 4분기 칸은 실제 햇수(예: 2.5년)로 연율화한다. 4개 해 · 6개 해 창은 그해까지의 칸(최근 4분기 칸 포함)이다.','lsEvFine');
+  lsEvP(s1,'같은 유형이 이어진 해를 한 장으로 묶는다. 한 해짜리 장은 앞 장에 붙인다 — 첫 장 · 적자 장 · 회생 장은 한 해여도 그대로 두고, 앞 장이 적자면 붙이지 않는다.'+
+    (also.length?' 이 장에는 한 해짜리 「'+also.join('」 · 「')+'」가 붙었다(위 흐린 금색 줄) — 아래 표에서 \'붙임\'.':''));
+  // 숫자
+  const s2=lsEvSec(body,'num','숫자','NUMBERS');
+  const sy=lsEvSub(s2,'years','해마다 판정',hasWhy?'그해 유형과 까닭 — 서버가 판정에 쓴 숫자':null);
+  if(!hasWhy) lsEvP(sy,LS_EV_OLD+'. 지금은 매출 · 영업이익 · 순이익만 보인다.','lsEvWarn');
+  lsEvTbl(sy,['해','매출','영업이익','순이익','그해 유형'].concat(hasWhy?['까닭']:[]),
+    rr.map(r=>({cls:r.type!==ch.type?'dim':null,c:[lsEvYl(r),lsEvWt(r.rev),lsEvWt(r.op),lsEvWt(r.ni),
+      (r.type||'없음')+(r.type&&r.type!==ch.type?' · 붙임':'')].concat(hasWhy?[lsEvWhy(r)]:[])})),[0,1,1,1,0,0],'why');
+  if(r1.ttm) lsEvP(sy,lsEvYl(r1)+' = '+r1.ttm+'까지 최근 4분기 합 — 앞 연간 칸과 기간이 겹친다.','lsEvFine');
+  // 카드 숫자의 셈
+  const sc=lsEvSub(s2,'calc','카드 숫자의 셈','장 카드의 네 숫자를 판 숫자로 다시 센다');
+  const a=(pre||r0).rev, b=r1.rev, n=ch.y1-ch.y0+(pre?1:0);
+  const cg=n&&lsEvNum(a)&&lsEvNum(b)&&a>0&&b>0?(Math.pow(b/a,1/n)-1)*100:null;
+  const ms=rr.filter(x=>lsEvNum(x.margin)), rs=rr.filter(x=>lsEvNum(x.roe));
+  const mA=lsEvAvg(ms.map(x=>x.margin)), rA=lsEvAvg(rs.map(x=>x.roe));
+  const own=!!(pre&&lsEvNum(pre.px)), p1=r1.px;
+  const p0=own?pre.px:(lsEvNum(ch.px_ret)&&lsEvNum(p1)?p1/(1+ch.px_ret/100):null);
+  const pr=lsEvNum(p0)&&lsEvNum(p1)&&p0?(p1/p0-1)*100:null;
+  const pc=v=>lsEvNum(v)?v.toFixed(1)+'%':'—';
+  const e1=r1.ttm?r1.ttm+' 분기 말':r1.year+'년 말';
+  lsEvTbl(sc,['카드','셈','다시 셈','대조'],[
+    {i:'rev',c:['매출 연',lsEvC2((pre?pre.year+'(장 앞 해)':lsEvYl(r0)+'(첫 해 — 앞 해 칸 없음)')+' '+lsEvWt(a)+' → '+lsEvYl(r1)+' '+lsEvWt(b),
+      '(끝 ÷ 처음)^(1/'+n+') − 1 — 햇수 '+n+'(해 수로 센다)'),lsEvPct(cg),lsEvSame(lsEvPct(cg),lsEvPct(ch.rev_cagr))]},
+    {i:'margin',c:['이익률',lsEvC2('해마다 영업이익률(영업이익 ÷ 매출)의 평균',ms.map(x=>lsEvYl(x)+' '+x.margin.toFixed(1)).join(' · ')||'기록 없음'),pc(mA),lsEvSame(pc(mA),pc(ch.margin))]},
+    {i:'roe',c:['ROE',lsEvC2('해마다 ROE(순이익 ÷ 앞 해 말 · 그해 말 자본 평균)의 평균',rs.map(x=>lsEvYl(x)+' '+x.roe.toFixed(1)).join(' · ')||'기록 없음'),pc(rA),lsEvSame(pc(rA),pc(ch.roe))]},
+    {i:'px',c:['주가',lsEvC2((own?pre.year+'년 말 '+lsEvW(p0):ch.y0+'년 첫 거래일 무렵 '+lsEvW(p0)+' *')+' → '+e1+' '+lsEvW(p1),
+      own?'수정주가 — 끝 ÷ 처음 − 1':'* 판에 그날 값 칸이 없어 카드 값에서 거꾸로 셌다'),lsEvPct(pr),lsEvSame(lsEvPct(pr),lsEvPct(ch.px_ret))]}
+  ],[0,0,1,0],'calc');
+  // 들어온 말
+  const sw=lsEvSub(s2,'words','들어온 말');
+  const ws=ch.word_stats, wn=ch.word_n;
+  lsEvP(sw,'규칙 — 이 장 「사업의 내용」에서 보고서당 3번↑ 쓰였고, 앞선 해들 보고서엔 보고서당 0.5번↓이던 낱말. 회계 · 위험관리 서식어와 흔한 나라 약어, '+
+    '두 글자 이하 · 아홉 글자↑ 한글 낱말은 뺀다. 많이 쓴 순서로 여섯 개까지.'+(wn?' 견준 보고서 — 이 장 '+wn[0]+'개 · 앞선 해 '+wn[1]+'개.':''),'lsEvFine');
+  if(ws&&ws.length) lsEvTbl(sw,['낱말','이 장 보고서당','앞선 해 보고서당'],ws.map((x,j)=>({i:j,c:[x.t,lsEvF(x.in,1)+'번',lsEvF(x.bef,2)+'번']})),[0,1,1]);
+  else if(ch.words&&ch.words.length){ const cw=el('div','lsEvChips'); ch.words.forEach((x,j)=>{ const s=el('span',null,x); s.dataset.i=j; cw.appendChild(s); }); sw.appendChild(cw);
+    lsEvP(sw,LS_EV_OLD+' — 낱말별 횟수가 없다.','lsEvWarn'); }
+  else lsEvP(sw,wn&&!wn[0]?'이 장 기간에 「사업의 내용」 보고서가 없다.':wn&&!wn[1]?'앞선 해 보고서가 없어(첫 장) 견줄 수 없었다.':'조건을 넘은 낱말이 없었다.');
+  // 사건
+  const se=lsEvSub(s2,'events','사건','변곡점 탭이 고른 사건 중 이 장 기간 것 — 경고 · 수익모델 · 방향·투자 · 재무·주주 순으로 셋까지');
+  if(ch.events&&ch.events.length){ const u=el('ul','lsEvEvt');
+    ch.events.forEach((e,j)=>{ const li=el('li',e.tone||null); li.dataset.i=j; li.appendChild(el('b',null,e.year+' '+e.title)); if(e.detail) li.appendChild(el('span',null,e.detail)); u.appendChild(li); });
+    se.appendChild(u); }
+  else lsEvP(se,'이 장 기간에 고른 사건이 없다.');
+  // 회사가 쓴 말
+  if(ch.said){ const ss=lsEvSub(s2,'said','회사가 쓴 말',(ch.said_year?ch.said_year+'년 ':'')+'사업보고서 「사업의 내용」 첫머리'+
+      (ch.said_year&&ch.said_year!==ch.y0?' — 장 첫해 보고서에 없어 그 뒤 첫 보고서':''));
+    ss.appendChild(el('blockquote','lsEvQ',ch.said)); }
+  // 그래서 · 한계
+  const so=[ty[2]?'린치의 「'+ch.type+'」 규칙 — '+ty[2]:null];
+  if(own&&lsEvNum(ch.px_ret)&&lsEvNum(ch.eps_ret)) so.push('이 장 동안 주가 '+lsPct(ch.px_ret,0)+' · 주당이익 '+lsPct(ch.eps_ret,0)+'(장 앞 해 → 장 끝, 판 값) — '+
+    (ch.px_ret>ch.eps_ret?'주가가 이익보다 더 올랐다(PER 이 높아졌다).':'이익이 주가보다 더 늘었다(PER 이 낮아졌다).'));
+  const off=lsEvNum(ch.rev_cagr)&&((ch.type==='고성장'&&ch.rev_cagr<15)||(ch.type==='대형우량'&&(ch.rev_cagr<5||ch.rev_cagr>=15))||(ch.type==='저성장'&&ch.rev_cagr>=5));
+  if(off) so.push('카드의 매출 연 '+lsPct(ch.rev_cagr,0)+'는 장 앞 해부터 센 값이고, 유형은 해마다 3년 전부터 센 증가율로 갈랐다 — 그래서 유형 문턱과 어긋나 보인다(위 \'해마다 판정\'의 까닭 칸).');
+  lsEvTail(body,so,['연간 원장(연결) 숫자로만 가른 유형이다 — 해자 · 경쟁 · 경영진은 보지 않는다.',
+    '매출 증가율 창이 3년이라 짧다 — 바닥 해나 꼭대기 해가 창 끝에 걸리면 유형이 흔들린다.',
+    r1.ttm?'마지막 칸('+lsEvYl(r1)+')은 최근 4분기 합이라 앞 연간 칸과 기간이 겹친다. 장 햇수도 해 수로 센다.':null,
+    ch.words&&ch.words.length?'들어온 말은 낱말 셈일 뿐 — 새 사업인지 이름만 바뀐 것인지는 보고서를 읽어야 안다.':null]);
+  return {title:ch.type+' · '+span, tag:ty[0], color:LS_TC[ch.type]||'#8b95a3',
+    lede:'이 '+rr.length+(r1.ttm?'개 칸(마지막은 최근 4분기)을':'개 해를')+' 「'+ch.type+'」 한 장으로 묶었다 — '+(ty[1]||'')+'.', body};
+}
+
+// ── B. 안목 — 규칙 카드
+function lsEvLesson(d,li){
+  const l=d.lessons[li], body=el('div');
+  const f={follow:lsEvFollow, worst:lsEvWorst, alloc:lsEvAlloc, retained:lsEvKeep, identity:lsEvIdent, roe:lsEvRoe}[l.k];
+  let lede=null;
+  if(f) lede=f(d,l,body); else lsEvTail(body,[l.text],[]);
+  return {title:l.title, tag:l.who, lede:lede||l.text, body};
+}
+function lsEvFollow(d,l,body){
+  const G=d.gaps||[], dc=d.decide||{}, b=d.band||{}, corr=lsEvNum(d.corr)?d.corr:l.v;
+  const far=G.filter(g=>Math.abs(g.gap)>=30), ln=dc.line_now, now=lsEvNum(dc.px)&&lsEvNum(ln)&&ln>0?(dc.px/ln-1)*100:null;
+  const s1=lsEvSec(body,'rule','규칙','RULE');
+  lsEvP(s1,'상관 = 분기마다 짝지은 (로그 분기말 주가, 로그 이익선)의 상관계수. 이익선 = 그 분기 최근 4분기 주당이익 × 이 회사 PER 기록의 중앙값 '+
+    lsEvF(b.mid,2)+'배(지금 기록 전체 하나로). 적자 분기 · 주가 없는 분기는 빼고, 짝이 8개↑일 때만 센다.');
+  lsEvRules(s1,[['0.6↑','주가는 결국 이익을 따라간다 — 이익을 읽는 것이 곧 주가를 읽는 것'],['0.6 아래','주가와 이익이 따로 놀았다 — 이익 말고 다른 것이 값을 움직였다']],corr>=0.6?0:1);
+  lsEvP(s1,'벌어짐 = 분기말 주가 ÷ 그 분기 이익선 − 1. 위아래로 30%↑ 벌어진 분기를 센다.','lsEvFine');
+  const s2=lsEvSec(body,'num','숫자','NUMBERS');
+  lsEvKV(s2,[['상관',corr.toFixed(2),lsEvOk(corr>=0.6,'문턱 0.6')],['짝지은 분기',G.length+'개',''],['30%↑ 벌어진 분기',far.length+'개','위 '+far.filter(g=>g.gap>0).length+' · 아래 '+far.filter(g=>g.gap<0).length],
+    ['지금 벌어짐',lsEvPct(now),'지금 '+lsEvW(dc.px)+' ÷ 이익선 '+lsEvW(ln)+' − 1']]);
+  lsEvGapBars(s2,G,now);
+  lsEvP(s2,'주황 = 이익선보다 30%↑ 비쌌던 분기 · 파랑 = 30%↑ 쌌던 분기 · 흰 = 그 사이 · 금테 = 지금. 세로 눈금은 제곱근(작은 벌어짐도 보이게), 막대 끝 세모 = 눈금 밖(마우스를 올리면 값). 적자 분기는 이익선이 없어 빠진다.','lsEvFine');
+  const sf=lsEvSub(s2,'far','이익선에서 30%↑ 벌어진 분기',far.length+'개');
+  if(far.length) lsEvTbl(sf,['분기 말','벌어짐','쪽'],far.map(g=>({c:[lsD(g.d),lsPct(g.gap,0),g.gap>0?'위 — 비쌌다':'아래 — 쌌다']})),[0,1,0]);
+  else lsEvP(sf,'없다.');
+  const gs=G.map(g=>g.gap), gmin=gs.length?Math.min(...gs):null, gmax=gs.length?Math.max(...gs):null;
+  lsEvTail(body,[corr>=0.6?'이 회사에선 이익을 읽는 것이 곧 주가를 읽는 것이었다 — 이익선 · 값 띠를 믿을 만하다.':'이익 말고 다른 것(기대 · 테마 · 자산 가치)이 값을 움직였다 — 이익선만 믿으면 안 되는 회사.',
+    lsEvNum(now)&&gs.length?'지금 벌어짐 '+lsPct(now,0)+' — 기록 범위(가장 아래 '+lsPct(gmin,0)+' · 가장 위 '+lsPct(gmax,0)+') '+(now<gmin||now>gmax?'밖이다.':'안이다.'):null],
+    ['이 선은 지금의 PER 중앙값 하나로 15년을 그었다 — 그림의 이익선(그때 알던 PER 로만 그음)과 다를 수 있고, 옛 분기에 뒤늦은 지혜가 섞인다.',
+     '상관은 같이 오르내렸는지일 뿐 — 벌어졌다가 되돌아왔는지는 위 막대의 차례를 보라.',
+     G.length<40?'짝지은 분기가 '+G.length+'개 — 짧은 기록이다.':null]);
+  return '상관 '+corr.toFixed(2)+' — 문턱 0.6 '+(corr>=0.6?'위':'아래')+'. 분기 '+G.length+'개 중 '+far.length+'개가 이익선에서 30%↑ 벌어졌다.';
+}
+function lsEvWorst(d,l,body){
+  const A=(d.rows||[]).filter(r=>!r.ttm), chg={};
+  let w=null;
+  for(let i=1;i<A.length;i++){ const a=A[i-1], b=A[i]; if(a.op&&a.op>0&&lsEvNum(b.op)){ const c=(b.op/a.op-1)*100; chg[b.year]=c; if(!w||c<w[0]) w=[c,b]; } }
+  const s1=lsEvSec(body,'rule','규칙','RULE');
+  lsEvP(s1,'연간 칸만 본다(최근 4분기 칸은 뺀다). 앞 해 영업이익이 흑자인 해들 가운데 전년 대비 영업이익 변화가 가장 나쁜 해를 고른다 — −20%보다 나쁠 때만 이 카드가 선다. '+
+    '앞선 정점 = 그해 앞 해들 가운데 가장 큰 영업이익, 되찾은 해 = 그 뒤 처음으로 영업이익이 그 정점 이상인 해.');
+  lsEvRules(s1,[['흑자를 지켰다','불황에도 돈을 번 회사 — 버핏의 \'경제적 해자\' 후보'],['적자','불황에 적자가 나는 회사는 빚이 치명상이 된다(멍거)']],w&&(w[1].ni||0)>0?0:1);
+  const s2=lsEvSec(body,'num','숫자','NUMBERS');
+  if(!w){ lsEvP(s2,'견줄 해가 없다.'); return null; }
+  const wy=w[1].year, prior=A.filter(r=>r.year<wy&&r.op), peak=prior.length?Math.max(...prior.map(r=>r.op)):null;
+  const pkr=peak!==null?prior.find(r=>r.op===peak):null, back=peak!==null?A.find(r=>r.year>wy&&(r.op||0)>=peak):null;
+  lsEvKV(s2,[['가장 나쁜 해',String(wy),''],['영업이익',lsEvWt(A.find(r=>r.year===wy-1)&&A.find(r=>r.year===wy-1).op)+' → '+lsEvWt(w[1].op),lsPct(w[0],0)+' (카드 '+lsPct(l.v,0)+')'],
+    ['앞선 정점',pkr?pkr.year+' '+lsEvWt(peak):'—',''],['되찾은 해',back?back.year+'년 ('+(back.year-wy)+'년 걸림)':'아직 못 되찾음',back?lsEvWt(back.op):''],
+    ['그해 순이익',lsEvWt(w[1].ni),(w[1].ni||0)>0?'흑자를 지켰다':'적자']]);
+  lsEvTbl(lsEvSub(s2,'years','해마다 영업이익','연간 칸 — 금색 줄 = 가장 나쁜 해'),['해','매출','매출 전년比','영업이익','영업이익 전년比','순이익','표시'],
+    A.map(r=>({cls:r.year===wy?'hit':(pkr&&r.year===pkr.year)||(back&&r.year===back.year)?'gold':null,
+      c:[String(r.year),lsEvWt(r.rev),lsEvPct(r.rev_yoy),lsEvWt(r.op),r.year in chg?lsPct(chg[r.year],0):'—',lsEvWt(r.ni),
+        r.year===wy?'가장 나쁜 해':pkr&&r.year===pkr.year?'앞선 정점':back&&r.year===back.year?'되찾음':'']})),[0,1,1,1,1,1,0]);
+  lsEvTail(body,[(w[1].ni||0)>0?'가장 나빴던 해에도 흑자를 지켰다 — 불황에도 돈을 번 회사는 버핏의 \'경제적 해자\' 후보다.':'가장 나빴던 해에 적자가 났다 — 불황에 적자가 나는 회사는 빚이 치명상이 된다(멍거). 결단 칸의 빚 줄(버핏 점검 3)을 함께 보라.',
+    back?'이전 정점을 '+(back.year-wy)+'년 만에 되찾았다.':'아직 이전 정점을 되찾지 못했다.'],
+    ['영업이익 % 변화는 앞 해가 작으면 크게 출렁인다 — −100%보다 나쁘면 흑자에서 적자로 떨어졌다는 뜻이다.','일회성 손익이 섞인 해일 수 있다 — 그해 보고서를 보라.',
+     '연간 칸만 — 해 안의 바닥(분기)은 더 깊었을 수 있다.']);
+  return wy+'년 영업이익 '+lsPct(w[0],0)+' — 연간 칸 중 가장 나쁜 해(문턱 −20%). '+(back?back.year+'년에 이전 정점을 되찾았다.':'아직 이전 정점을 되찾지 못했다.');
+}
+function lsEvAlloc(d,l,body){
+  const A=(d.rows||[]).filter(r=>!r.ttm), v=l.v||{};
+  const sum=k=>A.reduce((s,r)=>s+(r[k]?r[k]:0),0), cfo=sum('cfo'), cap=sum('capex'), dv=sum('div'), bb=sum('buyback');
+  const pc=x=>cfo?x/cfo*100:null, rest=100-pc(cap)-pc(dv)-pc(bb);
+  const s0=A.find(r=>r.shares), s1=[...A].reverse().find(r=>r.shares), ny=A.length?A[A.length-1].year-A[0].year:0;
+  const shc=s0&&s1&&ny?(Math.pow(s1.shares/s0.shares,1/ny)-1)*100:null;
+  const r1=lsEvSec(body,'rule','규칙','RULE');
+  lsEvP(r1,'연간 칸만 더한다(최근 4분기 칸은 기간이 겹쳐 뺀다). 영업현금 합 = 해마다 영업활동 현금흐름의 합. 세 몫 = 설비·무형 투자 합 · 배당 합 · 자사주 매입 합 ÷ 영업현금 합. '+
+    '남음 = 100 − 세 몫 — 현금으로 쌓았거나 빚을 갚았거나 인수에 쓴 몫(이 판은 따로 나누지 않는다). 주식 수 연 변화 = (끝 해 ÷ 첫 해)^(1/햇수) − 1, 분할 · 무상증자 보정.');
+  lsEvRules(r1,[['+1.5%↑','주주 몫이 계속 희석됐다'],['−0.5% 아래','주식 수가 줄었다 — 남은 주주 몫이 커졌다'],['그 사이','주식 수는 거의 그대로']],
+    lsEvNum(shc)?(shc>1.5?0:shc<-0.5?1:2):-1);
+  const s2=lsEvSec(body,'num','숫자','NUMBERS');
+  const card=Math.round, cardTxt=x=>lsEvNum(x)?Math.round(x)+'%':'—';
+  lsEvKV(s2,[['영업현금 합',lsEvWt(cfo),A.length?A[0].year+'–'+A[A.length-1].year+'년':''],
+    ['설비·무형 투자',cardTxt(pc(cap)),lsEvC2(lsEvWt(cap)+' ÷ '+lsEvWt(cfo)),null],
+    ['배당',cardTxt(pc(dv)),lsEvWt(dv)+' ÷ '+lsEvWt(cfo)],['자사주',cardTxt(pc(bb)),lsEvWt(bb)+' ÷ '+lsEvWt(cfo)],
+    ['남음',cardTxt(Math.max(0,rest)),'100 − ('+lsEvF(pc(cap),1)+' + '+lsEvF(pc(dv),1)+' + '+lsEvF(pc(bb),1)+')'+(rest<0?' — 마이너스라 0으로':''),'tot'],
+    ['주식 수',lsEvSh(s0&&s0.shares)+' → '+lsEvSh(s1&&s1.shares),'연 '+(lsEvNum(shc)?(shc>=0?'+':'')+shc.toFixed(1)+'%':'—')+' ('+ny+'년)']]);
+  const same=lsEvNum(v.capex)&&card(pc(cap))===card(v.capex)&&card(pc(dv))===card(v.div)&&card(pc(bb))===card(v.bb);
+  lsEvP(s2,'',null).appendChild(lsEvOk(same,same?'세 몫 모두 카드 막대와 같음':'카드 막대와 다름 — 카드 '+card(v.capex)+' · '+card(v.div)+' · '+card(v.bb)));
+  lsEvTbl(lsEvSub(s2,'years','해마다'),['해','영업현금','설비·무형','배당','자사주','주식 수'],
+    A.map(r=>({c:[String(r.year),lsEvWt(r.cfo),lsEvWt(r.capex),lsEvWt(r.div),lsEvWt(r.buyback),lsEvSh(r.shares)]}))
+      .concat([{cls:'tot',c:['합',lsEvWt(cfo),lsEvWt(cap),lsEvWt(dv),lsEvWt(bb),'']}]),[0,1,1,1,1,1]);
+  const ret=pc(dv)+pc(bb);
+  lsEvTail(body,['번 현금의 '+cardTxt(pc(cap))+'를 다시 사업에 넣었고, '+cardTxt(ret)+'를 주주에게 돌려줬다(배당 + 자사주).',
+    lsEvNum(shc)?(shc>1.5?'주식 수가 해마다 '+shc.toFixed(1)+'% 늘었다 — 주주 몫이 계속 희석됐다.':shc<-0.5?'주식 수가 해마다 '+(-shc).toFixed(1)+'% 줄었다 — 남은 주주 몫이 커졌다.':'주식 수는 거의 그대로였다.'):null],
+    ['남음은 셈의 나머지일 뿐 — 현금으로 쌓았는지, 빚을 갚았는지, 인수에 썼는지는 이 판이 나누지 않았다.',
+     '설비·무형 투자 = 유형 · 무형자산 취득 총액(처분 대금은 빼지 않음). 자사주 = 산 금액(소각했는지는 모른다).',
+     '연결 현금흐름 — 자회사 몫과 비지배 주주 몫이 섞인다.',
+     A.length&&A[0].year<2015?'2015년 앞 해 주식 수는 DART 에 없어 알려진 가장 이른 해 값으로 채웠다 — 그 앞의 증자 · 감자는 주식 수 변화에 안 보인다.':null]);
+  return (A.length?A[0].year+'–'+A[A.length-1].year+'년 ':'')+'영업현금 '+lsEvWt(cfo)+' — 설비·무형 '+cardTxt(pc(cap))+' · 배당 '+cardTxt(pc(dv))+' · 자사주 '+cardTxt(pc(bb))+' · 남음 '+cardTxt(Math.max(0,rest))+'.';
+}
+function lsEvKeep(d,l,body){
+  const W=(d.rows||[]).filter(r=>lsEvNum(r.re)&&r.mcap), a=W[0], b=W[W.length-1];
+  const lab=r=>r.ttm?r.year+' ('+lsEvYl(r)+' 최근 4분기)':String(r.year);     // 카드 글은 해(서버 year)로 쓴다
+  const s1=lsEvSec(body,'rule','규칙','RULE');
+  lsEvP(s1,'이익잉여금과 시가총액이 둘 다 있는 칸(최근 4분기 칸 포함) 가운데 처음 칸과 끝 칸을 견준다. 1원당 = 시가총액 변화 ÷ 이익잉여금 증가. '+
+    '시가총액 = 그해 말(최근 4분기 칸은 그 분기 말) 수정주가 × 그해 주식 수(분할 · 무상증자를 수정주가와 같은 단위로 맞춤). 칸이 5개↑이고 이익잉여금이 늘었을 때만 센다.');
+  const s2=lsEvSec(body,'num','숫자','NUMBERS');
+  if(!a||!b){ lsEvP(s2,'견줄 칸이 없다.'); return null; }
+  const dre=b.re-a.re, dcap=b.mcap-a.mcap, ratio=dre?dcap/dre:null;
+  lsEvRules(s1,[['1원↑','회사에 이익을 남겨 둔 것이 주주에게 이득이었다'],['1원 아래','이익을 쌓아 두기보다 돌려주는 편이 나았다']],lsEvNum(ratio)&&ratio>=1?0:1);
+  lsEvTbl(s2,['칸','이익잉여금','주가','주식 수','시가총액'],[
+    {c:[lab(a),lsEvWt(a.re),lsEvW(a.px),lsEvSh(a.shares),lsEvWt(a.mcap)]},
+    {c:[lab(b),lsEvWt(b.re),lsEvW(b.px),lsEvSh(b.shares),lsEvWt(b.mcap)]},
+    {cls:'tot',c:['차이',(dre>=0?'+':'')+lsEvWt(dre),'','',(dcap>=0?'+':'')+lsEvWt(dcap)]}],[0,1,1,1,1]);
+  lsEvKV(s2,[['1원당',lsEvF(ratio,1)+'원',lsEvWt(dcap)+' ÷ '+lsEvWt(dre),'tot'],['카드 값',lsEvF(l.v,2)+'원',lsEvSame(lsEvF(ratio,2),lsEvF(l.v,2))]]);
+  lsEvTail(body,[lsEvNum(ratio)&&ratio>=1?'쌓아 둔 이익 1원이 시가총액 '+ratio.toFixed(1)+'원이 됐다 — 이익을 회사에 남겨 둔 것이 주주에게 이득이었다.':'쌓아 둔 이익 1원이 시가총액 '+lsEvF(ratio,1)+'원에 그쳤다 — 이익을 쌓아 두기보다 돌려주는 편이 나았다.'],
+    ['처음 칸과 끝 칸 둘만 본다 — 끝 칸이 주가 꼭대기면 크게, 바닥이면 작게 나온다.','배당으로 돌려준 몫은 이익잉여금에서 빠진 뒤다 — 배당을 많이 한 회사는 분모가 작다.',
+     '시가총액 변화에는 그사이 증자로 늘어난 주식의 몫도 섞인다 — 쌓아 둔 이익만으로 커진 것은 아니다(주식 수 열을 보라).']);
+  return a.year+'–'+b.year+'년'+(b.ttm?'('+lsEvYl(b)+' 칸)':'')+' 이익잉여금 '+lsEvWt(dre)+' 늘 때 시가총액 '+lsEvWt(Math.abs(dcap))+' '+(dcap>=0?'늘었다':'줄었다')+' → 1원당 '+lsEvF(ratio,1)+'원.';
+}
+// 정체성 카드의 첫 해 · 끝 해 — 새 키가 없으면 카드 글(서버가 쓴 '%d년과 %d년')에서
+function lsEvIdY(l){ if(l.y0&&l.y1) return [l.y0,l.y1]; const m=String(l.text||'').match(/^(\d{4})년과 (\d{4})년/); return m?[+m[1],+m[2]]:['—','—']; }
+function lsEvIdent(d,l,body){
+  const v=l.v, yy=lsEvIdY(l);
+  const s1=lsEvSec(body,'rule','규칙','RULE');
+  lsEvP(s1,'「사업의 내용」 낱말 분포의 닮음 — 첫 해('+yy[0]+')와 끝 해('+yy[1]+') 보고서에서 많이 쓴 낱말 300개씩의 횟수를 견준 코사인(1 = 같은 말, 0 = 겹침 없음).');
+  lsEvRules(s1,[['0.6↑','15년 내내 같은 말로 자기를 설명했다 — \'10년 뒤에도 같은 일을 할 회사\''],['0.4↑','뼈대는 남았지만 설명이 꽤 바뀌었다'],['0.4 아래','설명이 크게 바뀌었다 — 지금 회사는 15년 전과 다른 회사']],v>=0.6?0:v>=0.4?1:2);
+  lsEvP(s1,'결단 칸 버핏 점검 1(이해할 수 있는 사업인가)은 이 닮음이 0.5↑인지 본다. 15년 내내 쓴 말 = 끝 해에 많이 쓴 120개 가운데 보고서가 있는 해의 80%↑에서 2번↑ 쓴 낱말(서식어 빼고 열 개까지).','lsEvFine');
+  const s2=lsEvSec(body,'num','숫자','NUMBERS');
+  lsEvKV(s2,[['닮음',lsEvF(v,2),lsEvOk(v>=0.5,'버핏 점검 1 문턱 0.5')],['견준 해',yy[0]+' ↔ '+yy[1],'']]);
+  [['then','그때'],['now','지금']].forEach(([k,t])=>{ const x=l[k]; if(!x) return; const txt=typeof x==='string'?x:x.text; if(!txt) return;
+    const s=lsEvSub(s2,k,t+'의 말',(x.year?x.year+'년 ':'')+'사업보고서 「사업의 내용」 첫머리'); s.appendChild(el('blockquote','lsEvQ',txt)); });
+  if(l.core&&l.core.length){ const s=lsEvSub(s2,'core','15년 내내 쓴 말'); const cw=el('div','lsEvChips core'); l.core.forEach(x=>cw.appendChild(el('span',null,x))); s.appendChild(cw); }
+  const tn=(String(l.text||'').match(/정체성이 꺾인 해 (\d+)번/)||[])[1];      // 카드 글의 횟수(서버가 쓴 문장)
+  const st=lsEvSub(s2,'turns','정체성이 꺾인 해','변곡점 탭의 \'정체성\' 줄 사건'+(Array.isArray(l.turns)?' — '+l.turns.length+'번':tn?' — '+tn+'번':''));
+  if(Array.isArray(l.turns)){
+    if(l.turns.length){ const u=el('ul','lsEvEvt'); l.turns.slice().sort((a,b)=>(a.year||0)-(b.year||0)).forEach(e=>{ const li=el('li'); li.appendChild(el('b',null,(e.year||'')+' '+(e.title||''))); if(e.detail) li.appendChild(el('span',null,e.detail)); u.appendChild(li); }); st.appendChild(u); }
+    else lsEvP(st,'없다.');
+  } else lsEvP(st,(tn?'카드 글 — 정체성이 꺾인 해 '+tn+'번. ':'')+LS_EV_OLD+' — 해마다 목록이 없다.','lsEvWarn');
+  lsEvTail(body,[v>=0.6?'15년 내내 같은 말로 자기를 설명했다 — 버핏이 좋아하는 \'10년 뒤에도 같은 일을 할 회사\'.':v>=0.4?'뼈대는 남았지만 설명이 꽤 바뀌었다 — 어느 사업이 커졌는지 풍경 칸 장(章)마다 들어온 말을 보라.':'설명이 크게 바뀌었다 — 지금의 회사는 15년 전과 다른 회사다. 옛 숫자로 지금을 재면 안 된다.'],
+    ['낱말 셈은 뜻을 모른다 — 회사 · 부문 이름이 바뀌거나 보고서 서식이 바뀌어도 닮음이 떨어진다.','첫 해와 끝 해 둘만 견준다 — 그사이 갔다가 돌아온 변화는 안 보인다.']);
+  return yy[0]+'년과 '+yy[1]+'년 「사업의 내용」 낱말 닮음 '+lsEvF(v,2)+' — '+(v>=0.6?'그대로다':v>=0.4?'뼈대는 남았다':'크게 바뀌었다')+'.';
+}
+function lsEvRoe(d,l,body){
+  const A=(d.rows||[]).filter(r=>!r.ttm&&lsEvNum(r.roe)), n15=A.filter(r=>r.roe>=15).length, mn=A.length?A.reduce((a,b)=>b.roe<a.roe?b:a):null;
+  const s1=lsEvSec(body,'rule','규칙','RULE');
+  lsEvP(s1,'연간 칸의 ROE(순이익 ÷ 앞 해 말 · 그해 말 자본 평균). 15%↑ 해 수 ÷ 기록 해 수로 가른다.');
+  const k=A.length?(n15>=0.7*A.length?0:n15<0.5*A.length?1:2):-1;
+  lsEvRules(s1,[['70%↑','대부분의 해에 15%를 넘겼다 — \'예측 가능한 수익 기계\'에 가깝다'],['50% 아래','15%를 넘긴 해가 절반이 안 된다 — 좋은 해만 보고 판단하면 안 되는 회사'],['그 사이','좋은 해와 나쁜 해가 섞였다 — 나쁜 해의 바닥을 보라']],k);
+  const s2=lsEvSec(body,'num','숫자','NUMBERS');
+  lsEvKV(s2,[['15%↑ 해',n15+'/'+A.length,A.length?(n15/A.length*100).toFixed(0)+'%':''],['가장 낮은 해',mn?mn.year+'년 '+mn.roe.toFixed(1)+'%':'—','']]);
+  lsEvRoeBars(s2,A.map(r=>({k:String(r.year),v:r.roe})),15);
+  const same=Array.isArray(l.v)&&l.v.length===A.length&&l.v.every((x,i)=>Math.abs(x-Math.round(A[i].roe*10)/10)<0.051);
+  lsEvP(s2,'',null).appendChild(lsEvOk(same,same?'해마다 값이 카드 셈(서버 v)과 같음':'카드 셈과 다름'));
+  lsEvTail(body,[['대부분의 해에 15%를 넘겼다 — 버핏이 찾는 \'예측 가능한 수익 기계\'에 가깝다.','15%를 넘긴 해가 절반이 안 된다 — 좋은 해만 보고 판단하면 안 되는 회사.','좋은 해와 나쁜 해가 섞였다 — 평균보다 나쁜 해의 바닥을 보라.'][k]||null],
+    ['ROE 는 빚을 늘려도 오른다 — 결단 칸의 빚 줄(버핏 점검 3)과 함께 보라.','큰 손실 · 자사주 소각 뒤 자본이 작아지면 ROE 가 부풀려진다.','연결 순이익(비지배 몫 포함) 기준이다.']);
+  return 'ROE 15%↑ 해 '+n15+'/'+A.length+(mn?' — 가장 낮은 해 '+mn.year+'년 '+mn.roe.toFixed(1)+'%':'')+'.';
+}
+
+// ── C. 결단
+const LS_EV_BUF=[['너무 어려움','사업 설명 닮음(점검 1)이 ✗ 이고 사업 점검 넷 중 ✓ 가 3개 미만 — 값을 보기 전에 넘긴다'],
+  ['결단','좋은 사업(사업 점검 넷 중 ✓ 3개↑) + 값이 싸다(PER 자기 역사 하위 25%↓)'],
+  ['기다림','좋은 사업인데 값이 싸지 않다 — 기다릴 값을 정해 두고 기다린다'],
+  ['지나침','그 밖 — 사업 점검 ✓ 가 3개 미만, 싸 보여도 버핏의 잣대로는 좋은 사업이 아니다']];
+function lsEvBuf(d){
+  const dc=d.decide||{}, C=dc.checks||[], body=el('div');
+  const ok4=C.slice(0,4).filter(x=>x.ok===true).length, known=C.slice(0,4).filter(x=>x.ok===true||x.ok===false).length;
+  const good=ok4>=3||(known===3&&ok4===3), pct=dc.pct, zone=lsEvNum(pct)?(pct<=25?'싸다':pct>=75?'비싸다':'보통'):null;
+  const on=(C[0]&&C[0].ok===false&&ok4<3)?0:(good&&zone==='싸다')?1:good?2:3;
+  const s1=lsEvSec(body,'rule','규칙','RULE');
+  lsEvP(s1,'버핏은 사업을 먼저 보고 값은 나중에 본다. 사업 점검 = 아래 체크의 앞 네 줄(1 이해 · 2 꾸준한 ROE · 3 가벼운 빚 · 4 현금 이익), 값 = PER 자기 역사 백분위. 아래 갈래를 위에서부터 따진다.');
+  lsEvRules(s1,LS_EV_BUF,on);
+  if(LS_EV_BUF[on][0]!==dc.buffett.v) lsEvP(s1,'다시 센 갈래(「'+LS_EV_BUF[on][0]+'」)가 서버 판정(「'+dc.buffett.v+'」)과 다르다 — 서버 값을 따른다.','lsEvWarn');
+  const s2=lsEvSec(body,'num','숫자','NUMBERS');
+  const sb=lsEvSub(s2,'biz','사업 점검','앞 네 줄');
+  lsEvTbl(sb,['점검','결과','근거'],C.map((x,j)=>({cls:j===4?'dim':null,c:[(j+1)+'. '+x.q,lsEvOk(x.ok),j===4?lsEvC2(x.why,'판정엔 안 쓴다 — 값은 아래 구간으로 가른다'):x.why]})),[0,0,0]);
+  lsEvKV(sb,[['사업 점검 ✓',ok4+'/4'+(known<4?' (판정 없음 '+(4-known)+'줄)':''),lsEvOk(good,good?'좋은 사업 — 3개↑':'좋은 사업 아님 — 3개 미만'),'tot']]);
+  const sz=lsEvSub(s2,'zone','값 구간','PER 자기 역사 백분위 — 0 = 기록 중 가장 쌌던 때');
+  lsEvZone(sz,pct);
+  lsEvKV(sz,[['지금 PER',lsEvF(dc.per,1)+'배',''],['자기 역사',lsEvNum(pct)?'하위 '+pct.toFixed(0)+'%':'—',zone?'→ '+zone+(zone==='싸다'?' (25%↓)':zone==='비싸다'?' (75%↑)':' (25–75%)'):'적자거나 기록이 모자라 잴 수 없다']]);
+  const so=[[ '사업이 15년 사이 달라졌고 수익도 들쭉날쭉하다 — 숫자로 이해할 수 있는 회사가 아니라 값은 보지 않는다.',
+    '좋은 사업이 자기 역사 하위 25% 값에 있다 — 버핏이 기다리는 순간. 그래도 아래 한계를 보라.',
+    '좋은 사업 — 남은 것은 값이다. 기다릴 값 '+lsEvW(dc.wait_px)+'(결단 칸 셋째 상자)까지 기다린다.',
+    '사업 점검 '+ok4+'/4 — 값이 '+(zone||'—')+'여도 버핏의 잣대로는 좋은 사업이 아니다.'][on], dc.note?dc.note+'.':null];
+  lsEvTail(body,so,['사업 점검 넷은 원장 숫자로 만든 대용치다 — 해자 · 경영진 · 경쟁은 숫자에 없다.',
+    'PER 백분위는 이익이 꼭대기인 해에 싸게 나온다(경기순환 유형) — 린치 카드의 정점 경계를 함께 보라.',
+    'ROE · FCF 줄은 연간 칸만 센다 — 최근 4분기 칸은 참고로만 보인다.']);
+  return {title:'버핏 — 「'+dc.buffett.v+'」', tag:'BUFFETT', lede:dc.buffett.why, body};
+}
+function lsEvChk(d,k){
+  const dc=d.decide||{}, x=(dc.checks||[])[k]||{}, R=d.rows||[], A=R.filter(r=>!r.ttm), tr=R.length&&R[R.length-1].ttm?R[R.length-1]:null;
+  const body=el('div'), s1=lsEvSec(body,'rule','규칙','RULE'), s2=lsEvSec(body,'num','숫자','NUMBERS');
+  let so=[], lim=[], mine=null;
+  if(k===0){
+    const l=(d.lessons||[]).find(z=>z.k==='identity');
+    lsEvP(s1,'「사업의 내용」 첫 해와 끝 해 보고서에서 많이 쓴 낱말 300개씩의 횟수를 견준 닮음(코사인 — 1 = 같은 말). 0.5↑ 이면 ✓ — 안목 칸 「사업을 설명하는 말이 얼마나 그대로인가」와 같은 숫자다.');
+    if(l){ const yy=lsEvIdY(l); mine='사업의 내용 낱말 닮음 '+l.v.toFixed(2);
+      lsEvKV(s2,[['견준 해',yy[0]+' ↔ '+yy[1],''],['닮음',l.v.toFixed(2),lsEvOk(l.v>=0.5,'문턱 0.5')]]);
+      [['then','그때'],['now','지금']].forEach(([kk,t])=>{ const q=l[kk]; const txt=q&&(typeof q==='string'?q:q.text); if(!txt) return;
+        const s=lsEvSub(s2,kk,t+'의 말',(q.year?q.year+'년 ':'')+'「사업의 내용」 첫머리'); s.appendChild(el('blockquote','lsEvQ',txt)); });
+      so.push(l.v>=0.5?'15년 사이 대체로 같은 말로 자기를 설명했다 — 숫자로 이해할 수 있는 회사로 본다.':'설명이 많이 바뀌었다 — 지금 회사는 15년 전과 다른 회사다. 옛 숫자로 지금을 재면 안 된다.');
+    } else { mine='자료 없음'; lsEvP(s2,'「사업의 내용」 보고서가 세 해 미만이라 닮음을 셀 수 없었다 — 판정 없음(·).'); }
+    lim=['낱말 셈은 뜻을 모른다 — 회사 · 부문 이름이 바뀌거나 보고서 서식이 바뀌어도 닮음이 떨어진다.','\'이해할 수 있는가\'는 원래 읽는 사람의 몫이다 — 이 줄은 설명이 바뀌었는지만 본다.'];
+  } else if(k===1){
+    const r5=A.slice(-5), rr5=r5.filter(r=>lsEvNum(r.roe)), n15=rr5.filter(r=>r.roe>=15).length;
+    lsEvP(s1,'연간 칸 끝 다섯 해의 ROE(순이익 ÷ 앞 해 말 · 그해 말 자본 평균). 기록이 3개↑이고 15%↑ 해가 4개↑이면 ✓ — 다섯 해 중 한 해만 미끄러져도 된다. 최근 4분기 칸은 참고로만 보인다(세지 않음).');
+    lsEvRoeBars(s2,r5.filter(r=>lsEvNum(r.roe)).map(r=>({k:String(r.year),v:r.roe})).concat(tr&&lsEvNum(tr.roe)?[{k:lsEvYl(tr)+' 참고',v:tr.roe,dim:true}]:[]),15);
+    lsEvTbl(s2,['해','순이익','ROE','15%↑'],r5.map(r=>({c:[String(r.year),lsEvWt(r.ni),lsEvNum(r.roe)?r.roe.toFixed(1)+'%':'—',lsEvNum(r.roe)?lsEvOk(r.roe>=15):'—']}))
+      .concat(tr?[{cls:'dim',c:[lsEvYl(tr)+' (참고)',lsEvWt(tr.ni),lsEvNum(tr.roe)?tr.roe.toFixed(1)+'%':'—','세지 않음']}]:[]),[0,1,1,0]);
+    lsEvKV(s2,[['15%↑ 해',n15+'/'+rr5.length,lsEvOk(rr5.length>=3&&n15>=4,'4개↑ · 기록 3개↑'),'tot']]);
+    mine='최근 5년 ROE '+rr5.map(r=>r.roe.toFixed(0)).join(' · ')+(tr&&lsEvNum(tr.roe)?' · 최근 4분기('+tr.ttm+') '+tr.roe.toFixed(0):'');
+    so.push(rr5.length>=3&&n15>=4?'최근 다섯 해 중 '+n15+'해가 15%↑ — 꾸준히 버는 회사다.':'최근 다섯 해 중 15%↑는 '+n15+'해 — 버핏의 \'꾸준히 버는 회사\' 문턱(4해)에 못 미친다.');
+    if(tr&&lsEvNum(tr.roe)&&tr.roe>=15&&!(n15>=4)) so.push('최근 4분기('+tr.ttm+') ROE 는 '+tr.roe.toFixed(1)+'%로 높다 — 다만 한 번의 좋은 해는 꾸준함이 아니다.');
+    lim=['ROE 는 빚을 늘려도 오른다 — 점검 3(빚)과 함께 보라.','연결 순이익(비지배 몫 포함) 기준.'];
+  } else if(k===2){
+    const lr=R[R.length-1]||{}, de=lr.de;
+    if(lsEvNum(de)){
+      lsEvP(s1,'마지막 칸('+lsEvYl(lr)+')의 차입금(차입금 · 사채 줄의 합) ÷ 자본총계. 50%↓ 이면 ✓.');
+      lsEvKV(s2,[['차입금',lsEvWt(lr.debt),''],['자본총계',lsEvWt(lr.eq),''],['차입금/자본',de.toFixed(0)+'%',lsEvOk(de<=50,'문턱 50%'),'tot']]);
+      mine='차입금/자본 '+de.toFixed(0)+'%';
+      so.push(de<=50?'빚이 자본의 '+de.toFixed(0)+'% — 가볍다. 불황에 버틸 여력이 있다.':'빚이 자본의 '+de.toFixed(0)+'% — 버핏의 문턱(50%)보다 무겁다.');
+    } else {
+      const le=lsEvNum(lr.liab)&&lsEvNum(lr.eq)&&lr.eq?lr.liab/lr.eq*100:null;
+      lsEvP(s1,'원장에 차입금 줄이 없다 — 이때는 마지막 칸('+lsEvYl(lr)+')의 부채총계 ≤ 자본총계(부채/자본 100%↓)면 ✓로 본다.');
+      lsEvKV(s2,[['부채총계',lsEvWt(lr.liab),''],['자본총계',lsEvWt(lr.eq),''],['부채/자본',lsEvNum(le)?le.toFixed(0)+'%':'—',lsEvOk(lsEvNum(lr.eq)&&lr.eq?(lr.liab||0)<=lr.eq:null,'문턱 100%'),'tot']]);
+      mine='차입금 줄 없음 — 부채/자본으로 봄';
+      so.push(lsEvNum(le)?(le<=100?'부채가 자본보다 작다 — 가벼운 쪽으로 본다.':'부채가 자본의 '+le.toFixed(0)+'% — 무거운 쪽으로 본다.'):'자본 기록이 없어 판정하지 못했다.');
+      lim.push('부채총계에는 매입채무 · 선수금 · 계약부채처럼 이자를 내지 않는 빚도 들어 있다 — 수주 산업(조선 · 건설)은 이 줄로 보면 무거워 보인다.');
+    }
+    const T=R.slice(-6);
+    lsEvTbl(lsEvSub(s2,'trend','최근 칸 흐름'),['칸','차입금/자본','부채/자본'],T.map(r=>({cls:r===lr?'hit':null,c:[lsEvYl(r),lsEvNum(r.de)?r.de.toFixed(0)+'%':'—',lsEvNum(r.liab)&&lsEvNum(r.eq)&&r.eq?(r.liab/r.eq*100).toFixed(0)+'%':'—']})),[0,1,1]);
+    lim.push('마지막 칸 하나만 본다 — 빚이 잠깐 늘거나 준 때일 수 있다.','연결 기준 — 금융 자회사의 빚이 섞이면 무거워 보인다.');
+    if(d.sector==='금융') lim.unshift('금융업은 예금 · 차입이 영업의 재료다 — 은행 · 보험의 빚은 제조업과 같은 잣대(50%)로 재기 어렵다.');
+  } else if(k===3){
+    const F=A.filter(r=>lsEvNum(r.fcf)), pos=F.filter(r=>r.fcf>0).length, ok=pos>=0.5*Math.max(1,F.length);
+    lsEvP(s1,'FCF = 영업현금 − 설비·무형 투자. 연간 칸 가운데 FCF 흑자인 해가 기록 해의 절반↑이면 ✓. 최근 4분기 칸은 참고로만 보인다.');
+    lsEvTbl(s2,['해','영업현금','설비·무형','FCF',''],A.map(r=>({c:[String(r.year),lsEvWt(r.cfo),lsEvWt(r.capex),lsEvWt(r.fcf),lsEvNum(r.fcf)?lsEvOk(r.fcf>0):'—']}))
+      .concat(tr?[{cls:'dim',c:[lsEvYl(tr)+' (참고)',lsEvWt(tr.cfo),lsEvWt(tr.capex),lsEvWt(tr.fcf),'세지 않음']}]:[]),[0,1,1,1,0]);
+    lsEvKV(s2,[['FCF 흑자 해',pos+'/'+F.length,lsEvOk(ok,'절반↑'),'tot']]);
+    mine='FCF 흑자 '+pos+'/'+F.length+'년'+(tr&&lsEvNum(tr.fcf)?' · 최근 4분기 '+lsEvWt(tr.fcf):'');
+    so.push(ok?'번 이익이 대체로 현금으로 들어왔다 — '+F.length+'해 중 '+pos+'해 FCF 흑자.':'투자가 영업현금을 자주 넘었다 — '+F.length+'해 중 '+pos+'해만 FCF 흑자.');
+    lim=['FCF 가 마이너스인 해는 투자를 크게 늘린 해일 수 있다 — 나쁜 투자인지 좋은 투자인지는 그 뒤 이익을 보라.','운전자본(재고 · 매출채권)이 출렁이면 영업현금이 한 해씩 튄다.'];
+  } else {
+    const P=lsEvPers(d), b=d.band||{}, per=dc.per, pct=dc.pct, lq=lsEvLastQ(d);
+    const p2=lsEvNum(per)&&P.v.length?P.v.filter(v=>v<=per).length/P.v.length*100:null;
+    lsEvP(s1,'지금 PER = 지금 주가 ÷ 최근 4분기 주당이익. 자기 역사 = 기록된 PER '+P.v.length+P.u+' 가운데 지금 PER 이하인 몫 — 하위 절반(50%↓)이면 ✓. '+
+      '기록 PER = 분기 말 주가 ÷ 그 분기 최근 4분기 주당이익(0.5–300배만, 분기 기록이 6개 모자라면 연말 PER).');
+    lsEvKV(s2,[['지금 주가',lsEvW(dc.px),dc.date?lsD(dc.date):''],['주당이익',lsEvW(dc.eps),lq?lq.label+'까지 최근 4분기':''],['지금 PER',lsEvF(per,1)+'배','주가 ÷ 주당이익'],
+      ['PER 기록',(b.n||P.v.length)+P.u,'25 · 50 · 75% 자리 '+lsEvF(b.lo,1)+' · '+lsEvF(b.mid,1)+' · '+lsEvF(b.hi,1)+'배'],
+      ['자기 역사',lsEvNum(pct)?'하위 '+pct.toFixed(0)+'%':'—',lsEvOk(lsEvNum(pct)?pct<=50:false,'문턱 50%'),'tot'],
+      ['다시 셈',lsEvNum(p2)?'하위 '+p2.toFixed(0)+'%':'—',lsEvNum(p2)&&lsEvNum(pct)?lsEvSame(p2.toFixed(0),pct.toFixed(0)):'']]);
+    lsEvPerStrip(s2,P.v,per,b);
+    mine='지금 PER '+(lsEvNum(per)?per.toFixed(1):'—')+', 자기 역사 '+(lsEvNum(pct)?'하위 '+pct.toFixed(0)+'%':'—');
+    so.push(lsEvNum(pct)?'지금 PER 은 이 회사 기록 '+P.v.length+P.u+' 가운데 '+pct.toFixed(0)+'%보다 비싼 자리 — '+(pct<=50?'하위 절반이라 합리적인 값으로 본다.':'상위 절반이라 합리적인 값으로 보지 않는다.'):'적자거나 기록이 모자라 값을 잴 수 없다.');
+    lim=['주당이익이 갑자기 뛰면(일회성 이익 · 업황 꼭대기) PER 이 기록보다 낮아져 싸 보인다 — 0%는 기록 밖이라는 뜻이다.','이 회사 자기 기록과만 견준다 — 업종 · 시장 PER 과는 견주지 않았다.'];
+  }
+  const sm=el('div','lsEvMatch'); sm.appendChild(el('span',null,'카드 줄 다시 셈 — ')); sm.appendChild(lsEvSame(mine,x.why)); s2.appendChild(sm);
+  lsEvTail(body,so,lim);
+  return {title:(k+1)+'. '+(x.q||''), tag:'BUFFETT · CHECK', lede:(x.ok===true?'✓ ':x.ok===false?'✗ ':'· ')+(x.why||''), body};
+}
+function lsEvLyn(d){
+  const dc=d.decide||{}, t=dc.type, b=d.band||{}, CH=d.chapters||[], last=CH[CH.length-1], R=d.rows||[], lr=R[R.length-1]||{};
+  const lq=lsEvLastQ(d), eN=dc.eps, px=dc.px, per=dc.per, ty=(d.types||{})[t]||[], body=el('div');
+  const s1=lsEvSec(body,'rule','규칙','RULE');
+  lsEvP(s1,'지금 유형 = 마지막 장(章)의 유형'+(last?' — 「'+last.type+'」 '+last.y0+'–'+(last.y1_label||last.y1):' — 장이 없다')+
+    '. 린치는 유형마다 사고파는 규칙이 다르다. 그 유형의 갈래를 위에서부터 따져 처음 맞는 것이 판정이다.');
+  const s2=lsEvSec(body,'num','숫자','NUMBERS'), so=[]; let lim=[];
+  let br, on;
+  if(t==='경기순환'){
+    const em=lsEvEpsMax(d), o4=lsEvO4(d), ne=dc.norm_eps, md=b.mid;
+    const peak=!!dc.eps_peak, turn=!!dc.turning, hotX=lsEvNum(ne)&&ne>0&&lsEvNum(md)?2*ne*md:null, hot=hotX!==null&&lsEvNum(px)&&px>=hotX;
+    br=[['정점 경계','지금 주당이익이 기록 최고의 95%↑(분기 기록 8개↑) — 이익 꼭대기라 PER 이 싸 보이는 때, 순환주는 이때 판다'],
+      ['관찰','이익 바닥은 지났지만 주가가 5년 평균 주당이익 × PER 중앙의 2배↑ — 회복이 이미 값에 들었다'],
+      ['결단','이익 바닥 통과 — 최근 4분기 합 영업이익이 두 분기 줄다가 돌아섰다'],
+      ['관찰','그 밖 — 이익의 방향을 지켜본다(재고가 줄고 이익이 바닥을 지날 때를 기다린다)']];
+    on=peak?0:(turn&&hot)?1:turn?2:3;
+    const ratio=lsEvNum(eN)&&em&&em.eps>0?eN/em.eps*100:null, peak2=!!(em&&lsEvNum(eN)&&eN>=em.eps*0.95&&em.n>=8);
+    const sp=lsEvSub(s2,'peak','첫째 — 이익이 꼭대기인가','주당이익 = 최근 4분기 순이익 ÷ 주식 수');
+    lsEvKV(sp,[['지금 주당이익',lsEvW(eN),lq?lq.label+'까지':''],['기록 최고',lsEvW(em&&em.eps),em?em.label+' · 분기 기록 '+em.n+'개 중':''],
+      ['지금 ÷ 최고',lsEvNum(ratio)?ratio.toFixed(0)+'%':'—',lsEvOk(peak,'95%↑ · 기록 8개↑'),'tot']]);
+    if(peak2!==peak) lsEvP(sp,'다시 센 값('+(peak2?'꼭대기':'아님')+')이 서버 판정과 다르다 — 서버 값을 따른다.','lsEvWarn');
+    const sb=lsEvSub(s2,'o4','둘째 — 이익 바닥을 지났나','최근 4분기 합 영업이익, 마지막 네 분기');
+    const ov=o4.map(o=>o.op4), okv=ov.length===4&&ov.every(lsEvNum);
+    lsEvTbl(sb,['','분기','최근 4분기 영업이익','앞 분기보다'],o4.map((o,j)=>({c:[String(j+1)||'',o.label||'—',lsEvWt(o.op4),
+      j&&lsEvNum(o.op4)&&lsEvNum(ov[j-1])?(o.op4>ov[j-1]?'늘었다':o.op4<ov[j-1]?'줄었다':'같다'):'']})),[0,0,1,0]);
+    lsEvKV(sb,[['두 분기 줄었나','1 > 2 > 3',lsEvOk(okv?ov[0]>ov[1]&&ov[1]>ov[2]:null)],['돌아섰나','4 > 3',lsEvOk(okv?ov[3]>ov[2]:null)],
+      ['바닥 통과','둘 다',lsEvOk(turn),'tot']]);
+    const sh=lsEvSub(s2,'hot','셋째 — 회복이 이미 값에 들었나','5년 평균 주당이익으로 그은 이익선의 2배');
+    lsEvKV(sh,[['5년 평균 주당이익',lsEvW(ne),'연간 칸 끝 다섯 해 평균'],['× PER 중앙',lsEvF(md,2)+'배',''],['× 2 = 과열 선',lsEvW(hotX),''],
+      ['지금 주가',lsEvW(px),lsEvNum(hotX)&&lsEvNum(px)?'5년 평균 이익선의 '+(px/(hotX/2)).toFixed(1)+'배':''],['과열',hot?'예':'아니오',turn?lsEvOk(!hot,'바닥 통과일 때만 따진다'):'바닥 통과가 아니라 따지지 않는다','tot']]);
+    so.push(['주당이익이 기록 꼭대기 근처다 — 순환주는 PER 이 가장 싸 보일 때가 파는 때다. 가치 온도계의 \'싸다\'를 덜 믿는다.',
+      '이익은 돌아섰지만 주가가 이미 5년 평균 이익선의 '+(lsEvNum(hotX)&&lsEvNum(px)?(px/(hotX/2)).toFixed(1):'—')+'배 — 회복이 값에 들어 있다.',
+      '이익이 바닥을 지나 돌아섰다 — 린치가 순환주를 사는 때.','아직 신호가 없다 — 이익이 두 분기 줄다 돌아서는 때를 기다린다.'][on]);
+    lim=['꼭대기 · 바닥은 이 회사 분기 기록 '+(em?em.n:0)+'개 안에서만 본다 — 업황 전체의 꼭대기는 아니다.','4분기 합 영업이익은 한 분기 일회성 손익에도 흔들린다.','린치가 본 재고 신호는 이 판정에 넣지 않았다(원장 재고일수 참고).'];
+  } else if(t==='고성장'){
+    const y4=lsEvY4(d), g=lsEvNum(eN)&&y4&&y4.eps>0&&eN>0?(eN/y4.eps-1)*100:null, peg=lsEvNum(per)&&lsEvNum(g)&&g>0?per/g:null;
+    br=[['결단','PEG(PER ÷ 주당이익 1년 증가율) 1 이하 — 성장률보다 싼 PER'],['비쌈','그 밖 — PER 이 성장률을 넘는다(성장이 이어져야만 정당화된다)']];
+    on=lsEvNum(peg)&&peg<=1?0:1;
+    lsEvKV(s2,[['지금 주당이익',lsEvW(eN),lq?lq.label+'까지 최근 4분기':''],['1년 전 같은 분기',lsEvW(y4&&y4.eps),y4?y4.label:''],['1년 증가율',lsEvPct(g,0),'지금 ÷ 1년 전 − 1'],
+      ['PER',lsEvF(per,1)+'배','지금 주가 '+lsEvW(px)+' ÷ 주당이익'],['PEG',lsEvF(peg,2),lsEvOk(lsEvNum(peg)?peg<=1:null,'문턱 1'),'tot']]);
+    so.push(on===0?'성장률보다 싼 PER — 린치가 사는 자리다. 성장이 꺾이는 첫 분기를 지켜본다.':'성장률보다 비싼 PER — 성장이 이어져야만 정당화된다.');
+    lim=['성장률은 주당이익 1년 증가율 하나다 — 일회성 이익이나 바닥 대비 반등이면 PEG 가 낮게 나온다.','성장이 몇 해 이어질지는 숫자에 없다.'];
+  } else if(t==='대형우량'||t==='저성장'){
+    const ln=lsEvNum(eN)&&eN>0&&lsEvNum(b.mid)?eN*b.mid:null, gp=lsEvNum(ln)&&lsEvNum(px)?(px/ln-1)*100:null;
+    br=[['결단','이익선보다 30%↑ 아래 — 우량주를 싸게 살 때'],['기다림','그 밖 — 30% 넘게 싸질 때를 기다린다']];
+    on=lsEvNum(gp)&&gp<=-30?0:1;
+    lsEvKV(s2,[['주당이익',lsEvW(eN),lq?lq.label+'까지 최근 4분기':''],['× PER 중앙',lsEvF(b.mid,2)+'배','기록 '+(b.n||0)+'개의 50% 자리'],['= 이익선',lsEvW(ln),''],
+      ['지금 주가',lsEvW(px),''],['이익선 대비',lsEvPct(gp,0),lsEvOk(lsEvNum(gp)?gp<=-30:null,'문턱 −30%'),'tot']]);
+    so.push(on===0?'이익선보다 '+(-gp).toFixed(0)+'% 아래 — 린치가 우량주를 사는 자리다. 30~50% 오르면 일부 판다.':'이익선 대비 '+lsEvPct(gp,0)+' — 30% 넘게 싸질 때를 기다린다.');
+    if(t==='저성장') so.push('저성장주는 배당을 보고 산다 — 배당을 끊거나 줄이면 판다(판정 갈래는 대형우량과 같다).');
+    lim=['이익선은 이 회사 PER 기록의 중앙값 — 금리 · 업종이 바뀌면 맞지 않는다.','이익이 줄고 있는 우량주는 이익선 자체가 내려간다.'];
+  } else if(t==='회생'){
+    const de=lr.de;
+    br=[['결단','차입금/자본 100%↓ — 빚을 버틸 수 있다(차입금 줄이 없으면 0으로 본다)'],['관찰','그 밖 — 빚이 무겁다']];
+    on=(lsEvNum(de)?de:0)<=100?0:1;
+    lsEvKV(s2,[['마지막 칸',lsEvYl(lr),''],['차입금',lsEvWt(lr.debt),''],['자본총계',lsEvWt(lr.eq),''],
+      ['차입금/자본',lsEvNum(de)?de.toFixed(0)+'%':'줄 없음 → 0으로',lsEvOk((lsEvNum(de)?de:0)<=100,'문턱 100%'),'tot']]);
+    lsEvTbl(lsEvSub(s2,'ni','흑자 전환','최근 칸 순이익'),['칸','순이익','유형'],R.slice(-4).map(r=>({c:[lsEvYl(r),lsEvWt(r.ni),r.type||'—']})),[0,1,0]);
+    so.push(on===0?'흑자로 돌아섰고 빚을 버틸 만하다 — 린치는 여기서 산다. 이 판은 흑자 셋째 해부터 회생이 아닌 다른 유형으로 매긴다.':'흑자로 돌아섰지만 빚이 무겁다 — 빚을 줄이는지 지켜본다.');
+    lim=['한 해 흑자가 회생의 끝은 아니다 — 일회성 이익(자산 매각 등)으로 흑자가 난 해일 수 있다.','차입금 줄이 없으면 빚 0으로 보고 결단 쪽으로 간다 — 서버 규칙의 빈틈이다.'];
+  } else {
+    br=[['관찰','적자 중(또는 유형 없음) — 흑자 전환과 빚 감당 능력을 먼저 확인한다']]; on=0;
+    if(!t){ const w=(lr.type_why||{});
+      lsEvP(s2,'유형을 매긴 해가 없다 — '+(w.rule==='none'&&!lsEvNum(w.r0)?'원장에 매출 줄이 없어'+(d.sector==='금융'?'(금융업은 손익 구조가 달라 매출액 줄이 잡히지 않는다)':'')+' 매출 증가율을 셀 수 없다.':'매출 증가율을 셀 기록이 모자라다.')+
+        ' 서버는 유형이 없을 때도 적자와 같은 갈래로 보내 「관찰 — 적자 중」 문장이 붙는다.','lsEvWarn');
+    }
+    lsEvKV(s2,[['최근 4분기 순이익',lsEvWt(lq&&lq.ni4),lq?lq.label+'까지':''],['주당이익',lsEvW(eN),lsEvNum(eN)?(eN>0?'흑자':'적자'):'']]);
+    so.push(!t&&lsEvNum(eN)&&eN>0?'이 회사는 적자가 아니다 — 유형이 없어 린치의 갈래를 쓸 수 없을 뿐이다. 이익 기준 판정은 버핏 카드와 값 상자를 보라.':'흑자 전환과 빚(현금 · 차입 · 구조조정)을 먼저 확인한다 — 흑자 전환 전에는 이야기만 있다.');
+    lim=['유형은 매출 증가율 · 이익 꺾임으로 가른다 — 매출 줄이 없거나 기록이 짧은 회사는 유형이 없다.'];
+  }
+  lsEvRules(s1,br,on);
+  if(br[on][0]!==dc.lynch.v) lsEvP(s1,'다시 센 갈래(「'+br[on][0]+'」)가 서버 판정(「'+dc.lynch.v+'」)과 다르다 — 서버 값을 따른다.','lsEvWarn');
+  if(ty[2]) so.unshift('「'+t+'」의 규칙 — '+ty[2]);
+  lsEvTail(body,so,lim);
+  return {title:'린치 — 「'+dc.lynch.v+'」', tag:'LYNCH · '+(t||'유형 없음'), lede:dc.lynch.why, body};
+}
+function lsEvPx(d,k){
+  const dc=d.decide||{}, b=d.band||{}, P=lsEvPers(d), lq=lsEvLastQ(d), body=el('div');
+  const s1=lsEvSec(body,'rule','규칙','RULE'), s2=lsEvSec(body,'num','숫자','NUMBERS'), so=[]; let lim=[];
+  const ln=dc.line_now, lp=dc.line_px, px=dc.px, rel=(a,c)=>lsEvNum(a)&&lsEvNum(c)&&c?(a/c-1)*100:null;
+  let title, lede;
+  if(k==='now'){
+    title='지금 '+lsEvW(px); lede=(dc.date?lsD(dc.date)+' 종가':'마지막 종가')+(d.px_partial?' — 확정 전 값':'')+' · 수정주가';
+    lsEvP(s1,'지금 = 판을 그릴 때 받은 마지막 일봉 종가 — 네이버 일봉(KRX + 넥스트레이드 통합 시세, KRX 공식 종가와 1% 안팎 다를 수 있다). '+
+      '수정주가라 액면분할 · 무상증자가 반영돼 옛 값과 바로 견줄 수 있다. 판은 그날 값이 굳은 뒤(평일 20:10) 다시 그린다.');
+    const sp=(d.splits||[]).map(s=>s.year+'년 ×'+s.ratio).join(', ');
+    lsEvKV(s2,[['날짜',dc.date?lsD(dc.date):'—',''],['값',lsEvW(px),'','tot'],['상태',d.px_partial?'확정 전':'확정 값',d.px_partial?(d.px_at||'')+'에 받은 값 — 장중 · 넥스트레이드 시간외 값이 섞였다':'그날 20:10 뒤 받은 값'],
+      ['분할 · 무상증자 보정',sp||'없음',''],['PER',lsEvF(dc.per,1)+'배','지금 주가 ÷ 주당이익 '+lsEvW(dc.eps)+(lq?' ('+lq.label+'까지 최근 4분기)':'')]]);
+    const g1=rel(px,ln||lp), g2=rel(px,dc.wait_px);
+    so.push('이 값이 이익선 · 기다릴 값과 견주는 기준이다 — 이익선 '+lsEvW(ln||lp)+'보다 '+(lsEvNum(g1)?Math.abs(g1).toFixed(0)+'% '+(g1>=0?'비싸고':'싸고'):'—')+
+      ', 기다릴 값 '+lsEvW(dc.wait_px)+'보다 '+(lsEvNum(g2)?Math.abs(g2).toFixed(0)+'% '+(g2>=0?'위다.':'아래다.'):'—'));
+    lim=['하루 한 번 그린 값 — 장중 움직임은 반영 안 된다.',d.px_partial?'확정 전 값 — 20:10 뒤 다시 받으면 바뀐다.':null,'통합 시세라 KRX 공식 종가와 1% 안팎 다를 수 있다.'];
+  } else if(k==='line'){
+    const box=ln||lp;
+    title='이익선 '+lsEvW(box); lede='최근 4분기 주당이익 × 이 회사 PER 기록의 중앙값 — 보통 값';
+    lsEvP(s1,'이익선(보통 값) = 주당이익 × PER 중앙. 주당이익 = 최근 4분기 순이익 합 ÷ 주식 수(그 분기 해의 주식 수 — 분할 · 무상증자 보정). '+
+      'PER 중앙 = 기록된 PER '+P.v.length+P.u+'의 50% 자리(기록 PER = 분기 말 주가 ÷ 그 분기 최근 4분기 주당이익, 0.5–300배만).');
+    if(lsEvNum(ln)&&lq){
+      const sh=lsEvNum(lq.ni4)&&lq.eps?lq.ni4/lq.eps:null, mine=lq.eps*b.mid;
+      lsEvKV(s2,[['최근 4분기 순이익',lsEvWt(lq.ni4),lq.label+'까지 네 분기 합'],['÷ 주식 수',lsEvSh(sh),'순이익 ÷ 주당이익으로 거꾸로 셈 — 분할 보정 값'],['= 주당이익',lsEvW(lq.eps),''],
+        ['× PER 중앙',lsEvF(b.mid,2)+'배','기록 '+(b.n||P.v.length)+P.u+'의 50% 자리'],['= 이익선',lsEvW(mine),lsEvSame(lsEvW(mine),lsEvW(box)),'tot'],
+        ['참고 — 싼 값 · 비싼 값',lsEvW(lq.eps*b.lo)+' · '+lsEvW(lq.eps*b.hi),'25% · 75% 자리 '+lsEvF(b.lo,2)+' · '+lsEvF(b.hi,2)+'배']]);
+    } else if(lsEvNum(lp)){
+      lsEvP(s2,'지금 주당이익이 마이너스(적자)라 지금 이익으로는 선을 그을 수 없다 — 5년 평균 주당이익 '+lsEvW(dc.norm_eps)+' × PER 중앙 '+lsEvF(b.mid,2)+'배 = '+lsEvW(lp)+'.');
+    } else lsEvP(s2,'주당이익이 마이너스(적자)거나 PER 기록이 모자라 이익선을 그을 수 없다.');
+    lsEvPerStrip(s2,P.v,dc.per,b);
+    const g1=rel(px,box);
+    so.push('지금 '+lsEvW(px)+'은 이익선보다 '+(lsEvNum(g1)?Math.abs(g1).toFixed(0)+'% '+(g1>=0?'비싸다.':'싸다.'):'—'));
+    if(dc.norm_eps&&lsEvNum(lp)&&lp!==box) so.push('순환주는 이익 꼭대기에서 이익선이 높게 그어진다 — 5년 평균 주당이익('+lsEvW(dc.norm_eps)+')으로 그은 선은 '+lsEvW(lp)+'(상자 아래 주석).');
+    lim=['PER 중앙은 이 회사 기록뿐 — 금리 · 업종 평균과 견주지 않았다.','한 분기 일회성 이익이 4분기 합에 들면 선이 튄다.',
+      '검증(공시 11,949건 · 2017–2025 · 지금 상장사만): 이 잣대로 맞은 건 \'비싼 구간은 뒤처졌다\' 쪽 — 싸다는 것만으로 사지 마라.'];
+  } else {
+    const ne=dc.norm_eps, base=lsEvNum(ne)&&ne>0?ne:dc.eps, wp=dc.wait_px, A=(d.rows||[]).filter(r=>!r.ttm);
+    title='기다릴 값 '+lsEvW(wp); lede=(lsEvNum(ne)&&ne>0?'5년 평균 주당이익':'지금 주당이익')+' × 싼 값 PER '+lsEvF(b.lo,1)+'배';
+    lsEvP(s1,'기다릴 값 = 기준 주당이익 × 싼 값 PER(기록 '+(b.n||P.v.length)+P.u+'의 25% 자리). 기준 주당이익 = 지금 유형이 경기순환이면 연간 칸 끝 다섯 해 주당이익의 평균(3개↑ 있을 때) — '+
+      '꼭대기 이익으로 재면 싸 보이므로. 그 밖에는 지금 주당이익(최근 4분기).');
+    if(lsEvNum(ne)){
+      const r5=A.slice(-5), e5=r5.filter(r=>lsEvNum(r.eps)), avg=lsEvAvg(e5.map(r=>r.eps));
+      lsEvTbl(lsEvSub(s2,'e5','5년 평균 주당이익','연간 칸 끝 다섯 해'),['해','순이익','주식 수','주당이익'],
+        r5.map(r=>({c:[String(r.year),lsEvWt(r.ni),lsEvSh(r.shares),lsEvW(r.eps)]})).concat([{cls:'tot',c:['평균','','',lsEvW(avg)]}]),[0,1,1,1]);
+      lsEvP(s2,'',null).appendChild(lsEvSame(lsEvW(avg),lsEvW(ne)));
+    }
+    lsEvKV(s2,[['기준 주당이익',lsEvW(base),lsEvNum(ne)&&ne>0?'5년 평균':'지금 — '+(lq?lq.label+'까지 최근 4분기':'')],['× 싼 값 PER',lsEvF(b.lo,2)+'배','25% 자리'],
+      ['= 기다릴 값',lsEvW(lsEvNum(base)&&base>0&&lsEvNum(b.lo)?base*b.lo:null),lsEvSame(lsEvW(lsEvNum(base)&&base>0&&lsEvNum(b.lo)?base*b.lo:null),lsEvW(wp)),'tot'],
+      lsEvNum(ne)?['참고 — 그 이익으로 그은 이익선',lsEvW(lp),'기준 주당이익 × PER 중앙 '+lsEvF(b.mid,2)+'배']:null]);
+    const fall=lsEvNum(wp)&&lsEvNum(px)&&px?(wp/px-1)*100:null;
+    so.push(lsEvNum(fall)?(fall>=0?'지금 '+lsEvW(px)+'은 이미 기다릴 값 아래다.':'지금 '+lsEvW(px)+'에서 '+Math.abs(fall).toFixed(0)+'% 더 내려야 닿는다.'):'기준 주당이익이 마이너스라 기다릴 값을 잡을 수 없다.');
+    lim=['25% 자리 = 기록 중 네 번에 한 번꼴로 있었던 값 — 다시 온다는 보장은 없다. 싼 구간이 1년 안에 보통 값에 닿은 경우는 22.5%(검증).',
+      lsEvNum(ne)?'5년 평균은 업황 한 바퀴가 5년보다 길거나 짧으면 맞지 않는다.':null,'기다리는 동안 이익이 바뀌면 기다릴 값도 바뀐다 — 판은 날마다 다시 그린다.'];
+  }
+  lsEvTail(body,so,lim);
+  return {title, tag:'PRICE', lede, body};
+}
+const LS_EV_MOM=[['버핏 · 좋은 회사가 싸다','그 분기 보고서 접수일 기준 — 앞선 해들의 ROE 12%↑ 해가 70%↑(기록 3해↑) · 최근 세 해 흑자이고, 접수일 주가 ÷ 그 분기 주당이익(PER)이 그때까지 기록(8개↑)의 하위 25%↓'],
+  ['린치 · 고성장주가 PEG 1 아래','앞 해 유형이 고성장 · 주당이익 1년 20%↑ · PER ÷ 증가율 ≤ 1'],
+  ['린치 · 순환주 이익 바닥 통과','앞 해 유형이 경기순환 · 적자 · 회생 — 최근 4분기 합 영업이익이 두 분기 줄다 돌아섰고, 주가가 5년 평균 주당이익 × PER 중앙의 2배 아래(적자면 「회생 — 적자가 줄기 시작」)'],
+  ['린치 · 회생 — 흑자 전환','최근 4분기 순이익이 두 분기 적자 뒤 흑자'],
+  ['린치 · 우량주가 이익선 아래','앞 해 유형이 대형우량 · 저성장 — PER 하위 15%↓이고 버핏의 품질 조건은 못 맞춤']];
+function lsEvRec(d){
+  const M=(d.moments||[]).slice().sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0), st=d.stats||{}, base=st.base, body=el('div');
+  const idx=w=>w==='좋은 회사가 싸다'?0:w==='고성장주가 PEG 1 아래'?1:(w==='순환주 이익 바닥 통과'||w==='회생 — 적자가 줄기 시작')?2:w==='회생 — 흑자 전환'?3:w==='우량주가 이익선 아래'?4:-1;
+  const s1=lsEvSec(body,'rule','규칙','RULE');
+  lsEvP(s1,'분기 보고서마다 그 접수일에 알 수 있던 숫자로만 조건을 따졌다. 금색 줄 = 이 회사에서 한 번이라도 맞은 조건.');
+  lsEvRules(s1,LS_EV_MOM,[...new Set(M.map(m=>idx(m.what)))]);
+  lsEvP(s1,'같은 구루는 1년(네 분기)에 한 번만 센다. 1년 · 3년 뒤 = 접수일 주가 → 365일 · 1,095일 뒤 주가(수정주가, 그날이 휴장이면 직전 거래일). 아무 분기 = 모든 분기 보고서 접수일에 샀다면.','lsEvFine');
+  const s2=lsEvSec(body,'num','숫자','NUMBERS');
+  const sm=lsEvSub(s2,'moments','조건이 맞은 때',M.length+'번');
+  if(M.length) lsEvTbl(sm,['접수일','구루','조건 · 근거','그날 주가','1년 뒤','3년 뒤'],
+    M.map(m=>({c:[lsEvC2(lsD(m.d),m.label),m.who,lsEvC2(m.what,m.why),lsEvW(m.px),lsEvRet(m.r1),lsEvRet(m.r3)]})),[0,0,0,1,1,1],'mom');
+  else lsEvP(sm,'15년 동안 한 번도 맞지 않았다.');
+  const summ=who=>{ const all=M.filter(x=>x.who===who), m=all.filter(x=>lsEvNum(x.r1)); if(!m.length) return null; const m3=all.filter(x=>lsEvNum(x.r3));
+    return {n:all.length,n1:m.length,avg1:lsEvAvg(m.map(x=>x.r1)),win1:m.filter(x=>x.r1>0).length,n3:m3.length,avg3:m3.length?lsEvAvg(m3.map(x=>x.r3)):null}; };
+  const key=s=>s?[s.n,s.n1,lsPct(s.avg1),s.win1,lsEvNum(s.avg3)?lsPct(s.avg3):'—'].join('|'):'없음';
+  const ss=lsEvSub(s2,'stats','평균 — 카드의 셈');
+  lsEvTbl(ss,['','맞은 횟수','1년 뒤 평균','1년 뒤 오름','3년 뒤 평균','대조'],['버핏','린치'].map(w=>{ const s=st[w], r=summ(w);
+      return {c:[w,s?s.n+'번':'0번',s?lsPct(s.avg1):'—',s?s.win1+'/'+s.n1:'—',s&&lsEvNum(s.avg3)?lsPct(s.avg3)+' ('+s.n3+')':'—',lsEvOk(key(r)===key(s),key(r)===key(s)?'다시 셈과 같음':'다시 셈 '+key(r))]}; })
+    .concat(base?[{cls:'dim',c:['아무 분기',base.n+'번',lsPct(base.avg1),base.win1+'/'+base.n,lsEvNum(base.avg3)?lsPct(base.avg3)+' ('+base.n3+')':'—','견줄 기준']}]:[]),[0,1,1,1,1,0]);
+  const so=[];
+  ['버핏','린치'].forEach(w=>{ const s=st[w]; if(!s){ so.push(w+' 조건은 15년 동안 한 번도 맞지 않았다(또는 아직 1년이 안 지났다).'); return; }
+    if(base) so.push(w+' 조건이 맞은 때 1년 뒤 평균 '+lsPct(s.avg1)+' — 아무 분기('+lsPct(base.avg1)+')보다 '+Math.abs(s.avg1-base.avg1).toFixed(0)+'%p '+(s.avg1>=base.avg1?'나았다.':'못했다.')); });
+  so.push('이것보다 나아야 조건이 이 회사에서 쓸모 있었다는 뜻이다.');
+  const nn=M.length;
+  lsEvTail(body,so,['표본이 작다 — 조건이 맞은 때 '+nn+'번. 한 번의 큰 오름(또는 내림)이 평균을 끌고 간다.','같은 구루는 1년에 한 번만 셌다 — 연이어 맞은 분기는 빠졌다.',
+    '3년 뒤는 3년이 안 지난 때는 비어 있다(1년 뒤도 마찬가지).','한 회사 15년의 기록 — 규칙이 일반적으로 맞는다는 뜻이 아니다. 이 회사가 어떻게 움직이는 회사인지를 보라.']);
+  const b1=st['버핏'], l1=st['린치'];
+  return {title:'과거에 조건이 맞은 때', tag:'TRACK RECORD',
+    lede:'버핏 '+(b1?b1.n:0)+'번 · 린치 '+(l1?l1.n:0)+'번 — 그날 샀다면 1년 · 3년 뒤를 아무 분기'+(base?'(1년 평균 '+lsPct(base.avg1)+')':'')+'와 견준다.', body};
+}
+
+// ── 모달 — 하나만, 판 팔레트. 닫기 = ✕ · Esc · 바깥 누르기, ‹ › · ← → = 같은 칸 앞뒤 항목
+function lsEvOpen(items,i,focus){
+  if(!items||!items[i]) return;
+  lsEvClose(true);
+  const host=document.fullscreenElement||document.body;
+  const bg=el('div','lsEvBg'), pop=el('div','lsEvPop');
+  pop.setAttribute('role','dialog'); pop.setAttribute('aria-modal','true'); pop.setAttribute('aria-labelledby','lsEvT'); pop.tabIndex=-1;
+  const top=el('div','lsEvTop'), row=el('div','lsEvRow'), eb=el('div','lsEvEb');
+  eb.appendChild(el('b',null,'근거 · EVIDENCE')); const ebT=el('span'); eb.appendChild(ebT); const ebN=el('em'); eb.appendChild(ebN);
+  const nav=el('div','lsEvNav');
+  const mk=(t,lab,cls)=>{ const x=el('button','lsEvBtn'+(cls?' '+cls:''),t); x.type='button'; x.setAttribute('aria-label',lab); return x; };
+  const prev=mk('‹','이전 항목'), next=mk('›','다음 항목'), x=mk('✕','닫기','lsEvX');
+  nav.appendChild(prev); nav.appendChild(next); nav.appendChild(x);
+  row.appendChild(eb); row.appendChild(nav); top.appendChild(row);
+  const h=el('h4','lsEvT'); h.id='lsEvT'; const lede=el('p','lsEvLede'); top.appendChild(h); top.appendChild(lede);
+  const body=el('div','lsEvBody');
+  const foot=el('div','lsEvFoot','← → 같은 칸 앞뒤 항목 · Esc 닫기 · 숫자는 모두 이 판(서버 원장)에서 — 카드 값과 다르면 ✗');
+  pop.appendChild(top); pop.appendChild(body); pop.appendChild(foot); bg.appendChild(pop); host.appendChild(bg);
+  const st={bg,pop,items,i,ebT,ebN,h,lede,body,prev,next,down:false};
+  LS_EV=st;
+  prev.onclick=()=>{ if(st.i>0) lsEvShow(st,st.i-1); };
+  next.onclick=()=>{ if(st.i<st.items.length-1) lsEvShow(st,st.i+1); };
+  x.onclick=()=>lsEvClose();
+  bg.addEventListener('mousedown',e=>{ st.down=e.target===bg; });
+  bg.addEventListener('click',e=>{ if(e.target===bg&&st.down) lsEvClose(); st.down=false; });
+  bg.addEventListener('wheel',e=>{ if(!pop.contains(e.target)) e.preventDefault(); },{passive:false});
+  document.addEventListener('keydown',lsEvKey,true);
+  document.addEventListener('fullscreenchange',lsEvFs);
+  lsEvShow(st,i,focus);
+  pop.focus({preventScroll:true});
+}
+function lsEvShow(st,i,focus){
+  const it=st.items[i]; st.i=i;
+  let r;
+  try{ r=it.b(); }catch(e){ r={title:'근거를 그리지 못했다',lede:String(e&&e.message||e),body:el('div')}; }
+  const col=LS_EV_COLS[it.col]||['',''];
+  st.ebT.textContent=col[0]; st.ebT.appendChild(el('small',null,col[1]));
+  st.ebN.textContent=(i+1)+' / '+st.items.length;
+  st.h.textContent='';
+  if(r.color){ const dt=el('i','lsEvDot'); dt.style.background=r.color; st.h.appendChild(dt); }
+  st.h.appendChild(document.createTextNode(r.title)); if(r.tag) st.h.appendChild(el('small',null,r.tag));
+  st.lede.textContent=r.lede||'';
+  st.body.textContent=''; st.body.appendChild(r.body); st.body.scrollTop=0;
+  st.prev.disabled=i<=0; st.next.disabled=i>=st.items.length-1;
+  st.prev.title=i>0?'이전 — '+(st.items[i-1].name||''):''; st.next.title=i<st.items.length-1?'다음 — '+(st.items[i+1].name||''):'';
+  if(focus) lsEvFocus(st,focus);
+}
+// 카드 안 칩 · 사건 줄 · 숫자 줄로 열었으면 그 절로 스크롤하고 그 줄을 잠깐 밝힌다
+function lsEvFocus(st,f){
+  const [k,i]=String(f).split(':'), sub=st.body.querySelector('[data-k="'+k+'"]'); if(!sub) return;
+  const row=i!==undefined?sub.querySelector('[data-i="'+i+'"]'):null, t=row||sub;
+  requestAnimationFrame(()=>{ let y=0, n=sub; while(n&&n!==st.body){ y+=n.offsetTop; n=n.offsetParent; }
+    st.body.scrollTop=Math.max(0,y-10); t.classList.remove('lsEvHit'); void t.offsetWidth; t.classList.add('lsEvHit'); });
+}
+function lsEvKey(e){
+  const st=LS_EV; if(!st) return;
+  if(!st.bg.isConnected){ lsEvClose(true); return; }
+  if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); lsEvClose(); return; }
+  if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&!e.altKey&&!e.ctrlKey&&!e.metaKey){
+    e.preventDefault(); e.stopPropagation(); const j=st.i+(e.key==='ArrowLeft'?-1:1); if(j>=0&&j<st.items.length) lsEvShow(st,j); return; }
+  if(e.key==='Tab'){      // 포커스는 팝업 안에서만 돈다
+    const f=[...st.pop.querySelectorAll('button:not(:disabled),[href],[tabindex="0"]')]; if(!f.length) return;
+    const a=document.activeElement, k=f.indexOf(a);
+    if(e.shiftKey&&(k<=0)){ e.preventDefault(); f[f.length-1].focus(); }
+    else if(!e.shiftKey&&(k===-1||k===f.length-1)){ e.preventDefault(); f[k===-1?0:0].focus(); }
+  }
+}
+function lsEvFs(){ const st=LS_EV; if(!st) return; const h=document.fullscreenElement||document.body; if(st.bg.parentNode!==h){ h.appendChild(st.bg); st.pop.focus({preventScroll:true}); } }
+function lsEvClose(silent){
+  const st=LS_EV; if(!st) return; LS_EV=null;
+  document.removeEventListener('keydown',lsEvKey,true); document.removeEventListener('fullscreenchange',lsEvFs);
+  st.bg.remove();
+  if(silent) return;
+  const t=st.items[st.i]&&st.items[st.i].el;
+  if(t&&t.isConnected){ t.focus({preventScroll:true}); const r=t.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) t.scrollIntoView({block:'nearest'}); }
+}
+// 누를 수 있는 항목 — 커서 · 밝아지는 테두리 · '근거 ›' 꼬리표, Enter · Space 로 열기
+function lsEvMark(t,items,i){
+  t.classList.add('lsEvOn'); t.tabIndex=0; t.setAttribute('role','button'); t.setAttribute('aria-haspopup','dialog');
+  t.setAttribute('aria-label',(items[i].name||'')+' — 근거 보기');
+  const tag=el('span','lsEvTag','근거 ›'); tag.setAttribute('aria-hidden','true'); t.appendChild(tag);
+  t.addEventListener('click',e=>{
+    if(e.target.closest('.lsEvOn')!==t) return;          // 안쪽 항목(버핏 체크 줄)은 제 팝업을
+    const sel=window.getSelection&&window.getSelection(); if(sel&&String(sel).length>1&&t.contains(sel.anchorNode)) return;     // 글을 고르는 중이면 열지 않는다
+    const sub=e.target.closest('[data-ev]'); lsEvOpen(items,i,sub&&t.contains(sub)?sub.dataset.ev:null);
+  });
+  t.addEventListener('keydown',e=>{ if(e.target!==t) return; if(e.key==='Enter'||e.key===' '){ e.preventDefault(); lsEvOpen(items,i,null); } });
+}
+// lsPlate 의 세 칸(lsTri)에 근거 팝업을 붙인다 — 칸 함수가 그린 순서 그대로(장 · 규칙 카드 · 체크 줄은 d 의 배열과 1:1)
+function lsEvWire(tri,d){
+  const cols=tri.children; if(cols.length<3) return;
+  const chs=[...cols[0].querySelectorAll('.lsCh')];
+  const L=(d.chapters||[]).map((ch,i)=>({el:chs[i],col:'land',name:ch.type+' '+ch.y0+'–'+(ch.y1_label||ch.y1),b:()=>lsEvChap(d,i)})).filter(x=>x.el);
+  L.forEach((it,i)=>{ lsEvMark(it.el,L,i);
+    it.el.querySelectorAll('.lsWords span').forEach((s,j)=>{ s.dataset.ev='words:'+j; });
+    it.el.querySelectorAll('.lsEv li').forEach((s,j)=>{ s.dataset.ev='events:'+j; });
+    const ns=it.el.querySelectorAll('.lsChN>span'); ['rev','margin','roe','px'].forEach((k,j)=>{ if(ns[j]) ns[j].dataset.ev='calc:'+k; }); });
+  const les=[...cols[1].querySelectorAll('.lsLes')];
+  const E=(d.lessons||[]).map((l,i)=>({el:les[i],col:'eye',name:l.title,b:()=>lsEvLesson(d,i)})).filter(x=>x.el);
+  E.forEach((it,i)=>lsEvMark(it.el,E,i));
+  const c=cols[2], dc=d.decide||{}, vers=c.querySelectorAll('.lsVer'), lis=[...c.querySelectorAll('.lsChk li')], px=[...c.querySelectorAll('.lsPx3>div')], rec=c.querySelector('.lsRec');
+  const D=[];
+  if(vers[0]) D.push({el:vers[0],col:'dec',name:'버핏 — '+(dc.buffett||{}).v,b:()=>lsEvBuf(d)});
+  lis.forEach((li,k)=>D.push({el:li,col:'dec',name:'버핏 점검 '+(k+1)+' — '+(((dc.checks||[])[k]||{}).q||''),b:()=>lsEvChk(d,k)}));
+  if(vers[1]) D.push({el:vers[1],col:'dec',name:'린치 — '+(dc.lynch||{}).v,b:()=>lsEvLyn(d)});
+  [['now','지금 값'],['line','이익선'],['wait','기다릴 값']].forEach(([k,nm],j)=>{ if(px[j]) D.push({el:px[j],col:'dec',name:nm,b:()=>lsEvPx(d,k)}); });
+  if(rec) D.push({el:rec,col:'dec',name:'과거에 조건이 맞은 때',b:()=>lsEvRec(d)});
+  D.forEach((it,i)=>lsEvMark(it.el,D,i));
+  // 순환주 기다릴 값 주석(상자 아래) — 누르면 기다릴 값 근거로
+  const note=px.length?px[0].parentNode.nextElementSibling:null, wi=D.findIndex(x=>x.name==='기다릴 값');
+  if(note&&note.tagName==='P'&&dc.norm_eps&&wi>=0){ note.classList.add('lsEvAlias'); note.title='기다릴 값 근거 보기'; note.addEventListener('click',()=>lsEvOpen(D,wi)); }
 }
 
 function lsLedger(led, d){

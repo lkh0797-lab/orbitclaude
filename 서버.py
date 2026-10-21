@@ -7475,42 +7475,58 @@ def _land_shares(F, corp, latest=None, bad=None):
     return adj, splits, raw
 
 
-def _land_type(F, i):
-    """그해의 린치 유형 — 그해까지의 숫자로만."""
+def _land_type(F, i, why=None):
+    """그해의 린치 유형 — 그해까지의 숫자로만. why(dict)를 주면 판정에 쓴 숫자를 채운다(풍경 근거 팝업, 2026-10-22):
+    rule = loss · turn · grow · cycle · stal · slow · none, g = 매출 연 증가율(y0 → 그해, n 년), swing4 · swing6 = 처음 꺾인 곳."""
     d = F[i]
+    w = why if why is not None else {}
     ni = d.get("ni")
+    w["ni"] = ni
     if ni is not None and ni < 0:
+        w["rule"] = "loss"
         return "적자"
     p1 = F[i - 1].get("ni") if i >= 1 else None
     p2 = F[i - 2].get("ni") if i >= 2 else None
     if ni is not None and ni > 0 and ((p1 is not None and p1 < 0) or (p2 is not None and p2 < 0 and (p1 or 0) > 0)):
+        w.update(rule="turn", p1=p1, p2=p2, p1_y=F[i - 1]["year"], p2_y=F[i - 2]["year"] if i >= 2 else None)
         return "회생"
     j = max(0, i - 3)
     r0, r1 = F[j].get("rev"), d.get("rev")
     # 최근 4분기 칸(26.2Q)은 마지막 연간보다 반년 뒤 — 실제 햇수로 연율화한다
     n = (i - j) - ((4 - d["q"]) / 4 if d.get("ttm") else 0)
     g = ((r1 / r0) ** (1 / n) - 1) * 100 if (n >= 2 and r0 and r1 and r0 > 0 and r1 > 0) else None
+    w.update(g=g, y0=F[j]["year"], r0=r0, r1=r1, n=n)
+
     # 순환 — 6년 안에 영업이익이 앞선 정점보다 40% 넘게 꺾였거나 흑자 뒤 적자가 났다. 성장만 한 회사는 꺾인 적이 없다
     def swung(k):
         win = [x for x in F[max(0, i - k + 1):i + 1] if x.get("op") is not None]
-        sw, peak = False, None
+        sw, peak, hit = False, None, None
         for x in win:
             v = x["op"]
+            yl = x.get("ttm") or x["year"]
             if peak is not None and peak[0] > 0 and peak[1] >= 4 and v <= peak[0] * 0.6:
                 sw = True
+                hit = hit or {"kind": "op", "y": yl, "op": v, "peak": peak[0], "peak_y": peak[2]}
             if x.get("rev_yoy") is not None and x["rev_yoy"] <= -10 and x is not win[0]:
                 sw = True
+                hit = hit or {"kind": "rev", "y": yl, "rev_yoy": x["rev_yoy"]}
             if peak is None or v > peak[0]:
-                peak = (v, x.get("margin") or 0)
-        return sw
+                peak = (v, x.get("margin") or 0, yl)
+        return sw, hit
     # 고성장은 최근 4년에 꺾인 적이 없어야 한다. 순환은 6년 안에 한 번이라도 크게 꺾였으면
-    swing = swung(6)
-    if g is not None and g >= 15 and not (swung(4) and g < 25):
+    swing, h6 = swung(6)
+    s4, h4 = swung(4)
+    w.update(swing6=h6, swing4=h4)
+    if g is not None and g >= 15 and not (s4 and g < 25):
+        w["rule"] = "grow"
         return "고성장"
     if swing:
+        w["rule"] = "cycle"
         return "경기순환"
     if g is None:
+        w["rule"] = "none"
         return None
+    w["rule"] = "stal" if g >= 5 else "slow"
     return "대형우량" if g >= 5 else "저성장"
 
 
@@ -7794,8 +7810,9 @@ def _landscape_build(c, prog=None):
                    pbr=pe / bps if (pe and bps and bps > 0) else None,
                    dy=dps / pe * 100 if (dps and pe) else None,
                    payout=d["div"] / d["ni"] * 100 if (d.get("div") and d.get("ni") and d["ni"] > 0) else None,
-                   mcap=pe * sa if (pe and sa) else None,
-                   type=_land_type(F, i))
+                   mcap=pe * sa if (pe and sa) else None)
+        tw = {}
+        row.update(type=_land_type(F, i, tw), type_why=tw)
         rows.append(row)
     ann = list(rows)            # 연간 칸만 — 15년 합계 · 해마다 비교하는 안목은 이것으로(최근 4분기 칸은 겹치는 기간이 있다)
     if prog is not None:
@@ -7816,8 +7833,9 @@ def _landscape_build(c, prog=None):
                    pbr=pe / bps if (pe and bps and bps > 0) else None,
                    dy=dps / pe * 100 if (dps and pe) else None,
                    payout=tt["div"] / tt["ni"] * 100 if (tt.get("div") and tt.get("ni") and tt["ni"] > 0) else None,
-                   mcap=pe * sa if (pe and sa) else None,
-                   type=_land_type(F + [tt], len(F)))
+                   mcap=pe * sa if (pe and sa) else None)
+        tw = {}
+        row.update(type=_land_type(F + [tt], len(F), tw), type_why=tw)
         rows.append(row)
 
     # ── 분기 — 최근 4분기 순이익으로 주당이익, 보고서 접수일 주가로 PER
@@ -8018,7 +8036,7 @@ def _landscape_build(c, prog=None):
         # 이 장에 들어온 말 — 장 동안 보고서당 3번 넘게 쓰였고, 앞선 해들엔 거의 없던 낱말
         inn = [tc[y] for y in range(ch["y0"], ch["y1"] + 1) if y in tc]
         bef = [tc[y] for y in tc if y < ch["y0"]]
-        words = []
+        words, wst = [], []
         if inn and bef:
             tot = Counter()
             for x in inn:
@@ -8030,9 +8048,12 @@ def _landscape_build(c, prog=None):
                     or LAND_WORD_SKIP.search(t)
                 if per_in >= 3 and per_bef <= 0.5 and not GIST_TERM_SKIP.search(t) and not ASK_SKIP_TOK.match(t) and not bad:
                     words.append(t)
+                    wst.append({"t": t, "in": round(per_in, 1), "bef": round(per_bef, 2)})
                 if len(words) >= 6:
                     break
         ch["words"] = words
+        # 근거 팝업 — 낱말마다 장 동안 · 앞선 해 보고서당 몇 번, 견준 보고서 수(장 · 앞선 해)
+        ch["word_stats"], ch["word_n"] = wst, [len(inn), len(bef)]
         said = ov.get(ch["y0"]) or next((ov[y] for y in sorted(ov) if y >= ch["y0"]), "")
         ch["said"] = _short(said, 150) if said else ""
         ch["said_year"] = ch["y0"] if ov.get(ch["y0"]) else next((y for y in sorted(ov) if y >= ch["y0"]), None)
@@ -8119,7 +8140,8 @@ def _landscape_build(c, prog=None):
                         ("15년 내내 같은 말로 자기를 설명했다 — 버핏이 좋아하는 '10년 뒤에도 같은 일을 할 회사'." if cos >= 0.6 else
                          "뼈대는 남았지만 설명이 꽤 바뀌었다 — 어느 사업이 커졌는지 장(章)마다 들어온 말을 보라." if cos >= 0.4 else
                          "설명이 크게 바뀌었다 — 지금의 회사는 15년 전과 다른 회사다. 옛 숫자로 지금을 재면 안 된다."),
-                        "v": round(cos, 2), "core": core,
+                        "v": round(cos, 2), "core": core, "y0": ty[0], "y1": ty[-1],
+                        "turns": [{"year": e.get("year"), "title": e.get("title"), "detail": e.get("detail")} for e in idn],
                         "then": {"year": oy[0], "text": _short(ov[oy[0]], 170)} if oy else None,
                         "now": {"year": oy[-1], "text": _short(ov[oy[-1]], 170)} if oy else None})
     # 6. ROE 의 꾸준함
@@ -8231,7 +8253,14 @@ def _landscape_build(c, prog=None):
               "line_now": eps_now * band["mid"] if (eps_now and eps_now > 0 and band["mid"]) else None,
               "line_px": base_eps * band["mid"] if (base_eps and base_eps > 0 and band["mid"]) else None,
               "playbook": LAND_TYPES.get(last_type, ("", "", ""))[2] if last_type else "",
-              "story": _short(ov[oy[-1]], 200) if oy else ""}
+              "story": _short(ov[oy[-1]], 200) if oy else "",
+              # 근거 팝업(2026-10-22) — 판정에 쓴 분기 값: 주당이익 분기 · 1년 전 분기 · 기록 최고 · 최근 4분기 합 영업이익 넷
+              "eps_q": lastq["label"] if lastq else None,
+              "y4": {"label": y4["label"], "eps": y4.get("eps")} if y4 else None,
+              "eps_max": (lambda m: {"label": m["label"], "eps": m["eps"], "n": len(eps_hist)})(
+                  max((q for q in qs if q.get("eps") is not None), key=lambda q: q["eps"])) if eps_hist else None,
+              "o4": [{"label": (qby.get(m) or {}).get("label"), "op4": (qby.get(m) or {}).get("op4")}
+                     for m in range(lq4["n"] - 3, lq4["n"] + 1)] if lq4 else []}
     if prog is not None:
         prog["step"] = "마무리"
     out = {"v": LAND_V, "code": code, "name": c["name"], "rows": rows, "quarters": qs, "line": line, "band": band,
