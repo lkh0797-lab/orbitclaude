@@ -1035,6 +1035,76 @@ button.vbCo small{font:500 var(--fs-1) var(--mono);color:var(--faint)}button.vbC
 .drkTbl .grPh{margin-left:0;white-space:nowrap;cursor:help}
 .drkTbl td.qf{font-size:var(--fs-2);color:var(--faint);white-space:nowrap;cursor:help}
 .drkTextH{margin-top:22px}
+/* 2026-10-22 쉽게 읽기 — 한 줄 · 지금 자리(7칸 지도) · 숫자 셋 · 과거 같은 자리 · 접는 깊은 칸(사용자: "처음 보는 사람에게 너무 복잡하다") */
+.drkplate .spHead p.drkWhat{font-size:var(--fs-4);color:var(--p-faint);max-width:70em}
+.drkplate .spTools .drkAll{background:transparent;color:var(--p-dim);border:1px solid rgba(255,255,255,.18)}
+.drkplate .spTools .drkAll:hover{color:var(--p-hi);border-color:rgba(255,255,255,.34)}
+.drkNow{display:grid;grid-template-columns:minmax(330px,1fr) minmax(0,1fr);gap:18px 30px;margin-top:24px;align-items:start}
+@media (max-width:1100px){.drkNow{grid-template-columns:minmax(0,1fr)}}
+.drkMapH{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.drkMapH b{font:700 var(--fs-5) var(--f-disp);color:var(--p-hi)}
+.drkMapH span{font-size:var(--fs-3);color:var(--p-faint);text-align:right}
+.drkMap{display:grid;grid-template-columns:76px minmax(0,1fr) 40px minmax(0,1fr);grid-template-rows:auto repeat(3,minmax(80px,auto));gap:5px}
+.drkMap .ch{font:600 var(--fs-3) var(--f-body);color:var(--p-dim);text-align:center;padding-bottom:3px;align-self:end;line-height:1.3}
+.drkMap .ch small{display:block;font:500 var(--fs-1) var(--f-num);color:var(--p-faint)}
+.drkMap .rh{font:600 var(--fs-3) var(--f-body);color:var(--p-dim);display:flex;flex-direction:column;justify-content:center;align-items:flex-end;padding-right:6px;text-align:right;line-height:1.3}
+.drkMap .rh small{font:500 var(--fs-1) var(--f-num);color:var(--p-faint);white-space:nowrap}
+.drkCell{position:relative;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 11px 8px;min-width:0;background:rgba(255,255,255,.025);display:flex;flex-direction:column;gap:3px;cursor:help}
+.drkCell .n{font:600 var(--fs-4)/1.3 var(--f-body);color:var(--p-dim);word-break:keep-all}
+.drkCell .e{font:500 var(--fs-1) var(--f-num);color:var(--p-faint);letter-spacing:.04em}
+.drkCell .qs{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto;padding-top:5px}
+.drkCell .qs i{font:500 10px/1 var(--f-num);font-style:normal;color:var(--p-faint);padding:3px 4px;border-radius:4px;background:rgba(255,255,255,.06)}
+.drkCell .qs i.now{color:#11151b;background:var(--c);font-weight:700}
+.drkCell.was{border-color:rgba(255,255,255,.2)}
+.drkCell.was .n{color:var(--p-ink)}
+.drkCell.on{border-width:2px;padding:8px 10px 7px}
+.drkCell.on .n{font:700 var(--fs-6)/1.25 var(--f-disp);color:var(--p-hi)}
+.drkCell.on .e{color:var(--p-ink)}
+.drkCell.flat{writing-mode:vertical-rl;padding:8px 0;align-items:center;justify-content:center;gap:4px}
+.drkCell.flat .n{font-size:var(--fs-2);letter-spacing:.08em}
+.drkCell.flat .e{display:none}
+.drkCell.flat .qs{margin-top:0;padding-top:0;flex-wrap:nowrap}
+.drkCell.flat.on .n{font:700 var(--fs-3) var(--f-body);color:var(--p-hi)}
+/* 지금이 제자리면 가운데 좁은 칸을 넓혀 가로로 — 칩이 세로로 서지 않게(현대위아 2024Q3) */
+.drkMap:has(.drkCell.flat.on){grid-template-columns:76px minmax(0,1fr) 76px minmax(0,1fr)}
+.drkCell.flat.on{writing-mode:horizontal-tb;padding:8px 5px;text-align:center}
+.drkCell.flat.on .qs{flex-wrap:wrap;justify-content:center;padding-top:5px}
+.drkMapKey{margin-top:8px;font-size:var(--fs-2);line-height:1.5;color:var(--p-faint)}
+.drkBigs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025)}
+.drkBig{padding:14px 16px 12px;min-width:0;cursor:help}
+.drkBig+.drkBig{border-left:1px solid rgba(255,255,255,.07)}
+.drkBig b{display:block;font:700 clamp(24px,2.4vw,32px)/1.15 var(--f-disp);color:var(--p-hi);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drkBig b.pos{color:var(--add)}.drkBig b.neg{color:var(--del)}
+.drkBig .l{display:block;font:600 var(--fs-4) var(--f-body);color:var(--p-ink);margin-top:5px}
+.drkBig .s{display:block;font-size:var(--fs-3);line-height:1.45;color:var(--p-dim);margin-top:3px}
+.drkSmalls{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;padding:0 4px;font-size:var(--fs-3);color:var(--p-dim)}
+.drkSmalls span{cursor:help}
+.drkSmalls b{font:600 var(--fs-4) var(--f-num);color:var(--p-ink);margin-right:5px}
+.drkPast{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;align-items:baseline;padding:12px 16px 11px;border-radius:12px;border:1px solid rgba(214,180,106,.3);background:rgba(241,217,160,.05);cursor:help}
+@media (max-width:1100px){.drkPast{grid-template-columns:minmax(0,1fr)}}
+.drkPast .k{font:600 var(--fs-4) var(--f-body);color:var(--p-gold);white-space:nowrap}
+.drkPast .v{font-size:var(--fs-4);line-height:1.6;color:var(--p-ink)}
+.drkPast .v b{font:700 var(--fs-7) var(--f-disp);color:var(--p-hi);margin:0 2px}
+.drkPast small{grid-column:1/-1;font-size:var(--fs-2);line-height:1.5;color:var(--p-faint)}
+.drkplate .drkQual{margin-top:16px}
+.drkSecs{margin-top:24px}
+.drkSec{margin-top:8px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.02)}
+.drkSecH{display:flex;align-items:baseline;gap:12px;width:100%;padding:12px 16px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:12px}
+.drkSecH:hover{background:rgba(255,255,255,.03)}
+.drkSecH:focus-visible{outline:2px solid var(--p-gold2);outline-offset:-2px}
+.drkSecH b{font:700 var(--fs-5) var(--f-disp);color:var(--p-hi);white-space:nowrap}
+.drkSecH .sum{flex:1;min-width:0;font-size:var(--fs-3);line-height:1.5;color:var(--p-dim)}
+.drkSecH .chev{flex:none;align-self:center;width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.16);display:inline-flex;align-items:center;justify-content:center;font:600 12px/1 var(--f-num);font-style:normal;color:var(--p-dim);transition:transform .2s}
+.drkSec.open .drkSecH .chev{transform:rotate(180deg)}
+.drkSec.open .drkSecH .sum{color:var(--p-faint)}
+.drkSecB{display:none;padding:0 16px 16px}
+.drkSec.open .drkSecB{display:block}
+.drkSec .drkTurns,.drkSec .drkStackWrap{margin-top:4px}
+.drkSec .drkCompass{max-width:660px}
+.drkSubNote{margin:2px 0 8px;font-size:var(--fs-3);line-height:1.5;color:var(--p-faint)}
+.drkOpts .drkOpt span{white-space:nowrap}
+.drkplate .spIdeasH em{font:500 var(--fs-3) var(--f-body);letter-spacing:0;text-transform:none}   /* 한글 꼬리표 — 자간 넓히면 읽기 어렵다 */
+.drkCmp[hidden]{display:none}
 /* ---------- 투자 브리핑 (Exhibit 05) — 기회 지형도 · 구루 원탁 · 투자 메모 ---------- */
 /* 보고서 캔들의 7국면 띠 · 범례 색 — 가속도 판(.drkplate)과 같은 짙은 테마 값(invArc 가 rcOf(k, 판)으로 읽는다) */
 .invplate{--add:#7fc99a;--del:#e0837a;--warn:#d9ab63;--faint:#736f68;--accent:#7fb8a4}
@@ -11525,29 +11595,37 @@ async function viewDruck(p){
   drkLedger(ledger, R, d.text||[], d);
 }
 
+// 2026-10-22 쉽게 읽기(사용자: "처음 보는 사람 입장에서 너무 복잡하다 — 비전공자도 직관적으로, 전문성은 잃지 않고") —
+// 위에서 아래로 깊어진다: 한 줄 → 지금 자리(7칸 지도 · 숫자 셋 · 과거 같은 자리) → 자료 점검 → 분기마다 어땠나(흐름 띠 · 한눈에 · 증가율) →
+// 더 깊이 보기(접는 칸 다섯: 점검 메모 · 흐름 지도 · 이익률/주가 vs 이익/선행지표 판 · 뒤집힌 분기 · 읽는 법). 계산 · 자료 · 문구 규칙은 그대로, 자리만 옮겼다.
 function drkPlate(plate, R, c, d, bt, ev){
   plate.innerHTML='';
   plate.classList.add('anim');
   const M=d.basis==='영업이익'?'영업이익':'매출';
   // 판 안 색 · 맥락 — 그리는 함수들이 같이 쓴다
   const K={d, bt, ev, M, C:k=>rcOf(k,plate).c, turnBy:Object.fromEntries((ev.turns||[]).map(t=>[t.n,t]))};
+  K.DIRC={up:K.C('확장 가속'),flat:K.C('정체'),down:K.C('둔화')};
   const V=R.filter(r=>r.reg);
   const data=R.filter(r=>dNum(r['매출액'])||dNum(r['영업이익']));
   const last=data[data.length-1]||R[R.length-1];
   const now=V[V.length-1]||last;               // 지금 = 국면이 있는 마지막 분기(끝에 빈 분기 · 결산월 다른 해가 붙을 수 있다)
-  // 마지막 자료 분기(원장이 있는 분기)보다 2분기 넘게 앞선 국면은 '지금'이 아니다 — KPI · 나침반에 그 분기 이름을 달고 까닭을 자료 점검에 적는다
+  // 마지막 자료 분기(원장이 있는 분기)보다 2분기 넘게 앞선 국면은 '지금'이 아니다 — 지도 · 숫자에 그 분기 이름을 달고 까닭을 자료 점검에 적는다
   const lastD=R.filter(r=>r.fs).pop()||last;
   K.old=!!(now.reg&&lastD&&lastD.n-now.n>=2);
   K.lag=K.old ? drkLagCause(R, now, lastD, M) : null;
+  K.nowLabel=now.label;
 
-  // ── 머리
+  // ── 머리 — 번호 · 회사 · 기간. 오른쪽에 모두 펼치기 · 발표 모드
   const top=el('div','spTop');
   const eb=el('div','spEyebrow');
   eb.innerHTML='<b>EXHIBIT 04</b><span></span><em></em>';
   eb.querySelector('span').textContent='가속도 · '+c.name;
-  eb.querySelector('em').textContent='Speed × acceleration (B) · '+R[0].label+'–'+last.label;
+  eb.querySelector('em').textContent=R[0].label+' – '+last.label+' · 분기 보고서 '+data.length+'개';
   top.appendChild(eb);
   const tools=el('div','spTools');
+  const all=el('button','spFull drkAll','모두 펼치기');
+  all.title='아래 접힌 칸(점검 메모 · 흐름 지도 · 깊은 판 · 뒤집힌 분기 · 읽는 법)을 한 번에 펼치거나 접는다 — 브라우저가 기억한다';
+  tools.appendChild(all);
   const fs=el('button','spFull','⛶ 발표 모드');
   fs.title='전시판만 전체 화면으로 띄운다 (Esc 로 나가기)';
   fs.onclick=()=>{ if(document.fullscreenElement){ document.exitFullscreen(); return; }
@@ -11556,58 +11634,55 @@ function drkPlate(plate, R, c, d, bt, ev){
     plate.classList.toggle('full',on); fs.textContent=on?'발표 모드 끝내기':'⛶ 발표 모드'; };
   tools.appendChild(fs); top.appendChild(tools); plate.appendChild(top);
 
-  // ── 헤드라인 — 서술형(무엇이 일어났나)만. 처방 · 실명 없음
+  // ── 한 줄 — 무엇이 일어났나(쉬운 말)만. 처방 · 실명 없음. 그 밑에 이번 분기의 사건(있을 때만) · 이 화면이 무엇을 재는지
   const hl=el('div','spHead');
+  const pl=drkPlainLine(R, K);
   if(now.reg){
-    const s2=now.s-now.a, dn=DRK_DIRN[drkDir(now)];      // 반년 전(두 분기 앞) 최근 반년 증가율
-    const pl=drkPlainLine(R, K);
     hl.appendChild(el('h3',null,c.name+' — '+(pl?pl.head.replace(/\.$/,''):'')));
-    hl.appendChild(el('p',null,now.label+' 기준 최근 반년 '+M+' 증가율(1년 전 같은 분기 대비, 두 분기 평균) '+dPct(now.s,1)+', 반년 전 '+dPct(s2,1)+
-      ' — '+dPp(now.a,1)+' 움직여 흐름 '+dn+'(±3%p 넘으면 오름 · 내림).'+
-      (now.streak>=2 ? ' '+now.streak+'분기째 '+dn+'.' : '')+
-      (now.turn ? ' 이번 분기에 흐름이 '+(now.turn==='up'?'내림에서 오름으로':'오름에서 내림으로')+' 뒤집혔다.' : '')+
-      (now['엇갈림'] ? ' 이번 분기 하나만 보면 반대로 움직였다(직전 분기 대비 '+dPp(now.C,1)+').' : '')+
-      (lastD.n>now.n ? ' 가장 최근 '+lastD.label+'는 흐름을 못 정했다('+(K.lag||((lastD['품질']||[]).map(k=>DRK_QS[k]||k).join(' · ')||'앞 분기 자료 부족'))+').' : '')));
-    hl.appendChild(el('p','spEn',(M==='매출'?'Revenue':'Operating profit')+' speed '+dPct(now.s,0)+' (2Q avg YoY), acceleration '+
-      (dNum(now.a)?(now.a>=0?'+':'')+now.a.toFixed(1)+' pp':'—')+' vs the prior 2Q — '+DRK_RC[now.reg].en.toLowerCase()+'.'));
+    const ev2=[];
+    if(now.streak>=2) ev2.push(now.streak+'분기째 흐름 '+DRK_DIRN[drkDir(now)]+'.');
+    if(now.turn) ev2.push('이번 분기에 흐름이 '+(now.turn==='up'?'내림에서 오름으로':'오름에서 내림으로')+' 뒤집혔다.');
+    if(now['엇갈림']) ev2.push('이번 분기 하나만 보면 반대로 움직였다(직전 분기 대비 '+dPp(now.C,1)+').');
+    if(lastD.n>now.n) ev2.push('가장 최근 '+lastD.label+'는 흐름을 못 정했다('+(K.lag||((lastD['품질']||[]).map(k=>DRK_QS[k]||k).join(' · ')||'앞 분기 자료 부족'))+').');
+    if(ev2.length) hl.appendChild(el('p',null,ev2.join(' ')));
   } else hl.appendChild(el('h3',null,'분기 자료가 모자라 흐름을 못 정했다'));
-  hl.appendChild(drkBaseLine(now, K));
+  hl.appendChild(el('p','drkWhat','이 화면은 분기 보고서의 '+(M==='매출'?'매출로':'영업이익으로')+' 두 가지를 잰다 — 1년 전보다 늘고 있나(증가율), 그 증가율이 반년 전보다 올랐나(흐름). '+
+    '숫자는 '+now.label+' 보고서까지. 아래로 갈수록 깊어진다: 지금 자리 → 분기마다 어땠나 → 더 깊이 보기(접힘).'));
   plate.appendChild(hl);
 
+  // ── 지금 — 7칸 지도 · 숫자 셋 · 과거 같은 자리
+  plate.appendChild(drkNow(R, now, lastD, K, d));
   // ── 자료 점검 — 최근 12분기 품질 · 결산월 · 기준 지표 · 분할 보정 · 기준일
-  K.nowLabel=now.label;
   plate.appendChild(drkQual(R, lastD, d, K));
+  // ── 분기마다 어땠나 — 흐름 띠 · 한눈에 · 증가율(깊은 판은 아래 접는 칸)
+  const st=drkStack(R, K);
+  plate.appendChild(st.main);
 
-  // ── 위 두 단: 국면 나침반 | 점검 메모
-  const duo=el('div','drkDuo');
-  duo.appendChild(drkCompass(R, K));
-  duo.appendChild(drkChecks(R, now, K));
-  plate.appendChild(duo);
-
-  // ── 숫자 다섯 — 국면이 낡았으면(K.old) 칸마다 그 분기 이름을 단다
-  const np=d.now||{};
-  const at=K.old ? now.label+' · ' : '';
-  const perF=dNum(now['PER_TTM'])&&now['PER_TTM']>0 ? now['PER_TTM'].toFixed(1)+'배' : '—';
-  const perN=!np.stale&&!np.reason&&dNum(np.per)&&np.per>0 ? np.per.toFixed(1)+'배' : null;
-  // 지금 값이 없으면 서버가 준 까닭(분할 뒤 보류 · 낡은 EPS · 금융사 주식 수 · 기준 다른 4분기 · 적자)을 그대로 적는다
-  const perTxt = np.stale ? '공시일('+now.label+') PER · 지금 값은 다시 계산 대기(캐시 뒤 주가 자료가 다시 보정됨)'
-    : perN ? '지금 PER('+(np.date?dDate(np.date).slice(5)+' 종가':'종가')+(np.eps_label&&np.eps_label!==np.last?' ÷ '+np.eps_label+' EPS_TTM':'')+')'+
-             ' · 공시일('+now.label+') '+perF+(dNum(np.pct)?' · 자기 역사 백분위 '+Math.round(np.pct):'')
-    : '공시일('+now.label+') PER · 지금 값 없음 — '+(np.reason||'최근 4분기 EPS 없음');
-  const kp=el('div','spKpi drkKpi');
-  [[dPct(now.s,1), at+'최근 반년 '+M+' 증가율(1년 전 대비, 두 분기 평균) · 1년 합계 '+dPct(now.g,0), 'Speed · 2Q avg YoY'],
-   [dPp(now.a,1), at+'반년 전보다 · 흐름 '+(drkDir(now)?DRK_DIRN[drkDir(now)]:'—')+(now.streak>=2?' '+now.streak+'분기째':'')+' (±3%p 넘으면 오름 · 내림)', 'Acceleration · B'],
-   [dNum(now.m)?now.m.toFixed(1)+'%':'—', at+'TTM 영업이익률 · 1년 새 '+dPp(now.mD4,1), 'Margin · TTM'],
-   [dNum(now['재고일수'])?Math.round(now['재고일수'])+'일':'—', at+'재고일수 · 1년 새 '+dPct(now.invD4,0), 'Inventory days'],
-   [perN||perF, perTxt, 'P/E · now · at filing'],
-  ].forEach(([b,s,sm])=>{ const k=el('div','spK'); k.appendChild(el('b',null,b)); k.appendChild(el('span',null,s));
-    k.appendChild(el('small',null,sm)); kp.appendChild(k); });
-  plate.appendChild(kp);
-
-  // ── 분기 궤적
-  plate.appendChild(drkStack(R, K));
-  // ── 변곡 기록
-  plate.appendChild(drkTurns(R, K));
+  // ── 더 깊이 보기 — 접는 칸 다섯. 닫혀 있어도 요약 한 줄은 보인다
+  const secs=el('div','drkSecs');
+  secs.appendChild(el('div','spIdeasH','더 깊이 보기')).appendChild(el('em',null,'누르면 펼쳐진다 · 펼친 칸은 브라우저가 기억한다'));
+  const cnt={up:0,flat:0,down:0}; V.slice(-12).forEach(r=>{ const k=drkDir(r); if(k) cnt[k]++; });
+  const ck=drkChecks(R, now, K);
+  // 접힌 요약 — 제목+값을 그대로 붙이면 '같은 흐름 연속 비슷' 같은 비문이 된다. 머리가 이미 말한 '반년 전보다'는 빼고, 값에 이름이 든 항목은 값만
+  const PLN={'반년 전보다':()=>null,'같은 흐름 연속':v=>v==='비슷'?null:'같은 흐름 '+v,'영업 레버리지':v=>v==='—'?null:'1년 새 '+v,'이익률':v=>'영업이익률 '+v,'재고일수':v=>v,'매출채권일수':v=>v,'주가 vs 이익':v=>v};
+  const ckSum=[...ck.querySelectorAll('.drkList .t')].map(t=>{ const k=t.querySelector('b').textContent, v=t.querySelector('span').textContent, f=PLN[k]; return f?f(v):k+' '+v; }).filter(Boolean).slice(0,4).join(' · ');
+  secs.appendChild(drkSec('checks','점검 메모', ckSum||'이번 분기의 사실 — 반년 전보다 · 연속 · 영업 레버리지 · 이익률 · 재고 · 채권 · 주가 vs 이익', ()=>ck));
+  secs.appendChild(drkSec('map','흐름 지도', '최근 12분기 궤적 — 오름 '+cnt.up+' · 비슷 '+cnt.flat+' · 내림 '+cnt.down+(now.reg?' · 지금 '+(DRK_PLAIN[now.reg]||now.reg):''), ()=>drkCompass(R, K)));
+  const nv=R.filter(r=>r.val).pop();
+  const deepSum=['TTM 영업이익률 '+(dNum(now.m)?now.m.toFixed(1)+'%':'—'), nv?'PER 자리 '+Math.round(nv.val.pct)+'% ('+DRK_VZ[drkVz(nv.val)][0]+')':'',
+    '재고 '+(dNum(now['재고일수'])?Math.round(now['재고일수'])+'일':'—')+' · 채권 '+(dNum(now['매출채권일수'])?Math.round(now['매출채권일수'])+'일':'—')].filter(Boolean).join(' · ');
+  secs.appendChild(drkSec('deep','영업이익률 · 주가 vs 이익 · 선행지표', deepSum, ()=>st.deep()));
+  const T=R.filter(r=>r.turn), tu=T.filter(r=>r.turn==='up').length, tl=T[T.length-1];
+  secs.appendChild(drkSec('turns','흐름이 뒤집힌 분기', T.length ? '▲ 내림→오름 '+tu+'번 · ▼ 오름→내림 '+(T.length-tu)+'번 · 마지막 '+tl.label+' '+drkTurnN(tl.turn)+' · 전 종목 같은 때 성적과 나란히'
+    : '없다 — 흐름이 뒤집힌 분기가 아직 없다', ()=>drkTurns(R, K)));
+  secs.appendChild(drkSec('how','읽는 법 · 기준', '흐름 = 최근 반년 증가율을 반년 전과 견줌(±3%p) · 싼 값 · 비싼 값 = 공시일 PER 의 자기 역사 자리 · 과거 성적의 표본과 근거', ()=>{
+    const f=document.createDocumentFragment(); f.appendChild(drkDefBox(R, K, K.DIRC)); if(R.some(r=>r.val)) f.appendChild(drkValBox(R)); return f; }));
+  plate.appendChild(secs);
+  const allSet=()=>{ const L=[...secs.querySelectorAll('.drkSec')]; all.textContent=L.length&&L.every(s=>s.classList.contains('open'))?'모두 접기':'모두 펼치기'; };
+  all.onclick=()=>{ const L=[...secs.querySelectorAll('.drkSec')], on=L.some(s=>!s.classList.contains('open')), o=lsGet('drkOpen',{});
+    L.forEach(s=>{ o[s.dataset.key]=on; s.drkSet(on); }); lsSet('drkOpen',o); allSet(); };
+  secs.addEventListener('click',()=>setTimeout(allSet,0));
+  allSet();
 
   const ft=el('div','spFoot');
   ft.innerHTML='<span></span><b>ORBIT · 기업궤도추적</b>';
@@ -11617,6 +11692,112 @@ function drkPlate(plate, R, c, d, bt, ev){
     '사건 수익률은 그 숫자를 알 수 있던 날 다음 거래일부터 전 종목 중앙값 대비. 주가 = 네이버 수정주가, EPS 는 분할 보정(지금 주식 수 기준).'+
     (bt.at?' 기저율 '+dDate(bt.at)+' 계산.':'');
   plate.appendChild(ft);
+}
+
+// 지금 — 7칸 지도(가로 = 1년 전보다 줄고 · 제자리 · 늘고, 세로 = 반년 전보다 오름 · 비슷 · 내림. 흐름 지도 산점도를 칸으로 접은 것 — 같은 방향) ·
+// 숫자 셋(증가율 · 영업이익률 · 주가 1년) + 작은 셋 · 과거 같은 자리. 칸 안 작은 글씨 = 최근 8분기가 머문 자리
+function drkNow(R, now, lastD, K, d){
+  const box=el('div','drkNow'), C=K.C, M=K.M;
+  const mapW=el('div');
+  const mh=el('div','drkMapH'); mh.appendChild(el('b',null,'지금 자리')); mh.appendChild(el('span',null,(K.old?now.label+' 기준 · ':'')+'마우스를 올리면 뜻')); mapW.appendChild(mh);
+  const map=el('div','drkMap');
+  map.appendChild(el('div'));
+  [[M+' 줄고','1년 전보다'],['제자리',''],[M+' 늘고','1년 전보다']].forEach(([t,s])=>{ const h=el('div','ch'); h.appendChild(document.createTextNode(t)); if(s) h.appendChild(el('small',null,s)); map.appendChild(h); });
+  [['증가율 오름','반년 전보다'],['증가율 비슷','반년 전과'],['증가율 내림','반년 전보다']].forEach(([t,s],i)=>{ const h=el('div','rh'); h.style.gridRow=String(i+2); h.style.gridColumn='1';
+    h.appendChild(document.createTextNode(t)); h.appendChild(el('small',null,s)); map.appendChild(h); });
+  const recent=R.filter(r=>r.reg).slice(-8);
+  [['회복',2,2],['부진 지속',3,2],['수축 심화',4,2],['정체',3,3],['확장 가속',2,4],['확장 유지',3,4],['둔화',4,4]].forEach(([k,row,col])=>{
+    const on=now.reg===k, qs=recent.filter(r=>r.reg===k);
+    const cell=el('div','drkCell'+(on?' on':qs.length?' was':'')+(k==='정체'?' flat':''));
+    cell.style.gridRow=String(row); cell.style.gridColumn=String(col);
+    const base=String(C(k)).slice(0,7); cell.style.setProperty('--c',base);
+    if(on){ cell.style.borderColor=base; cell.style.background=base+'2e'; }
+    cell.appendChild(el('div','n',k==='정체'?'제자리':(DRK_PLAIN[k]||k)));
+    cell.appendChild(el('div','e',k));
+    if(qs.length){ const w=el('div','qs');
+      if(k==='정체'&&!on) w.appendChild(el('i',null,qs.length+'분기'));   // 세로 칸 — 칩이 서면 가운데 줄이 늘어난다(농심 5번). 분기 이름은 title 에
+      else qs.forEach(r=>w.appendChild(el('i',r===now?'now':null,r.label.slice(2))));
+      cell.appendChild(w); }
+    cell.title=k+' — '+((DRK_RC[k]||{}).d||'').replace(/매출/g,M)+(qs.length?' · 최근 8분기 중 '+qs.map(r=>r.label).join(' · '):'');
+    map.appendChild(cell);
+  });
+  mapW.appendChild(map);
+  mapW.appendChild(el('div','drkMapKey','가로 = 최근 반년 '+M+' 증가율(1년 전 같은 때 대비, 두 분기 평균)이 0 위인가 아래인가 · 세로 = 그 증가율이 반년 전(두 분기 앞)보다 올랐나(경계 ±3%p) · 칸 안 작은 글씨 = 최근 8분기가 머문 자리'+
+    (K.old?' · 흐름은 '+now.label+' 기준('+lastD.label+'까지는 흐름을 못 정함)':'')));
+  box.appendChild(mapW);
+  // 숫자 셋 + 작은 셋
+  const nw=el('div');
+  const nh=el('div','drkMapH'); nh.appendChild(el('b',null,'숫자')); nh.appendChild(el('span',null,now.label+' 보고서 기준 · 마우스를 올리면 정의')); nw.appendChild(nh);
+  const bigs=el('div','drkBigs');
+  const sg=v=>!dNum(v)?'':v>0?'pos':v<0?'neg':'';
+  const big=(v,cls,l,s,tt)=>{ const b=el('div','drkBig'); b.appendChild(el('b',cls||null,v)); b.appendChild(el('span','l',l)); b.appendChild(el('span','s',s)); if(tt) b.title=tt; bigs.appendChild(b); };
+  const s2=dNum(now.a)&&dNum(now.s)?now.s-now.a:null;
+  big(dPct(now.s,0), sg(now.s), M+' 증가율', '최근 반년 · 1년 전 같은 때보다'+(s2!==null?' · 반년 전 '+dPct(s2,0)+' → 지금 '+dPct(now.s,0)+' ('+dPp(now.a,1)+')':''),
+    '분기 '+M+'의 1년 전 대비 증가율을 최근 두 분기 평균한 값. 반년 전(두 분기 앞)보다 ±3%p 넘게 움직이면 흐름 오름 · 내림');
+  big(dNum(now.m)?now.m.toFixed(1)+'%':'—', '', '영업이익률', M==='매출' ? '최근 1년(TTM)'+(dNum(now.mD4)?' · 1년 전보다 '+dPp(now.mD4,1):'') : '매출이 없는 회사(영업이익 기준) — 재지 않음', '최근 4분기 영업이익 ÷ 최근 4분기 매출');
+  big(dPct(now.px4,0), sg(now.px4), '주가 1년', '공시일 종가 기준'+(dNum(now.eps4)?' · 같은 기간 이익(EPS) '+dPct(now.eps4,0):''),
+    '이 분기 공시일 종가를 1년 전 같은 분기 공시일 종가와 견줌(네이버 수정주가). 이익 = 4분기 EPS(분할 보정)');
+  nw.appendChild(bigs);
+  const np=d.now||{};
+  const perF=dNum(now['PER_TTM'])&&now['PER_TTM']>0 ? now['PER_TTM'].toFixed(1)+'배' : '—';
+  const perN=!np.stale&&!np.reason&&dNum(np.per)&&np.per>0 ? np.per.toFixed(1)+'배' : null;
+  // 지금 값이 없으면 서버가 준 까닭(분할 뒤 보류 · 낡은 EPS · 금융사 주식 수 · 기준 다른 4분기 · 적자)을 그대로 적는다
+  const perTxt = np.stale ? '공시일('+now.label+') PER · 지금 값은 다시 계산 대기(캐시 뒤 주가 자료가 다시 보정됨)'
+    : perN ? '지금 PER('+(np.date?dDate(np.date).slice(5)+' 종가':'종가')+(np.eps_label&&np.eps_label!==np.last?' ÷ '+np.eps_label+' EPS_TTM':'')+')'+
+             ' · 공시일('+now.label+') '+perF+(dNum(np.pct)?' · 자기 역사 백분위 '+Math.round(np.pct):'')
+    : '공시일('+now.label+') PER · 지금 값 없음 — '+(np.reason||'최근 4분기 EPS 없음');
+  const sm=el('div','drkSmalls');
+  const small=(b,t,tt)=>{ const s=el('span'); s.appendChild(el('b',null,b)); s.appendChild(document.createTextNode(t)); if(tt) s.title=tt; sm.appendChild(s); };
+  small(dPct(now.g,0),'1년 합계 '+M+' 증가율','최근 4분기 합을 1년 전 4분기 합과 견줌 — 매끈하지만 한 분기쯤 늦다');
+  small(dNum(now['재고일수'])?Math.round(now['재고일수'])+'일':'—','재고일수'+(dNum(now.invD4)?' · 1년 새 '+dPct(now.invD4,0):''),'1년 = 1년 전 같은 분기와 견준 값 · 선행지표 판에 채권일수와 같이');
+  small(perN||perF, perN?'지금 PER':'공시일 PER', perTxt);
+  nw.appendChild(sm);
+  box.appendChild(nw);
+  box.appendChild(drkPast(now, K));
+  return box;
+}
+
+// 과거 같은 자리 — 이 국면(막 난 변곡이면 그 변곡)의 전 종목 같은 정의 성적. 회사 수 · 표본 수는 파일 값. 큰 숫자 하나 + 작은 글씨에 구간 · 치우침
+function drkPast(now, K){
+  const {bt,d}=K, box=el('div','drkPast');
+  box.title='기저율 표본 = 재작성 비교값으로 센 B(공시 당시 값 · 섞임 제외), 기준일이 원본 공시일보다 45일 넘게 늦은 분기 제외, 금융 · 지주(KSIC 64~66) 제외. '+
+    '수익률 = 기준일 다음 거래일부터 12개월, 같은 기간 전 종목 중앙값 대비. 90% 구간은 회사 단위 부트스트랩.';
+  box.appendChild(el('span','k','과거 같은 자리였던 회사들'));
+  const v=el('span','v'); box.appendChild(v);
+  if(d.basis==='영업이익'){ v.textContent='비교 표본(KSIC 64~66 제외)에 없는 회사 — 견줄 숫자 없음'; return box; }
+  if(!now||!now.reg){ v.textContent='흐름을 못 정해 견줄 칸이 없다'; return box; }
+  const ev=bt.ev_all||{}, o=now.turn ? ev[now.turn==='up'?'B_up':'B_dn'] : (bt.regime||{})[now.reg];
+  const lab=now.turn ? '흐름 '+drkTurnN(now.turn)+' 뒤' : '「'+(DRK_PLAIN[now.reg]||now.reg)+'」이던 때';
+  if(!o||!o.n){ v.textContent=lab+' · '+(bt.regime||bt.ev_all ? '표본이 없다' : '아직 계산 전 — 밤 미리 계산 뒤 생긴다'); return box; }
+  const NEG=new Set(['회복','부진 지속','수축 심화']);
+  v.appendChild(document.createTextNode(lab+' — 1년 뒤 주가가 시장보다 '));
+  v.appendChild(el('b',null,dPct(o.med,1)));
+  v.appendChild(document.createTextNode('(중앙) · 시장을 이긴 비율 '+Math.round(o.hit||0)+'%'));
+  box.appendChild(el('small',null,'과거 '+(o.firms||bt.firms||0).toLocaleString('ko-KR')+'곳 '+o.n.toLocaleString('ko-KR')+'번'+
+    (o.ci?' · 90% 구간 '+dPct(o.ci[0],1)+' ~ '+dPct(o.ci[1],1):'')+
+    (dNum(o.dG4)?' · 1년 뒤 1년 합계 증가율 변화 '+dPp(o.dG4,1):'')+(dNum(bt.base_any)?' · 아무 때나 사면 '+dPct(bt.base_any,1):'')+
+    (NEG.has(now.reg)?' · 매출이 줄던 때는 상장폐지된 회사가 빠져 위로 치우친 값':'')+' · 지금 상장사만(생존 편향) · 같은 자리의 과거 평균이지 이 회사의 앞날이 아니다'));
+  return box;
+}
+
+// 접는 칸 — 닫혀 있어도 제목 옆 요약 한 줄은 보인다. 펼친 상태는 브라우저에 기억(drkOpen). 안은 처음 펼칠 때 한 번 만든다(build)
+function drkSec(key, title, sum, build){
+  const open=lsGet('drkOpen',{});
+  const sec=el('section','drkSec'); sec.dataset.key=key;
+  const h=el('button','drkSecH'); h.type='button';
+  h.appendChild(el('b',null,title)); h.appendChild(el('span','sum',sum||'')); h.appendChild(el('i','chev','▾'));
+  const body=el('div','drkSecB');
+  let built=false;
+  const ensure=()=>{ if(built) return; built=true; const x=build(); if(x) body.appendChild(x);
+    // 안에 든 제목 줄(spIdeasH)은 칸 제목과 겹친다 — 꼬리표(em)만 작은 글씨로 남긴다
+    body.querySelectorAll(':scope > .spIdeasH, :scope > * > .spIdeasH').forEach(h=>{ const em=h.querySelector('em'); h.replaceWith(el('div','drkSubNote',em?em.textContent:'')); }); };
+  const set=on=>{ sec.classList.toggle('open',on); h.setAttribute('aria-expanded',on?'true':'false');
+    if(on){ ensure(); body.querySelectorAll('.drkStackWrap').forEach(w=>{ if(w.drkRefresh) w.drkRefresh(); }); } };   // 접힌 동안 미룬 깊은 판을 지금 그린다
+  h.onclick=()=>{ const on=!sec.classList.contains('open'), o=lsGet('drkOpen',{}); o[key]=on; lsSet('drkOpen',o); set(on); };
+  sec.appendChild(h); sec.appendChild(body);
+  set(!!open[key]);
+  sec.drkSet=set;
+  return sec;
 }
 
 // 국면이 마지막 자료 분기보다 2분기 넘게 앞에서 멈춘 까닭 — 매출 줄이 끊김(매출 기준) · B 를 막은 분기(기준 다른 Q4 · 빈 분기 · 1년 전 값 없음)
@@ -11636,23 +11817,6 @@ function drkLagCause(R, now, lastD, M){
   return '계산을 막은 분기 — '+bad.slice(0,4).map(why).join(' · ')+(bad.length>4?' 외':'');
 }
 
-// 기저율 한 줄 — 이 국면(막 난 변곡이면 그 변곡)의 전 종목 같은 정의 성적. 회사 수 · 표본 수는 파일 값
-function drkBaseLine(now, K){
-  const {bt,d}=K, p=el('p','drkBase');
-  p.title='기저율 표본 = 재작성 비교값으로 센 B(공시 당시 값 · 섞임 제외), 기준일이 원본 공시일보다 45일 넘게 늦은 분기 제외, 금융 · 지주(KSIC 64~66) 제외. '+
-    '수익률 = 기준일 다음 거래일부터 12개월, 같은 기간 전 종목 중앙값 대비. 90% 구간은 회사 단위 부트스트랩.';
-  if(d.basis==='영업이익'){ p.textContent='과거 같은 때 성적 · 비교 표본(KSIC 64~66 제외)에 없는 회사 — 견줄 숫자 없음'; return p; }
-  if(!now||!now.reg){ p.textContent='과거 같은 때 성적 · 흐름을 못 정해 견줄 칸이 없다'; return p; }
-  const ev=bt.ev_all||{}, o=now.turn ? ev[now.turn==='up'?'B_up':'B_dn'] : (bt.regime||{})[now.reg];
-  const lab=now.turn ? '흐름 '+drkTurnN(now.turn)+' 뒤' : '「'+(DRK_PLAIN[now.reg]||now.reg)+'」이던 때';
-  if(!o||!o.n){ p.textContent='과거 같은 때 성적 · '+(bt.regime||bt.ev_all ? lab+' 표본이 없다' : '아직 계산 전 — 밤 미리 계산 뒤 생긴다'); return p; }
-  const NEG=new Set(['회복','부진 지속','수축 심화']);
-  p.textContent='과거 같은 때 성적 · '+lab+' · 과거 '+(o.firms||bt.firms||0).toLocaleString('ko-KR')+'곳 '+o.n.toLocaleString('ko-KR')+'번 — 12개월 시장 대비 중앙 '+dPct(o.med,1)+
-    (o.ci?' [90% 구간 '+dPct(o.ci[0],1)+', '+dPct(o.ci[1],1)+']':'')+' · 이긴 비율 '+Math.round(o.hit||0)+'%'+
-    (dNum(o.dG4)?' · 1년 뒤 1년 합계 증가율 변화 '+dPp(o.dG4,1):'')+(dNum(bt.base_any)?' · 아무 때나 사면 '+dPct(bt.base_any,1):'')+
-    (NEG.has(now.reg)?' · 매출이 줄던 때는 상장폐지된 회사가 빠져 위로 치우친 값':'')+' · 지금 상장사만(생존 편향)';
-  return p;
-}
 
 // 자료 점검 띠 — 최근 12분기 점의 품질 합집합 · 회사 단위 표시 · 데이터 기준일 · 국면이 멈춘 까닭(K.lag)
 function drkQual(R, last, d, K){
@@ -11789,7 +11953,7 @@ function drkTipBody(r, K){
 // 점검 메모 — 지금 분기의 사실만. 화살표는 값의 방향(↑ 늘었다 · ↓ 줄었다 · – 비슷하다/값 없음), 중립 색. 좋아짐/나빠짐 · 통과 개수 · 판정은 두지 않는다
 function drkChecks(R, now, K){
   const box=el('div','drkChecks'), M=K.M;
-  box.appendChild(el('div','spIdeasH','점검 메모')).appendChild(el('em',null,'NOTES · '+now.label));
+  box.appendChild(el('div','spIdeasH','점검 메모')).appendChild(el('em',null,now.label+' 보고서의 사실 일곱 줄 — 화살표는 값의 방향, 좋고 나쁨의 판정이 아니다'));
   const items=[];
   const add=(st,t,v,h)=>items.push({st,t,v,h});
   if(dNum(now.a)) add(now.a>=DRK_BAND?'up':now.a<=-DRK_BAND?'dn':'na','반년 전보다', dPp(now.a,1),
@@ -11868,26 +12032,24 @@ function drkValBox(R){
 }
 
 // 판을 한 가로축에: 한눈에(증가율 · 이익률 · 주가) · 흐름 띠 · 매출 증가율 · 마진 · 주가 vs 이익 · 선행지표. 가로 칸 = 분기 키(빈 분기도 칸을 둔다)
+// 2026-10-22 쉽게 읽기 — 위(main) = 한눈에 · 흐름 띠 · 증가율, 아래(deep, 접는 칸) = 흐름 띠 · 영업이익률 · 주가 vs 이익 · 선행지표. 두 판은 같은 기간 · 같은 더 보기 설정
 function drkStack(R, K){
   const wrap=el('div','drkStackWrap'), C=K.C, M=K.M;
-  wrap.appendChild(el('div','spIdeasH','분기 궤적')).appendChild(el('em',null,'REGIME · SPEED · MARGIN · PRICE vs EARNINGS · LEAD INDICATORS'));
-  // 한 줄 결론 — 그림을 읽기 전에 '그래서 지금 어떻다'부터
-  const pl=drkPlainLine(R, K);
-  if(pl){ const b=el('div','drkPlain'); b.appendChild(el('b',null,pl.head));
-    if(pl.turns.length) b.appendChild(el('span',null,'흐름이 뒤집힌 최근 분기: '+pl.turns.join(' → ')));
-    wrap.appendChild(b); }
-  const DIRC={up:C('확장 가속'),flat:C('정체'),down:C('둔화')};
-  wrap.appendChild(drkDefBox(R, K, DIRC));
-  // 더 보기 — 기본은 막대(분기 증가율)와 노란 선(최근 반년 평균)만. 나머지 둘은 켜야 보인다(브라우저에 기억)
+  wrap.appendChild(el('div','spIdeasH','분기마다 어땠나')).appendChild(el('em',null,'위 = 증가율 · 이익률 · 주가 세 선을 한 판에 · 아래 = '+M+' 증가율 막대와 최근 반년 선'));
+  const DIRC=K.DIRC||{up:C('확장 가속'),flat:C('정체'),down:C('둔화')};
+  // 더 보기 — 기본은 막대(분기 증가율)와 노란 선(최근 반년 평균)만. 나머지는 켜야 보인다(브라우저에 기억). 짧은 이름 · 풀이는 마우스
   const opt=Object.assign({ttm:false,turn:false,peer:true,gap:true}, lsGet('drkOpt',{}));
+  const wrap2=el('div','drkStackWrap'), fig2=el('div','orbFig'); wrap2.appendChild(fig2);
+  const on=k=>!!opt[k];
   const chips=el('div','drkOpts');
   chips.appendChild(el('span','l','더 보기'));
-  [['ttm','1년 합계 증가율(점선 — 최근 4분기를 더해 1년 전과 견줌 · 매끈하지만 한 분기쯤 늦다)','showTTM'],['turn','흐름이 뒤집힌 분기 ▲ 내림→오름 · ▼ 오름→내림 (주가 신호 아님 — 검증에서 수익을 가르지 못함)','showTurn'],
-   ['peer','업종 중앙(같은 섹터 다른 회사들의 중앙값 — 점선)','showPeer'],
-   ['gap','엇갈림 칠하기(영업이익률과 1년 주가가 반대로 간 분기 — 과거 전 종목 성적은 판 아래)','showGap']].forEach(([k,t,cls])=>{
-    const lab=el('label','drkOpt'); const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!opt[k];
-    wrap.classList.toggle(cls,cb.checked);
-    cb.onchange=()=>{ opt[k]=cb.checked; lsSet('drkOpt',opt); wrap.classList.toggle(cls,cb.checked); if(k==='peer') draw(); };
+  [['ttm','1년 합계 선','점선 — 최근 4분기를 더해 1년 전과 견줌 · 매끈하지만 한 분기쯤 늦다','showTTM'],
+   ['turn','뒤집힌 분기 ▲▼','흐름이 뒤집힌 분기 ▲ 내림→오름 · ▼ 오름→내림 (주가 신호 아님 — 검증에서 수익을 가르지 못함)','showTurn'],
+   ['peer','업종 중앙','같은 섹터 다른 회사들의 중앙값 — 점선','showPeer'],
+   ['gap','엇갈림 칠하기','영업이익률과 1년 주가가 반대로 간 분기를 칠한다 — 과거 전 종목 성적은 판 아래','showGap']].forEach(([k,t,tt,cls])=>{
+    const lab=el('label','drkOpt'); lab.title=tt; const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!opt[k];
+    wrap.classList.toggle(cls,cb.checked); wrap2.classList.toggle(cls,cb.checked);
+    cb.onchange=()=>{ opt[k]=cb.checked; lsSet('drkOpt',opt); wrap.classList.toggle(cls,cb.checked); wrap2.classList.toggle(cls,cb.checked); if(k==='peer') draw(); };
     lab.appendChild(cb); lab.appendChild(el('span',null,t)); chips.appendChild(lab); });
   // 기간 — 5년 · 10년 · 전체(브라우저에 기억, 기본 5년). 아래 판 전부가 같은 가로축을 쓴다(2026-10-20, 사용자: 최근을 넓게)
   let span=lsGet('drkSpan','5');
@@ -11896,7 +12058,7 @@ function drkStack(R, K){
     b.onclick=()=>{ span=k; lsSet('drkSpan',k); seg.querySelectorAll('.spChip').forEach(x=>x.classList.toggle('on',x===b)); draw(); };
     seg.appendChild(b); });
   chips.prepend(seg);
-  chips.appendChild(el('span','drkHint','↔ 한눈에 판을 가로로 끌면 두 분기 사이 변화'));
+  chips.appendChild(el('span','drkHint','↔ 위 판을 가로로 끌면 두 분기 비교'));
   wrap.appendChild(chips);
   // 두 시점 비교(5번) — 한눈에 판을 가로로 끌어 고른 두 분기 사이 변화를 한 줄로. 기간 버튼 · 자료 도착으로 다시 그려도 남는다
   let sel=null;
@@ -11908,28 +12070,37 @@ function drkStack(R, K){
   const fig=el('div','orbFig'); wrap.appendChild(fig);
   const RP=drkPad(R);
   K.byN=Object.fromEntries(RP.map(r=>[r.n,r]));          // 마지막 자료 분기 뒤 오늘이 든 분기까지 빈 칸(보고서 전) — 증권사 주간 주가가 그 칸까지 이어진다
-  let drawn=0;
-  const draw=()=>{ fig.innerHTML='';
+  // set = 'main'(한눈에 · 흐름 띠 · 증가율) | 'deep'(흐름 띠 · 이익률 · 주가 vs 이익 · 선행지표). 판 자리는 있는 판만 차례로 쌓는다
+  const drawInto=(fig,set)=>{ fig.innerHTML='';
+  const P=set==='deep'?['rib','b','d','c']:['o','rib','a'], has=k=>P.includes(k);
   const R=span==='all'?RP:RP.slice(-(+span*4));
   const N=R.length, W=1000, L=56, Rr=112, T=24;
   const RIB=16, YRH=22, HA=160, HB=100, HC=104, HD=150, GAP=46, HO=300;
-  const oT=T+34, ribY=oT+HO+106, yTop=ribY+RIB+YRH-4, aT=ribY+RIB+YRH+GAP-10, bT=aT+HA+GAP, dT=bT+HB+GAP, cT=dT+HD+GAP, bot=cT+HC, H=bot+34;   // 주가 vs 이익(D)이 선행지표(C) 위
+  let oT=null, aT=null, bT=null, dT=null, cT=null, y=T;
+  if(has('o')){ oT=y+34; y=oT+HO+106; } else y=T+24;
+  const ribY=y, yTop=ribY+RIB+YRH-4; y=ribY+RIB+YRH-10;
+  if(has('a')){ aT=y+GAP; y=aT+HA; }
+  if(has('b')){ bT=y+GAP; y=bT+HB; }
+  if(has('d')){ dT=y+GAP; y=dT+HD; }      // 주가 vs 이익(D)이 선행지표(C) 위
+  if(has('c')){ cT=y+GAP; y=cT+HC; }
+  const bot=y, H=bot+34, top0=has('o')?oT:ribY-24, firstT=aT!=null?aT:bT!=null?bT:dT!=null?dT:cT;
   const step=(W-L-Rr)/N, X=i=>L+i*step+step/2, bw=Math.max(3,Math.min(18,step*.62));
-  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'orbSvg drkSSvg'+(drawn++?' still':''),role:'img','aria-label':'분기별 속도·마진·주가·선행지표'});
+  fig._n=(fig._n||0)+1;
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'orbSvg drkSSvg'+(fig._n>1?' still':''),role:'img','aria-label':set==='deep'?'분기별 마진·주가 vs 이익·선행지표':'분기별 증가율·이익률·주가'});
   const put=(tag,at)=>svg.appendChild(svgEl(tag,at));
   const GOLD='var(--p-gold2)', HI='var(--p-hi)', AR='#9fb1c4';
   // 연도 — 띠 · 구분선 · 위(국면 띠 바로 밑)와 맨 아래 두 줄에 이름
   const yrs=[]; R.forEach((r,i)=>{ const y=String(r.year), l=yrs[yrs.length-1]; if(l&&l.y===y) l.e=i; else yrs.push({y,s:i,e:i}); });
   yrs.forEach((g,k)=>{ const x0=L+g.s*step, w=(g.e-g.s+1)*step, lab=w<40?"'"+g.y.slice(2):g.y;
-    if(k%2===0){ put('rect',{x:x0,y:yTop,width:w,height:bot-yTop,class:'orbBand'}); put('rect',{x:x0,y:oT,width:w,height:HO,class:'orbBand'}); }
-    if(k){ put('line',{x1:x0,x2:x0,y1:yTop,y2:bot,class:'drkYSep'}); put('line',{x1:x0,x2:x0,y1:oT,y2:oT+HO,class:'drkYSep'});
+    if(k%2===0){ put('rect',{x:x0,y:yTop,width:w,height:bot-yTop,class:'orbBand'}); if(has('o')) put('rect',{x:x0,y:oT,width:w,height:HO,class:'orbBand'}); }
+    if(k){ put('line',{x1:x0,x2:x0,y1:yTop,y2:bot,class:'drkYSep'}); if(has('o')) put('line',{x1:x0,x2:x0,y1:oT,y2:oT+HO,class:'drkYSep'});
       put('line',{x1:x0,x2:x0,y1:bot,y2:bot+7,class:'orbYearTick'}); }
     [[ribY+RIB+14,'drkYearT'],[bot+22,'orbYear']].forEach(([y,c])=>{ put('text',{x:x0+w/2,y,'text-anchor':'middle',class:c}).textContent=lab; }); });
   // 판 사이 구분선
-  [bT,cT,dT].forEach(t=>put('line',{x1:0,x2:W,y1:t-30,y2:t-30,class:'drkSep'}));
+  [bT,cT,dT].filter(t=>t!=null&&t!==firstT).forEach(t=>put('line',{x1:0,x2:W,y1:t-30,y2:t-30,class:'drkSep'}));
   put('line',{x1:0,x2:W,y1:ribY-24,y2:ribY-24,class:'drkSep'});
   // 마우스를 올린 분기의 세로 칸(선 밑에 깔린다)
-  const col=put('rect',{y:oT,width:step,height:bot-oT,class:'drkCol'}); col.style.display='none';
+  const col=put('rect',{y:top0,width:step,height:bot-top0,class:'drkCol'}); col.style.display='none';
   // 판 이름 + 설명, 오른쪽 끝에 범례
   const tw=(s,px)=>[...s].reduce((w,ch)=>w+(/[ㄱ-힣]/.test(ch)?px:/[ ·.,()]/.test(ch)?px*.36:px*.62),0);
   const cap=(y,a,b)=>{ const t=put('text',{x:L,y,class:'drkCap'}); t.innerHTML='<tspan class="k"></tspan><tspan class="d" dx="10"></tspan>';
@@ -11970,7 +12141,7 @@ function drkStack(R, K){
   // 단위가 다른 셋을 두 축에 얹지 않는다 — 각자 보이는 기간의 최저~최고를 판 높이에 맞춘다(주가는 로그). 높이끼리는 견주지 않고 오르내림만 본다.
   // 주가 = 증권사(한국투자증권) 주간 수정주가(KRX+NXT 통합) — 받기 전 · 없으면 공시일 종가. 매출 · 영업이익 선은 DART 그대로,
   // 증권사 분기 손익(2019Q1~)과 2% 넘게(1억 원 넘게) 다른 분기에 고리 ○ (사용자 선택: 'DART 선 + 증권사로 검증').
-  { const OC={g:'#c98500', m:'#3987e5', p:'#d55181'};   // 짙은 판(#0e1319) 위 검증한 세 색 — 노랑 · 파랑 · 자홍
+  if(has('o')){ const OC={g:'#c98500', m:'#3987e5', p:'#d55181'};   // 짙은 판(#0e1319) 위 검증한 세 색 — 노랑 · 파랑 · 자홍
     const pxS=v=>v>=1e4?(v/1e4).toFixed(v>=1e6?0:1)+'만':Math.round(v).toLocaleString('ko-KR');
     const kis=K.kis||{}, idx={};
     R.forEach((r,i)=>{ idx[r.n]=i; });
@@ -11991,7 +12162,7 @@ function drkStack(R, K){
     const pm=(n,k)=>{ const e=((K.peer||{}).med||{})[n]; return e&&dNum(e[k])?e[k]:null; };
     S.forEach(s=>{ if(s.k==='g') s.peer=R.map(r=>pm(r.n,'s')); else if(s.k==='m'&&M==='매출') s.peer=R.map(r=>pm(r.n,'m')); });
     S.forEach(s=>{ const tr=s.log?Math.log10:v=>v;
-      const xs=(s.wk?s.wk.map(o=>o.c):s.vals.filter(dNum)).concat(s.peer&&wrap.classList.contains('showPeer')?s.peer.filter(dNum):[]).map(tr);
+      const xs=(s.wk?s.wk.map(o=>o.c):s.vals.filter(dNum)).concat(s.peer&&on('peer')?s.peer.filter(dNum):[]).map(tr);
       s.lo=Math.min(...xs); s.hi=Math.max(...xs); const sp=(s.hi-s.lo)||1;
       s.t=v=>(tr(v)-s.lo)/sp; s.loV=s.log?Math.pow(10,s.lo):s.lo; s.hiV=s.log?Math.pow(10,s.hi):s.hi; });
     const YO=t=>oT+10+(1-t)*(HO-20);
@@ -12007,7 +12178,7 @@ function drkStack(R, K){
     const leg=S.map(s=>['line',s.lab+' '+s.rng(s.loV,s.hiV),OC[s.k]]);
     if(ring.some(x=>!x[3])) leg.push(['ring','한투와 다름',HI]);
     if(ring.some(x=>x[3])) leg.push(['ringd','공시 당시 값과 다름',HI]);
-    if(S.some(s=>s.peer&&s.peer.some(dNum))&&wrap.classList.contains('showPeer')) leg.push(['dash','업종 중앙','rgba(200,205,212,.7)']);
+    if(S.some(s=>s.peer&&s.peer.some(dNum))&&on('peer')) leg.push(['dash','업종 중앙','rgba(200,205,212,.7)']);
     if(S.length) legend(oT-10, leg);          // 범례는 제목 아래 줄(한 줄이면 겹친다)
     // 엇갈림(4번) — 영업이익률이 1년 새 0.5%p 넘게 올랐는데 주가는 1년 5% 넘게 내린 분기(파랑 = 오른 쪽이 이익률), 그 반대(자홍 = 오른 쪽이 주가).
     // 마우스 요약 문장과 같은 문턱. 이 모양이 뒤 수익을 갈랐는지는 재지 않았다 — 표시만(신호 아님)
@@ -12085,8 +12256,9 @@ function drkStack(R, K){
     if(dir) q.setAttribute('fill',DIRC[dir]); });
 
   // A. 속도 — 막대 = 분기 YoY(재작성 비교값 우선), 금선 = 속도(최근 2분기 평균), 점선 = TTM 추세(약 1분기 늦음)
+  if(has('a')){
   cap(aT-14,M+' 증가율','1년 전 같은 분기보다 몇 % 늘었나 — 0 위 = 늘었다 · 아래 = 줄었다');
-  legend(aT-14,[['bar','그 분기','rgba(170,180,192,.7)'],['line','최근 반년 증가율(두 분기 평균)',GOLD]].concat(K.peer&&Object.keys(K.peer.med||{}).length&&wrap.classList.contains('showPeer')?[['dash','업종 중앙','rgba(200,205,212,.7)']]:[]));
+  legend(aT-14,[['bar','그 분기','rgba(170,180,192,.7)'],['line','최근 반년 증가율(두 분기 평균)',GOLD]].concat(K.peer&&Object.keys(K.peer.med||{}).length&&on('peer')?[['dash','업종 중앙','rgba(200,205,212,.7)']]:[]));
   const QY=R.map(drkY);
   const sv=R.map(r=>r.s).concat(R.map(r=>r.g)).filter(dNum), qv=QY.filter(dNum);
   let lo=Math.min(0,...sv), hi=Math.max(0,...sv); const sp=Math.max(10,hi-lo);
@@ -12113,10 +12285,12 @@ function drkStack(R, K){
   const [ys,yg]=apart(iS>=0?YA(R[iS].s)+4:null, iG>=0?YA(R[iG].g)+4:null);
   if(iS>=0) endLab(ys,'반년 '+dPct(R[iS].s,0),'gold');
   if(iG>=0) endLab(yg,'1년 합 '+dPct(R[iG].g,0),'dim optTTM');
+  }
 
   // B. 마진
+  if(has('b')){
   cap(bT-14,'영업이익률','최근 4분기 합(TTM) 기준 · 점은 분기 하나');
-  legend(bT-14,[['line','TTM',HI],['dot','분기','rgba(170,180,192,.85)']].concat(M==='매출'&&K.peer&&Object.keys(K.peer.med||{}).length&&wrap.classList.contains('showPeer')?[['dash','업종 중앙','rgba(200,205,212,.7)']]:[]));
+  legend(bT-14,[['line','TTM',HI],['dot','분기','rgba(170,180,192,.85)']].concat(M==='매출'&&K.peer&&Object.keys(K.peer.med||{}).length&&on('peer')?[['dash','업종 중앙','rgba(200,205,212,.7)']]:[]));
   const mv=R.map(r=>r.m).filter(dNum), qm=R.map(r=>r['영업이익률']).filter(dNum);
   let mlo=Math.min(...mv,...qm.filter(v=>v>-60)), mhi=Math.max(...mv,...qm.filter(v=>v<80));
   if(!isFinite(mlo)||!isFinite(mhi)){ mlo=0; mhi=10; } const msp=Math.max(4,mhi-mlo); mlo=Math.min(mlo-msp*.1,mlo<0?mlo:0); mhi+=msp*.12;
@@ -12131,8 +12305,10 @@ function drkStack(R, K){
   R.forEach((r,i)=>{ if(dNum(r.m)) mk(i,YB(r.m),HI); });
   const iM=lastOf(R.map(r=>r.m));
   if(iM>=0){ endDot(iM,YB(R[iM].m),HI); endLab(YB(R[iM].m)+4,'TTM '+R[iM].m.toFixed(1)+'%'); }
+  }
 
   // C. 선행지표 — 재고일수 · 채권일수. 재고 1년 10%↑ 이고 가속이 띠 아래(−3%p 이하)인 분기를 칠한다
+  if(has('c')){
   cap(cT-14,'선행지표','재고·채권이 매출보다 빨리 쌓이는지');
   legend(cT-14,[['line','재고일수',HI],['dash','매출채권일수',AR],['band','재고↑ · 가속 −3%p 이하','rgba(217,89,38,.55)']]);
   R.forEach((r,i)=>{ if(dNum(r.invD4)&&r.invD4>=10&&dNum(r.a)&&r.a<=-DRK_BAND){
@@ -12152,9 +12328,11 @@ function drkStack(R, K){
   const [yi,ya]=apart(iI>=0?YC(inv[iI])+4:null, iA>=0?YC(ar[iA])+4:null);
   if(iI>=0) endLab(yi,'재고 '+Math.round(inv[iI])+'일');
   if(iA>=0) endLab(ya,'채권 '+Math.round(ar[iA])+'일','ar');
+  }
 
   // D. 주가 vs 이익(EPS 는 분할 보정) — 주가 · EPS 가 다 있는 가장 이른 분기(=100)에 맞춘 로그 눈금(받은 기간 전부).
   // 이익이 0 근처인 분기를 기준으로 잡으면 지수가 수천으로 부푼다 — EPS 가 흑자 분기 중앙값의 10% 도 안 되는 분기는 기준에서 뺀다.
+  if(has('d')){
   const okPE=r=>dNum(r['주가'])&&r['주가']>0&&dNum(r['EPS_TTM'])&&r['EPS_TTM']>0;
   const posE=R.filter(okPE).map(r=>r['EPS_TTM']).sort((a,b)=>a-b), medE=posE.length?posE[posE.length>>1]:0;
   let bi=R.findIndex(r=>okPE(r)&&r['EPS_TTM']>=medE*.1);
@@ -12209,15 +12387,16 @@ function drkStack(R, K){
   } else {
     put('text',{x:L,y:dT+HD/2,class:'drkNA'}).textContent='흑자 분기의 주가·EPS 가 모자라 그리지 않았다';
   }
+  }
 
   // 마우스 — 분기 칸을 밝히고 각 선 위에 점, 옆에 그 분기 숫자
   const hov=put('g',{class:'drkHovG'});
   const tp=el('div','spTip drkTip'); tp.hidden=true;
   let cur='';
   R.forEach((r,i)=>{
-    const h=put('rect',{x:L+i*step,y:oT,width:step,height:bot-oT,class:'hit drkHit'});
+    const h=put('rect',{x:L+i*step,y:top0,width:step,height:bot-top0,class:'hit drkHit'});
     const show=e=>{
-      const sb=svg.getBoundingClientRect(), sy=(e.clientY-sb.top)*H/(sb.height||1), top=sy<ribY-24;   // 한눈에 판 위인가
+      const sb=svg.getBoundingClientRect(), sy=(e.clientY-sb.top)*H/(sb.height||1), top=has('o')&&sy<ribY-24;   // 한눈에 판 위인가
       const key=i+(top?'o':'f'); if(key===cur) return; cur=key;
       col.style.display=''; col.setAttribute('x',L+i*step);
       hov.innerHTML=''; marks[i].forEach(([y,c,opt])=>{ if(opt&&!wrap.classList.contains(opt)) return;
@@ -12226,22 +12405,22 @@ function drkStack(R, K){
       tp.innerHTML=''; tp.appendChild(top?drkGlance(r, K):drkTipBody(r, K)); tp.hidden=false;
       const box=fig.getBoundingClientRect(), sc=box.width/W;
       let lx=X(i)*sc+18; if(lx+tp.offsetWidth>box.width-4) lx=X(i)*sc-tp.offsetWidth-18;
-      tp.style.left=Math.max(4,lx)+'px'; tp.style.top=Math.max(4,(top?oT+24:aT)*sc)+'px';
+      tp.style.left=Math.max(4,lx)+'px'; tp.style.top=Math.max(4,(top?oT+24:firstT)*sc)+'px';
     };
     h.addEventListener('pointerenter',show); h.addEventListener('pointermove',show);
     h.addEventListener('pointerleave',()=>{ cur=''; col.style.display='none'; hov.innerHTML=''; tp.hidden=true; });
   });
   // 두 시점 비교 — 한눈에 판에서 누른 채 가로로 끌면 구간을 칠하고, 놓으면 위 막대에 변화 한 줄
-  const selR=put('rect',{y:oT,height:HO,class:'drkSel'}); selR.style.display='none';
+  const selR=put('rect',{y:oT||0,height:HO,class:'drkSel'}); selR.style.display='none';
   const slotAt=e=>{ const sb=svg.getBoundingClientRect(), x=(e.clientX-sb.left)*W/(sb.width||1); return Math.max(0,Math.min(N-1,Math.floor((x-L)/step))); };
   const showSel=(i0,i1)=>{ const a=Math.min(i0,i1), b=Math.max(i0,i1); selR.style.display=''; selR.setAttribute('x',L+a*step); selR.setAttribute('width',(b-a+1)*step); };
   const keepSel=()=>{ const a=sel?R.findIndex(r=>r.n===sel.a):-1, b=sel?R.findIndex(r=>r.n===sel.b):-1;
-    if(a>=0&&b>=0) showSel(a,b); else selR.style.display='none'; };
+    if(has('o')&&a>=0&&b>=0) showSel(a,b); else selR.style.display='none'; };
   keepSel();
   let drag=null;
   svg.addEventListener('pointerdown',e=>{ if(e.button!==0) return;
     const sb=svg.getBoundingClientRect(), sy=(e.clientY-sb.top)*H/(sb.height||1);
-    if(sy<oT||sy>oT+HO) return;
+    if(!has('o')||sy<oT||sy>oT+HO) return;
     drag={i0:slotAt(e)}; drag.i1=drag.i0; showSel(drag.i0,drag.i1);
     try{ svg.setPointerCapture(e.pointerId); }catch(_){}
     e.preventDefault(); });
@@ -12257,11 +12436,15 @@ function drkStack(R, K){
     svg.querySelectorAll('.drkOLab,.drkEndL,.drkONote').forEach(t=>{ try{ const b=t.getBBox(), room=W-3-b.x;
       if(b.width>room&&room>20){ t.setAttribute('textLength',room.toFixed(1)); t.setAttribute('lengthAdjust','spacingAndGlyphs'); } }catch(e){} }); });
   };
+  // 깊은 판(fig2)은 접는 칸이 처음 펼쳐질 때 그린다(deep). 그 뒤로는 기간 · 더 보기 · 자료 도착에 위 판과 같이 다시 그린다
+  // 접힌 채(display:none)로 다시 그리면 끝 이름표 폭 맞춤(getBBox)이 0 을 재서 건너뛴다 — 안 보이면 미뤄 두고(_stale) 보이는 순간 한 번 그린다
+  const draw=()=>{ drawInto(fig,'main'); if(fig2.isConnected&&fig2.offsetParent) drawInto(fig2,'deep'); else fig2._stale=true; };
+  new ResizeObserver(()=>{ if(fig2._stale&&fig2.offsetParent){ fig2._stale=false; drawInto(fig2,'deep'); } }).observe(fig2);
+  wrap2.drkRefresh=()=>{ if(fig2._stale&&fig2.isConnected){ fig2._stale=false; drawInto(fig2,'deep'); } };   // 접는 칸이 펼쳐질 때 바로(drkSec) — RO 는 전체 화면 전환 등 나머지
   draw();
   drkKisLoad(wrap, K, draw);
   drkAuxLoad(wrap, K, draw);
-  if(R.some(r=>r.val)) wrap.appendChild(drkValBox(R));
-  return wrap;
+  return {main:wrap, deep:()=>{ fig2._stale=false; drawInto(fig2,'deep'); return wrap2; }};
 }
 
 // 한눈에 판 마우스 요약 — 그 분기의 매출 증가율 · 영업이익률 · 주가가 어땠는지 세 줄 + 한 문장(사용자: "마우스로 가져다대면 간략요약").
