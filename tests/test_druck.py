@@ -198,6 +198,156 @@ def test_owner_profit_q1_prev_falls_back_to_prev_cumulative(monkeypatch):
     assert DRK.period_data("C", 2024, 1)["지배순이익_전"] == 80
 
 
+# ------------------------------------------------------------------ 지배순이익 — 지배 + 비지배 = 당기순이익 검산으로 고르기
+def _pd(monkeypatch, rows, year=2023, q=3):
+    monkeypatch.setattr(DRK.FIN, "fetch_statement", fake_fetch({(year, DRK.REPRT_BY_Q[q], "CFS"): stmt(rows)}))
+    return DRK.period_data("C", year, q)
+
+
+def test_owner_profit_skips_untagged_comprehensive_split_listed_first(monkeypatch):
+    """SK(034730) 2023 3분기 원장 모양: 총포괄 귀속 줄(태그 없음, ord 14)이 당기순이익 귀속 줄(태그 없음, ord 37)보다 먼저 온다 —
+    이름이 똑같아 예전엔 총포괄 4,757억을 집었다. 지배 + 비지배 = 분기순이익인 줄은 3,267억 쪽."""
+    rows = [row("CIS", "ifrs-full_ComprehensiveIncome", "분기연결총포괄이익(손실)", thstrm_amount=1879819e6, thstrm_add_amount=2810226e6),
+            row("CIS", NO_TAG, "비지배지분", thstrm_amount=1404154e6, thstrm_add_amount=1861293e6),
+            row("CIS", NO_TAG, "지배기업소유주지분", thstrm_amount=475665e6, thstrm_add_amount=948933e6),
+            row("CIS", "ifrs-full_ProfitLoss", "분기순이익(손실)", thstrm_amount=1379684e6, thstrm_add_amount=1172106e6),
+            row("CIS", NO_TAG, "비지배지분", thstrm_amount=1052995e6, thstrm_add_amount=864233e6),
+            row("CIS", NO_TAG, "지배기업소유주지분", thstrm_amount=326689e6, thstrm_add_amount=307873e6)]
+    d = _pd(monkeypatch, rows)
+    assert d["지배순이익"] == 326689e6 and d["지배순이익_누적"] == 307873e6
+
+
+def test_owner_profit_name_row_beats_junk_tagged_row(monkeypatch):
+    """위메이드(112040) 2021 3분기: 지배 태그 줄 값이 6,455원(엉터리) — 이름 줄 168.8억이 검산에 맞는다."""
+    rows = [row("CIS", "ifrs-full_ProfitLoss", "당기순이익(손실)", thstrm_amount=17865650805, thstrm_add_amount=60461676043),
+            row("CIS", NO_TAG, "지배기업의 소유주에 귀속될 당기순이익", thstrm_amount=16883112501, thstrm_add_amount=58466432823),
+            row("CIS", NO_TAG, "비지배지분에 귀속될 당기순이익", thstrm_amount=982538304, thstrm_add_amount=1995243220),
+            row("CIS", OWNER, "지배기업의 소유주에게 귀속되는 당기순이익(손실)", thstrm_amount=6455, thstrm_add_amount=6455)]
+    d = _pd(monkeypatch, rows)
+    assert d["지배순이익"] == 16883112501 and d["지배순이익_누적"] == 58466432823
+
+
+def test_owner_profit_untagged_total_beats_tagged_continuing_value(monkeypatch):
+    """삼성전기(009150) 2020 3분기: 지배 태그 줄 값은 계속영업 몫(지배 + 비지배 = 계속영업분기순이익) — 태그 없는 줄이 분기순이익과 맞는다."""
+    rows = [row("CIS", NO_TAG, "계속영업분기순이익", thstrm_amount=236542486498),
+            row("CIS", "ifrs-full_ProfitLoss", "분기순이익", thstrm_amount=239996465840),
+            row("CIS", OWNER, "지배기업 소유주지분", thstrm_amount=226748617120),
+            row("CIS", NCI, "비지배지분", thstrm_amount=9793869378),
+            row("CIS", NO_TAG, "지배기업 소유주지분", thstrm_amount=230202596462),
+            row("CIS", NO_TAG, "비지배지분", thstrm_amount=9793869378),
+            row("CIS", "ifrs-full_ComprehensiveIncomeAttributableToOwnersOfParent", "지배기업 소유주지분", thstrm_amount=218335585023)]
+    assert _pd(monkeypatch, rows)["지배순이익"] == 230202596462
+
+
+def test_owner_profit_skips_discontinued_attributable_row(monkeypatch):
+    """한미반도체(042700) 2016 3분기: '지배기업지분중단영업순손실' 0 이 먼저 와서 지배순이익 = 0 이었다."""
+    rows = [row("CIS", "ifrs_ProfitLossFromDiscontinuedOperations", "중단영업순손실", thstrm_amount=0),
+            row("CIS", NO_TAG, "지배기업지분중단영업순손실", thstrm_amount=0),
+            row("CIS", NO_TAG, "비지배지분중단영업순손실", thstrm_amount=0),
+            row("CIS", "ifrs_ProfitLoss", "당기순이익", thstrm_amount=4145045099),
+            row("CIS", NO_TAG, "지배기업지분순이익", thstrm_amount=4145045099),
+            row("CIS", NO_TAG, "비지배지분순손실", thstrm_amount=0)]
+    assert _pd(monkeypatch, rows, 2016)["지배순이익"] == 4145045099
+
+
+def test_owner_profit_skips_per_share_row(monkeypatch):
+    """AJ네트웍스(095570) 2026 반기: '지배기업지분에 대한 주당순손익' 632원이 이름 정규식에 걸렸다.
+    지배 귀속은 계속 + 중단 태그 줄로만 나뉘어 있다 — 둘의 합(검산 맞음)."""
+    rows = [row("CIS", "ifrs-full_ComprehensiveIncomeAttributableToOwnersOfParent", "지배기업소유주지분", thstrm_amount=30274988000),
+            row("CIS", "ifrs-full_BasicEarningsLossPerShareFromContinuingOperations", "지배기업지분에 대한 주당순손익", thstrm_amount=632),
+            row("CIS", "ifrs-full_ProfitLoss", "반기순이익", thstrm_amount=28331292000),
+            row("CIS", NCI, "비지배지분 귀속 반기순이익(손실)", thstrm_amount=34037000),
+            row("CIS", "ifrs-full_IncomeFromContinuingOperationsAttributableToOwnersOfParent", "계속영업반기순이익", thstrm_amount=28297673000),
+            row("CIS", "ifrs-full_IncomeFromDiscontinuedOperationsAttributableToOwnersOfParent", "중단영업반기순이익", thstrm_amount=-416000)]
+    assert _pd(monkeypatch, rows, 2026, 2)["지배순이익"] == 28297257000
+
+
+def test_owner_profit_keeps_controlling_shareholder_name_with_dang(monkeypatch):
+    """'지배주주당기순이익' 은 지배주주 + 당기 — '주당' 이 끼어 있어도 주당이익 줄이 아니다."""
+    for nm in ("지배주주당기순이익(손실)", "지배기업주주당기순이익"):
+        rows = [row("IS", "ifrs-full_ProfitLoss", "당기순이익", thstrm_amount=500e8),
+                row("IS", NO_TAG, nm, thstrm_amount=470e8),
+                row("IS", NO_TAG, "지배주주 기본주당순이익", thstrm_amount=1234),
+                row("IS", NCI, "비지배주주당기순이익", thstrm_amount=30e8)]
+        assert _pd(monkeypatch, rows, 2024, 1)["지배순이익"] == 470e8, nm
+
+
+def test_owner_profit_skip_named_tagged_row_is_last_resort(monkeypatch):
+    """JW중외제약(001060) 2024 연간: 지배 태그 줄 이름이 '지배기업지분포괄이익'(값 = 당기순이익), 비지배 줄은 그 칸이 빔 —
+    태그로 맞은 줄은 이름이 걸려도 마지막 후보로 남는다. 검산에 맞는 다른 줄이 있으면 그 줄이 이긴다."""
+    rows = [row("CIS", "ifrs-full_ProfitLoss", "당기순이익(손실)", thstrm_amount=65040120873, frmtrm_amount=38430259560),
+            row("CIS", NCI, "비지배지분순이익", frmtrm_amount=1423925565),
+            row("CIS", OWNER, "지배기업지분포괄이익", thstrm_amount=65040120873, frmtrm_amount=37006333995)]
+    d = _pd(monkeypatch, rows, 2024, 4)
+    assert d["지배순이익"] == 65040120873 and d["지배순이익_전연"] == 37006333995
+    rows = [row("IS", "ifrs-full_ProfitLoss", "당기순이익", thstrm_amount=500e8),
+            row("IS", OWNER, "지배기업 소유주지분(계속영업)", thstrm_amount=300e8),
+            row("IS", NO_TAG, "지배기업 소유주지분", thstrm_amount=480e8),
+            row("IS", NCI, "비지배지분", thstrm_amount=20e8)]
+    assert _pd(monkeypatch, rows, 2024, 1)["지배순이익"] == 480e8
+
+
+def test_owner_profit_skips_continuing_attributable_row(monkeypatch):
+    """계속영업 귀속 줄만 이름에 걸리면 버리고 당기순이익 − 비지배로(중단영업 몫을 놓치지 않게)."""
+    rows = [row("IS", "ifrs-full_ProfitLoss", "당기순이익", thstrm_amount=500e8),
+            row("IS", NO_TAG, "지배기업소유주지분 계속영업이익", thstrm_amount=300e8),
+            row("IS", NCI, "비지배지분", thstrm_amount=20e8)]
+    assert _pd(monkeypatch, rows, 2024, 1)["지배순이익"] == 480e8
+
+
+def test_owner_profit_without_nci_rows_checks_against_net_income(monkeypatch):
+    """비지배 줄이 아예 없으면 지배 = 당기순이익인 줄이 맞는 줄이다(태그 쪽 0 원은 엉터리)."""
+    rows = [row("IS", "ifrs-full_ProfitLoss", "당기순이익", thstrm_amount=50e8),
+            row("IS", OWNER, "지배기업 소유주지분", thstrm_amount=0),
+            row("IS", NO_TAG, "지배기업 소유주지분 순이익", thstrm_amount=50e8)]
+    assert _pd(monkeypatch, rows, 2024, 1)["지배순이익"] == 50e8
+
+
+def test_owner_profit_junk_without_passing_row_falls_back_to_net_minus_nci(monkeypatch):
+    """검산에 맞는 줄이 없고 고른 지배 값이 당기순이익의 1%도 안 되면 엉터리 — 당기순이익 − 비지배(변곡점.owner_parts 와 같은 문턱)."""
+    rows = [row("IS", "ifrs-full_ProfitLoss", "당기순이익", thstrm_amount=200e8),
+            row("IS", OWNER, "지배기업 소유주지분", thstrm_amount=6455),
+            row("IS", NCI, "비지배지분", thstrm_amount=10e8)]
+    assert _pd(monkeypatch, rows, 2024, 1)["지배순이익"] == 190e8
+
+
+def test_owner_profit_keeps_tagged_row_when_check_fails_but_value_is_material(monkeypatch):
+    """검산이 어긋나도 값이 당기순이익의 1%를 넘으면 태그 줄을 믿는다(당기순이익 줄 쪽이 틀렸을 수 있다)."""
+    rows = [row("IS", "ifrs-full_ProfitLoss", "당기순이익", thstrm_amount=200e8),
+            row("IS", OWNER, "지배기업 소유주지분", thstrm_amount=150e8),
+            row("IS", NCI, "비지배지분", thstrm_amount=10e8)]
+    assert _pd(monkeypatch, rows, 2024, 1)["지배순이익"] == 150e8
+
+
+def test_owner_profit_tag_wins_when_net_income_missing(monkeypatch):
+    """당기순이익이 없는 칸은 검산할 수 없다 — 예전대로 태그 점수."""
+    rows = [row("IS", NO_TAG, "지배기업 소유주지분", thstrm_amount=70e8),
+            row("IS", OWNER, "지배기업 소유주지분", thstrm_amount=60e8)]
+    assert _pd(monkeypatch, rows, 2024, 1)["지배순이익"] == 60e8
+
+
+def test_owner_profit_check_tolerance(monkeypatch):
+    """±0.2%(작으면 ±1억) 안이면 맞음 — 반올림 어긋남(천 원 단위)은 받아들이고, 그보다 크면 다음 후보로."""
+    rows = [row("IS", "ifrs-full_ProfitLoss", "당기순이익", thstrm_amount=1000e8),
+            row("IS", OWNER, "지배기업 소유주지분", thstrm_amount=890e8),           # 890 + 100 = 990 — 1% 어긋남(태그여도 진다)
+            row("IS", NO_TAG, "지배기업 소유주지분", thstrm_amount=900.5e8),       # 900.5 + 100 = 1000.5 — 0.05%
+            row("IS", NCI, "비지배지분", thstrm_amount=100e8)]
+    assert _pd(monkeypatch, rows, 2024, 1)["지배순이익"] == 900.5e8
+    small = [row("IS", "ifrs-full_ProfitLoss", "당기순이익", thstrm_amount=10e8),     # 작은 값은 ±1억
+             row("IS", OWNER, "지배기업 소유주지분", thstrm_amount=7e8),
+             row("IS", NO_TAG, "지배기업 소유주지분", thstrm_amount=8.5e8),
+             row("IS", NCI, "비지배지분", thstrm_amount=2e8)]
+    assert _pd(monkeypatch, small, 2024, 1)["지배순이익"] == 8.5e8
+
+
+def test_owner_profit_nci_fallback_skips_comprehensive_named_row(monkeypatch):
+    """지배 줄이 없을 때 빼는 비지배 몫도 포괄 · 주당 · 계속/중단 이름 줄은 쓰지 않는다."""
+    rows = [row("IS", "ifrs-full_ProfitLoss", "당기순이익", thstrm_amount=100e8),
+            row("IS", NO_TAG, "비지배지분 포괄손익", thstrm_amount=40e8),
+            row("IS", NO_TAG, "비지배지분", thstrm_amount=10e8)]
+    assert _pd(monkeypatch, rows, 2024, 1)["지배순이익"] == 90e8
+
+
 # ------------------------------------------------------------------ _fetch · NET 예산
 @pytest.fixture
 def fin_dir(monkeypatch, tmp_path):
@@ -490,8 +640,8 @@ def year_table(fs_q1="CFS", fs_q4="CFS"):
             (2024, 4): mk_q(460, op=40, capex=20, fs=fs_q4, 재고자산=460, 매출채권=230)}
 
 
-def test_version_is_4():
-    assert DRK.VERSION == 4
+def test_version_is_5():
+    assert DRK.VERSION == 5
 
 
 def test_q4_derived_value_and_restated_yoy(monkeypatch):

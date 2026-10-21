@@ -34,7 +34,7 @@ _spec.loader.exec_module(FIN)
 
 CACHE_DIR = os.path.join(BASE, ".cache", "druck")
 
-VERSION = 4          # 4: 최종 검토 고침 — 변곡을 한 분기 부호 바뀜으로(사용자 결정) · 낡은 지금 PER 막기 · 거짓 분할(합병 창 정수 비율 · 한 분기 튐 · Q4 부호 어긋남) · 분할 뒤 PER 보류 · 매출 없는 분기 주식 수 · 최근 8분기로 금융 기준 · 새 공시 013 다시 받기 · Q2/Q3 누적이 3개월 칸에 · 보고서 단위 ×1e6 · 감사보고서는 결산월 판정에서 뺌 (2026-10-10). 3: 가속도 개편 계획 1 전체 — 정정 공시 원장 다시 받기(같은 날 포함 >=) · 분할 뒤 공시 split_after · 분할 보정 EPS/지금 PER · B(2분기 평균 YoY 의 변화) · 7국면 · 변곡 규칙 · 품질 표시 파이프라인 전부 (2026-10-10). 2: 분기 키 조밀 격자 · Q4 기준/범위 검사 · 재작성 전년 비교(YoY_r) · 기준일 · 품질 표시 · 이상값 (2026-10-09). 계산을 바꾸면 올린다 — 캐시가 전부 다시 계산된다
+VERSION = 5          # 5: 지배순이익 줄을 지배 + 비지배 = 당기순이익 검산으로 고름(총포괄 · 엉터리 태그 · 주당 · 계속/중단 귀속 줄 — SK 2023Q4 −17,257억 → −10,847억 · 위메이드 2017–23 6,455원, 2026-10-22). 4: 최종 검토 고침 — 변곡을 한 분기 부호 바뀜으로(사용자 결정) · 낡은 지금 PER 막기 · 거짓 분할(합병 창 정수 비율 · 한 분기 튐 · Q4 부호 어긋남) · 분할 뒤 PER 보류 · 매출 없는 분기 주식 수 · 최근 8분기로 금융 기준 · 새 공시 013 다시 받기 · Q2/Q3 누적이 3개월 칸에 · 보고서 단위 ×1e6 · 감사보고서는 결산월 판정에서 뺌 (2026-10-10). 3: 가속도 개편 계획 1 전체 — 정정 공시 원장 다시 받기(같은 날 포함 >=) · 분할 뒤 공시 split_after · 분할 보정 EPS/지금 PER · B(2분기 평균 YoY 의 변화) · 7국면 · 변곡 규칙 · 품질 표시 파이프라인 전부 (2026-10-10). 2: 분기 키 조밀 격자 · Q4 기준/범위 검사 · 재작성 전년 비교(YoY_r) · 기준일 · 품질 표시 · 이상값 (2026-10-09). 계산을 바꾸면 올린다 — 캐시가 전부 다시 계산된다
 
 
 def read_cache(path):
@@ -158,6 +158,7 @@ IS_PICK = {
              "ifrs-full_BasicEarningsLossPerShareFromContinuingOperations"],
             r"^(?:보통주\s*)?(?:계속영업\s*)?기본\s*주당"),
 }
+IS_PICK_GRAB = {k: v for k, v in IS_PICK.items() if k != "지배순이익"}   # 지배순이익은 _owner_ni 가 검산으로 고른다
 # 재무상태표에서 시점 잔액으로 뽑을 항목
 BS_PICK = {
     "재고자산": (["ifrs-full_Inventories"], r"^재고자산$"),
@@ -242,6 +243,85 @@ def _capex(rows):
 
 # 지배순이익 대체용 — 당기순이익에서 뺄 비지배 몫(당기순이익 귀속 줄). 태그가 없는 줄은 이름('비지배지분')으로 잡는다
 NCI_PICK = {"비지배순이익": ([FIN.NI_PARTS["nci"]], r"^비지배")}
+
+# 지배순이익 줄 고르기(2026-10-22) — 후보 줄 가운데 지배 + 비지배 = 당기순이익(±0.2%, 작은 값은 ±1억)인 줄을 고른다. 태그 점수는 검산이
+# 같을 때만 가른다. 분기 원장 함정: 총포괄 귀속 줄이 태그 없이 같은 이름으로 먼저 온다(SK 2023 3분기 — 총포괄 4,757억을 집어 2023Q4 = −17,257억,
+# 맞는 값 −10,847억 · 거꾸로 낸 주식 수까지 흐림) · 엉터리 태그 줄이 이름 줄을 이긴다(위메이드 2017Q3–2023Q4 태그 줄 6,455원 · 삼성전기 2019–21
+# 태그 줄 = 계속영업 몫) · 이름 정규식이 중단영업 · 주당 줄을 잡는다(한미반도체 2015–16 '지배기업지분중단영업순손실' 0 · AJ네트웍스 2026Q2 주당 632원).
+# 뺄 이름 · 계속 + 중단 귀속 태그 합 · 1% 문턱은 연간 규칙(변곡점.owner_parts)과 같다. 주당 줄은 '주당(순)이익 · 손실 · 손익'만 —
+# 맨 '주당'은 '지배주주당기순이익'(지배주주 + 당기, 감사에서 태그 줄 42개)까지 뺀다
+OWN_SKIP = re.compile(r"계속영업|중단영업|포괄|주당\s*순?(?:이익|손실|손익)")
+NCI_SKIP = re.compile(r"부채|금융|계속영업|중단영업|포괄|주당\s*순?(?:이익|손실|손익)")
+OWN_CD = ("ifrs-full_IncomeFromContinuingOperationsAttributableToOwnersOfParent",
+          "ifrs-full_IncomeFromDiscontinuedOperationsAttributableToOwnersOfParent")
+NCI_CD = ("ifrs-full_ProfitLossFromContinuingOperationsAttributableToNoncontrollingInterests",
+          "ifrs-full_ProfitLossFromDiscontinuedOperationsAttributableToNoncontrollingInterests")
+CD_SCORE = 5          # 계속 + 중단 귀속 태그 합 — 귀속 태그 줄(10)과 이름 줄(1) 사이(owner_parts 순서: 태그 → 계속 + 중단 → 이름)
+OWN_TOL, OWN_TOL_MIN = 0.002, 1e8   # 검산 허용 — 당기순이익의 0.2%, 작은 값은 1억
+OWN_ERR_TIE = 1e6     # 검산 어긋남이 100만 원 아래면 같은 것으로 보고 태그 점수로 가른다(백만 원 단위 반올림)
+
+
+def _owner_cands(rows, pick, skip, cd, field):
+    """귀속 순이익 후보 [(태그 점수, 값)] — 원장 순서대로. 우선주 · 총포괄 태그 줄은 뺀다. skip 이름 줄은 이름으로만 맞았으면 빼고,
+    귀속 태그로 맞았으면 점수 0(가장 약한 후보 — 검산에 맞거나 다른 후보가 없을 때만. JW중외제약 2024 연간: 지배 태그 줄 이름이
+    '지배기업지분포괄이익'인데 값은 당기순이익). cd = (계속, 중단) 귀속 태그 — 계속 줄이 있으면 둘의 합을 CD_SCORE 후보로 붙인다(중단 줄이 없으면 0)."""
+    ids, name_re = pick
+    rx = re.compile(name_re)
+    out, part = [], {}
+    for r in rows:
+        if r.get("sj_div") not in ("IS", "CIS"):
+            continue
+        aid = FIN.norm_tag(r.get("account_id"))
+        v = FIN.num(r.get(field))
+        if aid in cd:
+            if v is not None:
+                part.setdefault(aid, v)
+            continue
+        nm = FIN.NUM_PREFIX.sub("", (r.get("account_nm") or "").strip())
+        if "우선주" in nm or aid.startswith("ifrs-full_ComprehensiveIncome"):
+            continue
+        hit, tag = FIN._account_hit(r, nm, ids, rx)
+        if not hit or v is None:
+            continue
+        s = FIN._tag_score(tag, ids)
+        if skip.search(nm):
+            if s < 2:
+                continue
+            s = 0
+        out.append((s, v))
+    if cd[0] in part:
+        out.append((CD_SCORE, part[cd[0]] + part.get(cd[1], 0)))
+    return out
+
+
+def _top(cands):
+    """태그 점수가 가장 높은 후보의 값 — 같으면 원장에서 먼저 온 줄(_grab 과 같은 규칙)."""
+    return max(enumerate(cands), key=lambda t: (t[1][0], -t[0]))[1][1]
+
+
+def _owner_ni(rows, field, ni, has_nci):
+    """그 칸의 지배순이익 — 고르지 못하면 None(부른 쪽이 당기순이익 − 비지배로). ni = 그 칸의 당기순이익,
+    has_nci = 원장 어느 칸에든 비지배 줄이 있는가(없는 회사는 지배 = 당기순이익으로 검산한다)."""
+    own = _owner_cands(rows, IS_PICK["지배순이익"], OWN_SKIP, OWN_CD, field)
+    if not own:
+        return None
+    if ni is None:
+        return _top(own)                     # 검산할 당기순이익이 없다 — 태그 점수
+    nci = [v for _, v in _owner_cands(rows, NCI_PICK["비지배순이익"], NCI_SKIP, NCI_CD, field)] or ([] if has_nci else [0])
+    tol = max(abs(ni) * OWN_TOL, OWN_TOL_MIN)
+    best = None
+    for i, (s, v) in enumerate(own):
+        err = min((abs(v + n - ni) for n in nci), default=None)
+        if err is not None and err <= tol:
+            key = (max(err, OWN_ERR_TIE), -s, i)
+            if best is None or key < best[0]:
+                best = (key, v)
+    if best:
+        return best[1]
+    v = _top(own)
+    # 검산에 맞는 줄이 없고 값이 당기순이익의 1%도 안 되면 엉터리 태그 줄(위메이드: 6,455원) — 버린다. 1%를 넘으면 지배 줄을 믿는다
+    # (당기순이익 줄 쪽이 틀렸을 수 있다 — owner_parts 와 같은 문턱)
+    return None if abs(v) < abs(ni) * 0.01 else v
 # (원장 칸, 키 접미사) — 그 보고서의 값 · 누적 · 전년 같은 분기 · 전년 같은 누적 · 전년 연간
 IS_FIELDS = (("thstrm_amount", ""), ("thstrm_add_amount", "_누적"), ("frmtrm_q_amount", "_전"),
              ("frmtrm_add_amount", "_전누적"), ("frmtrm_amount", "_전연"))
@@ -336,21 +416,25 @@ def period_data(corp_code, year, q, offline=False, amend=None, filed=None):
         return None
     d = {}
     d.update(_grab(rows, ("BS",), BS_PICK, "thstrm_amount"))
-    has_nci = any(_grab(rows, ("IS", "CIS"), NCI_PICK, fld) for fld, _ in IS_FIELDS)
+    nci_args = (NCI_PICK["비지배순이익"], NCI_SKIP, NCI_CD)
+    has_nci = any(_owner_cands(rows, *nci_args, fld) for fld, _ in IS_FIELDS)
     for fld, suf in IS_FIELDS:
         meta = {}
-        got = _grab(rows, ("IS", "CIS"), IS_PICK, fld, meta)
+        got = _grab(rows, ("IS", "CIS"), IS_PICK_GRAB, fld, meta)
         # EPS 는 합계(계속 + 중단영업) 기준으로 — 계속영업 줄만 골랐고 중단영업 줄이 따로 있으면 더한다. 순이익(중단영업 포함)과 기준을 맞춘다
         # (카카오 2026Q2: 계속영업 EPS 431원 × 순이익 164억(중단 −1,560억 포함)이면 주식 수가 10배 줄어 '병합'으로 읽힌다 — 합계 41원)
         if got.get("EPS") is not None and _cont_only(meta.get("EPS", "")):
             dv = _disc_eps(rows, fld)
             if dv is not None:
                 got["EPS"] += dv
-        if "지배순이익" not in got and got.get("당기순이익") is not None:
+        own = _owner_ni(rows, fld, got.get("당기순이익"), has_nci)
+        if own is not None:
+            got["지배순이익"] = own
+        elif got.get("당기순이익") is not None:
             # 지배기업 귀속 줄이 없으면 당기순이익 − 비지배 몫(비지배 줄이 아예 없으면 당기순이익 그대로 — 재무._net_income_from 과 같은 규칙)
-            nci = _grab(rows, ("IS", "CIS"), NCI_PICK, fld).get("비지배순이익")
-            if nci is not None:
-                got["지배순이익"] = got["당기순이익"] - nci
+            nci = _owner_cands(rows, *nci_args, fld)
+            if nci:
+                got["지배순이익"] = got["당기순이익"] - _top(nci)
             elif not has_nci:
                 got["지배순이익"] = got["당기순이익"]
         for k, v in got.items():
