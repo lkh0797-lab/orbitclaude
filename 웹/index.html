@@ -4395,7 +4395,7 @@ $('#prebuild').onclick=async()=>{
 pbPoll();
 
 // ---------------------------------------------------------- 회사 선택
-async function pick(code){
+async function pick(code, read){
   const r = await fetch('/api/company?code='+code);
   if(!r.ok){ return; }
   S.co = await r.json();
@@ -4403,6 +4403,8 @@ async function pick(code){
   if(S.kind && !S.co.reports.some(x=>x.label===S.kind)) S.kind='';
   S.section = (sectionsOf()[0]||{}).norm || null;
   S.briefRcept = null; S.diffA = S.diffB = null; S.lastRead = null;
+  // 바로가기 주소로 본문 한 곳(read = {rcept, file, hi})을 열 때 — 그 보고서가 보이게 종류 거르기를 푼다
+  if(read&&S.co.reports.some(x=>x.rcept===read.rcept)){ S.kind=''; S.lastRead=read; }
   $('#welcome') && $('#welcome').remove();
   $('#tabs').hidden=false;
   renderSide();
@@ -12967,6 +12969,13 @@ function invOpenRead(s, d){
   const go=()=>{ S.lastRead={rcept:L.rcept, file:L.file, hi:s.raw||s.text}; jump('read'); };
   if(document.fullscreenElement) document.exitFullscreen().then(go).catch(go); else go();
 }
+// 원문 상자의 '본문에서 보기 → 형광펜' — 새 탭(2026-10-22, 사용자: "새 탭으로 열기로 열어줘"). 바로가기 주소 ?co=&tab=read&rc=&f=&hi= (startLink)
+function invOpenReadTab(s){
+  const L=s&&s.loc; if(!L||!L.rcept||!L.file||s.src==='fin'||!S.co) return;
+  const q=new URLSearchParams({co:S.co.code, tab:'read', rc:L.rcept, f:L.file});
+  const hi=s.raw||s.text; if(hi) q.set('hi',hi);
+  window.open(location.pathname+'?'+q.toString(),'_blank','noopener');
+}
 const invCardOk=s=>!!s&&(s.src==='new'||s.src==='num')&&!!s.anchor&&!s.industry;   // 재감사(2026-10-21): 사라진 문장(gone)은 기준 시점 사실이라 새 정보가 아니다 — 원장 · 신호 목록에만
 function invNum(s, d){
   const ok=!!(s.loc&&s.loc.rcept&&s.loc.file&&s.src!=='fin');
@@ -12987,7 +12996,8 @@ function invSigDetail(s, d){
   if(s.src!=='fin'&&s.src!=='scope'&&!s.anchor) bits.push('붙잡을 사실(금액 · 날짜 · 상대방) 없음');
   box.appendChild(el('div','meta',bits.filter(Boolean).join(' · ')));
   const acts=el('div','acts');
-  if(s.loc&&s.loc.rcept&&s.loc.file&&s.src!=='fin'){ const a=el('button','invBtn','본문에서 보기 → 형광펜'); a.onclick=e=>{ e.stopPropagation(); invOpenRead(s,d); }; acts.appendChild(a); }
+  if(s.loc&&s.loc.rcept&&s.loc.file&&s.src!=='fin'){ const a=el('button','invBtn','본문에서 보기 → 형광펜 ↗'); a.title='본문 탭을 새 탭으로 열어 이 문장에 형광펜';
+    a.onclick=e=>{ e.stopPropagation(); invOpenReadTab(s); }; acts.appendChild(a); }
   const b=el('button','invBtn','신호 목록에서 보기'); b.onclick=e=>{ e.stopPropagation(); invScrollSig(s.id); }; acts.appendChild(b);
   box.appendChild(acts);
   return box;
@@ -20061,13 +20071,16 @@ function jump(t){
 // ---------------------------------------------------------- 시작
 // 바로가기 주소(2026-10-20) — ?co=종목코드[&tab=탭] 이면 그 회사를 그 탭으로 연다(호재기업 해석 줄 '궤도 ↗' 가 새 탭으로 연다).
 // 목록에 없는 종목코드 · 없는 탭이면 무시하고 평소처럼 연다
+// tab=read 에 &rc=접수번호&f=부 파일[&hi=문장] 이 붙으면 그 보고서 그 부를 열고 문장에 형광펜(변화 브리핑 원문 상자의 새 탭)
 function startLink(c){
   const qs=new URLSearchParams(location.search), qc=qs.get('co'), qt=qs.get('tab');
   const hit=qc&&c.find(x=>x.code===qc);
   if(!hit) return false;
   if(qt&&/^[a-z0-9]+$/.test(qt)&&$('#tabs').querySelector('button[data-t="'+qt+'"]')){   // 숫자도(orbit2)
     S.tab=qt; [...$('#tabs').children].forEach(x=>x.classList&&x.classList.toggle('on', x.dataset.t===qt)); }
-  $('#q').value=hit.name; pick(hit.code);
+  const rc=qs.get('rc'), f=qs.get('f');
+  const read=S.tab==='read'&&rc&&f?{rcept:rc, file:f, hi:qs.get('hi')||null}:null;
+  $('#q').value=hit.name; pick(hit.code, read);
   return true;
 }
 waitIndex().then(()=>{
