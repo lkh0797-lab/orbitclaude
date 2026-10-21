@@ -13356,15 +13356,11 @@ const INV_FWD=/계획|예정|전망|추진|목표|착공|양산|출시|수주잔
 const INV_CHAIR={k:'의장', m:'§', c:'#f1d9a0'};   // 결론을 읽는 자리 — 토론에는 끼지 않는다
 const INV_GC=Object.fromEntries(INV_GURUS.concat([INV_MARKET,INV_CHAIR]).map(g=>[g.k,g]));
 const INV_SRC={new:'새 문장', fin:'재무', num:'숫자', gone:'사라진 문장'};
-// v12(2026-10-21, docs/superpowers/specs/2026-10-21-brief-cards-v12-design.md) — #n 을 누르면 본문 탭이 그 문장을 형광펜으로 연다(발표 모드면 전체화면을 먼저 끈다).
-// 카드 · 머리글 · 체크리스트는 붙잡을 사실(앵커: 금액 · 날짜 · 상대방)이 있고 산업 전망이 아닌 글 신호만 쓴다(invCardOk). 재무 신호는 링크 없음(원장 재무표로).
-function invOpenRead(s, d){
-  const L=s&&s.loc; if(!L||!L.rcept||!L.file||s.src==='fin') return;
-  const go=()=>{ S.lastRead={rcept:L.rcept, file:L.file, hi:s.raw||s.text}; jump('read'); };
-  if(document.fullscreenElement) document.exitFullscreen().then(go).catch(go); else go();
-}
-// 원문 상자의 '본문에서 보기 → 형광펜' — 새 탭(2026-10-22, 사용자: "새 탭으로 열기로 열어줘"). 바로가기 주소 ?co=&tab=read&rc=&f=&hi= (startLink)
-function invOpenReadTab(s){
+// v12(2026-10-21, docs/superpowers/specs/2026-10-21-brief-cards-v12-design.md) — #n 을 누르면 본문 탭이 그 문장을 형광펜으로 연다.
+// 2026-10-22 사용자: "새 탭으로 열기로 열어줘" — #n · 신호 목록 번호 · 원장 줄 · 원문 상자의 '본문에서 보기' 모두 새 탭(브리핑 자리는 그대로).
+// 바로가기 주소 ?co=&tab=read&rc=&f=&hi= (startLink). 재무 신호는 링크 없음(원장 재무표로).
+// 카드 · 머리글 · 체크리스트는 붙잡을 사실(앵커: 금액 · 날짜 · 상대방)이 있고 산업 전망이 아닌 글 신호만 쓴다(invCardOk).
+function invOpenRead(s){
   const L=s&&s.loc; if(!L||!L.rcept||!L.file||s.src==='fin'||!S.co) return;
   const q=new URLSearchParams({co:S.co.code, tab:'read', rc:L.rcept, f:L.file});
   const hi=s.raw||s.text; if(hi) q.set('hi',hi);
@@ -13374,7 +13370,7 @@ const invCardOk=s=>!!s&&(s.src==='new'||s.src==='num')&&!!s.anchor&&!s.industry;
 function invNum(s, d){
   const ok=!!(s.loc&&s.loc.rcept&&s.loc.file&&s.src!=='fin');
   const n=el('span','n'+(ok?' lnk':''),'#'+s.id);
-  if(ok){ n.title='본문에서 이 문장 보기 — '+(s.loc.rcept===(d.base||{}).rcept?'기준 보고서':'이 보고서')+' · '+(s.sec||''); n.onclick=e=>{ e.stopPropagation(); invOpenRead(s,d); }; }
+  if(ok){ n.title='본문에서 이 문장 보기(새 탭) — '+(s.loc.rcept===(d.base||{}).rcept?'기준 보고서':'이 보고서')+' · '+(s.sec||''); n.onclick=e=>{ e.stopPropagation(); invOpenRead(s); }; }
   return n;
 }
 // 원문 안내 상자(2026-10-21 사용자: "#1, #4 내용에 … 라고 끊겨서 원내용을 다 보고 싶다") — 카드 줄 · 신호 목록 · 지형도 칩에서 같은 상자를 연다:
@@ -13391,7 +13387,7 @@ function invSigDetail(s, d){
   box.appendChild(el('div','meta',bits.filter(Boolean).join(' · ')));
   const acts=el('div','acts');
   if(s.loc&&s.loc.rcept&&s.loc.file&&s.src!=='fin'){ const a=el('button','invBtn','본문에서 보기 → 형광펜 ↗'); a.title='본문 탭을 새 탭으로 열어 이 문장에 형광펜';
-    a.onclick=e=>{ e.stopPropagation(); invOpenReadTab(s); }; acts.appendChild(a); }
+    a.onclick=e=>{ e.stopPropagation(); invOpenRead(s); }; acts.appendChild(a); }
   const b=el('button','invBtn','신호 목록에서 보기'); b.onclick=e=>{ e.stopPropagation(); invScrollSig(s.id); }; acts.appendChild(b);
   box.appendChild(acts);
   return box;
@@ -14086,7 +14082,7 @@ function invPlate(plate, d, c, L, rep){
   sigs.slice(0,12).forEach(s=>{
     const li=el('li',invTone(s.dir)+(s.routine?' routine':'')+(s.src!=='fin'?' exp':'')); li.dataset.id=s.id;
     const n=el('span','n'+(s.loc&&s.loc.rcept&&s.src!=='fin'?' lnk':''),String(s.id)); n.style.setProperty('--c',invCol(s.dir));
-    if(s.loc&&s.loc.rcept&&s.src!=='fin'){ n.title='본문에서 이 문장 보기'; n.onclick=()=>invOpenRead(s,d); }
+    if(s.loc&&s.loc.rcept&&s.src!=='fin'){ n.title='본문에서 이 문장 보기(새 탭)'; n.onclick=()=>invOpenRead(s); }
     li.appendChild(n);
     const m=el('div','m');
     const t=el('div','t'); t.appendChild(el('b',null,s.label));
@@ -14693,7 +14689,7 @@ function invTerrain(sigs, plate, d){
   box.appendChild(grid);
   const lg=el('div','invLegend');
   [['sq','재무'],['ci','새 문장'],['di','숫자 변화'],['ho','사라진 문장(점선)']].forEach(([c2,t])=>{ const x=el('span'); x.appendChild(el('i',c2)); x.appendChild(document.createTextNode(t)); lg.appendChild(x); });
-  const cs=el('span','cols'); cs.innerHTML='<i style="background:#f1d9a0"></i>기회 <i style="background:#8a95a3"></i>중립 <i style="background:#d95926"></i>위험 · 막대 길이 = 무게 · 칩을 누르면 문장 전체, #번호는 본문 형광펜';
+  const cs=el('span','cols'); cs.innerHTML='<i style="background:#f1d9a0"></i>기회 <i style="background:#8a95a3"></i>중립 <i style="background:#d95926"></i>위험 · 막대 길이 = 무게 · 칩을 누르면 문장 전체, #번호는 본문 형광펜(새 탭)';
   lg.appendChild(cs); box.appendChild(lg);
   box.focusId=id=>{ box.classList.add('focusing'); box.querySelectorAll('.invChip').forEach(x=>x.classList.toggle('on',+x.dataset.id===id)); };
   box.blur=()=>{ box.classList.remove('focusing'); box.querySelectorAll('.invChip').forEach(x=>x.classList.remove('on')); };
@@ -14888,7 +14884,7 @@ function invLedger(box, d){
   box.innerHTML='';
   const hd=el('div','orbLedH'); const ht=el('div');
   ht.appendChild(el('h4',null,'근거 원장 — 신호 '+(d.signals||[]).length+'개'));
-  ht.appendChild(el('p','sub','무게 순. 방향: 기회(+) · 위험(−). 문장 신호를 누르면 본문 탭이 그 문장을 형광펜으로 연다 · 비교 를 누르면 그 섹션의 두 보고서 문단 비교.'));
+  ht.appendChild(el('p','sub','무게 순. 방향: 기회(+) · 위험(−). 문장 신호를 누르면 새 탭의 본문이 그 문장을 형광펜으로 연다 · 비교 를 누르면 그 섹션의 두 보고서 문단 비교.'));
   hd.appendChild(ht); box.appendChild(hd);
   const list=el('div','orbRows invRows');
   const head=el('div','orbRow orbHeadRow');
@@ -14912,7 +14908,7 @@ function invLedger(box, d){
       cmp.onclick=e=>{ e.preventDefault(); e.stopPropagation(); S.section=s.section; S.diffA=d.base.rcept; S.diffB=d.report.rcept; S.diffMode='text'; renderSide(); jump('diff'); }; wt.appendChild(cmp); }
     row.appendChild(wt);
     if(s.src!=='fin' && s.loc && s.loc.rcept && s.loc.file){
-      row.onclick=()=>invOpenRead(s,d);
+      row.onclick=()=>invOpenRead(s);
     } else row.style.cursor='default';
     list.appendChild(row);
   });
